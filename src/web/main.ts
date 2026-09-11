@@ -370,7 +370,6 @@ function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
     canRetire(st) && !st.pendingSuccession && phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${st.lanista.name} (${st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { sheet = null; retire(st); render(); } }); } }, `은퇴 (${st.lanista.age}세, 후계자에게 넘김)`) : null,
     h('button', { title: '효과음 켜기/끄기', onclick: () => { setSoundEnabled(!soundEnabled()); render(); } }, soundEnabled() ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐'),
-    h('button', { onclick: () => { sheet = 'chronicle'; render(); } }, '연대기'),
     h('button', { onclick: () => { sheet = 'help'; render(); } }, '시너지 · 규칙'),
     h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
       const blob = new Blob([JSON.stringify(serialize(st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${st.lanista.name.split(' ').pop()}-${st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
@@ -546,11 +545,9 @@ function renderDash(): Node[] {
     out.push(h('div', { class: 'dlist' }, ...facRows('cells')));
     return out;
   }
-  if (view === 'grave') { // 묘지: 죽은 검투사·전당 요약, 연대기 열기
-    const out: Node[] = [h('h3', {}, '묘지', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `묘비 ${st.graveyard.length} · 명예의 전당 ${st.hall?.length ?? 0} · ${(st.lineageLog?.length ?? 0) + 1}대 라니스타`))];
-    out.push(item('idle', st.graveyard.length ? `가장 최근: ${st.graveyard[st.graveyard.length - 1].name} (${st.graveyard[st.graveyard.length - 1].wins}승/${st.graveyard[st.graveyard.length - 1].fights}전)` : '아직 묘비가 없습니다.'));
-    out.push(h('div', { class: 'actions', style: 'justify-content:flex-start' }, h('button', { onclick: () => { sheet = 'chronicle'; render(); } }, '연대기 보기')));
-    return out;
+  if (view === 'grave') { // 묘지: 대시보드에 연대기를 그대로 보여 준다 (역대 라니스타 · 명예의 전당 · 묘비 · 연혁)
+    const c = chroniclePanel() as HTMLElement; c.classList.remove('panel'); c.classList.add('chronicle');
+    return [c];
   }
   if (view === 'medic') { // 의무실: 부상자 치료·요양, 침상·의술·약재
     const injured = st.roster.filter(g => g.injured);
@@ -596,7 +593,7 @@ function renderDash(): Node[] {
 // ── 타운: 훈련장(0~1076) + 길(1076~1420) + 시장(1420~1940)을 한 장면으로. 카메라가 라니스타를 따라 옆으로 이동
 const GY = 258; // 마을 공통 땅선. 디스플레이(300) 바닥 가까이에 두어 인물이 땅 위에 서 있는 느낌
 const MEDIC = { W: 420, H: 230 }; // 의무실: 훈련장 왼쪽의 독립 건물 (침상 최대 4, 의사 탁자, 약재 선반)
-const TOWN = { gapW: 60, roadW: 344, tailW: 300, get yardX() { return MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get W() { return this.yardX + YARD.W + this.roadW + MARKET.W + this.tailW; }, H: 300 };
+const TOWN = { gapW: 60, roadW: 344, tailW: 420, get yardX() { return MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get W() { return this.yardX + YARD.W + this.roadW + MARKET.W + this.tailW; }, H: 300 };
 const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 위치는 캔버스를 만들 때 restX(view) 로 잡는다
 let camX = 0, camV = 0, camPan = 0; // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
 let VW = 1076; // 보이는 폭 (월드 단위). 화면 폭에 따라 fit() 이 정한다
@@ -690,7 +687,7 @@ function renderTown() {
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
     if (cellsP > 0.9) { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (TOWN.H / r.height); const k = cellRects(st.ludus.cells.length).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= 0) { const q = cellRects(st.ludus.cells.length)[k]; cellSel = k; cellPop = { cx: r.left + (q.x + q.w / 2) * (r.width / VW), cy: r.top + (q.y + q.h / 2) * (r.height / TOWN.H), fresh: true }; render(); } return; }
-    if (view === 'grave') { sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기
+    if (view === 'grave') { document.querySelector('.dashbody')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; } // 묘비를 누르면 아래 연대기로
     if (view !== 'market') return; const x = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.marketX;
     const items = st.market; let best: Gladiator | null = null, bd = items.length > 1 ? (marketSlotX(items.length, 1) - marketSlotX(items.length, 0)) / 2 : 80;
     items.forEach((g, i) => { const d = Math.abs(x - marketSlotX(items.length, i)); if (d < bd) { bd = d; best = g; } });

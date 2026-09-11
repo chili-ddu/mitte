@@ -92,6 +92,7 @@ button.primary { background:var(--red); color:#fff; border-color:var(--red); }
 .ddopt:hover { background:#f3ead0; }
 .ddopt.on { background:#5a3a1c; color:#f3ead0; }
 .chsec { margin-top:10px; }
+.dashbody .chronicle > h2 { font-size:14px; margin:0; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; display:flex; align-items:center; }
 .chsec .drow { cursor:default; flex-wrap:wrap; }
 .chsec .drow b { white-space:nowrap; }
 h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
