@@ -14,7 +14,7 @@ export const SKILLS: SkillDef[] = [
   { id: 'net_recover', name: '그물 회수', types: ['retiarius'], base: 0.30, desc: '던진 그물을 거둬 경기 중 한 번 더 던진다.', learn: '경험: 그물로 묶은 상대를 쓰러뜨린 뒤' },
   { id: 'spear_ward', name: '창 견제', types: ['hoplomachus', 'eques'], base: 0.30, desc: '근접한 적이 공격하려 할 때 발동하면 창으로 밀어내 그 공격을 무산시킨다.', learn: '경험: 근접 유형을 이긴 뒤' },
   { id: 'stand_firm', name: '버티기', types: 'all', base: 0.35, desc: 'HP 30% 아래에서 맞을 때 발동하면 피해 −25%.', learn: '경험: HP 20% 아래에서 살아남은 뒤' },
-  { id: 'second_wind', name: '숨 고르기', types: 'all', base: 0.50, desc: '경기 중 한 번, HP 25% 아래로 떨어질 때 발동하면 최대 HP의 10%를 회복한다.', learn: '경험: HP 20% 아래에서 살아남은 뒤' },
+  { id: 'second_wind', name: '숨 돌리기', types: 'all', base: 0.50, desc: '경기 중 한 번, HP 25% 아래로 떨어질 때 발동하면 심판(수마 루디스)이 잠시 경기를 멈춘다: 2초 동안 공격받지 않고 거리를 벌리며 최대 HP의 5%를 회복.', learn: '경험: HP 20% 아래에서 살아남은 뒤' },
   { id: 'appeal', name: '관중 호소', types: 'all', base: 0.60, desc: '쓰러졌을 때 발동하면 검지를 높이 들어 미시오 확률 +5%.', learn: '경험: 미시오로 살아난 뒤' },
   { id: 'charge_plus', name: '돌진 강화', types: ['hoplomachus', 'eques', 'secutor'], base: 0.30, desc: '돌진 공격 때 발동하면 피해 ×1.3.', learn: '경험: 돌진 공격으로 상대를 쓰러뜨린 뒤' },
 ];
@@ -25,7 +25,7 @@ export const skillsOf = (g: Gladiator): SkillId[] => (g.skills ?? []) as SkillId
 export const hasSkill = (g: Gladiator, id: SkillId) => skillsOf(g).includes(id);
 export const masteryOf = (g: Gladiator, id: SkillId) => g.skillMastery?.[id] ?? 0;
 export const masteryBonus = (g: Gladiator, id: SkillId) => Math.min(MASTERY_MAX, masteryOf(g, id) * MASTERY_PER_USE);
-export const procChance = (g: Gladiator, id: SkillId) => SKILL_BY_ID[id].base + masteryBonus(g, id);
+export const procChance = (g: Gladiator, id: SkillId) => SKILL_BY_ID[id].base + masteryBonus(g, id) + ((g.epithets ?? []).includes('dictata') ? 0.03 : 0); // 별칭 '딕타타의 달인' +3%
 export function addMastery(g: Gladiator, id: SkillId, n = 1) { (g.skillMastery ??= {})[id] = masteryOf(g, id) + n; }
 
 // 프리무스 팔루스: 같은 유형 안의 1등 (승수 8·명예 20). 슬롯 티로 1 · 베테라누스 2 · 프리무스 팔루스 3
@@ -49,3 +49,5 @@ export function learnSkill(g: Gladiator, id: SkillId, replace?: SkillId): boolea
 }
 export function declineSkill(g: Gladiator, id: SkillId) { g.skillOffers = (g.skillOffers ?? []).filter(x => x !== id); }
 export const SKILL_NAME = (id: string) => SKILL_BY_ID[id as SkillId]?.name ?? id;
+// 베테라누스 매물·지원자·상대에게 무작위 기술 n개 (유형에 맞는 것만)
+export function grantRandomSkills(rng: { pick<T>(a: T[]): T }, g: Gladiator, n: number) { for (let k = 0; k < n; k++) { const e = eligibleSkills(g); if (!e.length) break; (g.skills ??= []).push(rng.pick(e).id); } }

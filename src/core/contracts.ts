@@ -7,7 +7,7 @@ import { pickEnemies, type Rival } from './rivals.js';
 const VENUES: Record<number, string[]> = {
   1: ['놀라 목조 경기장', '누케리아 목조 경기장', '헤르쿨라네움 광장'],
   2: ['폼페이 경기장', '카푸아 경기장', '푸테올리 경기장'],
-  3: ['베로나 경기장', '카르타고 경기장'],
+  3: ['로마 콜로세움', '베로나 경기장', '카르타고 경기장'],
 };
 import { HOST, HOSTS_BY_TIER } from './hosts.js';
 export const HOST_KO: Record<HostKind, string> = Object.fromEntries(Object.entries(HOST).map(([k, v]) => [k, v.ko])) as Record<HostKind, string>;

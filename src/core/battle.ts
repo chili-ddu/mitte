@@ -32,7 +32,7 @@ interface Unit {
   holdUntil: number;            // 공격·피격 동작 중 제자리
   sprint: boolean;              // 전력 질주 중(도착하면 돌진 공격)
   prevTarget?: number;
-  secondWind: boolean; netRecovered: boolean; blocksMade: number; // 기술: 숨 고르기·그물 회수 1회, 방패로 막은 횟수
+  secondWind: boolean; netRecovered: boolean; blocksMade: number; guardUntil: number; // guardUntil: 심판 중단(숨 돌리기) 동안 공격받지 않는다 // 기술: 숨 고르기·그물 회수 1회, 방패로 막은 횟수
 }
 
 function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus = 0, boosted?: Set<number>, boostMul = 1): Unit[] {
@@ -53,7 +53,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
       cooldown: 1.0 + ((i * 0.37 + (side === 'A' ? 0 : 0.2)) % 1.0) * 1.2, // 시작은 견제부터 (1.0~2.2초)
       retreatUntil: 0, circleDir: (i % 2 === 0 ? 1 : -1) as 1 | -1, feintUntil: 0, feintIn: true, holdUntil: 0, sprint: false,
       boundUntil: 0, firstHitShield: OFF_HAND[eq.off].role === 'guard', netUsed: OFF_HAND[eq.off].skill !== 'bind',
-      secondWind: false, netRecovered: false, blocksMade: 0,
+      secondWind: false, netRecovered: false, blocksMade: 0, guardUntil: 0,
     };
   });
 }
@@ -148,6 +148,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
 
       // ── 공격
       if (u.cooldown > 0 || dist(u, target) > u.reach) continue;
+      if (t < target.guardUntil || t < u.guardUntil) continue; // 심판이 멈춘 동안은 공격하지 않는다
       if (target.range >= 2 && u.range < 2 && proc(target, 'spear_ward')) { u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; continue; } // 창 견제: 근접 공격이 무산된다
       const charge = u.sprint; u.sprint = false;
       u.cooldown = u.interval;
@@ -176,7 +177,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (blocked) { target.blocksMade++; exp[target.g.id].blocks++; exp[u.g.id].blockedOn++; }
         if (target.hp / initialHp[target.g.id] < 0.3 && proc(target, 'stand_firm')) dmg = Math.round(dmg * 0.75); // 버티기 // 치명타는 방패 반감 무시
         target.hp -= dmg; target.lastAttacker = u.g.id; target.holdUntil = Math.max(target.holdUntil, t + 0.3); // 피격 경직
-        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.1); } // 숨 고르기
+        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.05); target.guardUntil = t + 2; target.retreatUntil = t + 2; u.retreatUntil = Math.max(u.retreatUntil, t + 1.2); } // 숨 돌리기: 심판이 잠시 멈춘다
         if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.2) exp[target.g.id].lowHp = true;
         let net = false, stun = false;
         if (!u.netUsed && !combo) { u.netUsed = true; target.boundUntil = t + (mentored.has(u.g.id) ? M.bindSec : BIND_SEC); net = true; }

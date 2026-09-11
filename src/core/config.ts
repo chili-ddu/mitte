@@ -48,7 +48,7 @@ export const CONFIG = {
     mix: { captive: 0.3, damnatus: 0.25 },                        // 시장 매물 비율 (나머지는 노예 상인). 자유민은 시장에 서지 않는다
   },
   age: { tiro: [17, 24], veteran: [24, 32], applicant: [24, 34], spdFrom: 31, spdEvery: 3, statFrom: 33, statEvery: 2 }, // 검투사 나이와 노쇠 (비문의 사망 연령은 대부분 20~30대, 30대 중반 넘겨 싸운 예는 드묾)
-  lanista: { ageMin: 32, ageMax: 40, voluntaryAge: 46, mortality: [[40, 0.01], [50, 0.025], [60, 0.045], [70, 0.08], [999, 0.14]] as [number, number][], fameKeep: 0.6, fameFromHonor: 0.2, freedmanDiscount: 0.1, doctorTrainBonus: 1 }, // 고증: 울피아누스 생명표 근사 — 해마다 죽을 확률 (40세 미만 1%, 40대 2.5%, 50대 4.5%, 60대 8%, 70세 이상 14%). 은퇴 나이는 없고 46세(세니오레스)부터 자발 은퇴. 호감도 60% + 후계자 명예×0.2 계승, 해방노예 후계 = 시장 10% 할인, 독토르 후계 = 그 유형 훈련 +1
+  lanista: { ageMin: 32, ageMax: 40, voluntaryAge: 46, mortality: [[40, 0.01], [50, 0.025], [60, 0.045], [70, 0.08], [999, 0.14]] as [number, number][], fameKeep: 0.6, fameFromHonor: 0.2, freedmanDiscount: 0.1, doctorTrainBonus: 1, skillTrainBonus: 0.10 }, // 고증: 울피아누스 생명표 근사 — 해마다 죽을 확률 (40세 미만 1%, 40대 2.5%, 50대 4.5%, 60대 8%, 70세 이상 14%). 은퇴 나이는 없고 46세(세니오레스)부터 자발 은퇴. 호감도 60% + 후계자 명예×0.2 계승, 해방노예 후계 = 시장 10% 할인, 독토르 후계 = 그 유형 훈련 +1
   honor: { win: 3, perTier: 2, classic: 2, crown: 3, lose: -1, missioPer: 0.004, rentPer: 0.01 }, // 검투사 명예: 미시오 +0.4%/점, 대여료 +1%/점
   doctorSkillWins: 8,  // 승수가 이 이상인 독토르는 같은 유형 제자에게 유형 기술을 전수
   mentor: { comboBonus: 0.04, shieldReduce: 0.6, sicaIgnore: 0.4, bindSec: 1.6, chargeMult: 1.3, critTaken: 0.6, twinBonus: 0.10 }, // 추가 4유형: 호플로마쿠스·에퀘스 돌진 ×1.3, 프로보카토르 치명타 피격 0.6, 디마카에루스 연속 +10% 더

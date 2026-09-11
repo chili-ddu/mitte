@@ -56,7 +56,7 @@ function coach(): Node | null {
   if (phase === 'manage' && cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
   else if (phase === 'manage' && view === 'market') { text = st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = st.roster.length < 3 ? 'none' : 'tabs'; }
   else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '편성 단계로 가서 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
-  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '시즌 진행을 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
+  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '시즌 진행을 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
   else if (phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
   if (!text) return null;
   return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
@@ -360,7 +360,7 @@ function doctorsPanel(): Node {
     return h('div', { class: 'card' }, portrait(d, 56),
       h('div', { class: 'grow' },
         h('div', {}, h('span', { class: 'badge doc' }, '독토르'), h('b', {}, d.name), h('span', { class: 'meta' }, ` ${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · ${d.wins}승/${d.fights}전`), d.wins >= CONFIG.doctorSkillWins ? h('span', { class: 'badge mentor', style: 'margin-left:6px' }, '기술 전수') : null),
-        h('div', { class: 'meta' }, `기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌`),
+        h('div', { class: 'meta' }, `기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌 · 가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
         h('div', { class: 'meta' }, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(st, g, 'atk') - 1 - gymBonus(st)}·방 +${trainGain(st, g, 'def') - 1 - gymBonus(st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)),
       h('button', { onclick: () => { backToArena(st, d); render(); } }, '다시 출전'),
       h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(st, d); render(); } }); } }, '내보내기')); };
@@ -379,7 +379,7 @@ function chroniclePanel(): Node {
   const lanistas = [...(st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, st.lanista.name), h('span', { class: 'meta' }, ` ${st.lanista.age}세 · ${st.lanista.since}번째 시즌부터 · ${st.lanista.trait === 'doctor' ? '전직 독토르' : st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
   return h('div', { class: 'panel' }, h('h2', {}, '연대기', helpBtn('연대기', '루두스의 역사입니다. 역대 라니스타는 은퇴·사망으로 물려준 순서, 명예의 전당은 루디스(나무 검)로 자유를 얻은 검투사, 묘비는 경기장에서 죽은 검투사입니다. 폼페이 낙서와 묘비처럼 이름·전적·별칭이 남습니다.')),
     sec('역대 라니스타', `${(st.lineageLog?.length ?? 0) + 1}대`, lanistas),
-    sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; })))),
+    sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; }), ...(e.skills ?? []).map(id => h('span', { class: 'badge skill', style: 'margin-left:4px' }, SKILL_NAME(id)))))),
     sec('묘비', `${dead.length}명`, dead.map(g => h('div', { class: 'drow' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전${g.age ? ` · ${g.age}세` : ''} — 관중은 침묵했다`)))),
     sec('연혁', '최근 40건', log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
 }
@@ -937,7 +937,7 @@ function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
   for (let i = 0; i < n; i++) { const g = dead[i]; const x = 58 + i * gap, sway = Math.sin(t * 0.8 + i) * 0.4;
     ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(x - 13, 0); ctx.lineTo(x - 13, -52); ctx.arc(x, -52, 13, Math.PI, 0); ctx.lineTo(x + 13, 0); ctx.closePath(); ctx.fill(); // 묘비
     ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(g.name.slice(0, 5), x, -28); ctx.font = '6px sans-serif'; ctx.fillText(`${g.wins}승 ${g.fights}전`, x, -18); // 비문: 이름과 전적 (폼페이 묘비처럼)
+    ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(g.name.slice(0, 5), x, -28); ctx.font = '6px sans-serif'; ctx.fillText(`${g.wins}승 ${g.fights}전`, x, -18); { const ep = (g.epithets ?? [])[0]; const nm = ep ? EPITHET_BY_ID[ep as EpithetId]?.name : ''; if (nm) { ctx.font = '5px sans-serif'; ctx.fillText(nm.slice(0, 7), x, -10); } } // 비문에 별칭도 새긴다 // 비문: 이름과 전적 (폼페이 묘비처럼)
     ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.ellipse(x + sway, -2, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill(); // 화환 자리의 풀
   }
   if (!n) { ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, 0); ctx.lineTo(W / 2 - 12, -40); ctx.arc(W / 2, -40, 12, Math.PI, 0); ctx.lineTo(W / 2 + 12, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke(); } // 빈 묘역: 루두스 공동 묘비 하나

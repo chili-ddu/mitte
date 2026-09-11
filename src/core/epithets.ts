@@ -1,7 +1,7 @@
 // 별칭(에피테트): 전적으로 얻는 개성. 베테라누스부터 발동, 검투사당 최대 3개. 폼페이 낙서·묘비의 실제 별칭을 섞음
 import type { Gladiator } from './types.js';
 
-export type EpithetId = 'invictus' | 'immortalis' | 'superstes' | 'cicatrix' | 'suspirium' | 'flamma' | 'retiarii_terror' | 'coronatus' | 'attilius' | 'par' | 'magister' | 'martia' | 'omnia_solus' | 'vindex';
+export type EpithetId = 'invictus' | 'immortalis' | 'superstes' | 'cicatrix' | 'suspirium' | 'flamma' | 'retiarii_terror' | 'coronatus' | 'attilius' | 'par' | 'magister' | 'martia' | 'omnia_solus' | 'dictata' | 'vindex';
 export type EpithetAccessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband';
 export interface EpithetDef { id: EpithetId; name: string; latin: string; attested: boolean; cond: string; effect: string; accessory: EpithetAccessory; check: (g: Gladiator) => boolean; anyRank?: boolean }
 export const MAX_EPITHETS = 3;
@@ -20,6 +20,7 @@ export const EPITHETS: EpithetDef[] = [
   { id: 'martia', name: '군신의 기쁨', latin: 'Martia voluptas', attested: true, cond: '명예 80 이상', effect: '출전마다 호감도 +1', accessory: 'laurel', check: g => (g.honor ?? 0) >= 80 },
   { id: 'omnia_solus', name: '혼자서 세 유형을 다 싸우는 자', latin: 'Omnia solus', attested: true, cond: '세 가지 유형으로 각각 승리 (유형 전환)', effect: '어떤 상대와도 전통 짝으로 인정, 명예 +10', accessory: 'laurel', check: g => (g.typesWon ?? []).length >= 3 },
   { id: 'vindex', name: '복수자', latin: 'Vindex', attested: true, cond: '나를 쓰러뜨렸던 상대를 재대결에서 꺾음', effect: '재대결 상대에게 피해 +10%', accessory: 'sash', check: g => (g.revenged ?? 0) >= 1 },
+  { id: 'dictata', name: '딕타타의 달인', latin: 'Dictatorum peritus', attested: false, cond: '한 기술을 8번 이상 발동 (숙련 최대)', effect: '대여료 +5%, 발동 기술 확률 +3%', accessory: 'armband', check: g => Object.values(g.skillMastery ?? {}).some(n => n >= 8) },
   { id: 'retiarii_terror', name: '그물꾼의 악몽', latin: 'Terror retiariorum', attested: false, cond: '레티아리우스 상대 3승', effect: '레티아리우스에게 피해 +15%', accessory: 'armband', check: g => (g.retiariusWins ?? 0) >= 3 },
 ];
 export const EPITHET_BY_ID: Record<EpithetId, EpithetDef> = Object.fromEntries(EPITHETS.map(e => [e.id, e])) as Record<EpithetId, EpithetDef>;
@@ -29,6 +30,7 @@ export function has(g: Gladiator, id: EpithetId): boolean { return (g.epithets ?
 export function epithetMods(g: Gladiator): { atk: number; def: number; hp: number; missio: number; vsRetiarius: number; rent: number } {
   const m = { atk: 1, def: 1, hp: 1, missio: 0, vsRetiarius: 1, rent: 1 };
   if (has(g, 'coronatus')) m.rent *= 1.10;
+  if (has(g, 'dictata')) m.rent *= 1.05;
   if (has(g, 'par')) m.missio += 0.05;
   if (has(g, 'invictus')) m.atk *= 1.10;
   if (has(g, 'flamma')) m.atk *= 1.08;

@@ -1,6 +1,8 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost } from '../core/game.js';
+import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable } from '../core/game.js';
+import { learnSkill, skillsOf } from '../core/skills.js';
+import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
 import { computeSynergies, describeSynergies } from '../core/synergy.js';
@@ -52,13 +54,14 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced', team: 'strong' | 'syner
       { const c = upgradeCost(st, 'palus'); if (c != null && st.money > 25000 + c) upgrade(st, 'palus'); } // 여유 자금은 팔루스
       buyPolicy(st, buyMode, reserve);
       healAll(st);
-      if (st.money > 15000) for (const g of st.roster) { if (st.money < 15000) break; train(st, g, g.base.atk <= g.base.def + 6 ? 'atk' : 'def'); } // 여유 자금은 훈련에
+      if (st.money > 15000) for (const g of st.roster) { if (st.money < 15000) break; if (skillTrainable(st, g) && !g.trained) { const r = doSkillTrain(st, g); if (r?.ok) learnSkill(g, r.id, skillsOf(g)[0]); continue; } train(st, g, g.base.atk <= g.base.def + 6 ? 'atk' : 'def'); } // 여유 자금은 훈련에 (기술 훈련 우선)
       const cs = [...st.contracts].sort((a, b) => b.tier - a.tier);
       let fought = false;
       for (const c of cs) {
         if (!accept(c)) continue;
         const t = pickTeam(st, c, team);
         if (!t) continue;
+        if (HOST[c.host].bet) { const mine = t.reduce((a, g) => a + power(g), 0) / t.length, theirs = c.enemy.reduce((a, g) => a + power(g), 0) / c.enemy.length; c.bet = mine > theirs * 1.15; } // 우세하면 내기를 받는다
         const r = fight(st, c, t); onFight?.(r); fought = true; // 검투사는 시즌당 1회 출전이므로 사실상 인원이 허락하는 만큼
       }
       if (!fought) refuseAll(st);
