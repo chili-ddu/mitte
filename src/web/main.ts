@@ -256,7 +256,7 @@ function render() {
   save();
   app.replaceChildren();
   app.append(h('header', {},
-    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season), h('span', {}, ` · ${st.season}번째`))),
+    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn())));
   if (sheet) app.append(renderSheet());
