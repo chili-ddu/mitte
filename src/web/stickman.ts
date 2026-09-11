@@ -114,9 +114,9 @@ const CLIPS: Record<ClipName, { pose: Pose; dur: number }[]> = {
   stab:         [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 110 }, { pose: 'stab', dur: 60 }, { pose: 'stab_ready', dur: 120 }, { pose: 'guard', dur: 120 }], // 글라디우스
   stab_secutor: [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 90 }, { pose: 'stab', dur: 50 }, { pose: 'stab_deep', dur: 60 }, { pose: 'stab_ready', dur: 130 }, { pose: 'guard', dur: 120 }], // 추격자: 한 발 더
   net_trident:  [{ pose: 'guard', dur: 0 }, { pose: 'net_ready', dur: 130 }, { pose: 'net_throw', dur: 90 }, { pose: 'trident_ready', dur: 110 }, { pose: 'trident_thrust', dur: 70 }, { pose: 'recover', dur: 120 }, { pose: 'guard', dur: 140 }], // (구) 합본
-  combo_slash:  [{ pose: 'stab', dur: 0 }, { pose: 'slash_ready', dur: 90 }, { pose: 'slash', dur: 70 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
-  combo_up:     [{ pose: 'swing', dur: 0 }, { pose: 'up_ready', dur: 90 }, { pose: 'up_swing', dur: 80 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
-  combo_sweep:  [{ pose: 'stab', dur: 0 }, { pose: 'sweep_ready', dur: 100 }, { pose: 'sweep', dur: 80 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
+  combo_slash:  [{ pose: 'stab', dur: 0 }, { pose: 'slash_ready', dur: 130 }, { pose: 'slash', dur: 90 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
+  combo_up:     [{ pose: 'swing', dur: 0 }, { pose: 'up_ready', dur: 130 }, { pose: 'up_swing', dur: 95 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
+  combo_sweep:  [{ pose: 'stab', dur: 0 }, { pose: 'sweep_ready', dur: 130 }, { pose: 'sweep', dur: 95 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
   salute:       [{ pose: 'guard', dur: 0 }, { pose: 'salute', dur: 400 }, { pose: 'salute', dur: 1600 }, { pose: 'guard', dur: 500 }, { pose: 'salute', dur: 300 }, { pose: 'salute', dur: 800 }],
   bow:          [{ pose: 'guard', dur: 0 }, { pose: 'bow', dur: 500 }, { pose: 'bow', dur: 1800 }, { pose: 'guard', dur: 600 }, { pose: 'victory', dur: 400 }, { pose: 'victory', dur: 600 }],
   lap:          [{ pose: 'guard', dur: 0 }, { pose: 'victory', dur: 250 }, { pose: 'victory', dur: 3500 }], // 이동은 화면 쪽에서 (달리며 팔 든 자세는 runSkeleton 로 대체)
