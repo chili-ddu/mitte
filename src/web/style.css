@@ -45,6 +45,13 @@ button.primary { background:var(--red); color:#fff; border-color:var(--red); }
 #arena { width:100%; height:min(560px, 68vh); touch-action:none; background:#d8c48f; border-radius:6px; display:block; border:1px solid var(--sand2); }
 .overlay { position:fixed; inset:0; background:rgba(43,29,14,.55); display:flex; align-items:center; justify-content:center; z-index:10; }
 .modal { position:relative; background:var(--sand); padding:14px 16px; border-radius:8px; width:min(560px, 94vw); max-height:90vh; overflow:auto; }
+/* 첫 시즌 안내 */
+.coach { display:flex; align-items:center; gap:8px; background:#fff3c4; border:1px solid #c9a227; border-left-width:5px; border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:13px; line-height:1.4; }
+.coach .hand { font-size:18px; color:#7a3b1e; animation:nudge 1s ease-in-out infinite; }
+.coach.tabs .hand { transform:rotate(-90deg); }
+.coach.plan .hand, .coach.go .hand { transform:rotate(90deg); }
+.coach button.tiny { border:0; background:transparent; color:#7a5a1c; font-size:14px; }
+@keyframes nudge { 0%,100% { translate:0 0; } 50% { translate:3px 0; } }
 /* 말풍선 툴팁 */
 .tip { position:fixed; z-index:30; background:#3a2412; color:#f3ead0; font-size:12.5px; line-height:1.45; padding:8px 10px; border-radius:8px; box-shadow:0 6px 18px rgba(43,29,14,.35); pointer-events:none; animation:tipin .12s ease-out; }
 .tip::after { content:''; position:absolute; left:var(--ax, 50%); bottom:-6px; transform:translateX(-50%); border:6px solid transparent; border-top-color:#3a2412; border-bottom:0; }

@@ -44,7 +44,21 @@ function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
 const saved = loadSave();
 let st: GameState = saved ?? newGame(Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000));
 let resumed = !!saved;
-let showIntro = !saved && localStorage.getItem('lanista-intro') !== '1'; // 첫 실행: 제목 화면 (관중 함성과 함께)
+let showIntro = !saved && localStorage.getItem('lanista-intro') !== '1';
+let coachOff = localStorage.getItem('lanista-coach') === '1'; // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
+// 첫 시즌 안내: 지금 상태에서 다음에 할 일을 한 줄로. 화면 위쪽에 손가락 표시와 함께
+function coach(): Node | null {
+  if (coachOff || st.season > 1) return null;
+  const assigned = Object.values(assign).reduce((a, ids) => a + ids.length, 0);
+  let text = '', arrow: 'tabs' | 'plan' | 'go' | 'none' = 'none';
+  if (phase === 'manage' && cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
+  else if (phase === 'manage' && view === 'market') { text = st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = st.roster.length < 3 ? 'none' : 'tabs'; }
+  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '편성 단계로 가서 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
+  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '시즌 진행을 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
+  else if (phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
+  if (!text) return null;
+  return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
+} // 첫 실행: 제목 화면 (관중 함성과 함께)
 let phase: 'manage' | 'plan' | 'battle' | 'result' | 'summary' | 'over' = 'manage';
 // 편성: 계약별 배정, 미배정 검투사의 훈련 선택
 let assign: Record<number, number[]> = {};            // contractId → gladiator ids
@@ -238,6 +252,7 @@ function render() {
   if (phase === 'summary') { app.append(renderSummary()); return; }
   if (st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
   app.append(renderTown());
+  { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
   const nav = [h('button', { class: 'primary wide', onclick: () => { phase = 'plan'; sheet = null; planSel = st.contracts[0]?.id ?? null; render(); } }, '편성 단계로 →')];
   const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
@@ -332,6 +347,11 @@ function menuPanel(): Node {
     canRetire(st) && !st.pendingSuccession && phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${st.lanista.name} (${st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { sheet = null; retire(st); render(); } }); } }, `은퇴 (${st.lanista.age}세, 후계자에게 넘김)`) : null,
     h('button', { title: '효과음 켜기/끄기', onclick: () => { setSoundEnabled(!soundEnabled()); render(); } }, soundEnabled() ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐'),
     h('button', { onclick: () => { sheet = 'help'; render(); } }, '시너지 · 규칙'),
+    h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
+      const blob = new Blob([JSON.stringify(serialize(st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${st.lanista.name.split(' ').pop()}-${st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
+    h('button', { onclick: () => { const inp = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
+      inp.onchange = () => { const f = inp.files?.[0]; if (!f) return; f.text().then(txt => { try { const next = deserialize(JSON.parse(txt)); void ask(`${next.lanista.name} ${next.season}번째 시즌 저장을 불러옵니다. 지금 게임은 덮어씁니다.`, { ok: '불러오기' }).then(ok => { if (!ok) return; st = next; phase = 'manage'; sheet = null; assign = {}; trainPlan = {}; townCanvas = null; view = 'ludus'; cellsOpen = false; notice = '저장 파일을 불러왔습니다.'; render(); }); } catch { void tell('저장 파일을 읽을 수 없습니다.'); } }); };
+      inp.click(); } }, '저장 파일 불러오기'),
     h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); st = newGame(Math.floor(Math.random() * 100000)); phase = 'manage'; sheet = null; assign = {}; trainPlan = {}; townCanvas = null; view = 'ludus'; render(); }); } }, '새 게임')));
 }
   // 문 앞의 지원자 (자유민 아욱토라티): 계약금으로 데려온다
@@ -1074,6 +1094,7 @@ function renderPlan() {
         h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)) : null,
     ], { sel: at != null, dis: !!g.injured || isDoc, tag: at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : null, onclick: () => { if (at != null) { assign[at] = assign[at].filter(x => x !== g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } } }));
   }
+  { const c = coach(); if (c) wrap.prepend(c); }
   wrap.append(cpanel, rpanel, proj, bar);
   return wrap;
 }
@@ -1170,7 +1191,7 @@ function renderSummary() {
     nextItems.push(h('div', { class: 'ditem idle' }, h('span', { class: 'dot' }), h('span', {}, st.market.length ? `시장 매물 ${st.market.length}명 (${Math.min(...st.market.map(m => m.buyPrice)).toLocaleString()} HS 부터)` : '시장 매물 없음')));
     nextItems.push(h('div', { class: 'ditem idle' }, h('span', { class: 'dot' }), h('span', {}, `출전 가능 ${available(st).length}명 · 다음 시즌 유지비 ${upkeepOf(st).toLocaleString()} HS`)));
   }
-  return h('div', {},
+  return h('div', {}, coach(),
     h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, `${sum.label} 정산`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `경기 ${seasonReports.length}회 · ${W}승 ${L}패 ${D}무`)),
       seasonReports.length ? h('div', { class: 'games' }, ...games) : h('div', { class: 'hint' }, '이번 시즌 경기 없음'),
       sum.skipped.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `무산된 계약 (앞 경기 부상·사망): ${sum.skipped.map(c => c.venue).join(', ')}`) : null),
