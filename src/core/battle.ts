@@ -7,6 +7,7 @@ import { effectiveStats } from './gladiator.js';
 import { computeSynergies, type Synergies } from './synergy.js';
 import { epithetMods } from './epithets.js';
 import { equipOf, MAIN_HAND, OFF_HAND, TYPE_TRAIT } from './equipment.js';
+import { hasSkill, procChance, SKILL_BY_ID, type SkillId } from './skills.js';
 
 export const ARENA = { w: 720, h: 320, margin: 40 };
 const DT = 0.1;                 // 틱(초)
@@ -31,6 +32,7 @@ interface Unit {
   holdUntil: number;            // 공격·피격 동작 중 제자리
   sprint: boolean;              // 전력 질주 중(도착하면 돌진 공격)
   prevTarget?: number;
+  secondWind: boolean; netRecovered: boolean; blocksMade: number; // 기술: 숨 고르기·그물 회수 1회, 방패로 막은 횟수
 }
 
 function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus = 0, boosted?: Set<number>, boostMul = 1): Unit[] {
@@ -51,6 +53,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
       cooldown: 1.0 + ((i * 0.37 + (side === 'A' ? 0 : 0.2)) % 1.0) * 1.2, // 시작은 견제부터 (1.0~2.2초)
       retreatUntil: 0, circleDir: (i % 2 === 0 ? 1 : -1) as 1 | -1, feintUntil: 0, feintIn: true, holdUntil: 0, sprint: false,
       boundUntil: 0, firstHitShield: OFF_HAND[eq.off].role === 'guard', netUsed: OFF_HAND[eq.off].skill !== 'bind',
+      secondWind: false, netRecovered: false, blocksMade: 0,
     };
   });
 }
@@ -70,6 +73,10 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
   const dist = (a: Unit, b: Unit) => Math.hypot(a.x - b.x, a.y - b.y);
   const natureFirst = { A: true, B: true };
   const fmt = (t: number) => t.toFixed(1) + 's';
+  // 기술 발동 기록과 경험 집계
+  const skillUses: Record<number, Record<string, number>> = {};
+  const exp: NonNullable<BattleResult['exp']> = Object.fromEntries(units.map(u => [u.g.id, { blocks: 0, blockedOn: 0, combos: 0, comboKill: false, netKill: false, charges: 0, chargeKill: false, lowHp: false, meleeKill: false, wonAfterBlock: false }]));
+  const proc = (x: Unit, id: SkillId): boolean => { if (!hasSkill(x.g, id) || !rng.chance(procChance(x.g, id))) return false; (skillUses[x.g.id] ??= {})[id] = ((skillUses[x.g.id] ??= {})[id] ?? 0) + 1; events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'skill', actor: x.g.id, skill: id }); log.push(`${fmt(t)} ${x.g.name} 기술 '${SKILL_BY_ID[id].name}'`); return true; };
 
   let t = 0;
   const snapshot = () => frames.push({ t: +t.toFixed(2), u: units.map(u => [u.g.id, Math.round(u.x), Math.round(u.y), Math.max(0, Math.round(u.hp))]) });
@@ -141,36 +148,52 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
 
       // ── 공격
       if (u.cooldown > 0 || dist(u, target) > u.reach) continue;
+      if (target.range >= 2 && u.range < 2 && proc(target, 'spear_ward')) { u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; continue; } // 창 견제: 근접 공격이 무산된다
       const charge = u.sprint; u.sprint = false;
       u.cooldown = u.interval;
       u.holdUntil = t + 0.45;                                        // 공격 동작이 끝날 때까지 제자리
       if (u.range < 2) u.retreatUntil = u.holdUntil + 0.4 + rng.next() * 0.3; // 그 뒤 짧게 이탈
       if (rng.chance(0.4)) u.circleDir = (u.circleDir === 1 ? -1 : 1);
       for (let hit = 0; hit < 2; hit++) {
-        if (hit === 1 && (target.hp <= 0 || !rng.chance(CONFIG.combo.base + u.spd * CONFIG.combo.perSpd + (mentored.has(u.g.id) && u.g.type === 'secutor' ? M.comboBonus : 0) + (mentored.has(u.g.id) && u.g.type === 'dimachaerus' ? M.twinBonus : 0) + (OFF_HAND[equipOf(u.g.type).off].comboBonus ?? 0)))) break;
+        if (hit === 1 && (target.hp <= 0 || !rng.chance(CONFIG.combo.base + u.spd * CONFIG.combo.perSpd + (mentored.has(u.g.id) && u.g.type === 'secutor' ? M.comboBonus : 0) + (mentored.has(u.g.id) && u.g.type === 'dimachaerus' ? M.twinBonus : 0) + (OFF_HAND[equipOf(u.g.type).off].comboBonus ?? 0) + (hasSkill(u.g, 'twin_cut') ? 0.15 : 0)))) break;
         const combo = hit === 1;
+        if (combo && hasSkill(u.g, 'twin_cut')) { (skillUses[u.g.id] ??= {}).twin_cut = ((skillUses[u.g.id] ??= {}).twin_cut ?? 0) + 1; exp[u.g.id].combos++; } else if (combo) exp[u.g.id].combos++;
         let mult = 1.0;
         if (target.g.type === 'retiarius') mult *= epithetMods(u.g).vsRetiarius; // 별칭 '그물꾼의 악몽'
         const mySyn = syn[u.side], theirSyn = syn[target.side];
         const tEq = equipOf(target.g.type), uEq = equipOf(u.g.type);
         if (theirSyn.lightHeavy) mult *= 0.92; // 경중 조합: 받는 피해 −8%
         if (mySyn.huntPair && trait.pursuer && t < target.boundUntil) mult *= 1.5;
-        const ignore = mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore;
+        const feint = !combo && proc(u, 'feint'); // 허초: 방패 감소 무시 + 방어 절반
+        const ignore = feint ? 0.5 : mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore;
         const def = Math.round(target.def * (1 - ignore));
-        if (charge && !combo) mult *= mentored.has(u.g.id) && (u.g.type === 'hoplomachus' || u.g.type === 'eques') ? M.chargeMult : 1.15; // 돌진 공격: 기세 보너스 (창 유형 전수 시 ×1.3)
+        if (charge && !combo) { mult *= mentored.has(u.g.id) && (u.g.type === 'hoplomachus' || u.g.type === 'eques') ? M.chargeMult : 1.15; exp[u.g.id].charges++; if (proc(u, 'charge_plus')) mult *= 1.3; } // 돌진 공격: 기세 보너스 (창 유형 전수 시 ×1.3)
         const crit = rng.chance((CONFIG.crit.base + u.spd * CONFIG.crit.perSpd) * (mentored.has(target.g.id) && target.g.type === 'provocator' ? M.critTaken : TYPE_TRAIT[target.g.type].critTaken));
         if (crit) mult *= CONFIG.crit.mult;
         let dmg = Math.max(1, Math.round(u.atk * mult * rng.range(0.85, 1.15) - def));
         let blocked = false;
-        if (target.firstHitShield) { const reduce = mentored.has(target.g.id) && tEq.off === 'scutum' && target.g.type === 'murmillo' ? M.shieldReduce : (OFF_HAND[tEq.off].firstHitReduce ?? 0); if (!crit) dmg = Math.round(dmg * (1 - reduce * (u.g.scaeva ? 0.5 : 1))); /* 왼손잡이는 방패 반대편을 친다 */ target.firstHitShield = false; blocked = !crit && OFF_HAND[tEq.off].role === 'guard'; } // 치명타는 방패 반감 무시
+        if (target.firstHitShield) { const reduce = mentored.has(target.g.id) && tEq.off === 'scutum' && target.g.type === 'murmillo' ? M.shieldReduce : (OFF_HAND[tEq.off].firstHitReduce ?? 0); if (!crit && !feint) dmg = Math.round(dmg * (1 - reduce * (u.g.scaeva ? 0.5 : 1))); /* 왼손잡이는 방패 반대편을 친다, 허초는 방패를 넘긴다 */ target.firstHitShield = false; blocked = !crit && !feint && OFF_HAND[tEq.off].role === 'guard'; }
+        if (blocked) { target.blocksMade++; exp[target.g.id].blocks++; exp[u.g.id].blockedOn++; }
+        if (target.hp / initialHp[target.g.id] < 0.3 && proc(target, 'stand_firm')) dmg = Math.round(dmg * 0.75); // 버티기 // 치명타는 방패 반감 무시
         target.hp -= dmg; target.lastAttacker = u.g.id; target.holdUntil = Math.max(target.holdUntil, t + 0.3); // 피격 경직
+        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.1); } // 숨 고르기
+        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.2) exp[target.g.id].lowHp = true;
         let net = false, stun = false;
         if (!u.netUsed && !combo) { u.netUsed = true; target.boundUntil = t + (mentored.has(u.g.id) ? M.bindSec : BIND_SEC); net = true; }
+        else if (u.netUsed && !combo && !u.netRecovered && OFF_HAND[uEq.off].skill === 'bind' && proc(u, 'net_recover')) { u.netRecovered = true; target.boundUntil = t + BIND_SEC; net = true; } // 그물 회수
+        if (blocked && proc(target, 'shield_bash')) { u.boundUntil = Math.max(u.boundUntil, t + 0.5); stun = true; } // 방패 밀치기: 공격자가 비틀거린다
         if (mySyn.nature3 && natureFirst[u.side]) { natureFirst[u.side] = false; target.boundUntil = Math.max(target.boundUntil, t + 0.8); stun = true; }
         const downed = target.hp <= 0;
+        if (downed) { if (combo) exp[u.g.id].comboKill = true; if (t < target.boundUntil && net) exp[u.g.id].netKill = true; if (charge && !combo) exp[u.g.id].chargeKill = true; if (target.range < 2 && u.range >= 2) exp[u.g.id].meleeKill = true; if (u.blocksMade > 0) exp[u.g.id].wonAfterBlock = true; }
         log.push(`${fmt(t)} ${u.g.name}(${u.side}) → ${target.g.name} ${dmg}${crit ? ' 치명타!' : ''}${charge && !combo ? ' 돌진!' : ''}${combo ? ' 연속!' : ''}${blocked ? ' 방패!' : ''}${net ? ' 그물!' : ''}${stun ? ' 기세!' : ''}${downed ? ' 쓰러짐' : ''}`);
         events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: u.g.id, target: target.g.id, dmg, targetHp: Math.max(0, target.hp), counter: false, net, blocked, combo, charge: charge && !combo, crit, downed });
         if (downed) break;
+        if (blocked && u.hp > 0 && proc(target, 'riposte')) { // 되받아치기: 막은 직후 반격 (공격력 80%)
+          const rd = Math.max(1, Math.round(target.atk * 0.8 * rng.range(0.85, 1.15) - u.def)); u.hp -= rd; u.lastAttacker = target.g.id; u.holdUntil = Math.max(u.holdUntil, t + 0.3);
+          events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: target.g.id, target: u.g.id, dmg: rd, targetHp: Math.max(0, u.hp), counter: true, net: false, blocked: false, combo: false, charge: false, crit: false, downed: u.hp <= 0, skill: 'riposte' });
+          log.push(`${fmt(t)} ${target.g.name} 되받아치기 → ${u.g.name} ${rd}${u.hp <= 0 ? ' 쓰러짐' : ''}`);
+          if (u.hp <= 0) break;
+        }
       }
     }
     snapshot();
@@ -183,5 +206,5 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
     else if (synB.victory3 && !synA.victory3) winner = 'B';
   }
   const downed = { A: units.filter(u => u.side === 'A' && u.hp <= 0).map(u => u.g), B: units.filter(u => u.side === 'B' && u.hp <= 0).map(u => u.g) };
-  return { events, frames, initialHp, winner, turns: Math.ceil(t), duration: t, log, downed, counterWin: false };
+  return { events, frames, initialHp, winner, turns: Math.ceil(t), duration: t, log, downed, counterWin: false, skillUses, exp };
 }

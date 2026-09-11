@@ -3,6 +3,7 @@ import type { Gladiator } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator } from './gladiator.js';
+import { eligibleSkills } from './skills.js';
 
 export interface Rival { id: number; name: string; roster: Gladiator[]; vsMe?: { wins: number; losses: number; draws: number } } // vsMe: 그 파밀리아가 나를 상대로 거둔 전적
 // 고증: 카푸아의 율리우스 루두스(카이사르), 네로의 루두스, 폼페이 경기 광고의 주최자 암플리아투스 가문
@@ -16,6 +17,7 @@ function makeMember(rng: Rng, season: number, roster: Gladiator[] = []): Gladiat
   const g = makeGladiator(rng, rank);
   // 상대도 시즌을 거치며 훈련한다: 베테라누스는 3시즌마다 공·방 +1 (최대 +6), 승수도 쌓인 채로 온다 (내 검투사만 자라면 후반 승률이 70%를 넘는다)
   if (rank === 'veteranus') { const grow = Math.min(6, Math.floor((season - 1) / 3)); g.base.atk += grow; g.base.def += grow; g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
+  if (rank === 'veteranus') { const n = rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1]); for (let k = 0; k < n; k++) { const e = eligibleSkills(g); if (!e.length) break; (g.skills ??= []).push(rng.pick(e).id); } } // 상대 베테라누스도 기술을 1~2개 가진다
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
 }

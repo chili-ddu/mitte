@@ -27,6 +27,9 @@ export interface Gladiator {
   contractUntil?: number; // 자유민 계약 만료 시즌 (auctoratus·재계약)
   age?: number;         // 나이. 봄마다 +1. 31세부터 속도, 33세부터 공·방이 서서히 줄어든다
   epithets?: string[];  // 별칭 id 목록 (core/epithets.ts)
+  skills?: string[];      // 기술 id 목록 (core/skills.ts)
+  skillMastery?: Record<string, number>; // 기술별 발동 횟수 (숙련)
+  skillOffers?: string[]; // 배울 수 있게 된 기술 (플레이어가 배울지 정한다)
   streak?: number;      // 현재 연승
   injuries?: number;    // 부상 생존 횟수
   soloWins?: number;    // 동료 전멸 뒤 홀로 이긴 횟수
@@ -72,7 +75,7 @@ export interface BattleUnit {
 export interface BattleEvent {
   t: number;              // 초
   turn: number;           // 표시용(초 올림)
-  kind: 'attack' | 'bound';
+  kind: 'attack' | 'bound' | 'skill';
   actor: number;          // gladiator id
   target?: number;
   dmg?: number;
@@ -84,6 +87,7 @@ export interface BattleEvent {
   charge?: boolean;       // 달려들며 공격(돌진)
   crit?: boolean;         // 치명타
   downed?: boolean;
+  skill?: string;         // 발동한 기술 id (kind 'skill', 또는 공격에 실린 기술)
 }
 
 // 위치 스냅샷: [id, x, y, hp]
@@ -98,5 +102,7 @@ export interface BattleResult {
   turns: number;
   log: string[];
   downed: { A: Gladiator[]; B: Gladiator[] };
+  skillUses?: Record<number, Record<string, number>>; // 검투사별 기술 발동 횟수 (숙련에 반영)
+  exp?: Record<number, { blocks: number; blockedOn: number; combos: number; comboKill: boolean; netKill: boolean; charges: number; chargeKill: boolean; lowHp: boolean; meleeKill: boolean; wonAfterBlock: boolean }>; // 경험 조건 집계
   counterWin: boolean;   // (구) 상성 우위. 상성 제거 후 항상 false
 }
