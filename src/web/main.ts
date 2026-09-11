@@ -593,7 +593,7 @@ function renderDash(): Node[] {
 // ── 타운: 훈련장(0~1076) + 길(1076~1420) + 시장(1420~1940)을 한 장면으로. 카메라가 라니스타를 따라 옆으로 이동
 const GY = 258; // 마을 공통 땅선. 디스플레이(300) 바닥 가까이에 두어 인물이 땅 위에 서 있는 느낌
 const MEDIC = { W: 420, H: 230 }; // 의무실: 훈련장 왼쪽의 독립 건물 (침상 최대 4, 의사 탁자, 약재 선반)
-const TOWN = { gapW: 60, roadW: 344, tailW: 420, get yardX() { return MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get W() { return this.yardX + YARD.W + this.roadW + MARKET.W + this.tailW; }, H: 300 };
+const TOWN = { gapW: 60, roadW: 344, wallW: 130, tailW: 290, get yardX() { return MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get wallX() { return this.marketX + MARKET.W; }, get W() { return this.wallX + this.wallW + this.tailW; }, H: 300 }; // 시장 → 성벽(문) → 성문 밖 묘지
 const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 위치는 캔버스를 만들 때 restX(view) 로 잡는다
 let camX = 0, camV = 0, camPan = 0; // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
 let VW = 1076; // 보이는 폭 (월드 단위). 화면 폭에 따라 fit() 이 정한다
@@ -641,7 +641,7 @@ function renderTown() {
     ctx.fillStyle = '#e6d6ad'; ctx.fillRect(0, 0, TOWN.W, VH); // 하늘
     // 거리 집 정면 (길 구간 + 시장 뒤까지): 지붕·창·문
     for (let x = TOWN.yardX + YARD.W - 40; x < TOWN.W; x += 118) {
-      if (x + 104 > TOWN.marketX - 10 && x < TOWN.marketX + MARKET.W + 10) continue; // 시장 광장 뒤는 회랑이 대신
+      if (x + 104 > TOWN.marketX - 10) break; // 시장 광장 뒤는 회랑, 그 너머는 성벽과 성문 밖
       const hh = 70 + ((x / 118) % 3) * 14; const y0 = GY - 14 - hh;
       ctx.fillStyle = '#c9b283'; ctx.fillRect(x, y0, 104, hh);
       ctx.fillStyle = '#9b4a2c'; ctx.fillRect(x - 6, y0 - 12, 116, 14); // 기와 지붕
@@ -657,14 +657,15 @@ function renderTown() {
     ctx.strokeStyle = '#b9a26f'; ctx.lineWidth = 1; for (let x = TOWN.yardX + YARD.W + 10; x < TOWN.marketX + 20; x += 34) { for (let yy = GY - 4; yy < VH; yy += 16) { ctx.beginPath(); ctx.moveTo(x + ((yy / 16) % 2) * 17, yy); ctx.lineTo(x + ((yy / 16) % 2) * 17 + 28, yy); ctx.stroke(); } }
     // ── 구조물 층
     // 거리 행인: 길을 오간다 (주기적으로 왕복)
-    { const span = TOWN.roadW + MARKET.W + 200; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.W - 60 - ((t * 30 + 300) % span);
+    { const span = TOWN.roadW + MARKET.W + TOWN.wallW + 120; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.W - 60 - ((t * 30 + 300) % span);
       drawCivilian(ctx, p1, GY, 0.9, 'walk', t, 11, 1); drawCivilian(ctx, p2, GY, 0.9, 'walk', t, 5, -1); }
     // 루두스 문 밖의 자유민 지원자: 문루 앞 길에 서서 기다린다
     ctx.save(); ctx.translate(TOWN.yardX, GY - 210); drawYardScene(ctx, t); ctx.restore();          // 훈련장 (발 = 210 → GY)
     ctx.save(); ctx.translate(0, GY - 210); drawMedicScene(ctx, t); ctx.restore();                 // 의무실 (독립 건물)
     st.applicants.forEach((g, i) => { const x = TOWN.yardX + YARD.W + 24 + i * 30; drawStickman(ctx, g.type, { x, y: GY, scale: 0.9, skeleton: NPC_POSES.watch, t: t + i, ink: INK, bare: true, garment: 'tunic', garmentColor: '#b9c2a8', facing: -1 }); }); // 문 밖 길에 서서 기다리는 자유민 지원자
     ctx.save(); ctx.translate(TOWN.marketX, GY - 30 - (MARKET.H - 68)); drawMarketScene(ctx, t); ctx.restore();
-    ctx.save(); ctx.translate(TOWN.W - TOWN.tailW, GY); drawGraveScene(ctx, t); ctx.restore(); // 묘지 (길가 묘역, 발 = GY) // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
+    ctx.save(); ctx.translate(TOWN.wallX, GY); drawCityWall(ctx); ctx.restore();                  // 성벽과 성문 (시장과 묘지 사이)
+    ctx.save(); ctx.translate(TOWN.W - TOWN.tailW, GY); drawGraveScene(ctx, t); ctx.restore(); // 묘지 (성문 밖 길가 묘역, 발 = GY) // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
     // 라니스타: 토가 입은 인물 (걷기 또는 서서 구경)
     { const facing: 1 | -1 = lanista.walking ? (lanista.target > lanista.x ? 1 : -1) : (view === 'ludus' || view === 'market' ? 1 : -1); // 묘지에서는 오른쪽 끝에 서서 왼쪽 묘비들을 본다 // 시장에서는 판매대 왼쪽 앞에 서서 오른쪽(매물)을 본다
       drawLanista(ctx, lanista.x, GY, facing, t * Math.max(0.4, lanista.walking ? lanista.v / 300 : 1), lanista.walking);
@@ -883,6 +884,15 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
       drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); }
     else drawStickman(ctx, g.type, { x: TX + 60 + (i - bedX.length) * 22, y: H - 20, scale: 0.9, pose: 'sit', t: t + i, team, bare: true, facing: -1 });
   });
+}
+// 성벽: 도시 경계. 높은 벽·총안·아치 성문(열림). 발 = 0
+function drawCityWall(ctx: CanvasRenderingContext2D) {
+  const W = TOWN.wallW, H = 200;
+  ctx.fillStyle = '#a58f60'; ctx.fillRect(0, -H, W, H);
+  ctx.fillStyle = '#8f7a4e'; for (let y = -H + 20; y < 0; y += 22) { ctx.fillRect(0, y, W, 2); } for (let y = -H + 20, k = 0; y < 0; y += 22, k++) { for (let x = (k % 2) * 20; x < W; x += 40) ctx.fillRect(x, y, 2, 22); } // 석재 줄눈
+  ctx.fillStyle = '#a58f60'; for (let x = 4; x < W; x += 24) ctx.fillRect(x, -H - 14, 14, 14); // 총안(흉벽)
+  ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(W / 2 - 28, 0); ctx.lineTo(W / 2 - 28, -84); ctx.arc(W / 2, -84, 28, Math.PI, 0); ctx.lineTo(W / 2 + 28, 0); ctx.closePath(); ctx.fill(); // 성문 아치 (열림)
+  ctx.fillStyle = '#b39c6a'; ctx.fillRect(W / 2 - 34, -118, 68, 6); // 아치 위 인방
 }
 // 묘지: 성문 밖 길가 묘역 (폼페이 누케리아 문 밖처럼). 묘비(스텔라)는 죽은 검투사 수만큼(최대 8), 사이프러스 두 그루, 담. 누르면 연대기
 function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
