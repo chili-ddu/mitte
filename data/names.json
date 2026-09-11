@@ -1,0 +1,712 @@
+{
+  "nature": [
+    {
+      "ko": "오케아누스",
+      "la": "Oceanus",
+      "meaning": "대양",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 13전"
+    },
+    {
+      "ko": "플람마",
+      "la": "Flamma",
+      "meaning": "불꽃",
+      "attested": true,
+      "note": "(실) 34전 21승, 루디스 4회 거절"
+    },
+    {
+      "ko": "티그리스",
+      "la": "Tigris",
+      "meaning": "호랑이",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "레오",
+      "la": "Leo",
+      "meaning": "사자",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "우르수스",
+      "la": "Ursus",
+      "meaning": "곰",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "파르두스",
+      "la": "Pardus",
+      "meaning": "표범",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "루푸스",
+      "la": "Lupus",
+      "meaning": "늑대",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "타우루스",
+      "la": "Taurus",
+      "meaning": "황소",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아퀼라",
+      "la": "Aquila",
+      "meaning": "독수리",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "풀구르",
+      "la": "Fulgur",
+      "meaning": "번개",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "토니트루스",
+      "la": "Tonitrus",
+      "meaning": "천둥",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "프로켈라",
+      "la": "Procella",
+      "meaning": "폭풍",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "사쿰",
+      "la": "Saxum",
+      "meaning": "바위",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "페룸",
+      "la": "Ferrum",
+      "meaning": "쇠",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "이그니스",
+      "la": "Ignis",
+      "meaning": "불",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아프리카누스",
+      "la": "Africanus",
+      "meaning": "아프리카의",
+      "attested": true,
+      "note": "(실) 출신 표시 겸용"
+    },
+    {
+      "ko": "아스티부스",
+      "la": "Astivus",
+      "meaning": "여름의",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "마테르누스",
+      "la": "Maternus",
+      "meaning": "어머니의",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "실바누스",
+      "la": "Silvanus",
+      "meaning": "숲의 신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "몬타누스",
+      "la": "Montanus",
+      "meaning": "산사람",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 10승"
+    }
+  ],
+  "victory": [
+    {
+      "ko": "빅토르",
+      "la": "Victor",
+      "meaning": "승자",
+      "attested": true,
+      "note": "(실) 매우 흔함"
+    },
+    {
+      "ko": "펠릭스",
+      "la": "Felix",
+      "meaning": "행운아",
+      "attested": true,
+      "note": "(실) 최다 중복"
+    },
+    {
+      "ko": "포르투나투스",
+      "la": "Fortunatus",
+      "meaning": "복 받은",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "파우스투스",
+      "la": "Faustus",
+      "meaning": "길한",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "트리움푸스",
+      "la": "Triumphus",
+      "meaning": "개선",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "인빅투스",
+      "la": "Invictus",
+      "meaning": "무패",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "프루덴스",
+      "la": "Prudens",
+      "meaning": "신중한",
+      "attested": true,
+      "note": "(실) 테트라이테스의 상대"
+    },
+    {
+      "ko": "발렌스",
+      "la": "Valens",
+      "meaning": "강건한",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "세베루스",
+      "la": "Severus",
+      "meaning": "엄격한",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 13전"
+    },
+    {
+      "ko": "알바누스",
+      "la": "Albanus",
+      "meaning": "알바의",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 19전"
+    },
+    {
+      "ko": "크레스켄스",
+      "la": "Crescens",
+      "meaning": "자라나는",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, \"소녀들의 의사\""
+    },
+    {
+      "ko": "켈라두스",
+      "la": "Celadus",
+      "meaning": "(그리스어) 함성",
+      "attested": true,
+      "note": "(실) \"소녀들의 한숨\""
+    },
+    {
+      "ko": "프리스쿠스",
+      "la": "Priscus",
+      "meaning": "옛 사람",
+      "attested": true,
+      "note": "(실) 콜로세움 개장 무승부"
+    },
+    {
+      "ko": "베루스",
+      "la": "Verus",
+      "meaning": "진실한",
+      "attested": true,
+      "note": "(실) 콜로세움 개장 무승부"
+    },
+    {
+      "ko": "노빌리오르",
+      "la": "Nobilior",
+      "meaning": "더 고귀한",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "아마빌리스",
+      "la": "Amabilis",
+      "meaning": "사랑스러운",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "콘스탄스",
+      "la": "Constans",
+      "meaning": "굳건한",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "피르무스",
+      "la": "Firmus",
+      "meaning": "단단한",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "빅토리누스",
+      "la": "Victorinus",
+      "meaning": "작은 승자",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "살부스",
+      "la": "Salvus",
+      "meaning": "무사한",
+      "attested": false,
+      "note": "(창작)"
+    }
+  ],
+  "myth": [
+    {
+      "ko": "헤르메스",
+      "la": "Hermes",
+      "meaning": "전령신",
+      "attested": true,
+      "note": "(실) 마르티알리스"
+    },
+    {
+      "ko": "아킬레스",
+      "la": "Achilles",
+      "meaning": "",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "아약스",
+      "la": "Aiax",
+      "meaning": "",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "헥토르",
+      "la": "Hector",
+      "meaning": "",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "헤라클레스",
+      "la": "Hercules",
+      "meaning": "",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아스티아낙스",
+      "la": "Astyanax",
+      "meaning": "헥토르의 아들",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "벨레로폰",
+      "la": "Bellerophon",
+      "meaning": "페가수스 기수",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "쿠피도",
+      "la": "Cupido",
+      "meaning": "사랑의 신",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "아폴로니우스",
+      "la": "Apollonius",
+      "meaning": "아폴로의",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "디오메데스",
+      "la": "Diomedes",
+      "meaning": "",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "페르세우스",
+      "la": "Perseus",
+      "meaning": "",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "테세우스",
+      "la": "Theseus",
+      "meaning": "",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아탈란타",
+      "la": "Atalanta",
+      "meaning": "여성 검투사용",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아마존",
+      "la": "Amazon",
+      "meaning": "여성 검투사용",
+      "attested": true,
+      "note": "(실) 할리카르나소스 부조"
+    },
+    {
+      "ko": "아킬리아",
+      "la": "Achillia",
+      "meaning": "여성 검투사용",
+      "attested": true,
+      "note": "(실) 할리카르나소스 부조"
+    },
+    {
+      "ko": "넵투누스",
+      "la": "Neptunus",
+      "meaning": "바다의 신. 레티아리우스용",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "마르스",
+      "la": "Mars",
+      "meaning": "군신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "불카누스",
+      "la": "Vulcanus",
+      "meaning": "대장장이 신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "오리온",
+      "la": "Orion",
+      "meaning": "사냥꾼",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "카스토르",
+      "la": "Castor",
+      "meaning": "쌍둥이 신. 에퀘스용",
+      "attested": false,
+      "note": "(창작)"
+    }
+  ],
+  "nickname": [
+    {
+      "ko": "푸그낙스",
+      "la": "Pugnax",
+      "meaning": "싸움꾼",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 네로 루두스"
+    },
+    {
+      "ko": "콜룸부스",
+      "la": "Columbus",
+      "meaning": "비둘기",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "스피쿨루스",
+      "la": "Spiculus",
+      "meaning": "창끝",
+      "attested": true,
+      "note": "(실) 네로의 총애"
+    },
+    {
+      "ko": "테트라이테스",
+      "la": "Tetraites",
+      "meaning": "넷째",
+      "attested": true,
+      "note": "(실) 유리잔 그림"
+    },
+    {
+      "ko": "칼렌디오",
+      "la": "Kalendio",
+      "meaning": "초하루 태생",
+      "attested": true,
+      "note": "(실) 모자이크"
+    },
+    {
+      "ko": "하빌리스",
+      "la": "Habilis",
+      "meaning": "솜씨 좋은",
+      "attested": true,
+      "note": "(실) 모자이크"
+    },
+    {
+      "ko": "이아쿨라토르",
+      "la": "Iaculator",
+      "meaning": "던지는 자",
+      "attested": true,
+      "note": "(실) 비문. 레티아리우스용"
+    },
+    {
+      "ko": "압투스",
+      "la": "Aptus",
+      "meaning": "적합한",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "심마쿠스",
+      "la": "Symmachus",
+      "meaning": "전우",
+      "attested": true,
+      "note": "(실) 모자이크"
+    },
+    {
+      "ko": "리파누스",
+      "la": "Ripanus",
+      "meaning": "강둑 사람",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "스카에바",
+      "la": "Scaeva",
+      "meaning": "왼손잡이",
+      "attested": true,
+      "note": "(실) 루두스 이름으로도"
+    },
+    {
+      "ko": "무스",
+      "la": "Mus",
+      "meaning": "생쥐",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "파세르",
+      "la": "Passer",
+      "meaning": "참새",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "나수스",
+      "la": "Nasus",
+      "meaning": "코 큰 놈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "클라우두스",
+      "la": "Claudus",
+      "meaning": "절름발이",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "브루투스",
+      "la": "Brutus",
+      "meaning": "둔한 놈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "타키투스",
+      "la": "Tacitus",
+      "meaning": "말 없는 놈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "루스티쿠스",
+      "la": "Rusticus",
+      "meaning": "촌놈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "크라수스",
+      "la": "Crassus",
+      "meaning": "뚱보",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "파르부스",
+      "la": "Parvus",
+      "meaning": "꼬마",
+      "attested": false,
+      "note": "(창작)"
+    }
+  ],
+  "place": [
+    {
+      "ko": "우르비쿠스",
+      "la": "Urbicus",
+      "meaning": "도시 사람",
+      "attested": true,
+      "note": "(실) 밀라노 묘비, 13승"
+    },
+    {
+      "ko": "아라킨투스",
+      "la": "Aracintus",
+      "meaning": "아라킨투스 산",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "카푸아누스",
+      "la": "Capuanus",
+      "meaning": "카푸아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "폼페이아누스",
+      "la": "Pompeianus",
+      "meaning": "폼페이 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "로마누스",
+      "la": "Romanus",
+      "meaning": "로마 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "갈루스",
+      "la": "Gallus",
+      "meaning": "갈리아 사람",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "트락스",
+      "la": "Thrax",
+      "meaning": "트라키아 사람",
+      "attested": true,
+      "note": "(실) 유형명 겸용"
+    },
+    {
+      "ko": "삼니스",
+      "la": "Samnis",
+      "meaning": "삼니움 사람",
+      "attested": true,
+      "note": "(실) 유형명 겸용"
+    },
+    {
+      "ko": "게르마누스",
+      "la": "Germanus",
+      "meaning": "게르만 사람",
+      "attested": true,
+      "note": "(실)"
+    },
+    {
+      "ko": "히스파누스",
+      "la": "Hispanus",
+      "meaning": "히스파니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "시쿨루스",
+      "la": "Siculus",
+      "meaning": "시칠리아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "사르두스",
+      "la": "Sardus",
+      "meaning": "사르디니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "다쿠스",
+      "la": "Dacus",
+      "meaning": "다키아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "브리토",
+      "la": "Britto",
+      "meaning": "브리타니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "마우루스",
+      "la": "Maurus",
+      "meaning": "마우레타니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "시루스",
+      "la": "Syrus",
+      "meaning": "시리아 사람",
+      "attested": true,
+      "note": "(실) 플람마가 시리아 출신"
+    },
+    {
+      "ko": "아이깁투스",
+      "la": "Aegyptus",
+      "meaning": "이집트 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "티베리누스",
+      "la": "Tiberinus",
+      "meaning": "테베레 강의",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "베수비우스",
+      "la": "Vesuvius",
+      "meaning": "베수비오 산",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "캄파누스",
+      "la": "Campanus",
+      "meaning": "캄파니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    }
+  ]
+}

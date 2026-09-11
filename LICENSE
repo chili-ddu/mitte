@@ -1,0 +1,46 @@
+라니스타 (Lanista)
+Copyright (c) 2026 chili-ddu. All rights reserved.
+
+이 소프트웨어와 그에 딸린 파일(소스 코드, 그림, 글, 설정값, 문서 — 이하 "저작물")의
+모든 권리는 저작권자에게 있습니다.
+
+허용되는 것
+- 이 저장소를 열람하는 것.
+- 저작권자가 공개한 웹 페이지에서 게임을 플레이하는 것.
+- GitHub 서비스 약관이 허용하는 범위에서 저장소를 포크하고 열람하는 것.
+
+허용되지 않는 것 (저작권자의 서면 허락이 없는 한)
+- 저작물의 전부 또는 일부를 복제, 배포, 공개 전송, 개작, 번역하는 것.
+- 저작물을 이용해 파생 작품이나 다른 게임을 만드는 것.
+- 저작물을 상업적으로 이용하는 것.
+
+역사 자료
+검투사 유형, 라틴어 용어, 고대 낙서·묘비·문헌에서 가져온 이름과 사실은
+공공의 것이며 이 문서의 제한 대상이 아닙니다. 제한 대상은 그것을 바탕으로
+저작권자가 만든 코드, 그림, 글, 규칙 설계와 설정값입니다.
+
+보증 부인
+이 저작물은 "있는 그대로" 제공되며, 저작권자는 상품성이나 특정 목적 적합성을
+포함해 어떤 보증도 하지 않고, 이 저작물의 사용으로 생기는 손해에 책임지지 않습니다.
+
+---
+
+Lanista
+Copyright (c) 2026 chili-ddu. All rights reserved.
+
+Permission is granted to view this repository and to play the game at the web
+page published by the copyright holder, and to fork or view the repository to
+the extent allowed by the GitHub Terms of Service. No other rights are granted.
+Without prior written permission from the copyright holder you may not copy,
+distribute, publicly transmit, modify or translate this work in whole or in
+part, create derivative works or other games from it, or use it commercially.
+
+Historical material (gladiator types, Latin terms, names and facts taken from
+ancient graffiti, epitaphs and literature) is in the public domain and is not
+covered by this notice; the code, artwork, text, rule design and tuning values
+built on it are.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE WORK.

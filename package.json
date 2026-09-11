@@ -1,0 +1,19 @@
+{
+  "name": "lanista",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "play": "tsx src/cli/play.ts",
+    "sim": "tsx src/cli/sim.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

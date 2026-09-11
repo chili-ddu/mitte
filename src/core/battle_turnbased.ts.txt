@@ -1,0 +1,84 @@
+// 턴제 자동전투 (2026-09-10 복귀). 위치 기반 버전은 battle_positional.ts.txt 에 보관.
+// 화면은 이벤트에 맞춰 달려가 때리고 빠지는 연출을 한다.
+import type { BattleEvent, BattleResult, BattleUnit, Gladiator } from './types.js';
+import { Rng } from './rng.js';
+import { CONFIG } from './config.js';
+import { effectiveStats } from './gladiator.js';
+import { computeSynergies, counterMult, type Synergies } from './synergy.js';
+import { equipOf, MAIN_HAND, OFF_HAND, TYPE_TRAIT } from './equipment.js';
+
+const TRAIT_OF = (u: BattleUnit) => TYPE_TRAIT[u.g.type];
+
+function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies): BattleUnit[] {
+  return team.map(g => {
+    const s = effectiveStats(g);
+    let atk = s.atk, def = s.def;
+    const eq = equipOf(g.type);
+    if (syn.shieldWall && eq.off === 'scutum') def += 3; // 방패벽: 큰 방패를 든 사람만
+    if (syn.nature2) atk = Math.round(atk * 1.08);
+    const range = MAIN_HAND[eq.main].range;
+    return { g, side, hp: s.hp, atk, def, spd: s.spd, range, bound: 0, firstHitShield: OFF_HAND[eq.off].role === 'guard', netUsed: OFF_HAND[eq.off].skill !== 'bind', row: range >= 2 ? 'back' : 'front' };
+  });
+}
+
+export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[]): BattleResult {
+  const synA = computeSynergies(teamA), synB = computeSynergies(teamB);
+  const units = [...makeUnits(teamA, 'A', synA), ...makeUnits(teamB, 'B', synB)];
+  const syn = { A: synA, B: synB };
+  const log: string[] = [];
+  const events: BattleEvent[] = [];
+  const initialHp: Record<number, number> = Object.fromEntries(units.map(u => [u.g.id, u.hp]));
+  const alive = (side: 'A' | 'B') => units.filter(u => u.side === side && u.hp > 0);
+  const counterHits = { A: 0, B: 0 };
+  const natureFirst = { A: true, B: true };
+
+  let turn = 0;
+  for (turn = 1; turn <= CONFIG.maxTurns; turn++) {
+    const order = units.filter(u => u.hp > 0).sort((a, b) => b.spd - a.spd || rng.next() - 0.5);
+    for (const u of order) {
+      if (u.hp <= 0) continue;
+      if (u.bound > 0) { u.bound--; log.push(`  ${u.g.name} 속박 중`); events.push({ t: turn, turn, kind: 'bound', actor: u.g.id }); continue; }
+      const enemySide = u.side === 'A' ? 'B' : 'A';
+      const enemies = alive(enemySide);
+      if (enemies.length === 0) break;
+      // 대상: 전열이 살아 있으면 근접은 전열만. 사거리 2는 아무나. 추격자는 후열 우선
+      const front = enemies.filter(e => e.row === 'front');
+      let cands = u.range >= 2 || front.length === 0 ? enemies : front;
+      if (TRAIT_OF(u).pursuer) { const backs = enemies.filter(e => e.row === 'back'); if (backs.length) cands = backs; }
+      const boundOnes = cands.filter(e => e.bound > 0);
+      const target = rng.pick(boundOnes.length && syn[u.side].huntPair ? boundOnes : cands);
+
+      for (let hit = 0; hit < 2; hit++) {
+        if (hit === 1 && (target.hp <= 0 || !rng.chance(CONFIG.combo.base + u.spd * CONFIG.combo.perSpd))) break;
+        const combo = hit === 1;
+        let mult = counterMult(u.g.type, target.g.type);
+        const mySyn = syn[u.side], theirSyn = syn[enemySide];
+        const uEq = equipOf(u.g.type), tEq = equipOf(target.g.type);
+        if (mult > 1 && theirSyn.lightHeavy && tEq.off !== 'none' && tEq.off !== 'net') mult -= 0.1; // 경중 조합
+        if (mult > 1) counterHits[u.side]++;
+        if (mySyn.huntPair && TRAIT_OF(u).pursuer && target.bound > 0) mult *= 1.5;
+        const def = Math.round(target.def * (1 - MAIN_HAND[uEq.main].defIgnore)); // 주무기: 방어 무시
+        let dmg = Math.max(1, Math.round(u.atk * mult * rng.range(0.85, 1.15) - def));
+        let blocked = false;
+        if (target.firstHitShield) { dmg = Math.round(dmg * (1 - (OFF_HAND[tEq.off].firstHitReduce ?? 0))); target.firstHitShield = false; blocked = OFF_HAND[tEq.off].role === 'guard'; }
+        target.hp -= dmg;
+        let extra = '';
+        if (!u.netUsed && !combo) { u.netUsed = true; target.bound = Math.max(target.bound, 1); extra += ' 그물!'; }
+        if (mySyn.nature3 && natureFirst[u.side]) { natureFirst[u.side] = false; target.bound = Math.max(target.bound, 1); extra += ' 기세!'; }
+        log.push(`T${turn} ${u.g.name}(${u.side}) → ${target.g.name} ${dmg}${combo ? ' 연속!' : ''}${mult > 1 ? ' 상성' : ''}${blocked ? ' 방패!' : ''}${extra}${target.hp <= 0 ? ' 쓰러짐' : ''}`);
+        events.push({ t: turn, turn, kind: 'attack', actor: u.g.id, target: target.g.id, dmg, targetHp: Math.max(0, target.hp), counter: mult > 1, net: extra.includes('그물'), blocked, combo, downed: target.hp <= 0 });
+      }
+    }
+    if (alive('A').length === 0 || alive('B').length === 0) break;
+  }
+  const a = alive('A').length, b = alive('B').length;
+  let winner: BattleResult['winner'] = a > 0 && b === 0 ? 'A' : b > 0 && a === 0 ? 'B' : 'draw';
+  if (winner === 'draw') {
+    if (synA.victory3 && !synB.victory3) winner = 'A';
+    else if (synB.victory3 && !synA.victory3) winner = 'B';
+  }
+  const downed = { A: units.filter(u => u.side === 'A' && u.hp <= 0).map(u => u.g), B: units.filter(u => u.side === 'B' && u.hp <= 0).map(u => u.g) };
+  const counterWin = winner !== 'draw' && counterHits[winner] > counterHits[winner === 'A' ? 'B' : 'A'];
+  const turns = Math.min(turn, CONFIG.maxTurns);
+  return { events, frames: [], initialHp, winner, turns, duration: turns, log, downed, counterWin };
+}
