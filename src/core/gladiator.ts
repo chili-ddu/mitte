@@ -60,6 +60,8 @@ export function agePenalty(g: Gladiator): { spd: number; stat: number } {
   return { spd: age >= A.spdFrom ? Math.floor((age - A.spdFrom) / A.spdEvery) + 1 : 0, stat: age >= A.statFrom ? Math.floor((age - A.statFrom) / A.statEvery) + 1 : 0 };
 }
 
+// 팬: 명예 + 승수×2 + 별칭×5. 30 이상이면 스타 (관중이 이름을 외친다)
+export function fansOf(g: Gladiator): number { return (g.honor ?? 0) + g.wins * 2 + (g.epithets ?? []).length * 5; }
 export function rentFee(g: Gladiator, tier: number): number {
   return Math.round((g.rank === 'tiro' ? CONFIG.rentTiro : CONFIG.rentVeteran) * tier * (1 + (g.honor ?? 0) * CONFIG.honor.rentPer) * epithetMods(g).rent); // 스타는 비싸다
 }

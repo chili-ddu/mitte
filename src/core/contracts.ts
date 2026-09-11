@@ -9,8 +9,8 @@ const VENUES: Record<number, string[]> = {
   2: ['폼페이 경기장', '카푸아 경기장', '푸테올리 경기장'],
   3: ['베로나 경기장', '카르타고 경기장'],
 };
-const HOSTS: HostKind[] = ['merciful', 'normal', 'normal', 'bloody'];
-export const HOST_KO: Record<HostKind, string> = { merciful: '자비로운 주최자', normal: '보통 주최자', bloody: '피를 원하는 주최자' };
+import { HOST, HOSTS_BY_TIER } from './hosts.js';
+export const HOST_KO: Record<HostKind, string> = Object.fromEntries(Object.entries(HOST).map(([k, v]) => [k, v.ko])) as Record<HostKind, string>;
 
 let cid = 1;
 export function resetContractIds() { cid = 1; }
@@ -23,7 +23,7 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     let tier: 1 | 2 | 3 = 1;
     if (season >= 2 && fame >= CONFIG.fameTierReq[2] && rng.chance(0.3 + season * 0.04)) tier = 2; // 첫 시즌은 등급 1만
     if (fame >= CONFIG.fameTierReq[3] && rng.chance(0.3)) tier = 3;
-    const host = rng.pick(HOSTS);
+    const host: HostKind = rng.pick(HOSTS_BY_TIER[tier]);
     const strength = 0.75 + season * 0.03 + (tier - 1) * 0.15; // 적 강도
     const size: 1 | 2 | 3 = tier === 1 ? rng.pick([1, 1, 1, 1, 2, 2] as const) : tier === 2 ? rng.pick([1, 1, 2, 2, 3] as const) : rng.pick([2, 3, 3] as const); // 고증: 무누스의 기본은 1대1 결투(파리아). 집단전은 대형 경기에만
     // 상대: 파밀리아 중 하나에서 뽑는다 (부족하면 떠돌이 검투사단)

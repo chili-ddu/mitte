@@ -71,6 +71,6 @@ export const BOTS: Record<string, Bot> = {
   '싼놈모으기': makeBot('cheap', 'strong', () => true),
   '베테만': makeBot('vets', 'strong', () => true),
   '가성비+시너지': makeBot('balanced', 'synergy', () => true),
-  '안전제일(등급1만)': makeBot('balanced', 'synergy', c => c.tier === 1 && c.host !== 'bloody'),
-  '피계약만': makeBot('cheap', 'strong', c => c.host === 'bloody'),
+  '안전제일(등급1만)': makeBot('balanced', 'synergy', c => c.tier === 1 && c.host !== 'mourner'),
+  '피계약만': makeBot('cheap', 'strong', c => c.host === 'mourner'),
 };

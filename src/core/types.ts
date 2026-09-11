@@ -1,7 +1,7 @@
 export type GType = 'murmillo' | 'secutor' | 'thraex' | 'retiarius' | 'hoplomachus' | 'provocator' | 'eques' | 'dimachaerus';
 export type Lineage = 'nature' | 'victory' | 'myth' | 'nickname' | 'place';
 export type Rank = 'tiro' | 'veteranus';
-export type HostKind = 'merciful' | 'normal' | 'bloody';
+export type HostKind = 'candidate' | 'miser' | 'mourner' | 'gambler' | 'imperial'; // 선거 후보 · 인색한 유지 · 장례 상주 · 도박꾼 · 황제
 
 export interface Stats { hp: number; atk: number; def: number; spd: number; range: number; }
 
@@ -53,6 +53,7 @@ export interface Contract {
   tier: 1 | 2 | 3;
   venue: string;
   host: HostKind;
+  bet?: boolean;          // 도박꾼 주최자의 내기(스폰시오)를 받았는가
   needVeterans: number;
   size: 1 | 2 | 3;        // 경기 규모: 1대1 / 2대2 / 3대3
   enemy: Gladiator[];

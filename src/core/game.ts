@@ -11,6 +11,8 @@ import { TYPE_KO as TYPE_LABEL, TYPE_STATS } from './gladiator.js';
 import { grantEpithets, type EpithetDef } from './epithets.js';
 import { SKILLS, SKILL_BY_ID, hasSkill, procChance, addMastery, offerSkill, eligibleSkills, skillFits, type SkillId } from './skills.js';
 import { makeRivals, replenishRivals, memberById, rivalOf, rivalStar, recordVsMe, type Rival } from './rivals.js';
+import { HOST, migrateHost, FANS_STAR } from './hosts.js';
+import { fansOf } from './gladiator.js';
 export { rivalOf, memberById, rivalStar, recordVsMe };
 
 export interface FightReport {
@@ -32,6 +34,7 @@ export interface FightReport {
   rudis: Gladiator[];    // 이 경기에서 루디스(자유)를 받은 검투사
   newEpithets: { g: Gladiator; e: EpithetDef }[]; // 이 경기로 얻은 별칭
   newSkillOffers: { g: Gladiator; id: SkillId }[]; // 이 경기의 경험으로 배울 수 있게 된 기술
+  bet?: { won: boolean; amount: number }; // 스폰시오 결과
   enemyFates: { g: Gladiator; fate: Fate }[]; // 상대 쓰러진 검투사의 운명 (실제 판정)
   grudges: { mine: Gladiator; enemy: Gladiator }[]; // 이번 경기의 원한 재대결
   revenges: { mine: Gladiator; enemy: Gladiator }[]; // 복수 성공
@@ -274,10 +277,14 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   const res = battle(st.rng, team, c.enemy, { mentored: new Set(team.filter(g => mentoredBy(st, g)).map(g => g.id)), hpBonusA: st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk });
   const syn = computeSynergies(team);
   const classic = classicMatchup(team.map(g => g.type), c.enemy.map(g => g.type)) || (c.size === 1 && (team[0].epithets ?? []).includes('omnia_solus')); // 만능 검투사는 어떤 짝이든 볼거리
-  const rent = team.reduce((s, g) => s + rentFee(g, c.tier), 0);
+  const HK = HOST[c.host];
+  const rent = Math.round(team.reduce((s, g) => s + rentFee(g, c.tier), 0) * HK.rent); // 인색한 유지는 깎고 황제는 후하다
   const expense = fightExpense(team, c.tier);
   const won = res.winner === 'A';
-  const prize = won ? CONFIG.prizePerTier * c.tier : 0;
+  const basePrize = Math.round(CONFIG.prizePerTier * c.tier * HK.prize);
+  let prize = won ? basePrize : 0;
+  let bet: FightReport['bet'];
+  if (c.bet && HK.bet) { if (won) { prize *= 2; bet = { won: true, amount: basePrize }; } else if (res.winner === 'B') { st.money -= basePrize; bet = { won: false, amount: basePrize }; } } // 스폰시오: 이기면 두 배, 지면 물어낸다
   let compensation = 0;
   const fates: FightReport['fates'] = [];
   const promoted: Gladiator[] = []; const rudis: Gladiator[] = [];
@@ -294,7 +301,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
       g.wins++;
       if (maybePromote(g)) promoted.push(g);
       if ((g.status ?? 'slave') === 'slave' && g.wins >= CONFIG.rudis.wins && !downed) { // 루디스: 주최자가 자유를 내린다
-        const p = CONFIG.rudis.base + st.fame * CONFIG.rudis.perFame + CONFIG.rudis.hostKind[c.host];
+        const p = CONFIG.rudis.base + st.fame * CONFIG.rudis.perFame + HK.rudis;
         if (st.rng.chance(p)) { g.status = 'rudiarius'; g.rudisSeason = st.season; rudis.push(g); hallAdd(st, g, 'rudis'); }
       }
       if (downed) { const f = judgeWinnerDowned(st.rng); if (f === 'injured') { g.injured = injurySeasons(st); g.injuries = (g.injuries ?? 0) + 1; } fates.push({ g, fate: f }); }
@@ -331,7 +338,8 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   }
   let fameDelta = 0;
   const fd = CONFIG.fameDelta;
-  if (won) fameDelta += fd.win + (classic ? fd.classicWin : 0);
+  if (won) fameDelta += fd.win + (classic ? fd.classicWin : 0) + HK.fameWin + (c.host === 'candidate' && team.some(g => fansOf(g) >= FANS_STAR) ? 1 : 0); // 선거 후보는 스타가 나온 경기에 표가 모인다
+  if (HK.honorAll) for (const g of team) if (g.alive) g.honor = Math.min(100, (g.honor ?? 0) + HK.honorAll); // 장례 경기: 출전 자체가 기록에 남는다
   else if (res.winner === 'B') fameDelta += fd.lose;
   const H = CONFIG.honor; const crowned = won && fameDelta >= 5; // 주최자 만족 = 화관
   if (crowned) for (const g of team) if (g.alive) g.crowns = (g.crowns ?? 0) + 1;
@@ -353,7 +361,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   st.money += rent + prize + compensation - expense - salary;
   st.contracts = st.contracts.filter(x => x !== c);
   st.history.push(`${seasonName(st.season)}: ${c.venue} ${won ? '승' : res.winner === 'draw' ? '무' : '패'} 대여 ${rent} 경비 -${expense}${salary ? ` 급료 -${salary}` : ''} 상금 ${prize} 배상 ${compensation}`);
-  return { contract: c, team, winner: res.winner, turns: res.turns, log: res.log, events: res.events, frames: res.frames, duration: res.duration, initialHp: res.initialHp, downed: res.downed.A, newSkillOffers, rent, expense, salary, prize, compensation, fates, promoted, fameDelta, classic, rudis, newEpithets, enemyFates, grudges, revenges };
+  return { contract: c, team, winner: res.winner, turns: res.turns, log: res.log, events: res.events, frames: res.frames, duration: res.duration, initialHp: res.initialHp, downed: res.downed.A, newSkillOffers, bet, rent, expense, salary, prize, compensation, fates, promoted, fameDelta, classic, rudis, newEpithets, enemyFates, grudges, revenges };
 }
 
 // 남은 계약 거절. 벌점은 시즌당 1회, 그리고 실제로 받을 수 있었던 계약이 있을 때만 (인원·베테라누스 부족은 벌점 없음)
@@ -416,7 +424,7 @@ function migrateLudus(l: unknown): Ludus {
 export function deserialize(d: SaveData): GameState {
   const rng = new Rng(1); rng.state = d.rng;
   setNextId(d.nextId);
-  const contracts = d.contracts.map(c => ({ ...c, size: (c.size ?? c.enemy.length) as 1 | 2 | 3 })); // 구 저장: size 없음
+  const contracts = d.contracts.map(c => ({ ...c, host: migrateHost(c.host as string), size: (c.size ?? c.enemy.length) as 1 | 2 | 3 })); // 구 저장: size 없음
   for (const g of [...d.roster, ...d.market, ...(d.applicants ?? []), ...contracts.flatMap(c => c.enemy)]) if (g.age == null) g.age = g.rank === 'tiro' ? 20 : 27; // 구 저장: 나이 없음
   return { rng, season: d.season, money: d.money, fame: d.fame, roster: d.roster, graveyard: d.graveyard, contracts, market: d.market, applicants: d.applicants ?? [], rivals: (d.rivals ?? makeRivals(rng, d.season)).map(r => ({ ...r, vsMe: r.vsMe ?? { wins: 0, losses: 0, draws: 0 } })), lanista: d.lanista ? { name: d.lanista.name, age: d.lanista.age, trait: d.lanista.trait, type: d.lanista.type, since: d.lanista.since, dead: d.lanista.dead } : makeLanista(rng, d.season), pendingSuccession: d.pendingSuccession, lineageLog: d.lineageLog, hall: d.hall ?? d.roster.filter(g => g.status === 'rudiarius' || g.status === 'doctor').map(g => ({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: g.rudisSeason ?? d.season, epithets: [...(g.epithets ?? [])], how: 'rudis' as const })), history: d.history, over: d.over, reason: d.reason, ludus: migrateLudus(d.ludus), events: { cena: false, pompa: false, votum: false, edicta: false, guests: false, ...(d.events ?? {}) } };
 }

@@ -3,12 +3,13 @@ import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import type { Synergies } from './synergy.js';
 import { epithetMods } from './epithets.js';
+import { HOST } from './hosts.js';
 
 export type Fate = 'unharmed' | 'injured' | 'dead';
 
 export function survivalChance(g: Gladiator, fame: number, host: HostKind, syn: Synergies, classic = false, extra = 0): number {
   const m = CONFIG.missio;
-  let p = m.base + fame * m.perFame + Math.min(g.wins, m.maxWins) * m.perWin + m.hostKind[host];
+  let p = m.base + fame * m.perFame + Math.min(g.wins, m.maxWins) * m.perWin + HOST[host].missio;
   if (syn.victory2) p += m.victorySynergy;
   if (classic) p += m.classic; // 전통 짝: 관중이 좋은 경기를 봤다
   p += (g.honor ?? 0) * CONFIG.honor.missioPer; // 인기 있는 검투사는 관중이 살려 달라 외친다

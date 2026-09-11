@@ -17,7 +17,7 @@ export const CONFIG = {
   sellPerWin: 500,
   healCost: 500,
   trainCost: 1200,   // 훈련: 시즌당 1회, 공격 또는 방어 +1
-  rudis: { wins: 5, base: 0.45, perFame: 0.004, hostKind: { merciful: 0.2, normal: 0, bloody: -0.2 } as Record<string, number> }, // 루디스: 승리 시 승수가 wins 이상이면 주최자가 확률적으로 수여
+  rudis: { wins: 5, base: 0.45, perFame: 0.004 }, /* 주최자 보정은 core/hosts.ts */ // 루디스: 승리 시 승수가 wins 이상이면 주최자가 확률적으로 수여
   rudiariusShare: 0.4, // 자유민 검투사의 출전 급료 = 대여료의 40%
   doctorSalary: 800,   // 독토르 시즌 급료 (유지비 대신)
   doctorBonus: { gapSmall: 1, gapBig: 5 }, // 같은 유형 독토르의 해당 능력치가 훈련생보다 gapSmall 이상 높으면 +1, gapBig 이상이면 +2
@@ -63,6 +63,6 @@ export const CONFIG = {
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 30,
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
-  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, hostKind: { merciful: 0.1, normal: 0, bloody: -0.15 } as Record<string, number>, victorySynergy: 0.1, injuryChance: 0.5 },
+  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5 },
   fameDelta: { win: 5, classicWin: 2, lose: -3, refuse: -2, death: -1, decay: -1, active: 1 }, // refuse: 시즌당 1회, 받을 수 있었던 계약을 거절했을 때만. active: 시즌에 한 번이라도 출전하면 +1
 } as const;
