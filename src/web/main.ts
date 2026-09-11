@@ -1,4 +1,4 @@
-import { newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
+import { newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
 import { label, sellPrice, rentFee, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
 import { accessoriesOf, EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
@@ -108,6 +108,18 @@ function dropdown(key: string, options: { value: string; label: string }[], valu
 function gearBtn(): Node { const b = h('button', { class: `gear${sheet === 'menu' ? ' on' : ''}`, title: '메뉴', onclick: () => { sheet = sheet === 'menu' ? null : 'menu'; render(); } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
   return b; }
+// 계절 그림 (로마 사계절 도상: 봄 꽃가지 · 여름 밀 이삭 · 가을 포도송이 · 겨울 헐벗은 가지). 낙서풍 선 그림, 헤더의 계절 글자를 대신한다
+function seasonIcon(season: number): Node {
+  const k = (season - 1) % 4; const sp = h('span', { class: `season-ico s${k}`, title: `${SEASON_KO[k]} — ${['꽃가지 (봄)', '밀 이삭 (여름, 수확)', '포도송이 (가을, 포도 수확)', '헐벗은 가지 (겨울)'][k]}` });
+  const paths = [
+    '<path d="M12 21V9"/><path d="M12 13c-3 0-5-2-5-5 3 0 5 2 5 5z"/><path d="M12 16c3 0 5-2 5-5-3 0-5 2-5 5z"/><circle cx="12" cy="6" r="2.4"/><path d="M9.5 4.5 8 3M14.5 4.5 16 3M12 3.2V2"/>',
+    '<path d="M12 22V8"/><path d="M12 8c-2.5-.5-4-2.5-4-5 2.5.5 4 2.5 4 5z"/><path d="M12 8c2.5-.5 4-2.5 4-5-2.5.5-4 2.5-4 5z"/><path d="M12 12c-2.5-.5-4-2.5-4-5 2.5.5 4 2.5 4 5z"/><path d="M12 12c2.5-.5 4-2.5 4-5-2.5.5-4 2.5-4 5z"/><path d="M12 16c-2.5-.5-4-2.5-4-5 2.5.5 4 2.5 4 5z"/><path d="M12 16c2.5-.5 4-2.5 4-5-2.5.5-4 2.5-4 5z"/>',
+    '<path d="M12 2v4"/><path d="M12 6c3 0 5 1 6 3-2 0-4 1-6 2-2-1-4-2-6-2 1-2 3-3 6-3z"/><circle cx="9" cy="12.5" r="2.2"/><circle cx="15" cy="12.5" r="2.2"/><circle cx="7.5" cy="16.5" r="2.2"/><circle cx="12" cy="16.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/><circle cx="10" cy="20" r="2.2"/><circle cx="14.5" cy="20" r="2.2"/>',
+    '<path d="M12 22V6"/><path d="M12 13l-5-4M12 13l5-4M12 9l-3-3M12 9l3-3M7 9l-2-2M17 9l2-2"/><path d="M4 21h16" stroke-dasharray="2 3"/>',
+  ][k];
+  sp.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  return sp;
+}
 // 작은 상태 아이콘 (인라인 SVG): cross = 부상(붕대 십자), staff = 독토르(지휘봉)
 function svgIcon(kind: 'cross' | 'staff'): Node { const sp = h('span', { class: 'ico' });
   sp.innerHTML = kind === 'cross' ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>'
@@ -226,7 +238,7 @@ function render() {
   save();
   app.replaceChildren();
   app.append(h('header', {},
-    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat' }, seasonName(st.season), h('span', {}, ` · ${st.season}번째`))),
+    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season), h('span', {}, ` · ${st.season}번째`))),
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn())));
   if (sheet) app.append(renderSheet());
