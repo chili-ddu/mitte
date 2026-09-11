@@ -115,6 +115,9 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .tabbar button.on .nbadge { background:#f3ead0; color:#3a2412; }
 .modal h2 { margin:0 0 10px; }
 .modal.ask { width:min(420px, 92vw); z-index:1; }
+.modal.offers { width:min(480px, 94vw); }
+.modal.offers .card { flex-wrap:wrap; }
+.modal.offers .card .grow { flex:1 1 200px; }
 .panel.battle h2 { font-size:18px; text-transform:none; letter-spacing:0; color:var(--ink); }
 .modal.ask p { margin:4px 0; }
 .log { font:12px/1.4 ui-monospace, Menlo, monospace; background:#fbf6e6; padding:8px; border-radius:4px; max-height:160px; overflow:auto; white-space:pre-wrap; }

@@ -80,7 +80,8 @@ let notice = '';
 let sheet: 'help' | 'roster' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | null = null;
 let cellSel = 0; // 켈라 팝오버에서 고른 칸
 let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
-let cellsOpen = false, cellsP = 0; // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
+let cellsOpen = false, cellsP = 0;
+let offersDismissed = 0; // 이 시즌에 '나중에'를 눌렀으면 시즌 번호 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
 const hintSpan = (t: string) => h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, t);
 // 확인 창: 브라우저 confirm/alert 대신 게임 안 모달 (폰에서도 같은 모양, 화면 재구성과 무관하게 body 에 붙는다)
 function ask(msg: string, opts: { ok?: string; cancel?: boolean; title?: string } = {}): Promise<boolean> {
@@ -259,6 +260,13 @@ function render() {
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn())));
   if (sheet) app.append(renderSheet());
+  if (phase === 'manage' && !showIntro && !st.pendingSuccession && offersDismissed !== st.season) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다
+    const learners = st.roster.filter(g => (g.skillOffers ?? []).length);
+    if (learners.length) app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
+      h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 버릴 기술을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
+      ...learners.map(g => h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · 기술 ${skillsOf(g).length ? skillsOf(g).map(SKILL_NAME).join('·') : '없음'}`)), ...skillOfferRows(g)))),
+      h('div', { class: 'actions' }, h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에 (카드에서 정하기)')))));
+  }
   if (showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
     h('div', { class: 'title' }, '미테!'), h('div', { class: 'sub' }, '라니스타의 길'),
     h('p', {}, '검투사는 지고도 살 수 있다.'), h('p', {}, '관중이 미테!를 외치게 하라.'),
@@ -1833,8 +1841,7 @@ function renderResult() {
     if (r.rudis.includes(g)) { parts.push(h('span', { class: 'badge free' }, g.status === 'rudiarius' ? '루디스 — 자유민이 되다' : `루디스 거절 (${g.rudisRefused ?? 0}회째)`));
       if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
     for (const ne of r.newEpithets.filter(x => x.g === g)) parts.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `별칭 '${ne.e.name}' 획득`));
-    for (const so of r.newSkillOffers.filter(x => x.g === g)) parts.push(h('span', { class: 'badge skill' }, `기술 '${SKILL_BY_ID[so.id].name}' 깨침`));
-    parts.push(...skillOfferRows(g, renderResult));
+    for (const so of r.newSkillOffers.filter(x => x.g === g)) parts.push(h('span', { class: 'badge skill', title: '시즌이 끝나고 루두스로 돌아오면 배울지 정합니다' }, `기술 '${SKILL_BY_ID[so.id].name}' 깨침`));
     if (f?.p != null) parts.push(h('span', { class: 'hint' }, ` 생존 확률 ${(f.p * 100).toFixed(0)}%`));
     return parts;
   };
