@@ -67,15 +67,15 @@ let planSel: number | null = null;                    // 편성 중 선택된 �
 let queue: { c: Contract; team: Gladiator[] }[] = [];
 let skipped: Contract[] = []; // 앞 경기 부상·사망으로 무산된 계약 // 시즌 진행 중 남은 경기
 let marketSel: number | null = null;                  // 시장에서 선택한 검투사 id
-type View = 'medic' | 'yard' | 'ludus' | 'market'; // 관리 단계의 장소: 의무실 · 훈련소 · 정문(루두스 문 앞) · 시장. 좁은 화면이라 루두스를 세 장면으로 나눈다
-const VIEW_KO: Record<View, string> = { medic: '의무실', yard: '훈련소', ludus: '정문', market: '시장' };
+type View = 'medic' | 'yard' | 'ludus' | 'market' | 'grave'; // 관리 단계의 장소: 의무실 · 훈련소 · 정문(루두스 문 앞) · 시장. 좁은 화면이라 루두스를 세 장면으로 나눈다
+const VIEW_KO: Record<View, string> = { medic: '의무실', yard: '훈련소', ludus: '정문', market: '시장', grave: '묘지' };
 let view: View = 'ludus';
 let travel: { to: View; from: View; fromX: number; start: number } | null = null; // 이동 전환 중
 let seasonReports: FightReport[] = [];
 let seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: 'atk' | 'def' }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null = null;
 let report: FightReport | null = null;
 let notice = '';
-let sheet: 'help' | 'roster' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | null = null;
+let sheet: 'help' | 'roster' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | null = null;
 let cellSel = 0; // 켈라 팝오버에서 고른 칸
 let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
 let cellsOpen = false, cellsP = 0; // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
@@ -288,6 +288,7 @@ function renderSheet(): Node {
     : sheet === 'roster' ? [applicantsPanel(), rosterPanel()]
     : sheet === 'facilities' ? [facilitiesPanel()]
     : sheet === 'doctors' ? [doctorsPanel()]
+    : sheet === 'chronicle' ? [chroniclePanel()]
     : sheet === 'rivals' ? [rivalsPanel()]
     : sheet === 'events' ? [eventsPanel()]
     : [menuPanel()];
@@ -354,10 +355,22 @@ function doctorsPanel(): Node {
     free.length ? h('h3', { class: 'sub' }, '고용할 수 있는 자유민') : null, ...free.map(freeCard),
     !docs.length && !free.length ? h('div', { class: 'hint' }, `검투사가 ${CONFIG.rudis.wins}승에 이르면 루디스(자유)를 받을 수 있고, 그 자유민을 독토르로 고용합니다.`) : null);
 }
+// 연대기: 역대 라니스타 · 명예의 전당(루디스) · 묘비 · 최근 연혁
+function chroniclePanel(): Node {
+  const hall = [...(st.hall ?? [])].reverse(), dead = [...st.graveyard].reverse(), log = [...st.history].reverse().slice(0, 40);
+  const sec = (title: string, hint: string, kids: (Node | null)[]) => h('div', { class: 'chsec' }, h('h3', { class: 'sub' }, title, hintSpan(hint)), ...(kids.length ? kids : [h('div', { class: 'hint' }, '아직 없음')]));
+  const lanistas = [...(st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, st.lanista.name), h('span', { class: 'meta' }, ` ${st.lanista.age}세 · ${st.lanista.since}번째 시즌부터 · ${st.lanista.trait === 'doctor' ? '전직 독토르' : st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
+  return h('div', { class: 'panel' }, h('h2', {}, '연대기', helpBtn('연대기', '루두스의 역사입니다. 역대 라니스타는 은퇴·사망으로 물려준 순서, 명예의 전당은 루디스(나무 검)로 자유를 얻은 검투사, 묘비는 경기장에서 죽은 검투사입니다. 폼페이 낙서와 묘비처럼 이름·전적·별칭이 남습니다.')),
+    sec('역대 라니스타', `${(st.lineageLog?.length ?? 0) + 1}대`, lanistas),
+    sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; })))),
+    sec('묘비', `${dead.length}명`, dead.map(g => h('div', { class: 'drow' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전${g.age ? ` · ${g.age}세` : ''} — 관중은 침묵했다`)))),
+    sec('연혁', '최근 40건', log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
+}
 function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
     canRetire(st) && !st.pendingSuccession && phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${st.lanista.name} (${st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { sheet = null; retire(st); render(); } }); } }, `은퇴 (${st.lanista.age}세, 후계자에게 넘김)`) : null,
     h('button', { title: '효과음 켜기/끄기', onclick: () => { setSoundEnabled(!soundEnabled()); render(); } }, soundEnabled() ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐'),
+    h('button', { onclick: () => { sheet = 'chronicle'; render(); } }, '연대기'),
     h('button', { onclick: () => { sheet = 'help'; render(); } }, '시너지 · 규칙'),
     h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
       const blob = new Blob([JSON.stringify(serialize(st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${st.lanista.name.split(' ').pop()}-${st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
@@ -533,6 +546,12 @@ function renderDash(): Node[] {
     out.push(h('div', { class: 'dlist' }, ...facRows('cells')));
     return out;
   }
+  if (view === 'grave') { // 묘지: 죽은 검투사·전당 요약, 연대기 열기
+    const out: Node[] = [h('h3', {}, '묘지', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `묘비 ${st.graveyard.length} · 명예의 전당 ${st.hall?.length ?? 0} · ${(st.lineageLog?.length ?? 0) + 1}대 라니스타`))];
+    out.push(item('idle', st.graveyard.length ? `가장 최근: ${st.graveyard[st.graveyard.length - 1].name} (${st.graveyard[st.graveyard.length - 1].wins}승/${st.graveyard[st.graveyard.length - 1].fights}전)` : '아직 묘비가 없습니다.'));
+    out.push(h('div', { class: 'actions', style: 'justify-content:flex-start' }, h('button', { onclick: () => { sheet = 'chronicle'; render(); } }, '연대기 보기')));
+    return out;
+  }
   if (view === 'medic') { // 의무실: 부상자 치료·요양, 침상·의술·약재
     const injured = st.roster.filter(g => g.injured);
     const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${st.ludus.beds} · 부상 ${injured.length}명 · 치료 ${healCostOf(st)} HS`), helpBtn('의무실', `부상자는 ${injurySeasons(st)}시즌 동안 출전하지 못합니다. 치료(${healCostOf(st)} HS)하면 바로 복귀하고, 편성에서 요양을 고르면 무료로 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술 ${CONFIG.ludus.medicine.injuryAt}단계부터 부상 1시즌, ${CONFIG.ludus.medicine.cheapAt}단계부터 치료 250 HS. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
@@ -581,10 +600,10 @@ const TOWN = { gapW: 60, roadW: 344, tailW: 300, get yardX() { return MEDIC.W + 
 const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 위치는 캔버스를 만들 때 restX(view) 로 잡는다
 let camX = 0, camV = 0, camPan = 0; // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
 let VW = 1076; // 보이는 폭 (월드 단위). 화면 폭에 따라 fit() 이 정한다
-const restX = (v: View) => v === 'market' ? TOWN.marketX + 14 : v === 'medic' ? 250 : v === 'yard' ? TOWN.yardX + 268 : TOWN.yardX + YARD.W - 65;   // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
+const restX = (v: View) => v === 'grave' ? TOWN.W - 70 : v === 'market' ? TOWN.marketX + 14 : v === 'medic' ? 250 : v === 'yard' ? TOWN.yardX + 268 : TOWN.yardX + YARD.W - 65;   // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
 const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - VW, x));
 // 카메라 기준 위치: 시장은 건물이 화면 가운데 조금 오른쪽. 루두스는 폭이 충분하면 훈련장 전체, 좁으면 라니스타 주변(화면 60% 지점)
-const camFor = (v: View) => v === 'market' ? clampCam(TOWN.marketX + MARKET.W / 2 - VW * (VW < MARKET.W + 80 ? 0.5 : 0.58)) : v === 'medic' ? clampCam(MEDIC.W / 2 - VW * 0.5) : v === 'yard' ? clampCam(TOWN.yardX + 8) : clampCam(TOWN.yardX + YARD.W - 130); // 정문: 문루 왼쪽 끝부터 바깥 길까지 // 훈련소 = 연습장, 정문 = 문루를 가운데에 두고 바깥 길(지원자)까지
+const camFor = (v: View) => v === 'grave' ? clampCam(TOWN.W - VW) : v === 'market' ? clampCam(TOWN.marketX + MARKET.W / 2 - VW * (VW < MARKET.W + 80 ? 0.5 : 0.58)) : v === 'medic' ? clampCam(MEDIC.W / 2 - VW * 0.5) : v === 'yard' ? clampCam(TOWN.yardX + 8) : clampCam(TOWN.yardX + YARD.W - 130); // 정문: 문루 왼쪽 끝부터 바깥 길까지 // 훈련소 = 연습장, 정문 = 문루를 가운데에 두고 바깥 길(지원자)까지
 let townCanvas: HTMLCanvasElement | null = null; // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
 function renderTown() {
   if (townCanvas) return h('div', { class: 'panel yardwrap' }, townCanvas, locTabs(), cellBtn());
@@ -647,9 +666,10 @@ function renderTown() {
     ctx.save(); ctx.translate(TOWN.yardX, GY - 210); drawYardScene(ctx, t); ctx.restore();          // 훈련장 (발 = 210 → GY)
     ctx.save(); ctx.translate(0, GY - 210); drawMedicScene(ctx, t); ctx.restore();                 // 의무실 (독립 건물)
     st.applicants.forEach((g, i) => { const x = TOWN.yardX + YARD.W + 24 + i * 30; drawStickman(ctx, g.type, { x, y: GY, scale: 0.9, skeleton: NPC_POSES.watch, t: t + i, ink: INK, bare: true, garment: 'tunic', garmentColor: '#b9c2a8', facing: -1 }); }); // 문 밖 길에 서서 기다리는 자유민 지원자
-    ctx.save(); ctx.translate(TOWN.marketX, GY - 30 - (MARKET.H - 68)); drawMarketScene(ctx, t); ctx.restore(); // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
+    ctx.save(); ctx.translate(TOWN.marketX, GY - 30 - (MARKET.H - 68)); drawMarketScene(ctx, t); ctx.restore();
+    ctx.save(); ctx.translate(TOWN.W - TOWN.tailW, GY); drawGraveScene(ctx, t); ctx.restore(); // 묘지 (길가 묘역, 발 = GY) // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
     // 라니스타: 토가 입은 인물 (걷기 또는 서서 구경)
-    { const facing: 1 | -1 = lanista.walking ? (lanista.target > lanista.x ? 1 : -1) : (view === 'ludus' || view === 'market' ? 1 : -1); // 시장에서는 판매대 왼쪽 앞에 서서 오른쪽(매물)을 본다
+    { const facing: 1 | -1 = lanista.walking ? (lanista.target > lanista.x ? 1 : -1) : (view === 'ludus' || view === 'market' ? 1 : -1); // 묘지에서는 오른쪽 끝에 서서 왼쪽 묘비들을 본다 // 시장에서는 판매대 왼쪽 앞에 서서 오른쪽(매물)을 본다
       drawLanista(ctx, lanista.x, GY, facing, t * Math.max(0.4, lanista.walking ? lanista.v / 300 : 1), lanista.walking);
     }
     ctx.restore();
@@ -660,7 +680,7 @@ function renderTown() {
   };
   requestAnimationFrame(draw);
   // 스와이프: 왼쪽으로 밀면 다음 장소, 오른쪽으로 밀면 이전 장소 (의무실 → 훈련소 → 정문 → 시장). 스와이프했으면 클릭으로 치지 않는다
-  const ORDER: View[] = ['medic', 'yard', 'ludus', 'market'];
+  const ORDER: View[] = ['medic', 'yard', 'ludus', 'market', 'grave'];
   let drag: { x0: number; t0: number } | null = null; let dragged = false;
   c.onpointerdown = (ev) => { drag = { x0: ev.clientX, t0: performance.now() }; };
   c.onpointerup = (ev) => { if (!drag) return; if (cellsOpen) { drag = null; return; } const dx = ev.clientX - drag.x0, el = performance.now() - drag.t0; drag = null; dragged = Math.abs(dx) > 40 && el < 700;
@@ -670,6 +690,7 @@ function renderTown() {
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
     if (cellsP > 0.9) { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (TOWN.H / r.height); const k = cellRects(st.ludus.cells.length).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= 0) { const q = cellRects(st.ludus.cells.length)[k]; cellSel = k; cellPop = { cx: r.left + (q.x + q.w / 2) * (r.width / VW), cy: r.top + (q.y + q.h / 2) * (r.height / TOWN.H), fresh: true }; render(); } return; }
+    if (view === 'grave') { sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기
     if (view !== 'market') return; const x = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.marketX;
     const items = st.market; let best: Gladiator | null = null, bd = items.length > 1 ? (marketSlotX(items.length, 1) - marketSlotX(items.length, 0)) / 2 : 80;
     items.forEach((g, i) => { const d = Math.abs(x - marketSlotX(items.length, i)); if (d < bd) { bd = d; best = g; } });
@@ -679,7 +700,7 @@ function renderTown() {
 }
 // 디스플레이 상단의 장소 표지판: 누르면 그 장소로 화면이 옮겨가고 라니스타가 따라온다
 function locTabs(): Node {
-  return h('div', { class: `loctabs${cellsOpen ? ' hidden' : ''}` }, ...(['medic', 'yard', 'ludus', 'market'] as View[]).map(v => h('button', { class: view === v ? 'on' : '', onclick: () => startTravel(v) }, VIEW_KO[v])));
+  return h('div', { class: `loctabs${cellsOpen ? ' hidden' : ''}` }, ...(['medic', 'yard', 'ludus', 'market', 'grave'] as View[]).map(v => h('button', { class: view === v ? 'on' : '', onclick: () => startTravel(v) }, VIEW_KO[v])));
 }
 // 라니스타: 크림색 토가(자주색 띠·주름), 짧은 머리·수염, 서판을 든 손. 발이 (x,y)
 function drawLanista(ctx: CanvasRenderingContext2D, x: number, y: number, facing: 1 | -1, t: number, walking: boolean) {
@@ -865,6 +886,24 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
       drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); }
     else drawStickman(ctx, g.type, { x: TX + 60 + (i - bedX.length) * 22, y: H - 20, scale: 0.9, pose: 'sit', t: t + i, team, bare: true, facing: -1 });
   });
+}
+// 묘지: 성문 밖 길가 묘역 (폼페이 누케리아 문 밖처럼). 묘비(스텔라)는 죽은 검투사 수만큼(최대 8), 사이프러스 두 그루, 담. 누르면 연대기
+function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
+  const W = TOWN.tailW; const dead = st.graveyard;
+  ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -96, W, 8); ctx.fillStyle = '#c9b283'; ctx.fillRect(0, -88, W, 74); // 담 (낮은 벽)
+  ctx.strokeStyle = '#b39c6a'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x, -88); ctx.lineTo(x, -14); ctx.stroke(); }
+  for (const cx of [26, W - 30]) { // 사이프러스
+    ctx.fillStyle = '#3f4a2c'; ctx.beginPath(); ctx.moveTo(cx, -150); ctx.quadraticCurveTo(cx + 13, -90, cx + 9, -16); ctx.lineTo(cx - 9, -16); ctx.quadraticCurveTo(cx - 13, -90, cx, -150); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#4a3418'; ctx.fillRect(cx - 2, -16, 4, 16);
+  }
+  const n = Math.min(7, dead.length); const gap = Math.min(40, (W - 120) / Math.max(1, n));
+  for (let i = 0; i < n; i++) { const g = dead[i]; const x = 58 + i * gap, sway = Math.sin(t * 0.8 + i) * 0.4;
+    ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(x - 13, 0); ctx.lineTo(x - 13, -52); ctx.arc(x, -52, 13, Math.PI, 0); ctx.lineTo(x + 13, 0); ctx.closePath(); ctx.fill(); // 묘비
+    ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(g.name.slice(0, 5), x, -28); ctx.font = '6px sans-serif'; ctx.fillText(`${g.wins}승 ${g.fights}전`, x, -18); // 비문: 이름과 전적 (폼페이 묘비처럼)
+    ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.ellipse(x + sway, -2, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill(); // 화환 자리의 풀
+  }
+  if (!n) { ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, 0); ctx.lineTo(W / 2 - 12, -40); ctx.arc(W / 2, -40, 12, Math.PI, 0); ctx.lineTo(W / 2 + 12, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke(); } // 빈 묘역: 루두스 공동 묘비 하나
 }
 // 훈련장 장면을 (0,0) 기준으로 그린다. 타운 캔버스가 카메라 오프셋을 적용해 호출
 function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {

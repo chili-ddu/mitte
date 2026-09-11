@@ -54,6 +54,7 @@ export interface GameState {
   lanista: Lanista;    // 현재 라니스타
   pendingSuccession?: boolean; // 은퇴했고 후계자 선택 대기
   lineageLog?: string[]; // 역대 라니스타
+  hall?: HallEntry[]; // 명예의 전당: 루디스를 받은 검투사 (떠난 뒤에도 남는다)
   lastLeft?: string[]; lastFreed?: string[]; // 직전 시즌 종료 때 떠난 계약자 / 형기 만료로 자유가 된 죄수 (정산 표시용)
 }
 export interface SeasonEvents { cena: boolean; pompa: boolean; votum: boolean; edicta: boolean; guests: boolean }
@@ -65,6 +66,8 @@ export function holdEvents(st: GameState, choice: SeasonEvents): SeasonEvents {
   for (const k of EVENT_KEYS) { if (!choice[k]) continue; const cost = CONFIG.events[k].cost; if (st.money < cost) continue; st.money -= cost; held[k] = true; st.history.push(`${seasonName(st.season)}: ${EVENT_KO[k]} ${cost}`); }
   st.events = held; return held;
 }
+export interface HallEntry { name: string; type: GType; wins: number; fights: number; honor: number; season: number; epithets: string[]; how: 'rudis' | 'damnatus' | 'refused' }
+export function hallAdd(st: GameState, g: Gladiator, how: HallEntry['how']) { (st.hall ??= []).push({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: st.season, epithets: [...(g.epithets ?? [])], how }); }
 export interface Lanista { name: string; age: number; trait: 'founder' | 'freedman' | 'doctor'; type?: GType; since: number; dead?: boolean }
 const LANISTA_NAMES = ['가이우스 바티아투스', '루키우스 아우렐리우스', '마르쿠스 아티우스', '퀸투스 카시우스', '티투스 플라비우스', '푸블리우스 살비우스', '그나이우스 포르키우스', '데키무스 마밀리우스'];
 export function makeLanista(rng: Rng, season: number): Lanista { const L = CONFIG.lanista; return { name: rng.pick(LANISTA_NAMES), age: rng.int(L.ageMin, L.ageMax), trait: 'founder', since: season }; }
@@ -165,7 +168,7 @@ export function doctorFor(st: GameState, type: Gladiator['type']): Gladiator | u
 // 자유민 → 독토르 고용 / 독토르 → 다시 출전(아욱토라투스) / 자유민 내보내기
 export function hireDoctor(st: GameState, g: Gladiator) { if (g.status !== 'rudiarius') return; g.status = 'doctor'; grantEpithets(g); st.history.push(`${seasonName(st.season)}: ${g.name} 독토르 고용`); }
 // 루디스 거절 (플람마): 자유를 물리고 노예로 남는다. 명예 +8
-export function refuseRudis(st: GameState, g: Gladiator) { if (g.status !== 'rudiarius' || g.rudisSeason !== st.season) return; g.status = 'slave'; g.rudisSeason = undefined; g.rudisRefused = (g.rudisRefused ?? 0) + 1; g.honor = Math.min(100, (g.honor ?? 0) + 8); st.history.push(`${seasonName(st.season)}: ${g.name} 루디스 거절 (${g.rudisRefused}회째)`); }
+export function refuseRudis(st: GameState, g: Gladiator) { if (g.status !== 'rudiarius' || g.rudisSeason !== st.season) return; g.status = 'slave'; g.rudisSeason = undefined; { const e = (st.hall ?? []).find(x => x.name === g.name && x.season === st.season); if (e) e.how = 'refused'; } g.rudisRefused = (g.rudisRefused ?? 0) + 1; g.honor = Math.min(100, (g.honor ?? 0) + 8); st.history.push(`${seasonName(st.season)}: ${g.name} 루디스 거절 (${g.rudisRefused}회째)`); }
 export function backToArena(st: GameState, g: Gladiator) { if (g.status !== 'doctor') return; g.status = 'rudiarius'; st.history.push(`${seasonName(st.season)}: ${g.name} 다시 출전 계약`); }
 export function release(st: GameState, g: Gladiator) { if (!g.status || g.status === 'slave') return; st.roster = st.roster.filter(r => r !== g); st.history.push(`${seasonName(st.season)}: ${g.name} 루두스를 떠남`); }
 // 이 계약을 지금 로스터로 받을 수 있는가 (인원·베테라누스 요건)
@@ -273,7 +276,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
       if (maybePromote(g)) promoted.push(g);
       if ((g.status ?? 'slave') === 'slave' && g.wins >= CONFIG.rudis.wins && !downed) { // 루디스: 주최자가 자유를 내린다
         const p = CONFIG.rudis.base + st.fame * CONFIG.rudis.perFame + CONFIG.rudis.hostKind[c.host];
-        if (st.rng.chance(p)) { g.status = 'rudiarius'; g.rudisSeason = st.season; rudis.push(g); }
+        if (st.rng.chance(p)) { g.status = 'rudiarius'; g.rudisSeason = st.season; rudis.push(g); hallAdd(st, g, 'rudis'); }
       }
       if (downed) { const f = judgeWinnerDowned(st.rng); if (f === 'injured') { g.injured = injurySeasons(st); g.injuries = (g.injuries ?? 0) + 1; } fates.push({ g, fate: f }); }
       else fates.push({ g, fate: 'unharmed' });
@@ -344,7 +347,7 @@ export function endSeason(st: GameState): { upkeep: number; gift: number } {
   for (const g of st.roster) grantEpithets(g); // 시즌 종료: 독토르·명예 조건 등 경기 밖 별칭
   const freedNow: Gladiator[] = [], leftNow: Gladiator[] = [];
   for (const g of st.roster) {
-    if (g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' && g.boughtSeason != null && st.season - g.boughtSeason + 1 >= CONFIG.origins.damnatus.freeAfter) { g.status = 'rudiarius'; g.rudisSeason = st.season; freedNow.push(g); st.history.push(`${seasonName(st.season)}: ${g.name} 형기 만료 — 자유`); }
+    if (g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' && g.boughtSeason != null && st.season - g.boughtSeason + 1 >= CONFIG.origins.damnatus.freeAfter) { g.status = 'rudiarius'; g.rudisSeason = st.season; freedNow.push(g); hallAdd(st, g, 'damnatus'); st.history.push(`${seasonName(st.season)}: ${g.name} 형기 만료 — 자유`); }
     if (g.status === 'rudiarius' && g.contractUntil != null && st.season >= g.contractUntil) leftNow.push(g);
   }
   for (const g of leftNow) { st.roster = st.roster.filter(r => r !== g); st.history.push(`${seasonName(st.season)}: ${g.name} 계약 만료로 떠남`); }
@@ -371,9 +374,9 @@ export function score(st: GameState): number {
 }
 
 // ---------- 저장 ----------
-export interface SaveData { v: 1; rng: number; season: number; money: number; fame: number; roster: Gladiator[]; graveyard: Gladiator[]; contracts: Contract[]; market: Gladiator[]; history: string[]; over: boolean; reason?: string; nextId: number; ludus?: unknown; events?: SeasonEvents; applicants?: Gladiator[]; rivals?: Rival[]; lanista?: Lanista; pendingSuccession?: boolean; lineageLog?: string[]; }
+export interface SaveData { v: 1; rng: number; season: number; money: number; fame: number; roster: Gladiator[]; graveyard: Gladiator[]; contracts: Contract[]; market: Gladiator[]; history: string[]; over: boolean; reason?: string; nextId: number; ludus?: unknown; events?: SeasonEvents; applicants?: Gladiator[]; rivals?: Rival[]; lanista?: Lanista; pendingSuccession?: boolean; lineageLog?: string[]; hall?: HallEntry[]; }
 export function serialize(st: GameState): SaveData {
-  return { v: 1, rng: st.rng.state, season: st.season, money: st.money, fame: st.fame, roster: st.roster, graveyard: st.graveyard, contracts: st.contracts, market: st.market, history: st.history, over: st.over, reason: st.reason, nextId: peekNextId(), ludus: st.ludus, events: st.events, applicants: st.applicants, rivals: st.rivals, lanista: st.lanista, pendingSuccession: st.pendingSuccession, lineageLog: st.lineageLog };
+  return { v: 1, rng: st.rng.state, season: st.season, money: st.money, fame: st.fame, roster: st.roster, graveyard: st.graveyard, contracts: st.contracts, market: st.market, history: st.history, over: st.over, reason: st.reason, nextId: peekNextId(), ludus: st.ludus, events: st.events, applicants: st.applicants, rivals: st.rivals, lanista: st.lanista, pendingSuccession: st.pendingSuccession, lineageLog: st.lineageLog, hall: st.hall };
 }
 // 구 저장(cells 숫자·infirmary·yard) → 새 구조
 function migrateLudus(l: unknown): Ludus {
@@ -388,5 +391,5 @@ export function deserialize(d: SaveData): GameState {
   setNextId(d.nextId);
   const contracts = d.contracts.map(c => ({ ...c, size: (c.size ?? c.enemy.length) as 1 | 2 | 3 })); // 구 저장: size 없음
   for (const g of [...d.roster, ...d.market, ...(d.applicants ?? []), ...contracts.flatMap(c => c.enemy)]) if (g.age == null) g.age = g.rank === 'tiro' ? 20 : 27; // 구 저장: 나이 없음
-  return { rng, season: d.season, money: d.money, fame: d.fame, roster: d.roster, graveyard: d.graveyard, contracts, market: d.market, applicants: d.applicants ?? [], rivals: (d.rivals ?? makeRivals(rng, d.season)).map(r => ({ ...r, vsMe: r.vsMe ?? { wins: 0, losses: 0, draws: 0 } })), lanista: d.lanista ? { name: d.lanista.name, age: d.lanista.age, trait: d.lanista.trait, type: d.lanista.type, since: d.lanista.since, dead: d.lanista.dead } : makeLanista(rng, d.season), pendingSuccession: d.pendingSuccession, lineageLog: d.lineageLog, history: d.history, over: d.over, reason: d.reason, ludus: migrateLudus(d.ludus), events: { cena: false, pompa: false, votum: false, edicta: false, guests: false, ...(d.events ?? {}) } };
+  return { rng, season: d.season, money: d.money, fame: d.fame, roster: d.roster, graveyard: d.graveyard, contracts, market: d.market, applicants: d.applicants ?? [], rivals: (d.rivals ?? makeRivals(rng, d.season)).map(r => ({ ...r, vsMe: r.vsMe ?? { wins: 0, losses: 0, draws: 0 } })), lanista: d.lanista ? { name: d.lanista.name, age: d.lanista.age, trait: d.lanista.trait, type: d.lanista.type, since: d.lanista.since, dead: d.lanista.dead } : makeLanista(rng, d.season), pendingSuccession: d.pendingSuccession, lineageLog: d.lineageLog, hall: d.hall ?? d.roster.filter(g => g.status === 'rudiarius' || g.status === 'doctor').map(g => ({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: g.rudisSeason ?? d.season, epithets: [...(g.epithets ?? [])], how: 'rudis' as const })), history: d.history, over: d.over, reason: d.reason, ludus: migrateLudus(d.ludus), events: { cena: false, pompa: false, votum: false, edicta: false, guests: false, ...(d.events ?? {}) } };
 }

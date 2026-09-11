@@ -91,6 +91,9 @@ button.primary { background:var(--red); color:#fff; border-color:var(--red); }
 .ddopt { padding:7px 10px; border-radius:6px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ddopt:hover { background:#f3ead0; }
 .ddopt.on { background:#5a3a1c; color:#f3ead0; }
+.chsec { margin-top:10px; }
+.chsec .drow { cursor:default; flex-wrap:wrap; }
+.chsec .drow b { white-space:nowrap; }
 h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
 .menulist { display:flex; flex-direction:column; gap:6px; }
 .menulist button { min-height:40px; text-align:left; }
@@ -141,7 +144,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 /* 디스플레이 상단 장소 표지판 (나무 팻말 느낌) */
 .loctabs { position:absolute; top:6px; left:6px; right:6px; display:flex; gap:4px; transition:opacity .25s, transform .3s; }
 .loctabs.hidden { opacity:0; transform:translateY(-16px); pointer-events:none; } /* 켈라 화면이 올라오면 팻말은 사라진다 (켈라가 팻말 위까지 덮는 느낌) */
-.loctabs button { flex:1; min-height:30px; padding:2px 4px; font-size:12.5px; background:rgba(201,178,131,.85); border:1px solid #7a5a1c; color:#3a2412; border-radius:3px; box-shadow:0 1px 0 #7a5a1c; }
+.loctabs button { flex:1; min-height:30px; padding:2px 2px; font-size:12px; background:rgba(201,178,131,.85); border:1px solid #7a5a1c; color:#3a2412; border-radius:3px; box-shadow:0 1px 0 #7a5a1c; }
 .loctabs button.on { background:#5a3a1c; color:#f3ead0; border-color:#3a2412; }
 /* 켈라 팝오버: 누른 방에서 커지며 나타난다 */
 .popscrim { position:fixed; inset:0; z-index:9; }
