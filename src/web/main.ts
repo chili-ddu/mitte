@@ -1,7 +1,8 @@
-import { newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
+import { doSkillTrain, skillTrainable, newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
 import { label, sellPrice, rentFee, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
 import { accessoriesOf, EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
+import { SKILLS, SKILL_BY_ID, SKILL_NAME, skillsOf, skillSlots, learnSkill, declineSkill, masteryBonus, isPrimusPalus, procChance, type SkillId } from '../core/skills.js';
 import { computeSynergies, describeSynergies, classicMatchup } from '../core/synergy.js';
 import { survivalChance } from '../core/missio.js';
 import { CONFIG } from '../core/config.js';
@@ -215,15 +216,28 @@ function enemyLine(c: Contract): Node {
   const rv = rivalOf(st.rivals, c.rivalId);
   const parts: (Node | string)[] = [h('b', {}, rv ? rv.name : '떠돌이 검투사단'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)}) `) : '', ': '];
   const star = rv ? rivalStar(rv) : undefined;
-  c.enemy.forEach((e, i) => { parts.push(i ? ', ' : '', sq(e.type), ' ', `${e.name.replace('(적)', '')} (${e.rank === 'tiro' ? '티로' : '베테'} ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''})`); if (star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5)) parts.push(' ', h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판'));
+  c.enemy.forEach((e, i) => { parts.push(i ? ', ' : '', sq(e.type), ' ', `${e.name.replace('(적)', '')} (${e.rank === 'tiro' ? '티로' : '베테'} ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? ` · 기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''})`); if (star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5)) parts.push(' ', h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판'));
     const spBy = st.roster.filter(g => (g.spared ?? []).includes(e.id)), beat = st.roster.filter(g => (g.beatenBy ?? []).includes(e.id));
     if (spBy.length) parts.push(' ', h('span', { class: 'badge grudge', title: `${spBy.map(g => g.name).join(', ')} 이(가) 살려 준 자. 재대결이면 공격 +10%, 그에게 지면 미시오 −15% (우르비쿠스의 경고)` }, `원한 ← ${spBy.map(g => g.name).join(', ')}`));
     if (beat.length) parts.push(' ', h('span', { class: 'badge revenge', title: `${beat.map(g => g.name).join(', ')} 을(를) 쓰러뜨린 자. 꺾으면 복수 (명예 +8, '복수자')` }, `복수 기회 → ${beat.map(g => g.name).join(', ')}`)); });
   return h('div', { class: 'meta enemyline' }, ...parts);
 }
+function skillBadges(g: Gladiator): Node[] {
+  return skillsOf(g).map(id => { const d = SKILL_BY_ID[id]; const mb = masteryBonus(g, id); return h('span', { class: 'badge skill', title: `${d.name}: ${d.desc} 발동 ${Math.round(procChance(g, id) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}` }, d.name); });
+}
+// 배울 기회: 배우기 / 넘기기. 슬롯이 차 있으면 버릴 기술을 고른다
+function skillOfferRows(g: Gladiator, after: () => void = render): Node[] {
+  const offers = (g.skillOffers ?? []) as SkillId[]; if (!offers.length) return [];
+  const slots = skillSlots(g), have = skillsOf(g);
+  return offers.map(id => { const d = SKILL_BY_ID[id]; let replace: SkillId | undefined = have[0];
+    const row = h('div', { class: 'offer' }, h('div', { class: 'grow' }, h('b', {}, `새 기술 '${d.name}'`), h('span', { class: 'meta' }, ` ${d.desc}`), h('div', { class: 'meta' }, `슬롯 ${have.length}/${slots}${isPrimusPalus(g) ? ' · 프리무스 팔루스' : ''}`)));
+    if (have.length >= slots) row.append(dropdown(`rep-${g.id}-${id}`, have.map(x => ({ value: x, label: `${SKILL_NAME(x)} 버림` })), replace ?? '', v => { replace = v as SkillId; }, '버릴 기술'));
+    row.append(h('button', { class: 'primary', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id, have.length >= slots ? replace : undefined)) { sfx.coin(); after(); } } }, '배우기'), h('button', { onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기'));
+    return row; });
+}
 function epithetBadges(g: Gladiator): Node[] {
   const sc = g.scaeva ? [h('span', { class: 'badge scaeva', title: '왼손잡이(스카이바): 타고난 특성. 상대 방패의 첫 타격 감소를 절반으로 만든다 (비문에 따로 표기될 만큼 귀했다)' }, '왼손잡이')] : [];
-  return [...sc, ...(g.epithets ?? []).map(id => { const e = EPITHET_BY_ID[id as EpithetId]; return e ? h('span', { class: 'badge epithet', title: `${e.latin} · ${e.cond} → ${e.effect}${e.attested ? ' (실제 기록)' : ''}` }, `'${e.name}'`) : null; }).filter((n): n is HTMLElement => !!n)];
+  return [...sc, ...skillBadges(g), ...(g.epithets ?? []).map(id => { const e = EPITHET_BY_ID[id as EpithetId]; return e ? h('span', { class: 'badge epithet', title: `${e.latin} · ${e.cond} → ${e.effect}${e.attested ? ' (실제 기록)' : ''}` }, `'${e.name}'`) : null; }).filter((n): n is HTMLElement => !!n)];
 }
 function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boolean; dis?: boolean; onclick?: () => void; tag?: Node | null } = {}) {
   return h('div', { class: `card${opts.sel ? ' sel' : ''}${opts.dis ? ' dis' : ''}`, onclick: opts.onclick },
@@ -428,7 +442,7 @@ function rivalsPanel(): Node {
       h('div', { class: 'rivals' }, ...st.rivals.map(rv => { const star = rivalStar(rv); const inContracts = st.contracts.filter(c => c.rivalId === rv.id).length;
         return h('div', { class: 'rivalcard' }, star ? portrait(star, 56, true) : h('div', { class: 'portrait', style: 'width:56px;height:56px' }),
           h('div', { class: 'grow' }, h('div', {}, h('b', {}, rv.name), inContracts ? h('span', { class: 'badge revenge', style: 'margin-left:6px' }, `이번 시즌 계약 ${inContracts}`) : null),
-            h('div', { class: 'meta' }, star && ((star.honor ?? 0) >= 20 || star.wins >= 3) ? `간판: ${star.name} (${TYPE_KO[star.type]} ${star.rank === 'tiro' ? '티로' : '베테'}, ${star.wins}승/${star.fights}전, 명예 ${star.honor ?? 0})` : '아직 이름난 검투사가 없음'),
+            h('div', { class: 'meta' }, star && ((star.honor ?? 0) >= 20 || star.wins >= 3) ? `간판: ${star.name} (${TYPE_KO[star.type]} ${star.rank === 'tiro' ? '티로' : '베테'}, ${star.wins}승/${star.fights}전, 명예 ${star.honor ?? 0}${(star.skills ?? []).length ? `, 기술 ${(star.skills ?? []).map(SKILL_NAME).join('·')}` : ''})` : '아직 이름난 검투사가 없음'),
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
             h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`))))); })));
 }
@@ -450,6 +464,7 @@ function rosterPanel(): Node {
       !g.injured && g.status !== 'doctor' && !g.fought ? dropdown(`retrain-${g.id}`, (Object.keys(TYPE_KO) as GType[]).filter(t => t !== g.type).map(t => ({ value: t, label: TYPE_KO[t] })), '', v => { const t = v as GType; void ask(`${g.name} 을(를) ${TYPE_KO[t]} 로 재훈련합니까? ${CONFIG.retrainCost} HS, 이번 시즌 출전 불가. 공·방은 유지, 속도·사거리는 새 유형`, { ok: '재훈련' }).then(ok => { if (ok) { if (!retrain(st, g, t)) void tell('자금이 모자랍니다'); } render(); }); }, '유형 전환…') : null,
       g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1 ? h('button', { class: 'primary', disabled: st.money < renewCost(g), title: `계약 ${CONFIG.origins.auctoratus.term}시즌 연장`, onclick: () => { renewContract(st, g); render(); } }, `재계약 ${renewCost(g).toLocaleString()}`) : null,
       g.status && g.status !== 'slave' ? h('button', { onclick: () => { void ask(`${g.name} 을(를) 루두스에서 내보냅니까? (자유민이라 값을 받을 수 없습니다)`, { ok: '내보내기' }).then(ok => { if (ok) { release(st, g); render(); } }); } }, '내보내기') : null,
+      ...skillOfferRows(g),
     ], { dis: !!g.injured }))),
     st.graveyard.length ? h('div', { class: 'grave' }, '묘비: ' + st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ')) : null);
 }
@@ -487,6 +502,10 @@ function renderHelp(): Node {
       row('자연 계열 ×2 / ×3', '×2: 공격 +8%. ×3: 첫 타격에 상대가 0.8초 기세에 눌린다.'),
       row('전통 짝', `무르밀로–트라엑스, 레티아리우스–세쿠토르처럼 로마인이 좋아한 대결 조합. 내 팀과 상대가 전부 짝지어지면 승리 시 호감도 +${CONFIG.fameDelta.classicWin}, 패배 시 미시오 +${Math.round(CONFIG.missio.classic * 100)}%.`),
       row('승리 계열 ×2 / ×3', `×2: 미시오(패자 생존) 확률 +${Math.round(M.victorySynergy * 100)}%. ×3: 시간 초과 무승부 때 승리 판정.`)),
+    sec('기술 (배워서 익히는 동작)',
+      row('배우기', `경기 경험(조건을 채우면 ${Math.round(CONFIG.skills.expChance * 100)}%)이나 편성의 '기술 훈련'(같은 유형 독토르 ${Math.round(CONFIG.skills.trainChance * 100)}%, 8승 독토르 +${Math.round(CONFIG.skills.masterBonus * 100)}%, 훈련 시설 ${CONFIG.skills.gymLevel}단계부터 독학 ${Math.round(CONFIG.skills.gymChance * 100)}%)으로 배울 기회가 생기고, 카드에서 배울지 정한다. 슬롯은 티로 1, 베테라누스 2, 프리무스 팔루스(승수 8·명예 20) 3. 상대 베테라누스도 1~2개 가진다.`),
+      row('숙련', `발동할 때마다 확률 +${Math.round(0.02 * 100)}% (최대 +15%). 독토르가 되면 아는 기술을 제자에게 가르친다.`),
+      ...SKILLS.map(sk => row(sk.name, `${sk.types === 'all' ? '공용' : sk.types.map(t => TYPE_KO[t]).join('·')} · 기본 ${Math.round(sk.base * 100)}% · ${sk.desc} (${sk.learn})`))),
     sec('전투',
       row('연속 공격', `${Math.round(CONFIG.combo.base * 100)}% + 속도×${CONFIG.combo.perSpd * 100}% 로 한 번 더 친다.`),
       row('치명타', `${Math.round(CONFIG.crit.base * 100)}% + 속도×${CONFIG.crit.perSpd * 100}% (투구 보정). 피해 ×${CONFIG.crit.mult}, 방패 반감 무시.`),
@@ -1111,7 +1130,7 @@ function renderPlan() {
   const readyQ = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(st, c, t); });
   const rentSum = readyQ.reduce((a, c) => a + teamOf(c).reduce((b, g) => b + rentFee(g, c.tier), 0), 0);
   const expSum = readyQ.reduce((a, c) => a + fightExpense(teamOf(c), c.tier), 0);
-  const trainN = st.roster.filter(g => assignedTo(g.id) == null && (trainPlan[g.id] === 'atk' || trainPlan[g.id] === 'def')).length;
+  const trainN = st.roster.filter(g => assignedTo(g.id) == null && (trainPlan[g.id] === 'atk' || trainPlan[g.id] === 'def' || trainPlan[g.id] === 'skill')).length;
   const trainRoom = trainCap(st) - trainedCount(st); // 훈련장 남은 자리
   const upkeep = upkeepOf(st);
   const ready = readyQ.length;
@@ -1144,16 +1163,18 @@ function renderPlan() {
       isDoc ? h('span', { class: 'hint' }, `독토르 — ${TYPE_KO[g.type]} 훈련 (공 ${g.base.atk}·방 ${g.base.def} 기준)${g.wins >= CONFIG.doctorSkillWins ? ' · 기술 전수' : ''}`) : null,
       mentoredBy(st, g) ? h('span', { class: 'badge mentor', title: '독토르에게 유형 기술을 전수받음' }, '기술 전수') : null,
       !g.injured && !isDoc ? h('span', { class: `seg${at != null ? ' off' : ''}` },
-        ...(['rest', 'atk', 'def', 'show'] as const).map(k => {
-          const isTrain = k === 'atk' || k === 'def';
-          const trainFull = isTrain && !(tp === 'atk' || tp === 'def') && trainN >= trainRoom;
-          const dis = at != null || (isTrain && (st.money < CONFIG.trainCost || trainFull));
-          const title = at != null ? '출전 검투사는 다른 행동을 할 수 없습니다' : trainFull ? `훈련장 수용 인원 ${trainCap(st)}명이 찼습니다` : k === 'show' ? `훈련장을 열어 시민 앞에서 연습: 명예 +${CONFIG.actions.show.honor}` : k === 'rest' ? `피로 −${cellQuality(st, g) >= 1 ? 2 : 1}` : '';
-          const label = isTrain ? `${ACTION_KO[k]} +${trainGain(st, g, k)}` : k === 'show' ? `${ACTION_KO[k]} 명예 +${CONFIG.actions.show.honor}` : ACTION_KO[k];
+        ...(['rest', 'atk', 'def', 'skill', 'show'] as const).map(k => {
+          const isTrain = k === 'atk' || k === 'def' || k === 'skill';
+          const trainFull = isTrain && !(tp === 'atk' || tp === 'def' || tp === 'skill') && trainN >= trainRoom;
+          const str = k === 'skill' ? skillTrainable(st, g) : null;
+          const dis = at != null || (isTrain && (st.money < CONFIG.trainCost || trainFull)) || (k === 'skill' && !str);
+          const title = at != null ? '출전 검투사는 다른 행동을 할 수 없습니다' : trainFull ? `훈련장 수용 인원 ${trainCap(st)}명이 찼습니다` : k === 'skill' ? (str ? `기술 훈련 (${CONFIG.trainCost} HS): ${str.from === 'doctor' ? '같은 유형 독토르에게' : '훈련 시설에서 독학으로'} ${str.pool.map(SKILL_NAME).join('·')} 중 하나를 ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}% 확률로 깨친다` : `같은 유형 독토르가 아는 기술이 없고 훈련 시설도 ${CONFIG.skills.gymLevel}단계 미만입니다`) : k === 'show' ? `훈련장을 열어 시민 앞에서 연습: 명예 +${CONFIG.actions.show.honor}` : k === 'rest' ? `피로 −${cellQuality(st, g) >= 1 ? 2 : 1}` : '';
+          const label = k === 'skill' ? ACTION_KO[k] : isTrain ? `${ACTION_KO[k]} +${trainGain(st, g, k as 'atk' | 'def')}` : k === 'show' ? `${ACTION_KO[k]} 명예 +${CONFIG.actions.show.honor}` : ACTION_KO[k];
           return h('button', { class: tp === k ? 'on' : '', disabled: dis, title, onclick: (ev: Event) => { ev.stopPropagation(); trainPlan[g.id] = k; render(); } }, label); })) : null,
       g.injured && !isDoc ? h('span', { class: 'seg' },
         h('button', { class: tp === 'recover' ? 'on' : '', title: `요양: 이번 시즌 부상 회복 +${CONFIG.actions.recover.extra} (무료)`, onclick: (ev: Event) => { ev.stopPropagation(); trainPlan[g.id] = tp === 'recover' ? 'rest' : 'recover'; render(); } }, `요양 (부상 ${g.injured}→${Math.max(0, g.injured - 1 - CONFIG.actions.recover.extra)}시즌)`),
         h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)) : null,
+      ...skillOfferRows(g),
     ], { sel: at != null, dis: !!g.injured || isDoc, tag: at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : null, onclick: () => { if (at != null) { assign[at] = assign[at].filter(x => x !== g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } } }));
   }
   { const c = coach(); if (c) wrap.prepend(c); }
@@ -1198,7 +1219,8 @@ function finishSeason() {
   for (const g of st.roster) { const tp = trainPlan[g.id]; if (!tp || tp === 'rest' || assignedTo(g.id) != null || g.fought) continue;
     if (tp === 'atk' || tp === 'def') { if (train(st, g, tp)) trained.push({ g, stat: tp }); }
     else if (tp === 'show') { const r = doShow(st, g); if (r) acted.push({ g, act: tp, note: `명예 +${r.honor}` }); }
-    else if (tp === 'recover') { if (doRecover(st, g)) acted.push({ g, act: tp, note: '회복 가속' }); } }
+    else if (tp === 'recover') { if (doRecover(st, g)) acted.push({ g, act: tp, note: '회복 가속' }); }
+    else if (tp === 'skill') { const r = doSkillTrain(st, g); if (r) acted.push({ g, act: tp, note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 카드에서 배울지 정하세요' : '실패'}` }); } }
   const skippedNow = [...skipped];
   if (skipped.length) st.contracts = st.contracts.filter(c => !skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
   const refused = st.contracts.length ? refuseAll(st) : 0;
@@ -1214,7 +1236,7 @@ function renderSummary() {
   const W = seasonReports.filter(r => r.winner === 'A').length, L = seasonReports.filter(r => r.winner === 'B').length, D = seasonReports.filter(r => r.winner === 'draw').length;
   const salary = seasonReports.reduce((a, r) => a + r.salary, 0);
   const rent = seasonReports.reduce((a, r) => a + r.rent, 0), expense = seasonReports.reduce((a, r) => a + r.expense, 0), prize = seasonReports.reduce((a, r) => a + r.prize, 0), comp = seasonReports.reduce((a, r) => a + r.compensation, 0);
-  const trainCost = sum.trained.length * CONFIG.trainCost;
+  const trainCost = (sum.trained.length + sum.acted.filter(a => a.act === 'skill').length) * CONFIG.trainCost;
   const evHeld = EVENT_KEYS.filter(k => sum.events[k]); const evCost = evHeld.reduce((a, k) => a + CONFIG.events[k].cost, 0); const evFame = (sum.events.cena ? CONFIG.events.cena.fame : 0) + (sum.events.pompa ? CONFIG.events.pompa.fame : 0) + (sum.events.guests ? CONFIG.events.guests.fame : 0);
   const net = st.money - sum.before;
   const fameFights = seasonReports.reduce((a, r) => a + r.fameDelta, 0);
@@ -1519,11 +1541,12 @@ function renderBattle() {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
       const e = r.events[ei++];
+      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip(); continue; }
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
       const counter = !e.combo && r.events[ei - 2] && r.events[ei - 2].actor === tid && r.events[ei - 2].target === aid && !r.events[ei - 2].downed;
-      if (counter) flash.push({ id: aid, t: 1, text: '반격!', color: '#2c4f9b' });
+      if (e.skill === 'riposte') flash.push({ id: aid, t: 1.2, text: '되받아치기!', color: '#c58a1a' }); else if (counter) flash.push({ id: aid, t: 1, text: '반격!', color: '#2c4f9b' });
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); shout('우와아!', p0.x); }
       const hitDelay = e.combo ? 0.12 : 0.2;
@@ -1799,6 +1822,8 @@ function renderResult() {
     if (r.rudis.includes(g)) { parts.push(h('span', { class: 'badge free' }, g.status === 'rudiarius' ? '루디스 — 자유민이 되다' : `루디스 거절 (${g.rudisRefused ?? 0}회째)`));
       if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
     for (const ne of r.newEpithets.filter(x => x.g === g)) parts.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `별칭 '${ne.e.name}' 획득`));
+    for (const so of r.newSkillOffers.filter(x => x.g === g)) parts.push(h('span', { class: 'badge skill' }, `기술 '${SKILL_BY_ID[so.id].name}' 깨침`));
+    parts.push(...skillOfferRows(g, renderResult));
     if (f?.p != null) parts.push(h('span', { class: 'hint' }, ` 생존 확률 ${(f.p * 100).toFixed(0)}%`));
     return parts;
   };
