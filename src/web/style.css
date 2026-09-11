@@ -35,6 +35,9 @@ button.primary { background:var(--red); color:#fff; border-color:var(--red); }
 .contract { border-left:4px solid var(--dim); }
 .contract.sel { border-left-color:var(--red); }
 .contract.mini { cursor:pointer; padding:5px 8px; }
+.host { font-size:12px; font-weight:700; padding:1px 6px; border-radius:3px; background:#e4d3a4; color:#5a3a1c; }
+.host.miser { background:#d9d2b8; } .host.mourner { background:#b8a6a6; color:#3a1f1f; } .host.gambler { background:#e8c96a; } .host.imperial { background:#9b2c1c; color:#fff; } .host.candidate { background:#c9b283; }
+button.tiny.bet { margin-left:6px; } button.tiny.bet.on { background:#7a5a1c; color:#fff; border-color:#7a5a1c; }
 .card.mini { padding:4px 8px; flex-wrap:nowrap; cursor:pointer; }
 .card.mini .portrait { width:34px !important; height:34px !important; }
 .contract.mini.ready { border-left-color:var(--ok); }

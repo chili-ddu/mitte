@@ -1,6 +1,7 @@
 import { doSkillTrain, skillTrainable, newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
-import { label, sellPrice, rentFee, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
+import { label, sellPrice, rentFee, fansOf, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
+import { HOST, FANS_STAR } from '../core/hosts.js';
 import { accessoriesOf, EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
 import { SKILLS, SKILL_BY_ID, SKILL_NAME, skillsOf, skillSlots, learnSkill, declineSkill, masteryBonus, isPrimusPalus, procChance, type SkillId } from '../core/skills.js';
 import { computeSynergies, describeSynergies, classicMatchup } from '../core/synergy.js';
@@ -222,6 +223,8 @@ function enemyLine(c: Contract): Node {
     if (beat.length) parts.push(' ', h('span', { class: 'badge revenge', title: `${beat.map(g => g.name).join(', ')} 을(를) 쓰러뜨린 자. 꺾으면 복수 (명예 +8, '복수자')` }, `복수 기회 → ${beat.map(g => g.name).join(', ')}`)); });
   return h('div', { class: 'meta enemyline' }, ...parts);
 }
+const hostPrize = (c: Contract) => Math.round(CONFIG.prizePerTier * c.tier * HOST[c.host].prize);
+const hostSpan = (c: Contract) => { const H = HOST[c.host]; return h('span', { class: `host ${c.host}`, title: `${H.ko}: ${H.desc}\n상금 ×${H.prize} · 대여료 ×${H.rent} · 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}% · 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? ` · 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? ` · 출전자 명예 +${H.honorAll}` : ''}${H.bet ? ' · 내기 가능' : ''}` }, H.ko); };
 function skillBadges(g: Gladiator): Node[] {
   return skillsOf(g).map(id => { const d = SKILL_BY_ID[id]; const mb = masteryBonus(g, id); return h('span', { class: 'badge skill', title: `${d.name}: ${d.desc} 발동 ${Math.round(procChance(g, id) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}` }, d.name); });
 }
@@ -244,7 +247,7 @@ function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boole
     portrait(g, 56),
     h('div', { class: 'grow' },
       h('div', {}, h('span', { class: `rank ${g.rank}` }, g.rank === 'tiro' ? '티로' : '베테'), g.status === 'rudiarius' ? h('span', { class: 'badge free' }, '자유민') : g.status === 'doctor' ? h('span', { class: 'badge doc' }, '독토르') : null, g.status !== 'doctor' && mentoredBy(st, g) ? h('span', { class: 'badge mentor' }, '기술 전수') : null, originBadge(g), ' ', h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), ' ', ...epithetBadges(g), h('span', { class: 'meta' }, `${TYPE_KO[g.type]} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세`), opts.tag ?? null),
-      h('div', { class: 'meta' }, `HP ${g.base.hp}  공 ${g.base.atk}  방 ${g.base.def}  |  ${g.wins}승/${g.fights}전  미시오 ${g.missios}  명예 ${g.honor ?? 0}${g.injured ? '  ⚠ 부상' : ''}${g.fought ? '  ✓ 출전 완료' : ''}${(g.fatigue ?? 0) > 0 ? `  피로 ${g.fatigue} (공·방 −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty})` : ''}${g.trained ? '  훈련함' : ''}`)),
+      h('div', { class: 'meta' }, `HP ${g.base.hp}  공 ${g.base.atk}  방 ${g.base.def}  |  ${g.wins}승/${g.fights}전  미시오 ${g.missios}  명예 ${g.honor ?? 0}  팬 ${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}${g.injured ? '  ⚠ 부상' : ''}${g.fought ? '  ✓ 출전 완료' : ''}${(g.fatigue ?? 0) > 0 ? `  피로 ${g.fatigue} (공·방 −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty})` : ''}${g.trained ? '  훈련함' : ''}`)),
     ...extra);
 }
 
@@ -513,8 +516,12 @@ function renderHelp(): Node {
       row('시간 초과', '60초가 지나면 무승부 (승리 ×3 시너지가 있으면 승리).')),
     sec('미시오 (패자의 목숨)',
       row('기본', `${Math.round(M.base * 100)}% + 호감도×${M.perFame * 100}% + 승수×${M.perWin * 100}% (최대 ${M.maxWins}승).`),
-      row('주최자', `관대 +${M.hostKind.merciful * 100}%, 잔혹 ${M.hostKind.bloody * 100}%. 등급 1 경기 +${Math.round(M.tierBonus[1] * 100)}%, 등급 2 +${Math.round(M.tierBonus[2] * 100)}% (지방 주최자는 사망 배상을 꺼려 살려 주는 편).`),
+      row('주최자', `성격에 따라 상금·대여료·미시오·루디스가 다르다 (아래 '주최자' 절). 등급 1 경기 +${Math.round(M.tierBonus[1] * 100)}%, 등급 2 +${Math.round(M.tierBonus[2] * 100)}% (지방 주최자는 사망 배상을 꺼려 살려 주는 편).`),
       row('결과', `살아남으면 ${Math.round(M.injuryChance * 100)}% 확률로 부상 (${injurySeasons(st)}시즌 출전 불가, 치료 ${healCostOf(st)} HS). 실패하면 사망하고 주최자가 배상 (구매가×${CONFIG.deathComp.priceMult} + 승수×${CONFIG.deathComp.perWin}).`)),
+    sec('주최자 (에디토르)',
+      ...(Object.keys(HOST) as (keyof typeof HOST)[]).map(k => { const H = HOST[k]; return row(H.ko, `${H.desc} 상금 ×${H.prize}, 대여료 ×${H.rent}, 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}%, 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? `, 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? `, 출전자 명예 +${H.honorAll}` : ''}.`); }),
+      row('팬', `명예 + 승수×2 + 별칭×5. ${FANS_STAR} 이상이면 스타: 관중이 이름을 외치고 관중석이 더 차며, 선거 후보의 경기에서 이기면 호감도 +1 (폼페이 낙서의 팬심).`),
+      row('내기 (스폰시오)', '기량 시합에 거는 내기는 로마법에서도 허용됐다(Digesta 11.5). 도박꾼 주최자의 계약에서 받으면 이길 때 상금 두 배, 지면 상금만큼 물어낸다.')),
     sec('경영',
       row('수입', `계약마다 대여료 (티로 ${CONFIG.rentTiro}, 베테라누스 ${CONFIG.rentVeteran}) + 승리 상금 (등급×${CONFIG.prizePerTier}). 대여료는 승패와 무관 (고증).`),
       row('출전 경비', `대여료의 ${Math.round(CONFIG.fightExpense.rentRate * 100)}% (장비 정비·식량·의료) + 등급×${CONFIG.fightExpense.perTier} (이동·호송) 이 경기마다 차감.`),
@@ -1110,16 +1117,17 @@ function renderPlan() {
     const syn = computeSynergies(team);
     if (planSel !== c.id) { // 선택되지 않은 계약은 한 줄 요약 (화면을 스크롤하지 않도록). 누르면 펼친다
       cpanel.append(h('div', { class: `card contract mini${err ? '' : ' ready'}`, onclick: () => { planSel = c.id; render(); } },
-        h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', h('span', { class: 'meta' }, HOST_KO[c.host])),
-          h('div', { class: 'meta' }, `${rivalOf(st.rivals, c.rivalId)?.name ?? '떠돌이 검투사단'} · 상금 ${(CONFIG.prizePerTier * c.tier).toLocaleString()} · 배정 ${team.length}/${c.size}`, err ? '' : h('span', { class: 'req ok', style: 'margin-left:6px' }, '준비 ✓')))));
+        h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', hostSpan(c)),
+          h('div', { class: 'meta' }, `${rivalOf(st.rivals, c.rivalId)?.name ?? '떠돌이 검투사단'} · 상금 ${hostPrize(c).toLocaleString()}${c.bet ? ' ×2 내기' : ''} · 배정 ${team.length}/${c.size}`, err ? '' : h('span', { class: 'req ok', style: 'margin-left:6px' }, '준비 ✓')))));
       continue;
     }
     cpanel.append(h('div', { class: `card contract sel`, onclick: () => { planSel = c.id; render(); } }, arenaIcon(c.tier),
       h('div', { class: 'grow' },
-        h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', h('span', { class: 'meta' }, `${HOST_KO[c.host]} · 상금 ${(CONFIG.prizePerTier * c.tier).toLocaleString()}`), c.needVeterans ? h('span', { class: 'meta' }, `  · 베테라누스 ${c.needVeterans}명 필수`) : null),
+        h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', hostSpan(c), h('span', { class: 'meta' }, ` · 상금 ${hostPrize(c).toLocaleString()}`), c.needVeterans ? h('span', { class: 'meta' }, `  · 베테라누스 ${c.needVeterans}명 필수`) : null,
+          HOST[c.host].bet ? h('button', { class: `tiny bet${c.bet ? ' on' : ''}`, title: `스폰시오(내기): 받으면 이길 때 상금 ${hostPrize(c).toLocaleString()} 두 배, 지면 ${hostPrize(c).toLocaleString()} HS 를 물어낸다. 무승부는 무효`, onclick: (ev: Event) => { ev.stopPropagation(); c.bet = !c.bet; render(); } }, c.bet ? '내기 받음 ✓' : '내기 받기') : null),
         enemyLine(c),
         h('div', { class: 'slots' }, ...Array.from({ length: c.size }, (_, i) => { const g = team[i]; return h('span', { class: `slot${g ? ' filled' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); if (g) { assign[c.id] = assign[c.id].filter(x => x !== g.id); render(); } else { planSel = c.id; render(); } } }, ...(g ? [sq(g.type), ' ', g.name] : ['빈 자리'])); })),
-        h('div', { class: 'meta fixedline' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : null, describeSynergies(syn).length || classicNow || classicMaybe ? '' : '시너지 없음', team.length ? ` · 생존 ${team.map(g => `${g.name} ${Math.round(survivalChance(g, st.fame, c.host, syn, classicNow, CONFIG.missio.tierBonus[c.tier] ?? 0) * 100)}%`).join(', ')} · 대여료 ${team.reduce((a, g) => a + rentFee(g, c.tier), 0).toLocaleString()} 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '', tired.length ? h('span', { style: 'color:var(--red)' }, ` · 피로 ${tired.map(g => `${g.name} −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty}`).join(', ')}`) : null),
+        h('div', { class: 'meta fixedline' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : null, describeSynergies(syn).length || classicNow || classicMaybe ? '' : '시너지 없음', team.length ? ` · 생존 ${team.map(g => `${g.name} ${Math.round(survivalChance(g, st.fame, c.host, syn, classicNow, CONFIG.missio.tierBonus[c.tier] ?? 0) * 100)}%`).join(', ')} · 대여료 ${Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * HOST[c.host].rent).toLocaleString()} 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '', tired.length ? h('span', { style: 'color:var(--red)' }, ` · 피로 ${tired.map(g => `${g.name} −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty}`).join(', ')}`) : null),
         h('div', { class: err ? 'req' : 'req ok' }, err ?? '출전 준비 완료 ✓'))));
   }
   if (!st.contracts.length) cpanel.append(h('div', { class: 'hint' }, '이번 시즌 계약이 없습니다. 전원 훈련 또는 휴식.'));
@@ -1128,7 +1136,7 @@ function renderPlan() {
 
   // 시즌 예상 수지
   const readyQ = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(st, c, t); });
-  const rentSum = readyQ.reduce((a, c) => a + teamOf(c).reduce((b, g) => b + rentFee(g, c.tier), 0), 0);
+  const rentSum = readyQ.reduce((a, c) => a + Math.round(teamOf(c).reduce((b, g) => b + rentFee(g, c.tier), 0) * HOST[c.host].rent), 0);
   const expSum = readyQ.reduce((a, c) => a + fightExpense(teamOf(c), c.tier), 0);
   const trainN = st.roster.filter(g => assignedTo(g.id) == null && (trainPlan[g.id] === 'atk' || trainPlan[g.id] === 'def' || trainPlan[g.id] === 'skill')).length;
   const trainRoom = trainCap(st) - trainedCount(st); // 훈련장 남은 자리
@@ -1235,6 +1243,7 @@ function renderSummary() {
   const sum = seasonSummary!;
   const W = seasonReports.filter(r => r.winner === 'A').length, L = seasonReports.filter(r => r.winner === 'B').length, D = seasonReports.filter(r => r.winner === 'draw').length;
   const salary = seasonReports.reduce((a, r) => a + r.salary, 0);
+  const betLoss = seasonReports.reduce((a, r) => a + (r.bet && !r.bet.won ? r.bet.amount : 0), 0);
   const rent = seasonReports.reduce((a, r) => a + r.rent, 0), expense = seasonReports.reduce((a, r) => a + r.expense, 0), prize = seasonReports.reduce((a, r) => a + r.prize, 0), comp = seasonReports.reduce((a, r) => a + r.compensation, 0);
   const trainCost = (sum.trained.length + sum.acted.filter(a => a.act === 'skill').length) * CONFIG.trainCost;
   const evHeld = EVENT_KEYS.filter(k => sum.events[k]); const evCost = evHeld.reduce((a, k) => a + CONFIG.events[k].cost, 0); const evFame = (sum.events.cena ? CONFIG.events.cena.fame : 0) + (sum.events.pompa ? CONFIG.events.pompa.fame : 0) + (sum.events.guests ? CONFIG.events.guests.fame : 0);
@@ -1281,7 +1290,7 @@ function renderSummary() {
       sum.skipped.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `무산된 계약 (앞 경기 부상·사망): ${sum.skipped.map(c => c.venue).join(', ')}`) : null),
     h('div', { class: 'cols' },
       h('div', { class: 'panel' }, h('div', { class: 'cols2' }, h('div', {}, h('h2', {}, '자금'),
-        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('대여료', rent), money('출전 경비', expense, -1), money('승리 상금', prize), money('사망 배상금', comp), salary ? money('자유민 급료', salary, -1) : null, evCost ? money('시즌 행사', evCost, -1) : null, money('훈련', trainCost, -1), sum.gift ? money('귀족 사례금', sum.gift) : null, money('유지비·급료', sum.upkeep, -1),
+        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('대여료', rent), money('출전 경비', expense, -1), money('승리 상금', prize), betLoss ? money('내기 패배', betLoss, -1) : null, money('사망 배상금', comp), salary ? money('자유민 급료', salary, -1) : null, evCost ? money('시즌 행사', evCost, -1) : null, money('훈련', trainCost, -1), sum.gift ? money('귀족 사례금', sum.gift) : null, money('유지비·급료', sum.upkeep, -1),
           h('div', { class: 'mrow total' }, h('span', {}, '시즌 순수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
           h('div', { class: 'mrow', style: 'grid-column:1 / -1' }, h('span', {}, '잔액'), h('span', {}, `${sum.before.toLocaleString()} → ${st.money.toLocaleString()} HS`))),
         ), h('div', {}, h('h2', {}, '호감도'),
@@ -1482,8 +1491,10 @@ function renderBattle() {
   let crowdCheer = 0;
   const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
-  const density = Math.min(1, 0.12 + st.fame / 100 * 0.55 + (r.contract.tier - 1) * 0.22);
+  const fansAvg = [...r.team, ...r.contract.enemy].reduce((a, g) => a + fansOf(g), 0) / (r.team.length + r.contract.enemy.length);
+  const density = Math.min(1, 0.12 + st.fame / 100 * 0.55 + (r.contract.tier - 1) * 0.22 + fansAvg / 200); // 팬이 많으면 관중석이 찬다
   startCrowd(0.2 + density * 0.4); sfx.gate(); sfx.drum(2);
+  { const star = [...r.team].filter(g => fansOf(g) >= FANS_STAR).sort((a, b) => fansOf(b) - fansOf(a))[0]; if (star) pending.push({ at: 0.5, fn: () => { shout(`${star.name}!  ${star.name}!`, 0); crowdCheer = 1; } }); } // 스타가 나오면 관중이 이름을 외친다
   // 경기장·관중을 한 번만 그려 캐시 (월드 좌표, 1px = 1 단위)
   const outer0 = ringOf(WORLD.rows - 1, 0), outer1 = ringOf(WORLD.rows - 1, 1);
   const AW = Math.ceil(Math.max(outer0.rx, outer1.rx) * 2.2), AH = Math.ceil(Math.max(outer0.ry, outer1.ry) * 2.3 + 160), AOX = AW / 2, AOY = AH / 2 + 60;
@@ -1746,7 +1757,7 @@ function renderBattle() {
   const bleedAt: { at: number; x: number; y: number; dir: number }[] = [];
   const exits: Record<number, { start: number; dir: 1 | -1 }> = {};
   const fateOf = (id: number) => r.fates.find(f => f.g.id === id)?.fate;
-  const hostBonus = r.contract.host === 'merciful' ? 0.15 : r.contract.host === 'bloody' ? -0.15 : 0;
+  const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
   let ct = 0, lastReal = performance.now(), done = false, lastDtReal = 0.016, frameNo = 0;
   const anim = () => {
@@ -1765,8 +1776,8 @@ function renderBattle() {
     }
     if (judge && !done) {
       const e = ct - judge.start; const py = -floorRy(1) * 1.03;
-      if (judge.stage === 0 && e >= 1.2) { judge.stage = 1; hostMood = 'judging'; sfx.drum(2); hostGesture = 'none'; crowdCloth = r.contract.host === 'merciful' ? 0.8 : r.contract.host === 'bloody' ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 1.7; zoomOutDur = 0.5; hostShout = '주최자가 관중의 뜻을 살핀다…'; shout(r.contract.host === 'bloody' ? '이우굴라!' : '미테!', 0); }
-      if (judge.stage === 1 && e >= 2.0) { judge.stage = 2; shout(r.contract.host === 'merciful' ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
+      if (judge.stage === 0 && e >= 1.2) { judge.stage = 1; hostMood = 'judging'; sfx.drum(2); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 1.7; zoomOutDur = 0.5; hostShout = '주최자가 관중의 뜻을 살핀다…'; shout(hostBonus < 0 ? '이우굴라!' : '미테!', 0); }
+      if (judge.stage === 1 && e >= 2.0) { judge.stage = 2; shout(hostBonus > 0 ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
       if (judge.stage === 2 && e >= 2.8) { judge.stage = 3; const allLive = judge.losers.every(l => l.live); const anyLive = judge.losers.some(l => l.live);
         hostGesture = allLive ? 'cloth' : 'thumb'; crowdCloth = allLive ? 0.9 : 0.1; if (allLive) sfx.cheer(1); else { sfx.boo(); sfx.drum(3); } holdUntil = ct + 1.0; zoomOutDur = 0.5;
         hostShout = allLive ? '주최자가 손을 높이 든다 — 미숨! 살려라' : anyLive ? '주최자가 엄지를 내린다 — 한 명은 살리고, 한 명은…' : '주최자가 엄지를 내린다 — 이우굴라! 죽여라';
@@ -1809,7 +1820,7 @@ function renderResult() {
   const r = report!;
   app.replaceChildren();
   const won = r.winner === 'A';
-  const net = r.rent - r.expense + r.prize + r.compensation;
+  const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
   const fateBadge = (g: Gladiator) => {
     const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const promoted = r.promoted.includes(g);
     const parts: Node[] = [];
@@ -1841,7 +1852,7 @@ function renderResult() {
     h('div', { class: 'rcols' },
       h('div', {}, h('h3', {}, '내 루두스'), ...myCards),
       h('div', {}, h('h3', {}, '상대 파밀리아'), ...enemyCards)),
-    h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money('승리 상금', r.prize), money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null,
+    h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money(r.bet?.won ? '승리 상금 (내기 ×2)' : '승리 상금', r.prize), money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null, r.bet && !r.bet.won ? money('내기 패배', r.bet.amount, -1) : null,
       h('div', { class: 'mrow total' }, h('span', {}, '이번 경기 수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
       h('div', { class: 'mrow' }, h('span', {}, '호감도' + (r.classic && r.winner === 'A' ? ` (전통 짝 +${CONFIG.fameDelta.classicWin} 포함)` : '')), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`))),
     h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))),
