@@ -14,6 +14,8 @@ const ORD = ['', ' 세쿤두스', ' 테르티우스', ' 콰르투스', ' 퀸투�
 function makeMember(rng: Rng, season: number, roster: Gladiator[] = []): Gladiator {
   const s = strengthAt(season); const rank = rng.chance(Math.min(0.8, s - 0.6)) ? 'veteranus' : 'tiro';
   const g = makeGladiator(rng, rank);
+  // 상대도 시즌을 거치며 훈련한다: 베테라누스는 3시즌마다 공·방 +1 (최대 +6), 승수도 쌓인 채로 온다 (내 검투사만 자라면 후반 승률이 70%를 넘는다)
+  if (rank === 'veteranus') { const grow = Math.min(6, Math.floor((season - 1) / 3)); g.base.atk += grow; g.base.def += grow; g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
 }
