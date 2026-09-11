@@ -657,7 +657,7 @@ function renderTown() {
     ctx.strokeStyle = '#b9a26f'; ctx.lineWidth = 1; for (let x = TOWN.yardX + YARD.W + 10; x < TOWN.marketX + 20; x += 34) { for (let yy = GY - 4; yy < VH; yy += 16) { ctx.beginPath(); ctx.moveTo(x + ((yy / 16) % 2) * 17, yy); ctx.lineTo(x + ((yy / 16) % 2) * 17 + 28, yy); ctx.stroke(); } }
     // ── 구조물 층
     // 거리 행인: 길을 오간다 (주기적으로 왕복)
-    { const span = TOWN.roadW + MARKET.W + TOWN.wallW + 120; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.W - 60 - ((t * 30 + 300) % span);
+    { const span = TOWN.roadW + MARKET.W - 80; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.wallX - 40 - ((t * 30 + 300) % span); // 행인은 성문 안쪽(길·시장)만 오간다
       drawCivilian(ctx, p1, GY, 0.9, 'walk', t, 11, 1); drawCivilian(ctx, p2, GY, 0.9, 'walk', t, 5, -1); }
     // 루두스 문 밖의 자유민 지원자: 문루 앞 길에 서서 기다린다
     ctx.save(); ctx.translate(TOWN.yardX, GY - 210); drawYardScene(ctx, t); ctx.restore();          // 훈련장 (발 = 210 → GY)
@@ -888,7 +888,7 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
 // 성벽: 도시 경계. 높은 벽·총안·아치 성문(열림). 발 = 0
 function drawCityWall(ctx: CanvasRenderingContext2D) {
   const W = TOWN.wallW, H = 200;
-  ctx.fillStyle = '#a58f60'; ctx.fillRect(0, -H, W, H);
+  ctx.fillStyle = '#a58f60'; ctx.fillRect(0, -H, W, H + 14); // 땅선 아래까지 내려 뒤쪽 인물의 발이 비치지 않게
   ctx.fillStyle = '#8f7a4e'; for (let y = -H + 20; y < 0; y += 22) { ctx.fillRect(0, y, W, 2); } for (let y = -H + 20, k = 0; y < 0; y += 22, k++) { for (let x = (k % 2) * 20; x < W; x += 40) ctx.fillRect(x, y, 2, 22); } // 석재 줄눈
   ctx.fillStyle = '#a58f60'; for (let x = 4; x < W; x += 24) ctx.fillRect(x, -H - 14, 14, 14); // 총안(흉벽)
   ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(W / 2 - 28, 0); ctx.lineTo(W / 2 - 28, -84); ctx.arc(W / 2, -84, 28, Math.PI, 0); ctx.lineTo(W / 2 + 28, 0); ctx.closePath(); ctx.fill(); // 성문 아치 (열림)
