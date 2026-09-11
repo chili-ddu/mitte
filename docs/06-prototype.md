@@ -511,3 +511,5 @@ src/web/stickman.ts     attackClipForLoadout(오른손→공격 동작) · offha
 - 배포 준비: 이 프로젝트 폴더만 git 저장소로(main), `.gitignore`, `vite.config.ts`(base = VITE_BASE 또는 '/'), `.github/workflows/deploy.yml`(push 시 npm ci → build(VITE_BASE=/저장소명/) → Pages 배포), `npm run build`/`preview` 스크립트, README·LICENSE(모든 권리 보유).
 - 배포 완료: GitHub 저장소 chili-ddu/mitte(공개), 페이지 https://chili-ddu.github.io/mitte/. 키체인 토큰에 workflow 권한이 없어 Actions 워크플로 대신 `npm run deploy`(scripts/deploy.sh: VITE_BASE=/mitte/ 빌드 → dist 를 gh-pages 브랜치로 강제 푸시, Pages 소스 = gh-pages). 워크플로 파일은 scripts/deploy.yml.example 로 보관. 저작권자 표기는 GitHub 계정 chili-ddu.
 - 토큰에 workflow 권한을 추가한 뒤 GitHub Actions 자동 배포로 전환: `.github/workflows/deploy.yml` 복원, Pages build_type=workflow. main 에 푸시하면 자동으로 빌드·배포. `npm run deploy`(gh-pages 수동)도 남겨 둠.
+- 모바일 3단계(툴팁): `h()` 가 `title` 을 `data-tip` 으로 바꾸고, 전역 리스너가 말풍선(`.tip`, 먹색 배경)을 띄운다. 폰: 버튼은 450ms 길게 누르면(그 뒤 클릭은 억제), 배지 같은 비동작 요소는 탭. PC: 마우스 호버. 스크롤·다른 터치에 닫힘. 폭은 내용에 맞춰 최대 280px.
+- 헤더 제목은 "라니스타" 로 되돌림(게임명 "미테!"는 제목 화면과 문서 제목에). 라니스타 이름 풀에서 '섹스투스 포르키우스' 를 '그나이우스 포르키우스' 로 교체(한글 음역이 오해를 살 수 있어서. 프라이노멘 Sextus 는 사용하지 않음).

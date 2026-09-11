@@ -66,7 +66,7 @@ export function holdEvents(st: GameState, choice: SeasonEvents): SeasonEvents {
   st.events = held; return held;
 }
 export interface Lanista { name: string; age: number; trait: 'founder' | 'freedman' | 'doctor'; type?: GType; since: number; dead?: boolean }
-const LANISTA_NAMES = ['가이우스 바티아투스', '루키우스 아우렐리우스', '마르쿠스 아티우스', '퀸투스 카시우스', '티투스 플라비우스', '푸블리우스 살비우스', '섹스투스 포르키우스', '데키무스 마밀리우스'];
+const LANISTA_NAMES = ['가이우스 바티아투스', '루키우스 아우렐리우스', '마르쿠스 아티우스', '퀸투스 카시우스', '티투스 플라비우스', '푸블리우스 살비우스', '그나이우스 포르키우스', '데키무스 마밀리우스'];
 export function makeLanista(rng: Rng, season: number): Lanista { const L = CONFIG.lanista; return { name: rng.pick(LANISTA_NAMES), age: rng.int(L.ageMin, L.ageMax), trait: 'founder', since: season }; }
 // 해마다 죽을 확률 (나이 구간표)
 export function mortality(age: number): number { for (const [upto, p] of CONFIG.lanista.mortality) if (age < upto) return p; return 0.14; }

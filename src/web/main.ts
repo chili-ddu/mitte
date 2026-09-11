@@ -112,10 +112,33 @@ let eventPlan: SeasonEvents = { cena: false, pompa: false, votum: false, edicta:
 
 const h = (tag: string, attrs: Record<string, any> = {}, ...kids: (Node | string | null | undefined)[]) => {
   const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) { if (v === false || v == null) continue; if (k === 'class') el.className = v; else if (k.startsWith('on')) (el as any)[k] = v; else el.setAttribute(k, v === true ? '' : v); }
+  for (const [k, v] of Object.entries(attrs)) { if (v === false || v == null || v === '') continue; if (k === 'class') el.className = v; else if (k.startsWith('on')) (el as any)[k] = v; else if (k === 'title') el.setAttribute('data-tip', v); /* title → 탭·호버 말풍선 (폰에서는 title 이 안 보인다) */ else el.setAttribute(k, v === true ? '' : v); }
   for (const k of kids) if (k != null) el.append(k);
   return el;
 };
+// ── 말풍선(툴팁): data-tip 이 있는 요소를 폰에서 길게 누르거나(450ms), 버튼이 아닌 요소는 탭하면, PC 에서는 마우스를 올리면 보인다
+let tipEl: HTMLElement | null = null; let tipTimer = 0; let tipSuppressClick = false;
+function showTip(target: Element) {
+  const text = target.getAttribute('data-tip'); if (!text) return;
+  hideTip(); const el = h('div', { class: 'tip' }, ...text.split('\n').map(l => h('div', {}, l))); document.body.append(el); tipEl = el;
+  const r = target.getBoundingClientRect(); el.style.maxWidth = Math.min(280, innerWidth - 16) + 'px'; const w = el.offsetWidth;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)); el.style.left = left + 'px';
+  const above = r.top > el.offsetHeight + 16; el.style.top = (above ? r.top - el.offsetHeight - 8 : r.bottom + 8) + 'px'; el.classList.toggle('below', !above);
+  el.style.setProperty('--ax', (r.left + r.width / 2 - left) + 'px');
+}
+function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } }
+const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
+const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt');
+document.addEventListener('pointerdown', (ev) => { hideTip(); clearTimeout(tipTimer); const t = tipTarget(ev); if (!t) return;
+  if (ev.pointerType === 'mouse') return; // 마우스는 호버로
+  tipTimer = window.setTimeout(() => { showTip(t); tipSuppressClick = true; }, 450); }, { capture: true });
+document.addEventListener('pointerup', () => clearTimeout(tipTimer), { capture: true });
+document.addEventListener('pointercancel', () => clearTimeout(tipTimer), { capture: true });
+document.addEventListener('click', (ev) => { if (tipSuppressClick) { tipSuppressClick = false; ev.stopPropagation(); ev.preventDefault(); return; } // 길게 눌러 말풍선을 봤으면 그 클릭은 동작하지 않는다
+  const t = tipTarget(ev); if (t && !isAction(t)) { showTip(t); ev.stopPropagation(); } }, { capture: true });
+document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t) showTip(t); });
+document.addEventListener('mouseout', (ev) => { if (tipTarget(ev)) hideTip(); });
+addEventListener('scroll', hideTip, { capture: true });
 const sq = (t: GType) => h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, glyphSvg(t));
 
 // ── 스틱맨 초상: 작은 캔버스에 장비 갖춘 스틱맨. 살아 움직이는 초상들은 공용 루프가 갱신
@@ -189,7 +212,7 @@ function render() {
   save();
   app.replaceChildren();
   app.append(h('header', {},
-    h('div', { class: 'hrow' }, h('h1', {}, '미테!', h('span', { class: 'sub' }, '라니스타의 길')), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat' }, seasonName(st.season), h('span', {}, ` · ${st.season}번째`))),
+    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat' }, seasonName(st.season), h('span', {}, ` · ${st.season}번째`))),
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn())));
   if (sheet) app.append(renderSheet());

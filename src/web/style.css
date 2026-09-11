@@ -5,7 +5,7 @@ body { margin:0; background:var(--sand); color:var(--ink); font:14px/1.45 -apple
 header { position:relative; display:flex; flex-direction:column; gap:2px; padding:6px 40px 6px 10px; background:var(--sand2); border-radius:6px; margin-bottom:8px; font-size:13px; }
 header .hrow { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
 header h1 { font-size:17px; margin:0; letter-spacing:.02em; }
-header h1 .sub { display:none; } /* 부제는 제목 화면에만 (헤더는 폭이 좁아 줄바꿈됨) */
+
 header button.tiny { padding:2px 10px; font-size:12px; min-height:26px; }
 header .gear { position:absolute; z-index:12; bottom:3px; right:8px; width:28px; height:28px; min-height:28px; padding:0; border:0; background:transparent; color:#5a3a1c; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; } /* 헤더 오른쪽, 아래 행(자금·호감도)과 나란히 */
 header .gear:hover, header .gear.on { background:rgba(122,59,30,.12); color:var(--ink); }
@@ -45,6 +45,11 @@ button.primary { background:var(--red); color:#fff; border-color:var(--red); }
 #arena { width:100%; height:min(560px, 68vh); touch-action:none; background:#d8c48f; border-radius:6px; display:block; border:1px solid var(--sand2); }
 .overlay { position:fixed; inset:0; background:rgba(43,29,14,.55); display:flex; align-items:center; justify-content:center; z-index:10; }
 .modal { position:relative; background:var(--sand); padding:14px 16px; border-radius:8px; width:min(560px, 94vw); max-height:90vh; overflow:auto; }
+/* 말풍선 툴팁 */
+.tip { position:fixed; z-index:30; background:#3a2412; color:#f3ead0; font-size:12.5px; line-height:1.45; padding:8px 10px; border-radius:8px; box-shadow:0 6px 18px rgba(43,29,14,.35); pointer-events:none; animation:tipin .12s ease-out; }
+.tip::after { content:''; position:absolute; left:var(--ax, 50%); bottom:-6px; transform:translateX(-50%); border:6px solid transparent; border-top-color:#3a2412; border-bottom:0; }
+.tip.below::after { bottom:auto; top:-6px; border-top:0; border-bottom:6px solid #3a2412; }
+@keyframes tipin { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
 /* 첫 실행 제목 화면 */
 .overlay.intro { background:rgba(43,29,14,.92); z-index:12; } /* 탭 바보다 위 */
 .introbox { text-align:center; color:#f3ead0; padding:24px 20px; max-width:360px; }
