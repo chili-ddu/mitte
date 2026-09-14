@@ -394,7 +394,7 @@ function chroniclePanel(): Node {
 function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
     canRetire(st) && !st.pendingSuccession && phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${st.lanista.name} (${st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { sheet = null; retire(st); render(); } }); } }, `은퇴 (${st.lanista.age}세, 후계자에게 넘김)`) : null,
-    h('button', { title: '효과음 켜기/끄기', onclick: () => { setSoundEnabled(!soundEnabled()); render(); } }, soundEnabled() ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐'),
+    h('label', { class: 'toggle' }, h('span', { class: 'grow' }, '효과음'), h('input', { type: 'checkbox', checked: soundEnabled() ? 'checked' : undefined, onchange: (e: Event) => { setSoundEnabled((e.target as HTMLInputElement).checked); if (soundEnabled()) { unlockAudio(); sfx.coin(); } render(); } }), h('span', { class: 'knob' })), // 켜짐/꺼짐이 한눈에 보이는 스위치
     h('button', { onclick: () => { sheet = 'help'; render(); } }, '시너지 · 규칙'),
     h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
       const blob = new Blob([JSON.stringify(serialize(st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${st.lanista.name.split(' ').pop()}-${st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
@@ -1480,6 +1480,7 @@ function renderBattle() {
   const units = [...r.team.map(g => ({ g, side: 'A' as const })), ...r.contract.enemy.map(g => ({ g, side: 'B' as const }))];
   const byId = Object.fromEntries(units.map(u => [u.g.id, u]));
   const hp: Record<number, number> = { ...r.initialHp };
+  const hpAppliedIdx: Record<number, number> = {}; // 대상별로 마지막에 반영한 이벤트 순번
   const face: Record<number, 1 | -1> = Object.fromEntries(units.map(u => [u.g.id, u.side === 'A' ? 1 : -1]));
   const engaged: Record<number, number | undefined> = {};
   const boundUntil: Record<number, number> = {};
@@ -1580,8 +1581,9 @@ function renderBattle() {
         pending.push({ at: ct + 0.55, fn: () => play(aid, attackClipFor(byId[aid].g.type), ct + 0.55) });
         pending.push({ at: ct + 1.6, fn: () => { netAway[aid] = false; } });
       } else play(aid, e.combo ? comboClipFor(byId[aid].g.type) : attackClipFor(byId[aid].g.type), ct);
+      const evIdx = ei; // 이벤트 순서. 연속 공격(2타)의 피격 반영이 1타보다 먼저 와도 앞선 값이 나중 값을 덮지 않게
       pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
-        hp[tid] = e.targetHp!;
+        if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
         play(tid, e.downed ? deathClipFor(byId[aid].g.type) : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay);
         if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
         const stack = flash.filter(f => f.id === tid).length;
@@ -1751,19 +1753,25 @@ function renderBattle() {
       ctx.save(); ctx.globalAlpha = Math.min(1, sh.t); ctx.fillStyle = '#7a3a1c'; ctx.font = `bold ${sh.text.length > 8 ? 20 : 16}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText(sh.text, Math.max(60, Math.min(W - 60, scx)), 70 - (1.2 - sh.t) * 10); ctx.restore();
     }
+    if (judge && judge.stage >= 1 && judge.stage <= 2 && !done) { // 판정 중: 쓰러진 검투사의 생존 확률을 크게 (내 검투사만 확률이 있다)
+      const e = ct - judge.start; const pulse = 1 + Math.sin(e * 9) * 0.04;
+      judge.losers.forEach((l, i) => { const f = r.fates.find(x => x.g.id === l.id); const u = byId[l.id]; ctx.save(); ctx.translate(W / 2, 150 + i * 26); ctx.scale(pulse, pulse); ctx.textAlign = 'center';
+        ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#3a2412'; ctx.fillText(f && f.p != null ? `${u.g.name} — 생존 ${Math.round(f.p * 100)}%` : `${u.g.name.replace('(적)', '')} — 관중의 뜻은…`, 0, 0); ctx.restore(); });
+      ctx.save(); ctx.fillStyle = '#7a3b1e'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.6 + Math.sin(ct * 6) * 0.4; ctx.fillText('화면을 두드려 함께 외쳐라!', W / 2, H - 30); ctx.restore(); }
     if (hostShout) { ctx.save(); ctx.fillStyle = hostMood === 'pleased' ? '#3b7a2c' : '#7a6a4e'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(hostShout, W / 2, 96); ctx.restore(); }
     if (intro < INTRO_HOLD) { ctx.save(); ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(r.contract.venue, W / 2, H - 22); ctx.restore(); }
   }
 
   const CEREMONY = 3.2;
-  const JUDGE = 5.4; // 판정: 청원 1.2 → 주최자석 1.6 → 판결 1.0 → 집행·퇴장 1.6
-  const hasJudge = r.winner !== 'draw';
+  const JUDGE = 7.6; // 판정: 청원 1.6 → 주최자가 뜸을 들임(관중 침묵·북소리) 2.4 → 관중 외침 0.8 → 판결(잠깐 느려짐) 1.4 → 집행·퇴장 1.4
+  let lastBeat = -1; // 판정 중 심장박동 북
+  const hasJudge = r.winner !== 'draw'; let hasJudgeFailed = false; // 패자를 못 찾으면 판정 없이 마무리 (화면이 멈추지 않게)
   const END = r.duration + 1.2 + (hasJudge ? JUDGE : 0) + CEREMONY;
   let ceremonyStarted = false;
   // 미시오 판정: 패배 측의 쓰러진 검투사. 내 검투사는 실제 판정(r.fates), 상대는 연출용 결과
   let judge: { start: number; stage: number; losers: { id: number; live: boolean; x: number; y: number }[] } | null = null;
   // 판정 중에 화면을 두드리면 내 루두스 식솔과 팬들이 함께 "미테!"를 외친다 (연출: 함성·손수건이 늘어난다. 결정은 주최자의 몫)
-  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2) return; crowdCloth = Math.min(1, crowdCloth + 0.12); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
+  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
   const judged = new Set<number>(); const judgeLive: Record<number, boolean> = {};
   const bleedAt: { at: number; x: number; y: number; dir: number }[] = [];
   const exits: Record<number, { start: number; dir: 1 | -1 }> = {};
@@ -1777,23 +1785,27 @@ function renderBattle() {
     if (intro < INTRO_HOLD + INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
     else if (ct < slowUntil) dt = real * 0.3;
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
-    if (!done && hasJudge && !judge && ct >= r.duration + 1.0) {
+    if (!done && hasJudge && !hasJudgeFailed && !judge && ct >= r.duration + 1.0) {
       const pos0 = posAt(ct);
-      const losers = units.filter(u => u.side !== r.winner && hp[u.g.id] <= 0).map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
+      const losersRaw = units.filter(u => u.side !== r.winner && hp[u.g.id] <= 0);
+      if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
+      const losers = losersRaw.map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
       judge = { start: ct, stage: 0, losers };
       for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, 'plea', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; }
+      if (!losers.length) { judge = null; } else {
       const L0 = losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.3; zoomOutDur = 0.5;
-      shout('미테!  미테!', L0.x); hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4;
+      shout('미테!  미테!', L0.x); hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; }
     }
     if (judge && !done) {
       const e = ct - judge.start; const py = -floorRy(1) * 1.03;
-      if (judge.stage === 0 && e >= 1.2) { judge.stage = 1; hostMood = 'judging'; sfx.drum(2); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 1.7; zoomOutDur = 0.5; hostShout = '주최자가 관중의 뜻을 살핀다…'; shout(hostBonus < 0 ? '이우굴라!' : '미테!', 0); }
-      if (judge.stage === 1 && e >= 2.0) { judge.stage = 2; shout(hostBonus > 0 ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
-      if (judge.stage === 2 && e >= 2.8) { judge.stage = 3; const allLive = judge.losers.every(l => l.live); const anyLive = judge.losers.some(l => l.live);
+      if (judge.stage === 0 && e >= 1.6) { judge.stage = 1; hostMood = 'judging'; sfx.drum(1); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 2.6; zoomOutDur = 0.5; hostShout = '주최자가 일어선다… 관중이 숨을 죽인다'; shouts.length = 0; lastBeat = ct; }
+      if (judge.stage === 1) { if (ct - lastBeat >= 0.75) { lastBeat = ct; sfx.drum(1); } if (e >= 3.0 && hostShout !== '주최자가 손을 든다…') hostShout = '주최자가 손을 든다…'; }
+      if (judge.stage === 1 && e >= 4.0) { judge.stage = 2; shout(hostBonus > 0 ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
+      if (judge.stage === 2 && e >= 4.8) { judge.stage = 3; slowUntil = ct + 0.5; const allLive = judge.losers.every(l => l.live); const anyLive = judge.losers.some(l => l.live);
         hostGesture = allLive ? 'cloth' : 'thumb'; crowdCloth = allLive ? 0.9 : 0.1; if (allLive) sfx.cheer(1); else { sfx.boo(); sfx.drum(3); } holdUntil = ct + 1.0; zoomOutDur = 0.5;
         hostShout = allLive ? '주최자가 손을 높이 든다 — 미숨! 살려라' : anyLive ? '주최자가 엄지를 내린다 — 한 명은 살리고, 한 명은…' : '주최자가 엄지를 내린다 — 이우굴라! 죽여라';
         shout(allLive ? '미숨!' : '이우굴라!', 0); }
-      if (judge.stage === 3 && e >= 3.8) { judge.stage = 4; const L0 = judge.losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.2; zoomOutDur = 0.6;
+      if (judge.stage === 3 && e >= 6.2) { judge.stage = 4; const L0 = judge.losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.2; zoomOutDur = 0.6;
         const winners = units.filter(u => u.side === r.winner && hp[u.g.id] > 0); const pos1 = posAt(ct);
         judge.losers.forEach((l, i) => {
           if (l.live) { play(l.id, 'rise', ct); exits[l.id] = { start: ct + 1.2 + i * 0.2, dir: (l.x < 0 ? -1 : 1) as 1 | -1 }; }
@@ -1817,7 +1829,7 @@ function renderBattle() {
       const p0 = winners.length ? posAt(ct)[star!.g.id] : { x: 0, y: 0 }; zoomAt = { x: p0.x, y: p0.y - 10 }; zoomStart = ct; holdUntil = ct + CEREMONY - 0.8; zoomOutDur = 0.8;
     }
     for (let i = bleedAt.length - 1; i >= 0; i--) if (ct >= bleedAt[i].at) { const b = bleedAt[i]; bleed(b.x, b.y, b.dir, 18, 1.3); bleedAt.splice(i, 1); }
-    if ((frameNo++ & 7) === 0) setCrowd(0.2 + density * 0.4 + (crowdCheer > 0 ? 0.35 : 0) + (frenzy ? 0.5 : 0));
+    if ((frameNo++ & 7) === 0) setCrowd(judge && judge.stage === 1 && !done ? 0.04 : 0.2 + density * 0.4 + (crowdCheer > 0 ? 0.35 : 0) + (frenzy ? 0.5 : 0)); // 판정 중엔 관중이 숨을 죽인다
     draw(ct, Math.max(dt, real * 0.25));
     clock.textContent = intro < INTRO_HOLD + INTRO_ZOOM ? '준비…' : `${Math.min(ct, r.duration).toFixed(1)}s / ${r.duration.toFixed(1)}s`;
     if (!done && ct >= END) { done = true; skip.textContent = '결과 보기'; }
