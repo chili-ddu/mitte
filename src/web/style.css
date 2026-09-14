@@ -357,3 +357,23 @@ button.small { padding:3px 8px; font-size:12px; }
 .segcol .seg { display:flex; flex-direction:column; gap:4px; width:100%; }
 .segcol .seg button { width:100%; text-align:left; }
 .two .dlist .drow { padding:4px 6px; }
+
+.badge.rec { background:#3b7a2c; color:#fff; }
+
+.card.contract.detail { cursor:pointer; }
+.card.contract.detail .assignline { margin-top:4px; }
+.card.contract.lineup .bigline { font-size:15px; font-weight:700; margin:4px 0; }
+.card.contract.lineup .slots .slot { min-height:38px; font-size:14px; }
+
+.odds { margin-left:8px; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:700; }
+.odds.good { background:#3b7a2c; color:#fff; }
+.odds.even { background:#c58a1a; color:#fff; }
+.odds.bad { background:#9b2c1c; color:#fff; }
+
+.card.other { border-style:dashed; border-color:#7a5a1c; }
+.badge.other { background:#7a5a1c; color:#f3ead0; }
+
+.fixedrow { min-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.odds.none { background:transparent; color:var(--dim); border:1px dashed var(--dim); }
+.card.contract.lineup .slots { min-height:44px; }
+.card.contract.lineup .betline { min-height:26px; }
