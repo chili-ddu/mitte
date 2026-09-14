@@ -114,13 +114,20 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .dropmenu { position:fixed; width:220px; background:var(--sand); border:1px solid #7a5a1c; border-radius:10px; box-shadow:0 8px 24px rgba(43,29,14,.35); padding:8px; transform-origin:top right; animation:dropin .18s ease-out; }
 @keyframes dropin { from { transform:scale(.9) translateY(-6px); opacity:0; } to { transform:none; opacity:1; } }
 /* 탭 바: 화면 아래 고정 */
-.tabbar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:min(560px, 100%); display:flex; gap:6px; padding:8px; background:var(--sand2); border-top:1px solid #c9b283; z-index:11; } /* 시트(overlay z 10) 위에 두어 시트를 연 채로 탭을 바꿀 수 있다 */
-.tabbar button { flex:1; min-height:42px; padding:4px 4px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.tabbar button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-.tabbar button.primary { flex:1.6; }
-.tabbar button { position:relative; overflow:visible; }
+.tabbar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:min(560px, 100%); display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; background:var(--sand2); border-top:1px solid #c9b283; z-index:11; } /* 시트(overlay z 10) 위에 두어 시트를 연 채로 탭을 바꿀 수 있다 */
+.tabbar .stages { display:flex; gap:4px; flex:1 1 auto; min-width:0; }            /* 왼쪽: 준비 → 편성 → 전투 */
+.sidetools { position:fixed; right:max(8px, calc(50% - 272px)); bottom:72px; display:flex; flex-direction:column; gap:8px; z-index:11; } /* 화면 오른쪽 가장자리, 탭 바 위에 세로로 */
+.tabbar button { position:relative; min-height:42px; font-size:13px; white-space:nowrap; }
+.tabbar button.stage { flex:1 1 0; padding:4px 6px; overflow:hidden; text-overflow:ellipsis; }
+.tabbar button.stage.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.tabbar button.stage:disabled { opacity:.4; }
+.tabbar button.stage.primary { flex:1.4 1 0; }
+.sidetools button.tool { position:relative; width:44px; height:44px; min-height:44px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(243,234,208,.94); border:1px solid #7a5a1c; color:#3a2412; box-shadow:0 1px 2px rgba(58,36,18,.35); }
+.sidetools button.tool.on { background:var(--ink); color:#f3ead0; border-color:var(--ink); }
 .nbadge { position:absolute; top:-6px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#5a3a1c; color:#f3ead0; font-size:11px; font-weight:700; line-height:18px; text-align:center; box-shadow:0 0 0 2px var(--sand2); } /* 현황 배지 (알림이 아니라 수를 보여 준다) */
 .tabbar button.on .nbadge { background:#f3ead0; color:#3a2412; }
+.sidetools button.tool .nbadge { top:-4px; right:-6px; box-shadow:0 0 0 2px #f3ead0; }
+.sidetools button.tool.on .nbadge { background:#f3ead0; color:#3a2412; box-shadow:0 0 0 2px var(--ink); }
 .modal h2 { margin:0 0 10px; }
 .modal.ask { width:min(420px, 92vw); z-index:1; }
 .modal.offers { width:min(400px, 92vw); }
@@ -179,7 +186,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .cellpop h2 { padding-right:36px; }
 @keyframes popin { from { transform:scale(.15); opacity:0; } to { transform:scale(1); opacity:1; } }
 /* 디스플레이 왼쪽 아래 켈라 버튼 */
-.cellbtn { position:absolute; left:8px; bottom:8px; width:38px; height:38px; min-height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(201,178,131,.9); border:1px solid #7a5a1c; color:#3a2412; box-shadow:0 1px 0 #7a5a1c; }
+.cellbtn { display:none; } /* 켈라 버튼은 오른쪽 토글 열로 옮김 */
 .cellbtn.on { background:#5a3a1c; color:#f3ead0; }
 .yard { display:block; width:100%; touch-action:pan-y; cursor:grab; }
 .arena-icon { flex:none; margin-right:4px; }

@@ -56,8 +56,8 @@ function coach(): Node | null {
   let text = '', arrow: 'tabs' | 'plan' | 'go' | 'none' = 'none';
   if (phase === 'manage' && cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
   else if (phase === 'manage' && view === 'market') { text = st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = st.roster.length < 3 ? 'none' : 'tabs'; }
-  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '편성 단계로 가서 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
-  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '시즌 진행을 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
+  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '아래 \'편성 →\' 을 눌러 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
+  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '아래 \'전투 →\' 를 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
   else if (phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
   if (!text) return null;
   return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
@@ -308,16 +308,35 @@ function render() {
   app.append(renderTown());
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
-  const nav = [h('button', { class: 'primary wide', onclick: () => { phase = 'plan'; sheet = null; planSel = st.contracts[0]?.id ?? null; render(); } }, '편성 단계로 →')];
   const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
-  app.append(h('div', { class: 'dash' }, h('div', { class: 'dashbody' }, noticeEl, ...renderDash()), h('div', { class: 'nav' }, ...nav)));
+  app.append(h('div', { class: 'dash' }, h('div', { class: 'dashbody' }, noticeEl, ...renderDash()))); // 편성으로 가는 버튼은 아래 탭 바의 단계 버튼
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
-  const tab = (key: typeof sheet, label: string, badge = 0) => ({ label, badge, on: sheet === key, onclick: () => { sheet = sheet === key ? null : key; render(); } });
-  app.append(tabbar([{ label: '루두스', on: !sheet, onclick: () => { sheet = null; render(); } }, tab('roster', '검투사', st.roster.length), tab('doctors', '독토르', st.roster.filter(g => g.status === 'doctor').length), tab('rivals', '파밀리아', st.rivals.length)])); // 규칙은 메뉴에 // 배지 = 현황 (검투사 수 · 독토르 수 · 파밀리아 수)
+  app.append(tabbar(stageItems('manage'), [{ icon: 'cells', title: '켈라', on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } }, { key: 'roster', icon: 'roster', title: '검투사', badge: st.roster.length }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아', badge: st.rivals.length }])); // 규칙은 메뉴에 // 배지 = 현황 (검투사 수 · 독토르 수 · 파밀리아 수)
 }
-// ── 탭 바 (화면 아래 고정) 와 시트 (화면 위에 여는 상세)
-function tabbar(items: { label: string; badge?: number; on?: boolean; primary?: boolean; disabled?: boolean; onclick: () => void }[]): Node {
-  return h('nav', { class: 'tabbar' }, ...items.map(t => h('button', { class: `${t.on ? 'on' : ''}${t.primary ? ' primary' : ''}`, disabled: t.disabled, onclick: t.onclick }, t.label, t.badge ? h('span', { class: 'nbadge' }, String(t.badge)) : null))); // 숫자는 글자 대신 알림 배지로
+// ── 탭 바 (화면 아래 고정): 왼쪽은 준비 → 편성 → 전투 단계, 오른쪽은 시트를 여닫는 아이콘 토글(현황 배지). 시트는 화면 위에 여는 상세
+type StageItem = { label: string; on?: boolean; primary?: boolean; disabled?: boolean; onclick?: () => void };
+type ToolItem = { key?: 'roster' | 'doctors' | 'rivals' | 'events'; icon: ToolIcon; title: string; badge?: number; on?: boolean; onclick?: () => void }; // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
+type ToolIcon = 'roster' | 'doctors' | 'rivals' | 'events' | 'cells';
+const TOOL_SVG: Record<ToolIcon, string> = { // Lucide 아이콘 (ISC): swords · graduation-cap(교관) · users · calendar-days
+  roster: '<path d="m14.5 17.5 3 3"/><path d="m21 3-9 9"/><path d="M6 21 21 6"/><path d="M3 6l3 3"/><path d="m2.5 21.5 3-3"/><path d="M14 21l-3-3"/><path d="M10 6.5 3.5 13"/>',
+  doctors: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+  rivals: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  cells: '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/>',
+  events: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+};
+function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
+  const stageEls = stages.map(t => h('button', { class: `stage${t.on ? ' on' : ''}${t.primary ? ' primary' : ''}`, disabled: t.disabled, onclick: t.onclick }, t.label));
+  const toolEls = tools.map(t => { const on = t.key ? sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; sheet = sheet === k ? null : k; render(); } : t.onclick });
+    b.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TOOL_SVG[t.icon]}</svg>`;
+    if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
+  return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 아이콘 토글은 탭 바가 아니라 화면 오른쪽에 세로로 뜬다 (fixed)
+}
+// 단계 버튼: 준비(관리) → 편성 → 전투. 현재 단계는 강조, 다음 단계가 실행 버튼, 지난 단계는 눌러 돌아간다
+function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
+  const toManage = () => { sheet = null; phase = 'manage'; render(); };
+  const toPlan = () => { phase = 'plan'; sheet = null; planSel = st.contracts[0]?.id ?? null; render(); };
+  if (cur === 'manage') return [{ label: '준비', on: true }, { label: '편성 →', primary: true, onclick: toPlan }, { label: '전투', disabled: true }];
+  return [{ label: '← 준비', onclick: toManage }, { label: '편성', on: true }, { label: next?.label ?? '전투 →', primary: true, onclick: next?.onclick }];
 }
 function renderSheet(): Node {
   if (sheet === 'menu') { // 메뉴는 헤더의 톱니바퀴 아래로 내려온다 (아래서 올라오는 시트가 아니라)
@@ -434,11 +453,6 @@ function drawCellsScene(ctx: CanvasRenderingContext2D, t: number) {
       drawStickman(ctx, g.type, { x: r.x + r.w * 0.42, y: r.y + r.h - 7, scale: Math.min(0.95, r.h / 92), skeleton: sk.sk, t: t + k, team: g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b', bare: true, facing: fx, accessories: accessoriesOf(g) });
       drawCellDecor(ctx, r, g, t, 'front'); }
   });
-}
-function cellBtn(): Node {
-  const b = h('button', { class: `cellbtn${cellsOpen ? ' on' : ''}`, title: '켈라', onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } });
-  b.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/></svg>';
-  return b;
 }
 // 독토르 시트: 고용한 교관(유형·기준 능력치·기술 전수·제자와 보너스)과 고용할 수 있는 자유민
 function doctorsPanel(): Node {
@@ -717,7 +731,7 @@ const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - VW, x));
 const camFor = (v: View) => v === 'grave' ? clampCam(TOWN.W - VW) : v === 'market' ? clampCam(TOWN.marketX + MARKET.W / 2 - VW * (VW < MARKET.W + 80 ? 0.5 : 0.58)) : v === 'medic' ? clampCam(MEDIC.W / 2 - VW * 0.5) : v === 'yard' ? clampCam(TOWN.yardX + 8) : clampCam(TOWN.yardX + YARD.W - 130); // 정문: 문루 왼쪽 끝부터 바깥 길까지 // 훈련소 = 연습장, 정문 = 문루를 가운데에 두고 바깥 길(지원자)까지
 let townCanvas: HTMLCanvasElement | null = null; // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
 function renderTown() {
-  if (townCanvas) return h('div', { class: 'panel yardwrap' }, townCanvas, locTabs(), cellBtn());
+  if (townCanvas) return h('div', { class: 'panel yardwrap' }, townCanvas, locTabs()); // 켈라 버튼은 오른쪽 토글 열로
   const c = h('canvas', { class: 'yard' }) as HTMLCanvasElement; townCanvas = c;
   const VH = TOWN.H; let zoom = 1, lastCw = 0; c.style.height = VH + 'px';
   const ctx = c.getContext('2d')!; ctx.scale(devicePixelRatio, devicePixelRatio);
@@ -813,7 +827,7 @@ function renderTown() {
     items.forEach((g, i) => { const d = Math.abs(x - marketSlotX(items.length, i)); if (d < bd) { bd = d; best = g; } });
     marketSel = best ? (best as Gladiator).id : null; render();
   };
-  return h('div', { class: 'panel yardwrap' }, c, locTabs(), cellBtn());
+  return h('div', { class: 'panel yardwrap' }, c, locTabs());
 }
 // 디스플레이 상단의 장소 표지판: 누르면 그 장소로 화면이 옮겨가고 라니스타가 따라온다
 function locTabs(): Node {
@@ -1242,8 +1256,7 @@ function renderPlan() {
     if (!warn.length) { startSeason(); return; }
     void ask(warn.join('\n') + '\n그래도 진행합니까?', { ok: '진행' }).then(ok => { if (ok) startSeason(); });
   };
-  const tab = (key: typeof sheet, label: string, badge = 0) => ({ label, badge, on: sheet === key, onclick: () => { sheet = sheet === key ? null : key; render(); } });
-  const bar = tabbar([{ label: '← 관리', onclick: () => { sheet = null; phase = 'manage'; render(); } }, tab('events', '행사', evN), { label: ready ? `시즌 진행 (${ready}경기) →` : '시즌 진행 →', primary: true, onclick: go }]);
+  const bar = tabbar(stageItems('plan', { label: ready ? `전투 (${ready}) →` : '전투 →', onclick: go }), [{ key: 'events', icon: 'events', title: '행사', badge: evN }]);
   // 검투사 목록: 배정/훈련
   const rpanel = h('div', { class: 'panel' }, h('h2', {}, '검투사 배정'));
   for (const g of st.roster) {
@@ -1283,7 +1296,7 @@ function renderPlan() {
 function eventsPanel(): Node {
   const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (eventPlan[k] ? E[k].cost : 0), 0);
     const ev = (k: keyof SeasonEvents, effect: string) => h('label', { class: `evrow${eventPlan[k] ? ' on' : ''}` }, h('input', { type: 'checkbox', checked: eventPlan[k] ? 'checked' : undefined, onchange: (e: Event) => { eventPlan[k] = (e.target as HTMLInputElement).checked; render(); } }), h('span', { class: 'grow' }, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, effect)), h('span', {}, `${E[k].cost.toLocaleString()} HS`));
-    return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. 시즌 진행을 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
+    return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. \'전투 →\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
       ev('cena', `경기 전날 시민 앞에서 만찬 — 출전 검투사 명예 +${E.cena.honor}, 호감도 +${E.cena.fame}`),
       ev('pompa', `경기 당일 행진 참여 — 출전 검투사 명예 +${E.pompa.honor}, 호감도 +${E.pompa.fame}`),
       ev('votum', `사당에 봉헌 — 이번 시즌 미시오 +${Math.round(E.votum.missio * 100)}%`),
