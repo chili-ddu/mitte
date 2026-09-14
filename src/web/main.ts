@@ -1078,20 +1078,20 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     roster.filter(g => g.status === 'doctor').forEach((g, i) => { const x = 70 + i * 22; stick(x, 180, 0.85, 'point', t + i * 2, 11 + i); }); // 고용한 독토르(전직 검투사)는 교관 옆
     // 로라리우스(채찍 든 감독): 대련 조 뒤에서 채찍을 휘두름
     stick(276, 178, 0.85, 'whip', t, 5); // 로라리우스는 대련장 오른쪽 앞
+    // 보리죽 솥 (오른쪽 뒤 구석) + 요리사 + 김 — 팔루스보다 먼저 그려 뒤에 놓인다
+    { const kx = 372; ctx.save(); ctx.translate(0, -8); ctx.fillStyle = INK; /* 급식소: 오른쪽 뒤 구석 (팔루스 뒤). 요리사는 왼쪽에 서서 화면 안에 들어온다 */ ctx.beginPath(); ctx.ellipse(kx, 124, 22, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(kx - 22, 112, 44, 12);
+      ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(kx - 26, 130); ctx.lineTo(kx - 26, 96); ctx.lineTo(kx + 26, 96); ctx.lineTo(kx + 26, 130); ctx.stroke();
+      ctx.strokeStyle = '#bfa877'; ctx.lineWidth = 2; ctx.globalAlpha = 0.7; for (let i = 0; i < 3; i++) { const yy = 104 - ((t * 14 + i * 9) % 26); ctx.beginPath(); ctx.moveTo(kx - 8 + i * 8, yy + 6); ctx.quadraticCurveTo(kx - 4 + i * 8, yy, kx - 8 + i * 8, yy - 6); ctx.stroke(); } ctx.globalAlpha = 1;
+      ctx.restore(); stick(kx - 36, 132, 0.9, 'stir', t, 2, -1); }
     // 훈련 기둥(팔루스) 둘 + 목검 거치
     const healthyN = roster.filter(g => !g.injured).length; const sparN = Math.min(4, healthyN) - (Math.min(4, healthyN) % 2); // 대련은 짝이 맞는 만큼만 (최대 2조)
-    const postN = Math.min(6, Math.max(st.ludus.palus, healthyN - sparN)); /* 팔루스 수 = 시설 */ const posts = Array.from({ length: postN }, (_, i) => 352 + i * (postN <= 2 ? 40 : postN === 3 ? 34 : postN === 4 ? 30 : 22)); // 팔루스는 연습장 밖(오른쪽), 홀로 훈련하는 인원만큼
-    for (const px of posts) { ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px, H - 22); ctx.lineTo(px, H - 118); ctx.stroke(); ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px - 5, H - 60); ctx.lineTo(px + 5, H - 64); ctx.moveTo(px - 5, H - 84); ctx.lineTo(px + 5, H - 88); ctx.stroke(); }
+    const postN = Math.min(6, Math.max(st.ludus.palus, healthyN - sparN)); /* 팔루스 수 = 시설 */ const posts = Array.from({ length: postN }, (_, i) => 336 + i * (postN <= 2 ? 40 : postN === 3 ? 34 : postN === 4 ? 30 : 22)); // 팔루스는 연습장 밖(오른쪽), 홀로 훈련하는 인원만큼
+    for (const px of posts) { ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px, H - 22); ctx.lineTo(px, H - 98); ctx.stroke(); ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px - 4, H - 52); ctx.lineTo(px + 4, H - 56); ctx.moveTo(px - 4, H - 74); ctx.lineTo(px + 4, H - 78); ctx.stroke(); } // 기둥은 사람 키보다 조금 낮게 (급식소와 덜 겹치게 작게)
     // 무기고 거치대 (가운데 뒤): 방패·창·목검
     { ctx.save(); ctx.translate(0, -26); const ax = 50; ctx.strokeStyle = '#6b4a22'; /* 무기고: 왼쪽 뒤, 회랑 벽에 붙여 더 뒤로 */ ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(ax, 92); ctx.lineTo(ax + 120, 92); ctx.moveTo(ax + 4, 92); ctx.lineTo(ax + 4, 128); ctx.moveTo(ax + 116, 92); ctx.lineTo(ax + 116, 128); ctx.stroke();
       ctx.strokeStyle = ink; ctx.lineWidth = 2.2; for (let i = 0; i < 3; i++) { const x = ax + 16 + i * 22; ctx.beginPath(); ctx.rect(x, 96, 12, 26); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, 104); ctx.lineTo(x + 12, 100); ctx.moveTo(x, 114); ctx.lineTo(x + 12, 110); ctx.stroke(); }
       for (let i = 0; i < 2; i++) { const x = ax + 88 + i * 12; ctx.beginPath(); ctx.moveTo(x, 130); ctx.lineTo(x, 88); ctx.moveTo(x - 3, 92); ctx.lineTo(x, 84); ctx.lineTo(x + 3, 92); ctx.stroke(); }
       ctx.restore(); }
-    // 보리죽 솥 (오른쪽 뒤) + 요리사 + 김
-    { const kx = 300; ctx.fillStyle = INK; /* 급식소: 대련장(~240) 오른쪽, 겹치지 않게 */ ctx.beginPath(); ctx.ellipse(kx, 124, 22, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(kx - 22, 112, 44, 12);
-      ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(kx - 26, 130); ctx.lineTo(kx - 26, 96); ctx.lineTo(kx + 26, 96); ctx.lineTo(kx + 26, 130); ctx.stroke();
-      ctx.strokeStyle = '#bfa877'; ctx.lineWidth = 2; ctx.globalAlpha = 0.7; for (let i = 0; i < 3; i++) { const yy = 104 - ((t * 14 + i * 9) % 26); ctx.beginPath(); ctx.moveTo(kx - 8 + i * 8, yy + 6); ctx.quadraticCurveTo(kx - 4 + i * 8, yy, kx - 8 + i * 8, yy - 6); ctx.stroke(); } ctx.globalAlpha = 1;
-      stick(kx + 34, 140, 0.9, 'stir', t, 2); }
     // 검투사 배치: 부상자 → 침상, 짝이 맞는 앞 2~4명 → 연습장 대련, 나머지 → 오른쪽 팔루스에서 홀로 훈련
     const healthy = roster.filter(g => !g.injured);
     healthy.forEach((g, i) => {
