@@ -40,6 +40,7 @@ function drawGlyph(ctx: CanvasRenderingContext2D, t: GType, x: number, y: number
 const app = document.getElementById('app')!;
 document.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
 const SAVE_KEY = 'lanista-save';
+const DEBUG = /[?&]debug/.test(location.search); // 테스트용 버튼(건너뛰기·결과 보기) 표시
 function loadSave(): GameState | null { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? deserialize(JSON.parse(raw)) : null; } catch { return null; } }
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(st))); } catch { /* 저장 불가 환경 */ } }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
@@ -1478,7 +1479,7 @@ function renderBattle() {
   app.replaceChildren();
   const canvas = h('canvas', { id: 'arena' }) as HTMLCanvasElement;
   const logEl = h('div', { class: 'log' });
-  const skip = h('button', {}, '건너뛰기');
+  const skip = h('button', { style: DEBUG ? '' : 'display:none' }, '건너뛰기'); // 테스트용: 주소에 ?debug 가 있을 때만 보인다
   const legendShown = localStorage.getItem('lanista-legend') === '1'; localStorage.setItem('lanista-legend', '1'); // 범례는 처음 한 번만
   const wrap = h('div', { class: 'panel battle' }, // 편성처럼 화면 전환 (모달 아님)
     h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size}`)),
@@ -1799,7 +1800,7 @@ function renderBattle() {
   const fateOf = (id: number) => r.fates.find(f => f.g.id === id)?.fate;
   const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
-  let ct = 0, lastReal = performance.now(), done = false, lastDtReal = 0.016, frameNo = 0;
+  let ct = 0, lastReal = performance.now(), done = false, doneAt = 0, lastDtReal = 0.016, frameNo = 0;
   const anim = () => {
     const now = performance.now(); const realRaw = (now - lastReal) / 1000; const real = Math.min(0.05, realRaw); lastReal = now; lastDtReal = real;
     let dt = real;
@@ -1854,11 +1855,13 @@ function renderBattle() {
     for (let i = bleedAt.length - 1; i >= 0; i--) if (ct >= bleedAt[i].at) { const b = bleedAt[i]; bleed(b.x, b.y, b.dir, 18, 1.3); bleedAt.splice(i, 1); }
     if ((frameNo++ & 7) === 0) setCrowd(judge && judge.stage === 1 && !done ? 0.04 : 0.2 + density * 0.4 + (crowdCheer > 0 ? 0.35 : 0) + (frenzy ? 0.5 : 0)); // 판정 중엔 관중이 숨을 죽인다
     draw(ct, Math.max(dt, real * 0.25));
-    if (!done && ct >= END) { done = true; skip.textContent = '결과 보기'; }
+    if (!done && ct >= END) { done = true; doneAt = performance.now(); skip.textContent = '결과 보기'; }
+    if (done && performance.now() - doneAt >= 1500 && phase === 'battle') { toResult(); return; } // 퇴장까지 다 보이면 1.5초 뒤 결과 화면으로 자동 전환 (done 이후엔 ct 가 멈추므로 실제 시간으로)
     if (phase === 'battle') requestAnimationFrame(anim);
   };
   anim();
-  skip.onclick = () => { if (intro < INTRO_HOLD + INTRO_ZOOM) { intro = INTRO_HOLD + INTRO_ZOOM; return; } stopCrowd(); phase = 'result'; renderResult(); };
+  const toResult = () => { stopCrowd(); phase = 'result'; renderResult(); };
+  skip.onclick = () => { if (intro < INTRO_HOLD + INTRO_ZOOM) { intro = INTRO_HOLD + INTRO_ZOOM; return; } toResult(); };
 }
 
 function renderResult() {
