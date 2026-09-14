@@ -1315,7 +1315,7 @@ function renderPlan() {
       const scaleChip = chip(c.tier === 3 ? I.landmark : I.tent, c.tier === 3 ? '로마' : c.tier === 2 ? '큰 지방' : '소규모', 'flat', c.tier === 3 ? '황제·총독이 여는 로마의 대규모 경기 (등급 3)' : c.tier === 2 ? '큰 지방 도시의 경기 (등급 2): 베테라누스 필요, 거절하면 호감도가 깎인다' : '지방 소규모 무누스 (등급 1): 거절해도 벌점 없음');
       const dfc = difficultyOf(st, c); const diffChip = dfc ? chip(I.swords, dfc.label === 'weak' ? '상대 약함' : dfc.label === 'strong' ? '상대 강함' : '상대 비슷', dfc.label === 'weak' ? 'up' : dfc.label === 'strong' ? 'down' : 'flat', `상대 전력이 내 최선 ${c.size}명의 ${Math.round(dfc.ratio * 100)}%`) : null; // 상대 강도: 내 최선 팀과 비교
       const effChips = [scaleChip, diffChip, chip(I.coins, `${hostPrize(c).toLocaleString()}${c.bet ? ' ×2' : ''}`, H.prize > 1 ? 'up' : H.prize < 1 ? 'down' : 'flat', `상금 ×${H.prize} (승리 상금)`),
-        chip(I.scroll, `대여 ×${H.rent}`, H.rent > 1 ? 'up' : H.rent < 1 ? 'down' : 'flat', '대여료는 승패와 무관하게 출전마다 받는다'),
+        H.rent !== 1 ? chip(I.scroll, `대여 ×${H.rent}`, H.rent > 1 ? 'up' : 'down', '대여료는 승패와 무관하게 출전마다 받는다') : null, // ×1 이면 칩을 내지 않는다 (자리 절약)
         H.missio ? chip(I.hand, `미시오 ${pct(H.missio)}`, H.missio > 0 ? 'up' : 'down', '쓰러진 검투사를 살려 줄 확률') : null,
         H.rudis ? chip(I.sword, `루디스 ${pct(H.rudis)}`, H.rudis > 0 ? 'up' : 'down', '승자에게 자유(나무 검)를 내릴 확률') : null,
         H.fameWin ? chip(I.heart, `호감 +${H.fameWin}`, 'up', '이기면 호감도를 더 준다') : null,

@@ -418,10 +418,10 @@ body:has(#app.fit) { overflow:hidden; }
 .arenacol .ready-check svg { width:44px; height:34px; }
 
 /* 계약 카드 높이 고정: 칩 줄 두 줄 분량, 배정 줄 한 줄 */
-.card.contract.detail { height:92px; box-sizing:border-box; align-items:flex-start; padding-top:6px; padding-bottom:6px; overflow:hidden; } /* 높이를 완전히 고정: 줄마다 높이를 못 박고 넘치면 자른다 */
+.card.contract.detail { height:114px; box-sizing:border-box; align-items:flex-start; padding-top:6px; padding-bottom:6px; overflow:hidden; } /* 높이를 완전히 고정: 줄마다 높이를 못 박고 넘치면 자른다 */
 .card.contract.detail > .grow { display:flex; flex-direction:column; gap:2px; height:100%; min-width:0; }
 .card.contract.detail > .grow > div:first-child { height:18px; line-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.card.contract.detail .effrow { height:46px; overflow:hidden; align-content:flex-start; margin:0; } /* 칩 2줄(≈19px×2 + 간격) 이 잘리지 않게 */
+.card.contract.detail .effrow { height:68px; overflow:hidden; align-content:flex-start; margin:0; } /* 칩 3줄(≈19px×3 + 간격): 폰 폭(255px)에선 한 줄에 3개라 최대 8개면 3줄 */
 .card.contract.detail .fixedline { height:16px; line-height:16px; }
 .card.contract.detail .assignline { height:20px; line-height:20px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
