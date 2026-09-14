@@ -172,7 +172,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 
 /* 디스플레이 아래 대시보드: 왼쪽 결정할 일, 오른쪽 위 이동 버튼 */
 .dash { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; align-items:stretch; }
-.dashbody { flex:1; height:auto; max-height:max(140px, calc(100vh - 520px)); overflow-y:auto; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:10px 12px; }
+.dashbody { flex:1; height:auto; max-height:max(140px, calc(100vh - 244px - var(--yard-h, 276px))); overflow-y:auto; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:10px 12px; }
 .dashbody h3 { margin:0 0 8px; font-size:14px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
 .dashbody .card { margin-bottom:8px; }
 .ditem { display:flex; gap:8px; align-items:flex-start; padding:4px 0; font-size:13px; line-height:1.45; }

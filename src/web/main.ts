@@ -630,7 +630,8 @@ const MEDIC = { W: 420, H: 230 }; // 의무실: 훈련장 왼쪽의 독립 건�
 const TOWN = { gapW: 60, roadW: 344, wallW: 130, tailW: 290, get yardX() { return MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get wallX() { return this.marketX + MARKET.W; }, get W() { return this.wallX + this.wallW + this.tailW; }, H: 300 }; // 시장 → 성벽(문) → 성문 밖 묘지
 const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 위치는 캔버스를 만들 때 restX(view) 로 잡는다
 let camX = 0, camV = 0, camPan = 0; // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
-let VW = 1076; // 보이는 폭 (월드 단위). 화면 폭에 따라 fit() 이 정한다
+const VIEW_W = 404; // 보이는 폭 (월드 단위): 폰 390px 화면 기준. PC 에서는 확대해서 같은 폭을 보여 준다
+let VW = VIEW_W;
 const restX = (v: View) => v === 'grave' ? TOWN.W - 70 : v === 'market' ? TOWN.marketX + 14 : v === 'medic' ? 250 : v === 'yard' ? TOWN.yardX + 268 : TOWN.yardX + YARD.W - 65;   // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
 const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - VW, x));
 // 카메라 기준 위치: 시장은 건물이 화면 가운데 조금 오른쪽. 루두스는 폭이 충분하면 훈련장 전체, 좁으면 라니스타 주변(화면 60% 지점)
@@ -644,7 +645,8 @@ function renderTown() {
   // 화면 폭에 맞춘다: 좁은 화면은 줌 0.8 까지만 줄이고 보이는 폭(VW)을 좁혀 라니스타 주변만 보여 준다 (찌그러짐 없음)
   const fit = () => {
     const cw = c.clientWidth; if (!cw || cw === lastCw) return; lastCw = cw;
-    zoom = Math.max(0.92, Math.min(1, cw / 1076)); VW = cw / zoom;
+    zoom = cw / VIEW_W; VW = VIEW_W; // 보이는 폭을 폰 기준(404 유닛)으로 고정하고 화면 폭에 맞춰 확대 — PC 에서도 같은 장면이 보인다
+    document.documentElement.style.setProperty('--yard-h', `${Math.round(VH * zoom)}px`);
     c.width = Math.round(cw * devicePixelRatio); c.height = Math.round(VH * zoom * devicePixelRatio); c.style.height = VH * zoom + 'px';
     ctx.setTransform(devicePixelRatio * zoom, 0, 0, devicePixelRatio * zoom, 0, 0);
     if (!lanista.walking) { camPan = 0; camX = camFor(view); camV = 0; }
