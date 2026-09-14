@@ -9,7 +9,7 @@ import { survivalChance } from '../core/missio.js';
 import { CONFIG } from '../core/config.js';
 import type { Contract, Gladiator, GType } from '../core/types.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, unlockAudio, soundEnabled, setSoundEnabled } from './sound.js';
-import { INK, ENEMY, drawStickman, drawSeated, clipSkeleton, clipLength, CEREMONIES, attackClipFor, comboClipFor, deathClipFor, isDeathClip, drawNetOverlay, drawNetProjectile, runSkeleton, type ClipName, NPC_POSES, walkSkeleton, type Skeleton, type DrawOpts } from './stickman.js';
+import { INK, ENEMY, drawStickman, drawSeated, clipSkeleton, clipLength, CEREMONIES, attackClipFor, comboClipFor, deathClipFor, isDeathClip, drawNetOverlay, drawNetProjectile, runSkeleton, backstepSkeleton, type ClipName, NPC_POSES, walkSkeleton, type Skeleton, type DrawOpts } from './stickman.js';
 import { loadoutFor, hasBigShield } from './loadout.js';
 import { ARENA } from '../core/battle.js';
 
@@ -1699,10 +1699,11 @@ function renderBattle() {
     for (const u of order) {
       const id = u.g.id; const p = pos[id]; const isAlive = hp[id] > 0;
       const pv = prevPos[id]; let sp = 0;
-      if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) face[id] = p.x > pv.x ? 1 : -1; }
+      let mdir: 0 | 1 | -1 = 0; // 이동 방향
+      if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) { mdir = p.x > pv.x ? 1 : -1; face[id] = mdir; } }
       prevPos[id] = { x: p.x, y: p.y };
       speedOf[id] = sp; phaseOf[id] = (phaseOf[id] ?? 0) + dt * (sp > 120 ? 16 : 7);
-      const eng = engaged[id]; if (eng != null && hp[eng] > 0 && sp < 30) face[id] = pos[eng].x >= p.x ? 1 : -1;
+      const eng = engaged[id]; if (eng != null && hp[eng] > 0) face[id] = pos[eng].x >= p.x ? 1 : -1; // 붙은 상대는 물러날 때도 계속 본다 (등을 돌려 달리지 않는다)
       const a = clips[id]; const el = (ct - a.start) * 1000;
       let sk = clipSkeleton(a.clip, el);
       let lapDx = 0;
@@ -1710,7 +1711,7 @@ function renderBattle() {
       const isBound = isAlive && ct < (boundUntil[id] ?? 0) && !isDeathClip(a.clip);
       const busy = el < clipLength(a.clip);
       if (isBound && !busy) sk = clipSkeleton('bound', 120);
-      else if (isAlive && !busy && sp > 12) sk = runSkeleton(phaseOf[id], sp > 120);
+      else if (isAlive && !busy && sp > 12) sk = mdir && mdir !== face[id] ? backstepSkeleton(phaseOf[id]) : runSkeleton(phaseOf[id], sp > 120); // 상대와 반대로 움직이면 뒷걸음
       if (ct < (leapUntil[id] ?? 0)) { const k = 1 - (leapUntil[id] - ct) / 0.28; sk = { ...sk, lift: (sk.lift ?? 0) + Math.sin(k * Math.PI) * 16 }; }
       let exitDx = 0, exitAlpha = 1; let exitSk: Skeleton | null = null;
       if (exits[id]) { const E = exits[id]; const e2 = Math.max(0, ct - E.start); exitDx = e2 * 90 * E.dir; exitAlpha = Math.max(0, 1 - Math.max(0, e2 - 1.2) / 1.2); exitSk = walkSkeleton(e2 * 9, 1); face[id] = E.dir; }

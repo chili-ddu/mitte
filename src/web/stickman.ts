@@ -141,6 +141,11 @@ export function runSkeleton(phase: number, run: boolean): Skeleton {
   if (run) return { lean: 16, frontArm: [-50 - sw * 35, 60], backArm: [40 + sw * 35, 30], frontLeg: [28 + sw * 34, -30 + Math.max(0, -sw) * 40], backLeg: [-28 - sw * 34, 30 * Math.max(0, sw)], headBob: 1, lift: Math.abs(Math.cos(phase)) * 4 };
   return { lean: 12, frontArm: [-60, 90], backArm: [45, 25], frontLeg: [26 + sw * 10, -18], backLeg: [-22 - sw * 10, 14], headBob: 2, sink: 3, lift: Math.abs(Math.sin(phase * 0.5)) * 3 };
 }
+// 뒷걸음: 상대를 보며 방어 자세 그대로 뒤로 물러난다 (등을 보이지 않는다). 보폭은 걷기보다 짧다
+export function backstepSkeleton(phase: number): Skeleton {
+  const sw = Math.sin(phase);
+  return { lean: -4, frontArm: [-60, 95], backArm: [40, 20], frontLeg: [14 + sw * 14, -12 + Math.max(0, sw) * 12], backLeg: [-16 - sw * 14, 10 + Math.max(0, -sw) * 10], headBob: 1, lift: Math.abs(Math.cos(phase)) * 2 };
+}
 export const CEREMONIES: ClipName[] = ['victory', 'salute', 'bow', 'lap'];
 export function clipLength(name: ClipName) { return CLIPS[name].reduce((s, k) => s + k.dur, 0); }
 // 유형별 공격 클립
