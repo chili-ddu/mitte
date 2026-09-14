@@ -1128,12 +1128,12 @@ function renderPlan() {
     if (planSel !== c.id) { // 선택되지 않은 계약은 한 줄 요약 (화면을 스크롤하지 않도록). 누르면 펼친다
       cpanel.append(h('div', { class: `card contract mini${err ? '' : ' ready'}`, onclick: () => { planSel = c.id; render(); } },
         h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', hostSpan(c)),
-          h('div', { class: 'meta' }, `${rivalOf(st.rivals, c.rivalId)?.name ?? '떠돌이 검투사단'} · 상금 ${hostPrize(c).toLocaleString()}${c.bet ? ' ×2 내기' : ''} · 배정 ${team.length}/${c.size}`, err ? '' : h('span', { class: 'req ok', style: 'margin-left:6px' }, '준비 ✓')))));
+          h('div', { class: 'meta' }, `${rivalOf(st.rivals, c.rivalId)?.name ?? '떠돌이 검투사단'} · 상금 ${hostPrize(c).toLocaleString()}${c.bet ? ' ×2 내기' : ''} · 배정 ${team.length}/${c.size}`, err ? (team.length === c.size ? h('span', { class: 'req', style: 'margin-left:6px' }, `출전 불가: ${err}`) : '') : h('span', { class: 'req ok', style: 'margin-left:6px' }, '준비 ✓')))));
       continue;
     }
     cpanel.append(h('div', { class: `card contract sel`, onclick: () => { planSel = c.id; render(); } }, arenaIcon(c.tier),
       h('div', { class: 'grow' },
-        h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', hostSpan(c), h('span', { class: 'meta' }, ` · 상금 ${hostPrize(c).toLocaleString()}`), c.needVeterans ? h('span', { class: 'meta' }, `  · 베테라누스 ${c.needVeterans}명 필수`) : null),
+        h('div', {}, h('span', { class: 'tier' }, `등급 ${c.tier}`), ' ', c.venue, ' ', h('span', { class: 'size' }, `${c.size}대${c.size}`), ' · ', hostSpan(c), h('span', { class: 'meta' }, ` · 상금 ${hostPrize(c).toLocaleString()}`), c.needVeterans ? (available(st).filter(g => g.rank === 'veteranus').length < c.needVeterans ? h('span', { class: 'req', style: 'margin-left:6px' }, `베테라누스 ${c.needVeterans}명 필수 — 출전 가능한 베테라누스가 없어 이번 시즌은 치를 수 없음`) : h('span', { class: 'meta' }, `  · 베테라누스 ${c.needVeterans}명 필수`)) : null),
         enemyLine(c),
         HOST[c.host].bet ? h('div', { class: 'betline' }, h('span', { class: 'meta' }, `스폰시오: 이기면 상금 ${(hostPrize(c) * 2).toLocaleString()}, 지면 −${hostPrize(c).toLocaleString()}`), h('button', { class: `tiny bet${c.bet ? ' on' : ''}`, title: '기량 시합에 거는 내기(스폰시오)는 로마법이 허용했다. 무승부는 무효', onclick: (ev: Event) => { ev.stopPropagation(); c.bet = !c.bet; render(); } }, c.bet ? '내기 받음 ✓' : '내기 받기')) : null,
         h('div', { class: 'slots' }, ...Array.from({ length: c.size }, (_, i) => { const g = team[i]; return h('span', { class: `slot${g ? ' filled' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); if (g) { assign[c.id] = assign[c.id].filter(x => x !== g.id); render(); } else { planSel = c.id; render(); } } }, ...(g ? [sq(g.type), ' ', g.name] : ['빈 자리'])); })),
@@ -1157,7 +1157,8 @@ function renderPlan() {
   const go = () => {
     const healable = st.roster.filter(g => g.injured && st.money >= healCostOf(st)).length;
     const refusable = st.contracts.filter(c => !readyQ.includes(c) && canFulfill(st, c)).length;
-    const warn = [!ready ? '이번 시즌 경기가 없습니다.' : '', refusable ? `받을 수 있는 계약 ${refusable}건을 거절합니다 (호감도 ${CONFIG.fameDelta.refuse}).` : '', healable ? `치료할 수 있는 부상자가 ${healable}명 있습니다.` : ''].filter(Boolean);
+    const blocked = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !!validTeam(st, c, t); }).map(c => `${c.venue}: ${validTeam(st, c, teamOf(c))}`);
+    const warn = [!ready ? '이번 시즌 경기가 없습니다.' : '', blocked.length ? `배정했지만 치를 수 없는 계약 ${blocked.length}건 — ${blocked.join(' / ')}` : '', refusable ? `받을 수 있는 계약 ${refusable}건을 거절합니다 (호감도 ${CONFIG.fameDelta.refuse}).` : '', healable ? `치료할 수 있는 부상자가 ${healable}명 있습니다.` : ''].filter(Boolean);
     if (!warn.length) { startSeason(); return; }
     void ask(warn.join('\n') + '\n그래도 진행합니까?', { ok: '진행' }).then(ok => { if (ok) startSeason(); });
   };
