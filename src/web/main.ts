@@ -266,11 +266,13 @@ function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boole
 }
 
 // 헤더(라니스타·자금·호감도·검투사 수·톱니바퀴): 관리·편성·전투·결과 화면이 같이 쓴다
+const headerBox = h('header', {}) as HTMLElement; // 한 번 만들고 내용만 바꾼다 (매번 새로 만들면 고정 헤더가 깜박인다)
 function headerEl(): Node {
-  return h('header', {},
+  headerBox.replaceChildren(
     h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn()));
+  return headerBox;
 }
 // 준비 화면 대시보드 높이: 화면에 그린 뒤 남는 높이를 재서 하단 바 바로 위까지 채운다 (창 크기가 바뀌면 다시)
 function fitDash() {
@@ -341,17 +343,20 @@ const TOOL_SVG: Record<ToolIcon, string> = { // Lucide 아이콘 (ISC): swords �
   cells: '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/>',
   events: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
 };
+const barBox = h('nav', { class: 'tabbar' }) as HTMLElement; // 하단 바도 한 요소를 유지하고 내용만 바꾼다 (깜박임 방지)
 function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
   const stageEls = stages.map(t => h('button', { class: `stage${t.on ? ' on' : ''}${t.primary ? ' primary' : ''}`, disabled: t.disabled, onclick: t.onclick }, t.label));
-  const toolEls = tools.map(t => { const on = t.key ? sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; sheet = sheet === k ? null : k; render(); } : t.onclick });
+  const toolEls = toolButtons(tools);
+  barBox.replaceChildren(h('div', { class: 'stages' }, ...stageEls), ...(tools.length ? [h('div', { class: 'sidetools' }, ...toolEls)] : [])); // 편성 등에서는 화면 오른쪽에 세로로 뜬다 (fixed)
+  return barBox;
+}
+function toolButtons(tools: ToolItem[]): HTMLElement[] {
+  return tools.map(t => { const on = t.key ? sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; sheet = sheet === k ? null : k; render(); } : t.onclick });
     b.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TOOL_SVG[t.icon]}</svg>`;
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
-  return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 편성 등에서는 화면 오른쪽에 세로로 뜬다 (fixed)
 }
 // 준비 화면의 아이콘 토글: 디스플레이(장면) 오른쪽 아래에 세로로 — 대시보드를 가리지 않는다
-function sideTools(tools: ToolItem[]): Node {
-  const nav = tabbar([], tools) as HTMLElement; const el = nav.querySelector('.sidetools')!; el.classList.add('indisplay'); return el;
-}
+function sideTools(tools: ToolItem[]): Node { return h('div', { class: 'sidetools indisplay' }, ...toolButtons(tools)); }
 // 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성', 편성에서는 '준비' 와 '전투'). 화살표 없이
 function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
   const toManage = () => { sheet = null; phase = 'manage'; render(); };
@@ -1848,7 +1853,8 @@ function renderBattle() {
       const evIdx = ei; // 이벤트 순서. 연속 공격(2타)의 피격 반영이 1타보다 먼저 와도 앞선 값이 나중 값을 덮지 않게
       pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
         if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
-        play(tid, e.downed ? (woundOf(tid) ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 쓰러지는 건 상처로 죽을 때만. 아니면 무릎 꿇고 검지(항복)
+        play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
+        if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
         if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
         const stack = flash.filter(f => f.id === tid).length;
         flash.push({ id: tid, t: 1 + stack * 0.35, text: `-${e.dmg}${e.counter ? '!' : ''}${e.charge ? ' 돌진' : ''}${e.combo ? ' 연속' : ''}${e.blocked ? ' 방패' : ''}${e.net ? ' 그물' : ''}`, color: e.counter ? '#9b2c1c' : e.blocked ? '#2c4f9b' : '#2b1d0e' });
@@ -2048,7 +2054,9 @@ function renderBattle() {
   let judge: { start: number; stage: number; losers: { id: number; live: boolean; x: number; y: number }[] } | null = null;
   // 판정 중에 화면을 두드리면 내 루두스 식솔과 팬들이 함께 "미테!"를 외친다 (연출: 함성·손수건이 늘어난다. 결정은 주최자의 몫)
   canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
-  const judged = new Set<number>(); const judgeLive: Record<number, boolean> = {};
+  const judged = new Set<number>();
+  const yielded = new Set<number>(); // 항복 자세로 끝난 검투사 (마지막 쓰러짐)
+  const judgeLive: Record<number, boolean> = {};
   const bleedAt: { at: number; x: number; y: number; dir: number }[] = [];
   const exits: Record<number, { start: number; dir: 1 | -1 }> = {};
   const fateOf = (id: number) => r.fates.find(f => f.g.id === id)?.fate;
@@ -2069,7 +2077,7 @@ function renderBattle() {
       else if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
       const losers = losersRaw.map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
       judge = { start: ct, stage: 0, losers };
-      for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, 'plead', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; } // 이미 무릎 꿇고 검지를 든 채
+      for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, yielded.has(l.id) ? 'plead' : 'plea', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; } // 항복 자세면 그대로, 누워 있던 자는 일어나 무릎 꿇고 검지를 든다
       if (!losers.length) { judge = null; } else {
       const L0 = losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.3; zoomOutDur = 0.5;
       shout('미테!  미테!', L0.x); hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; }
