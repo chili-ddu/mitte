@@ -1791,10 +1791,10 @@ function renderBattle() {
       ctx.save(); ctx.globalAlpha = Math.min(1, sh.t); ctx.fillStyle = '#7a3a1c'; ctx.font = `bold ${sh.text.length > 8 ? 20 : 16}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText(sh.text, Math.max(60, Math.min(W - 60, scx)), 70 - (1.2 - sh.t) * 10); ctx.restore();
     }
-    if (judge && judge.stage >= 1 && judge.stage <= 2 && !done) { // 판정 중: 쓰러진 검투사의 생존 확률을 크게 (내 검투사만 확률이 있다)
+    if (judge && judge.stage >= 1 && judge.stage <= 2 && !done) { // 판정 중: 쓰러진 검투사 이름을 크게 (확률 숫자는 감춘다)
       const e = ct - judge.start; const pulse = 1 + Math.sin(e * 9) * 0.04;
-      judge.losers.forEach((l, i) => { const f = r.fates.find(x => x.g.id === l.id); const u = byId[l.id]; ctx.save(); ctx.translate(W / 2, 150 + i * 26); ctx.scale(pulse, pulse); ctx.textAlign = 'center';
-        ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#3a2412'; ctx.fillText(f && f.p != null ? `${u.g.name} — 생존 ${Math.round(f.p * 100)}%` : `${u.g.name.replace('(적)', '')} — 관중의 뜻은…`, 0, 0); ctx.restore(); });
+      judge.losers.forEach((l, i) => { const u = byId[l.id]; ctx.save(); ctx.translate(W / 2, 150 + i * 26); ctx.scale(pulse, pulse); ctx.textAlign = 'center';
+        ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#3a2412'; ctx.fillText(`${u.g.name.replace('(적)', '')} — 관중의 뜻은…`, 0, 0); ctx.restore(); }); // 생존 확률 숫자는 보여주지 않는다 (긴장감)
       ctx.save(); ctx.fillStyle = '#7a3b1e'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.6 + Math.sin(ct * 6) * 0.4; ctx.fillText('화면을 두드려 함께 외쳐라!', W / 2, H - 30); ctx.restore(); }
     if (hostShout) { ctx.save(); ctx.fillStyle = hostMood === 'pleased' ? '#3b7a2c' : '#7a6a4e'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(hostShout, W / 2, 96); ctx.restore(); }
     if (intro < INTRO_HOLD) { ctx.save(); ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(r.contract.venue, W / 2, H - 22); ctx.restore(); }
