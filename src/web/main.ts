@@ -7,7 +7,7 @@ import { SKILLS, SKILL_BY_ID, SKILL_NAME, skillsOf, skillSlots, learnSkill, decl
 import { computeSynergies, describeSynergies, classicMatchup } from '../core/synergy.js';
 import { survivalChance } from '../core/missio.js';
 import { CONFIG } from '../core/config.js';
-import type { Contract, Gladiator, GType } from '../core/types.js';
+import type { HostKind, Contract, Gladiator, GType } from '../core/types.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, unlockAudio, soundEnabled, setSoundEnabled } from './sound.js';
 import { INK, ENEMY, drawStickman, drawSeated, clipSkeleton, clipLength, CEREMONIES, attackClipFor, comboClipFor, deathClipFor, isDeathClip, drawNetOverlay, drawNetProjectile, runSkeleton, backstepSkeleton, type ClipName, NPC_POSES, walkSkeleton, type Skeleton, type DrawOpts } from './stickman.js';
 import { loadoutFor, hasBigShield } from './loadout.js';
@@ -1846,7 +1846,9 @@ function renderBattle() {
       const freed = winners.find(u => r.rudis.includes(u.g));
       if (freed) { const w0 = posAt(ct)[freed.g.id]; palmAt = holdUntil + 0.1; palmTarget = { x: w0.x, y: w0.y + 20 }; palmKind = 'rudis'; hostMood = 'pleased'; hostShout = `주최자가 ${freed.g.name} 에게 루디스를 내린다 — 자유!`; }
       else if (hostMood === 'pleased' && winners.length) { const w0 = posAt(ct)[winners[0].g.id]; palmAt = holdUntil + 0.1; palmTarget = { x: w0.x, y: w0.y + 20 }; hostShout = '주최자가 만족했다'; }
-      else hostShout = '주최자는 무표정하다';
+      else { // 덤덤한 반응: 승패와 주최자 성격에 따라 다르다
+        const flat: Record<HostKind, string> = { candidate: '후보는 관중석을 향해 손을 흔든다', miser: '유지는 상금 셈에 바쁘다', mourner: '상주는 말없이 고인의 자리를 바라본다', gambler: '부호는 판돈을 세며 고개를 끄덕인다', imperial: '황제는 고개만 까딱한다' };
+        hostShout = r.winner === 'B' ? `${flat[r.contract.host]} — 승자는 상대 파밀리아` : flat[r.contract.host]; }
       const p0 = winners.length ? posAt(ct)[star!.g.id] : { x: 0, y: 0 }; zoomAt = { x: p0.x, y: p0.y - 10 }; zoomStart = ct; holdUntil = ct + CEREMONY - 0.8; zoomOutDur = 0.8;
     }
     for (let i = bleedAt.length - 1; i >= 0; i--) if (ct >= bleedAt[i].at) { const b = bleedAt[i]; bleed(b.x, b.y, b.dir, 18, 1.3); bleedAt.splice(i, 1); }
