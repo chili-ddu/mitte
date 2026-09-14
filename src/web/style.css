@@ -49,7 +49,7 @@ button.tiny.bet { margin-left:auto; } button.tiny.bet.on { background:#7a5a1c; c
 .legend .arrow { color:var(--dim); font-size:16px; line-height:1; }
 .legend .sq { display:inline-flex; width:18px; height:18px; border-radius:2px; vertical-align:-4px; margin-right:3px; align-items:center; justify-content:center; }
 .legend .sq svg { width:14px; height:14px; }
-#arena { width:100%; height:min(560px, 68vh); touch-action:none; background:#d8c48f; border-radius:6px; display:block; border:1px solid var(--sand2); }
+#arena { width:100%; height:min(560px, calc(100dvh - 170px)); touch-action:none; background:#d8c48f; border-radius:6px; display:block; border:1px solid var(--sand2); }
 .overlay { position:fixed; inset:0; background:rgba(43,29,14,.55); display:flex; align-items:center; justify-content:center; z-index:10; }
 .modal { position:relative; background:var(--sand); padding:14px 16px; border-radius:8px; width:min(560px, 94vw); max-height:90vh; overflow:auto; }
 /* 첫 시즌 안내 */
@@ -119,6 +119,9 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .modal.offers { width:min(480px, 94vw); }
 .modal.offers .card { flex-wrap:wrap; }
 .modal.offers .card .grow { flex:1 1 200px; }
+.panel.battle { position:relative; }
+.panel.battle .actions { position:absolute; right:18px; bottom:18px; margin:0; } /* 버튼을 캔버스 위에 띄워 화면이 짧아도 항상 보인다 */
+.panel.battle .actions button { min-height:40px; padding:6px 14px; background:rgba(255,248,229,.92); }
 .panel.battle h2 { font-size:18px; text-transform:none; letter-spacing:0; color:var(--ink); }
 .modal.ask p { margin:4px 0; }
 .log { font:12px/1.4 ui-monospace, Menlo, monospace; background:#fbf6e6; padding:8px; border-radius:4px; max-height:160px; overflow:auto; white-space:pre-wrap; }

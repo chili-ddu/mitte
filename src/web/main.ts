@@ -632,7 +632,7 @@ const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 
 let camX = 0, camV = 0, camPan = 0; // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
 const VIEW_W = 404; // 보이는 폭 (월드 단위): 폰 390px 화면 기준. PC 에서는 확대해서 같은 폭을 보여 준다
 let VW = VIEW_W;
-const restX = (v: View) => v === 'grave' ? TOWN.W - 70 : v === 'market' ? TOWN.marketX + 14 : v === 'medic' ? 250 : v === 'yard' ? TOWN.yardX + 268 : TOWN.yardX + YARD.W - 65;   // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
+const restX = (v: View) => v === 'grave' ? TOWN.W - 70 : v === 'market' ? TOWN.marketX + 44 : v === 'medic' ? 250 : v === 'yard' ? TOWN.yardX + 268 : TOWN.yardX + YARD.W - 65;   // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
 const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - VW, x));
 // 카메라 기준 위치: 시장은 건물이 화면 가운데 조금 오른쪽. 루두스는 폭이 충분하면 훈련장 전체, 좁으면 라니스타 주변(화면 60% 지점)
 const camFor = (v: View) => v === 'grave' ? clampCam(TOWN.W - VW) : v === 'market' ? clampCam(TOWN.marketX + MARKET.W / 2 - VW * (VW < MARKET.W + 80 ? 0.5 : 0.58)) : v === 'medic' ? clampCam(MEDIC.W / 2 - VW * 0.5) : v === 'yard' ? clampCam(TOWN.yardX + 8) : clampCam(TOWN.yardX + YARD.W - 130); // 정문: 문루 왼쪽 끝부터 바깥 길까지 // 훈련소 = 연습장, 정문 = 문루를 가운데에 두고 바깥 길(지원자)까지
@@ -801,11 +801,11 @@ function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
     // 판매대 (카타스타): 윗면 띠 + 앞면
     ctx.fillStyle = '#c4ad76'; ctx.fillRect(30, H - 68, W - 60, 8); ctx.fillStyle = '#a89064'; ctx.fillRect(30, H - 60, W - 60, 20); ctx.fillStyle = '#8f7a4e'; ctx.fillRect(30, H - 40, W - 60, 40);
     // 상인 (오른쪽 끝, 라니스타가 왼쪽에 서므로): 줄무늬 튜닉에 두루마리를 든 스틱맨 (기본 리그)
-    drawStickman(ctx, 'murmillo', { x: W - 26, y: H - 68, scale: 0.95, facing: -1, skeleton: NPC_POSES.tablet, t, ink, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16',
+    drawStickman(ctx, 'murmillo', { x: W - 26, y: H - 68, scale: 0.9, facing: -1, skeleton: NPC_POSES.tablet, t, ink, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16',
       hands: (c, f) => { c.fillStyle = '#e8d9b5'; c.fillRect(f.hx - 2, f.hy - 12, 9, 13); c.strokeStyle = ink; c.lineWidth = 1; c.strokeRect(f.hx - 2, f.hy - 12, 9, 13); } });
     if (!items.length) return; // 매물 없음: 빈 카타스타만 (안내는 대시보드에)
     // 사슬: 목 고리 사이를 늘어진 곡선(카테너리 느낌)으로, 작은 고리들이 곡선을 따라 이어짐. 살짝 흔들림
-    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === marketSel; const sc0 = sel ? 1.18 : 1.05; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
+    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === marketSel; const sc0 = sel ? 1.05 : 0.95; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
     ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
     for (let i = 0; i < items.length; i++) {
       const a = neckOf(items[i], i);
@@ -831,7 +831,7 @@ function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
       const x = slotX(i), y = H - 68 + (sel ? 8 : 0);
       ctx.globalAlpha = dim ? 0.45 : 1;
       const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
-      const sc0 = sel ? 1.18 : 1.05;
+      const sc0 = sel ? 1.05 : 0.95;
       drawStickman(ctx, g.type, { x, y, scale: sc0, pose: sel ? 'captive_up' : 'captive', t: t + i, team, facing: 1, bare: true }); // 시장: 맨몸 + 손목 묶임 (고증)
       // 손목 밧줄: 두 손이 모인 자리(몸 앞 아래)에 고리 + 아래로 늘어진 줄
       { const wx = x + 9 * sc0, wy = y - 27 * sc0; ctx.strokeStyle = '#7a5a2c'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.ellipse(wx, wy, 5 * sc0, 3.2 * sc0, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(wx, wy + 3 * sc0); ctx.lineTo(wx - 2, wy + 12 * sc0); ctx.stroke(); }
@@ -898,7 +898,7 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = '#8f7a4e'; ctx.beginPath(); ctx.moveTo(TX + 6, H - 46); ctx.lineTo(TX + 26, H - 46); ctx.lineTo(TX + 23, H - 55); ctx.lineTo(TX + 9, H - 55); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#8a6a44'; ctx.fillRect(TX - 10, 118, 58, 3); for (let k = 0; k < 2 + Math.min(3, st.ludus.medicine); k++) { ctx.fillStyle = ['#b9a26f', '#9b2c1c', '#b9a26f', '#5a4224', '#3b7a2c'][k % 5]; ctx.fillRect(TX - 6 + k * 11, 108, 7, 10); }
   for (let k = 0; k < st.ludus.herbs; k++) { const hx = 300 - k * 22; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, 38); ctx.lineTo(hx, 52); ctx.stroke(); ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.moveTo(hx, 50); ctx.lineTo(hx - 6, 68); ctx.lineTo(hx + 6, 68); ctx.closePath(); ctx.fill(); }
-  if (st.ludus.medicine >= 3) stick(W - 18, H - 22, 0.85, 'tend', t, 9, -1); // 의술 3단계: 조수
+  if (st.ludus.medicine >= 3) stick(W - 18, H - 22, 0.9, 'tend', t, 9, -1); // 의술 3단계: 조수
   { // 의사: 탁자 앞에서 약을 빻거나 선반에서 약병을 꺼내고, 환자가 있으면 붕대 뭉치를 들고 침상으로 가 붕대·살피기·물 먹이기 중 하나를 한 뒤 돌아온다
     const dt = medic.last < 0 ? 0 : Math.min(0.05, t - medic.last); medic.last = t;
     const HOME = TX - 20; const bedSide = (k: number) => bedX[k % bedX.length] + 62;
@@ -916,7 +916,7 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
     const walking = medic.mode === 'go' || medic.mode === 'back';
     const facing: 1 | -1 = walking ? (medic.target < medic.x ? -1 : 1) : medic.mode === 'tend' ? -1 : 1; // 탁자·선반은 오른쪽
     const pose: StickPose = walking ? 'walk' : medic.mode === 'tend' ? medic.act : (medic.act === 'shelf' ? 'shelf' : 'grind');
-    stick(medic.x, H - 22, 0.95, pose, t, 3, facing);
+    stick(medic.x, H - 22, 0.9, pose, t, 3, facing);
   }
   // 부상자: 침상에 눕고(머리 왼쪽), 침상이 모자라면 오른쪽 벽가에 앉는다
   injured.forEach((g, i) => { const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
@@ -1053,14 +1053,14 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(14, H - 26); ctx.lineTo(14, 120); ctx.arc(28, 120, 14, Math.PI, 0); ctx.lineTo(42, H - 26); ctx.closePath(); ctx.fill();
     stickFn = stick; // 의무실 장면이 같은 보조 인물 리그를 쓴다
     // 작은 타원 연습장 + 관람석: 루두스 마그누스의 미니 원형경기장
-    ctx.strokeStyle = '#c4ad76'; ctx.lineWidth = 2; ctx.beginPath(); ctx.beginPath(); ctx.ellipse(150, 140, 90, 26, 0, 0, Math.PI * 2); ctx.fillStyle = '#e4d3a4'; ctx.fill(); ctx.stroke();
-    for (let a = 0; a < Math.PI * 2; a += Math.PI / 7) { const px = 150 + Math.cos(a) * 90, py = 140 + Math.sin(a) * 26; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 9); ctx.stroke(); } // 낮은 말뚝 울타리 // 원형 대련장: 왼쪽 위(회랑 바로 아래)에 두어 앞쪽 땅은 통로로 비운다
+    ctx.strokeStyle = '#c4ad76'; ctx.lineWidth = 2; ctx.beginPath(); ctx.beginPath(); ctx.ellipse(160, 142, 118, 30, 0, 0, Math.PI * 2); ctx.fillStyle = '#e4d3a4'; ctx.fill(); ctx.stroke();
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 7) { const px = 160 + Math.cos(a) * 118, py = 142 + Math.sin(a) * 30; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 9); ctx.stroke(); } // 낮은 말뚝 울타리 // 원형 대련장: 왼쪽 위(회랑 바로 아래)에 두어 앞쪽 땅은 통로로 비운다
     // (관람석은 뺐다: 폭을 아끼려고)
     // 교관(독토르): 관람석 앞에서 막대로 지시
-    stick(56, 170, 0.68, 'point', t, 1); // 교관은 대련장 왼쪽 앞
-    roster.filter(g => g.status === 'doctor').forEach((g, i) => { const x = 74 + i * 18; stick(x, 172, 0.68, 'point', t + i * 2, 11 + i); }); // 고용한 독토르(전직 검투사)는 교관 옆
+    stick(46, 178, 0.85, 'point', t, 1); // 교관은 대련장 왼쪽 앞
+    roster.filter(g => g.status === 'doctor').forEach((g, i) => { const x = 70 + i * 22; stick(x, 180, 0.85, 'point', t + i * 2, 11 + i); }); // 고용한 독토르(전직 검투사)는 교관 옆
     // 로라리우스(채찍 든 감독): 대련 조 뒤에서 채찍을 휘두름
-    stick(246, 170, 0.68, 'whip', t, 5); // 로라리우스는 대련장 오른쪽 앞
+    stick(276, 178, 0.85, 'whip', t, 5); // 로라리우스는 대련장 오른쪽 앞
     // 훈련 기둥(팔루스) 둘 + 목검 거치
     const healthyN = roster.filter(g => !g.injured).length; const sparN = Math.min(4, healthyN) - (Math.min(4, healthyN) % 2); // 대련은 짝이 맞는 만큼만 (최대 2조)
     const postN = Math.min(6, Math.max(st.ludus.palus, healthyN - sparN)); /* 팔루스 수 = 시설 */ const posts = Array.from({ length: postN }, (_, i) => 352 + i * (postN <= 2 ? 40 : postN === 3 ? 34 : postN === 4 ? 30 : 22)); // 팔루스는 연습장 밖(오른쪽), 홀로 훈련하는 인원만큼
@@ -1081,9 +1081,9 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
       if (i < sparN) { // 대련: 연습장 타원 안에서 마주보고 한쪽은 공격, 한쪽은 막기(교대)
         const pair = Math.floor(i / 2), side = i % 2;
-        const cx = 118 + pair * 66, gap = 20; const period = 2200; const ph = ((t * 1000) + pair * 700) % period; const attackerSide = ph < period / 2 ? 0 : 1; const el = ph % (period / 2);
+        const cx = 118 + pair * 84, gap = 24; const period = 2200; const ph = ((t * 1000) + pair * 700) % period; const attackerSide = ph < period / 2 ? 0 : 1; const el = ph % (period / 2);
         const isAtk = side === attackerSide; const clip = isAtk ? attackClipFor(g.type) : 'block';
-        drawStickman(ctx, g.type, { x: cx + (side ? gap : -gap), y: 156, scale: 0.62, facing: side ? -1 : 1, skeleton: clipSkeleton(clip, Math.min(el, clipLength(clip))), t, team, accessories: accessoriesOf(g) });
+        drawStickman(ctx, g.type, { x: cx + (side ? gap : -gap), y: 160, scale: 0.85, facing: side ? -1 : 1, skeleton: clipSkeleton(clip, Math.min(el, clipLength(clip))), t, team, accessories: accessoriesOf(g) });
         return;
       }
       // 나머지는 오른쪽 팔루스에서 홀로 각목(목검) 훈련: 공격 클립 반복, 사람마다 위상 다르게
@@ -1222,8 +1222,9 @@ function startSeason() {
   nextFight();
 }
 function nextFight() {
-  let q = queue.shift();
-  while (q && validTeam(st, q.c, q.team)) { skipped.push(q.c); q = queue.shift(); } // 앞 경기의 부상·사망으로 팀이 깨진 계약은 건너뜀 (거절 벌점 없음: 아래 finishSeason 참고)
+  let q = queue.shift(); const lost: string[] = [];
+  while (q && validTeam(st, q.c, q.team)) { skipped.push(q.c); lost.push(`${q.c.venue} (${q.c.size}대${q.c.size}) — ${validTeam(st, q.c, q.team)}`); q = queue.shift(); } // 앞 경기의 부상·사망으로 팀이 깨진 계약은 건너뜀 (거절 벌점 없음: 아래 finishSeason 참고)
+  if (lost.length) { const next = q; void tell(`앞 경기의 부상·사망으로 다음 계약을 치를 수 없습니다.\n${lost.join('\n')}\n거절 벌점은 없습니다.`, '무산된 경기').then(() => { if (!next) { finishSeason(); return; } report = fight(st, next.c, next.team); seasonReports.push(report); renderBattle(); }); return; }
   if (!q) { finishSeason(); return; }
   report = fight(st, q.c, q.team);
   seasonReports.push(report);
