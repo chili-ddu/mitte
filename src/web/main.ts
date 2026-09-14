@@ -56,8 +56,8 @@ function coach(): Node | null {
   let text = '', arrow: 'tabs' | 'plan' | 'go' | 'none' = 'none';
   if (phase === 'manage' && cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
   else if (phase === 'manage' && view === 'market') { text = st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = st.roster.length < 3 ? 'none' : 'tabs'; }
-  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '아래 \'편성 →\' 을 눌러 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
-  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '아래 \'전투 →\' 를 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
+  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '아래 \'편성\' 을 눌러 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
+  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '아래 \'전투\' 를 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
   else if (phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
   if (!text) return null;
   return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
@@ -337,12 +337,12 @@ function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
   return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 아이콘 토글은 탭 바가 아니라 화면 오른쪽에 세로로 뜬다 (fixed)
 }
-// 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성 →', 편성에서는 '← 준비' 와 '전투 →')
+// 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성', 편성에서는 '준비' 와 '전투'). 화살표 없이
 function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
   const toManage = () => { sheet = null; phase = 'manage'; render(); };
   const toPlan = () => { phase = 'plan'; sheet = null; planSel = null; render(); }; // 계약(경기장)을 먼저 고르면 검투사 목록이 나온다
-  if (cur === 'manage') return [{ label: '편성 →', primary: true, onclick: toPlan }];
-  return [{ label: '← 준비', onclick: toManage }, { label: next?.label ?? '전투 →', primary: true, onclick: next?.onclick }];
+  if (cur === 'manage') return [{ label: '편성', primary: true, onclick: toPlan }];
+  return [{ label: '준비', onclick: toManage }, { label: next?.label ?? '전투', primary: true, onclick: next?.onclick }];
 }
 function renderSheet(): Node {
   if (sheet === 'menu') { // 메뉴는 헤더의 톱니바퀴 아래로 내려온다 (아래서 올라오는 시트가 아니라)
@@ -1315,7 +1315,7 @@ function renderPlan() {
     if (!warn.length) { startSeason(); return; }
     void ask(warn.join('\n') + '\n그래도 진행합니까?', { ok: '진행' }).then(ok => { if (ok) startSeason(); });
   };
-  const bar = tabbar(stageItems('plan', { label: ready ? `전투 (${ready}) →` : '전투 →', onclick: go }), [{ key: 'events', icon: 'events', title: '행사', badge: evN }]);
+  const bar = tabbar(stageItems('plan', { label: ready ? `전투 (${ready})` : '전투', onclick: go }), [{ key: 'events', icon: 'events', title: '행사', badge: evN }]);
   // 검투사 목록: 배정/훈련
   const selC0 = planSel != null ? st.contracts.find(x => x.id === planSel) : null;
   const rpanel = h('div', { class: 'panel' }); // 제목 없이 검투사 카드부터
@@ -1352,14 +1352,14 @@ function renderPlan() {
     ], { sel: at != null && !elsewhere, other: elsewhere, dis: !!g.injured || isDoc || vetBlock || unfulfillable || (!!selC && at == null && !!g.fought), tag: elsewhere ? h('span', { class: 'badge other', style: 'margin-left:6px', title: '다른 계약에 배정됨. 누르면 이 계약으로 옮긴다' }, '다른 계약') : at != null ? null : rec ? h('span', { class: 'badge rec', style: 'margin-left:6px' }, `추천 ${rec}`) : canSwap ? h('span', { class: 'hint', style: 'margin-left:6px' }, `누르면 ${st.roster.find(x => x.id === assign[selC!.id][assign[selC!.id].length - 1])?.name ?? '마지막'} 과 교체`) : canAssign && recommend(g) ? h('span', { class: 'badge rec', style: 'margin-left:6px', title: `함께 넣으면 ${recommend(g)}` }, `추천 ${recommend(g)}`) : unfulfillable ? h('span', { class: 'badge injured', style: 'margin-left:6px', title: '이 계약은 조건(베테라누스·인원)을 채울 수 없어 배정할 수 없습니다' }, '계약 조건 미달') : vetBlock ? h('span', { class: 'badge injured', style: 'margin-left:6px', title: '이 계약의 남은 자리는 베테라누스여야 합니다' }, '베테라누스 필요') : null, onclick: () => { if (at != null && !elsewhere) { assign[at] = assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable) { assign[at!] = assign[at!].filter(x => x !== g.id); const list = (assign[selC.id] ??= []); if (list.length >= selC.size) list.pop(); list.push(g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } else if (canSwap && selC) { assign[selC.id].pop(); assign[selC.id].push(g.id); render(); } } })); // 교체: 마지막 자리를 빼고 이 검투사를 넣는다
   }
   { const c = coach(); if (c) wrap.prepend(c); }
-  if (planSel != null) { const full = !!selC0 && teamOf(selC0).length >= selC0.size; wrap.append(cpanel, rpanel, tabbar([{ label: '← 계약', onclick: () => { planSel = null; render(); } }, { label: '배정 완료 →', primary: true, disabled: !full, onclick: () => { planSel = null; render(); } }])); } // 검투사 페이지: 자리가 다 차야 '배정 완료' 가 활성화
+  if (planSel != null) { const full = !!selC0 && teamOf(selC0).length >= selC0.size; wrap.append(cpanel, rpanel, tabbar([{ label: '계약', onclick: () => { planSel = null; render(); } }, { label: '배정 완료', primary: true, disabled: !full, onclick: () => { planSel = null; render(); } }])); } // 검투사 페이지: 자리가 다 차야 '배정 완료' 가 활성화
   else wrap.append(cpanel, proj, bar); // 계약 페이지
   return wrap;
 }
 function eventsPanel(): Node {
   const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (eventPlan[k] ? E[k].cost : 0), 0);
     const ev = (k: keyof SeasonEvents, effect: string) => h('label', { class: `evrow${eventPlan[k] ? ' on' : ''}` }, h('input', { type: 'checkbox', checked: eventPlan[k] ? 'checked' : undefined, onchange: (e: Event) => { eventPlan[k] = (e.target as HTMLInputElement).checked; render(); } }), h('span', { class: 'grow' }, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, effect)), h('span', {}, `${E[k].cost.toLocaleString()} HS`));
-    return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. \'전투 →\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
+    return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. \'전투\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
       ev('cena', `경기 전날 시민 앞에서 만찬 — 출전 검투사 명예 +${E.cena.honor}, 호감도 +${E.cena.fame}`),
       ev('pompa', `경기 당일 행진 참여 — 출전 검투사 명예 +${E.pompa.honor}, 호감도 +${E.pompa.fame}`),
       ev('votum', `사당에 봉헌 — 이번 시즌 미시오 +${Math.round(E.votum.missio * 100)}%`),
@@ -1468,7 +1468,7 @@ function renderSummary() {
           h('div', { class: 'mrow total' }, h('span', {}, '호감도'), h('span', {}, `${sum.fameBefore} → ${st.fame}`)))))),
       h('div', {}, h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '로스터'), ...rosterItems),
         st.over ? null : h('div', { class: 'panel' }, h('h2', {}, `다음 시즌 · ${seasonName(st.season)}`), ...nextItems))),
-    tabbar([{ label: `다음 시즌 (${seasonName(st.season)}) →`, primary: true, onclick: () => { phase = 'manage'; view = 'ludus'; cellsOpen = false; camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; camX = camFor('ludus'); camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
+    tabbar([{ label: `다음 시즌 (${seasonName(st.season)})`, primary: true, onclick: () => { phase = 'manage'; view = 'ludus'; cellsOpen = false; camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; camX = camFor('ludus'); camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
 }
 
 function renderOver() {
@@ -2060,7 +2060,7 @@ function renderResult() {
     h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))),
   ));
   app.prepend(headerEl()); window.scrollTo(0, 0);
-  app.append(tabbar([{ label: queue.length ? `다음 경기 → (${queue.length}경기 남음)` : '시즌 정산으로 →', primary: true, onclick: () => { phase = 'battle'; nextFight(); } }])); // 다음 경기 버튼은 아래 바에
+  app.append(tabbar([{ label: queue.length ? `다음 경기 (${queue.length}경기 남음)` : '시즌 정산', primary: true, onclick: () => { phase = 'battle'; nextFight(); } }])); // 다음 경기 버튼은 아래 바에
 }
 
 render();
