@@ -78,7 +78,8 @@ let seasonReports: FightReport[] = [];
 let seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: 'atk' | 'def' }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null = null;
 let report: FightReport | null = null;
 let notice = '';
-let sheet: 'help' | 'roster' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | null = null;
+let sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | null = null; // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
+let gladSel: number | null = null; // 검투사 시트에 보이는 검투사 id
 let cellSel = 0; // 켈라 팝오버에서 고른 칸
 let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
 let cellsOpen = false, cellsP = 0;
@@ -125,11 +126,6 @@ function seasonIcon(season: number): Node {
   return sp;
 }
 // 작은 상태 아이콘 (인라인 SVG): cross = 부상(붕대 십자), staff = 독토르(지휘봉)
-function svgIcon(kind: 'cross' | 'staff'): Node { const sp = h('span', { class: 'ico' });
-  sp.innerHTML = kind === 'cross' ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>'
-    : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 20 18 6"/><path d="M15 5l4 4"/></svg>';
-  return sp; }
-let rosterSort: 'cell' | 'honor' | 'type' | 'wins' = (['cell', 'honor', 'type', 'wins'].includes(localStorage.getItem('lanista-sort') ?? '') ? localStorage.getItem('lanista-sort') as typeof rosterSort : 'cell');
 // 접이식 패널: 열림 상태를 기억한다
 function foldPanel(key: string, title: string, hint: string, ...kids: (Node | null)[]): Node {
   const open = localStorage.getItem(`lanista-open-${key}`) !== '0';
@@ -281,7 +277,7 @@ function render() {
           h('span', { class: 'meta' }, `${offerPage + 1} / ${learners.length}`),
           h('button', { disabled: offerPage >= learners.length - 1, onclick: () => { offerPage++; render(); } }, '▶'),
           h('span', { style: 'flex:1' }),
-          h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에')))));
+          h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에 (켈라에서)')))));
     }
   }
   if (showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
@@ -311,11 +307,11 @@ function render() {
   const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
   app.append(h('div', { class: 'dash' }, h('div', { class: 'dashbody' }, noticeEl, ...renderDash()))); // 편성으로 가는 버튼은 아래 탭 바의 단계 버튼
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
-  app.append(tabbar(stageItems('manage'), [{ icon: 'cells', title: '켈라', on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } }, { key: 'roster', icon: 'roster', title: '검투사', badge: st.roster.length }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아', badge: st.rivals.length }])); // 규칙은 메뉴에 // 배지 = 현황 (검투사 수 · 독토르 수 · 파밀리아 수)
+  app.append(tabbar(stageItems('manage'), [{ icon: 'cells', title: '켈라', on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아', badge: st.rivals.length }])); // 규칙은 메뉴에 // 배지 = 현황 (독토르 수 · 파밀리아 수). 검투사는 켈라에서
 }
 // ── 탭 바 (화면 아래 고정): 왼쪽은 준비 → 편성 → 전투 단계, 오른쪽은 시트를 여닫는 아이콘 토글(현황 배지). 시트는 화면 위에 여는 상세
 type StageItem = { label: string; on?: boolean; primary?: boolean; disabled?: boolean; onclick?: () => void };
-type ToolItem = { key?: 'roster' | 'doctors' | 'rivals' | 'events'; icon: ToolIcon; title: string; badge?: number; on?: boolean; onclick?: () => void }; // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
+type ToolItem = { key?: 'doctors' | 'rivals' | 'events'; icon: ToolIcon; title: string; badge?: number; on?: boolean; onclick?: () => void }; // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
 type ToolIcon = 'roster' | 'doctors' | 'rivals' | 'events' | 'cells';
 const TOOL_SVG: Record<ToolIcon, string> = { // Lucide 아이콘 (ISC): swords · graduation-cap(교관) · users · calendar-days
   roster: '<path d="m14.5 17.5 3 3"/><path d="m21 3-9 9"/><path d="M6 21 21 6"/><path d="M3 6l3 3"/><path d="m2.5 21.5 3-3"/><path d="M14 21l-3-3"/><path d="M10 6.5 3.5 13"/>',
@@ -346,7 +342,7 @@ function renderSheet(): Node {
       h('div', { class: 'dropmenu', style: `top:${top}px;right:${right}px` }, menuPanel()));
   }
   const body: (Node | null)[] = sheet === 'help' ? [h('h2', {}, '시너지 · 규칙'), renderHelp()]
-    : sheet === 'roster' ? [applicantsPanel(), rosterPanel()]
+    : sheet === 'glad' ? [gladSheet()]
     : sheet === 'facilities' ? [facilitiesPanel()]
     : sheet === 'doctors' ? [doctorsPanel()]
     : sheet === 'chronicle' ? [chroniclePanel()]
@@ -366,7 +362,7 @@ function cellPanel(k: number): Node {
   const q = st.ludus.cells[k] ?? 0, g = occupantOf(st, k), cost = upgradeCost(st, 'cell', k);
   const row = (x: Gladiator, cur: boolean) => h('div', { class: `drow${cur ? ' sel' : ''}`, onclick: cur ? undefined : () => { moveToCell(st, x, k); cellPop = null; render(); } }, // 옮기면 팝오버를 닫는다
     portrait(x, 34), ' ', h('span', { class: 'nm' }, x.name), h('span', { class: 'meta' }, ` ${TYPE_KO[x.type]} · ${x.rank === 'tiro' ? '티로' : '베테'}${x.injured ? ' · 부상' : ''}`), h('span', { style: 'flex:1' }), cur ? h('span', { class: 'hint' }, '이 칸') : h('span', { class: 'hint' }, `${cellOfIdx(x) + 1}번 →`));
-  return h('div', { class: 'panel' }, h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라', '방 장식이 검투사의 상태입니다: 벽의 획수 = 승수(5승 묶음), 종려가지 = 5승마다, 월계관 = 명예 20 이상(40 이상 금빛), 하트 낙서 = 팬 스타, 목검 = 배운 기술 수, 오른쪽 벽 걸이 = 그 유형의 투구·방패·무기, 벽의 나무 검 = 자유민(루디스), 지팡이 = 독토르, 붕대·목발 = 부상. 피로는 자세로: 1 축 처져 앉음, 2 꾸벅임(z z), 3 벽에 기대 잠. 왼쪽 아래 ★ = 켈라 등급, 이름 아래에 유형·명예.\n\n검투사가 자는 작은 방입니다. 검투사를 고르면 이 칸으로 오고, 이미 누가 있으면 서로 자리를 바꿉니다.\n숙소 질 ★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌. 질은 칸에 붙어 있어 검투사를 옮기면 그 칸의 질을 받습니다.')),
+  return h('div', { class: 'panel' }, h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라', '검투사가 자는 작은 방입니다. 검투사를 고르면 이 칸으로 오고, 이미 누가 있으면 서로 자리를 바꿉니다.\n숙소 질 ★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌. 질은 칸에 붙어 있어 검투사를 옮기면 그 칸의 질을 받습니다.')),
     h('div', { class: 'frow' }, h('div', { class: 'grow' }, h('b', {}, g ? g.name : '빈 칸'), h('div', { class: 'meta' }, g ? `${TYPE_KO[g.type]} · 명예 ${g.honor ?? 0} · 피로 ${g.fatigue ?? 0}` : '검투사를 고르면 이 칸에 들어옵니다')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `질↑ ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '최고')),
     h('div', { class: 'dlist' }, ...st.roster.map(x => row(x, x === g))));
 }
@@ -440,6 +436,7 @@ function drawCellsScene(ctx: CanvasRenderingContext2D, t: number) {
   const VH = TOWN.H; const n = st.ludus.cells.length; const rects = cellRects(n);
   ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 0, VW, VH); // 회벽
   ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, 0, VW, 22); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(0, 18, VW, 6); // 회랑 처마
+  { const inj = st.roster.filter(g => g.injured).length, docs = st.roster.filter(g => g.status === 'doctor').length; ctx.fillStyle = '#3a2412'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`켈라 ${st.roster.length}/${st.ludus.cells.length} · 출전 가능 ${available(st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''} — 방을 누르면 검투사`, 8, 15); } // 요약 (검투사 목록 시트를 대신)
   rects.forEach((r, k) => {
     const q = st.ludus.cells[k] ?? 0, g = occupantOf(st, k);
     ctx.fillStyle = g ? '#5a4224' : '#8f7a4e'; ctx.fillRect(r.x, r.y, r.w, r.h); // 방 안 (빈 칸은 막힌 벽처럼 밝게)
@@ -550,17 +547,9 @@ function rivalsPanel(): Node {
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
             h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`))))); })));
 }
-function rosterPanel(): Node {
-  // 루두스 검투사 목록 (전체 폭, 카드 2열). 계약은 대시보드에 있으므로 여기서는 생략
-  const sortKeys: [typeof rosterSort, string][] = [['cell', '켈라'], ['honor', '명예'], ['wins', '승수'], ['type', '유형']];
-  const sorted = [...st.roster].map((g, i) => ({ g, i })).sort((a, b) => rosterSort === 'cell' ? a.i - b.i : rosterSort === 'honor' ? (b.g.honor ?? 0) - (a.g.honor ?? 0) : rosterSort === 'wins' ? b.g.wins - a.g.wins : a.g.type.localeCompare(b.g.type)).map(x => x.g);
-  const sortSel = dropdown('sort', sortKeys.map(([value, label]) => ({ value, label })), rosterSort, v => { rosterSort = v as typeof rosterSort; localStorage.setItem('lanista-sort', rosterSort); render(); });
-  const injN = st.roster.filter(g => g.injured > 0).length, docN = st.roster.filter(g => g.status === 'doctor').length;
-  return h('div', { class: 'panel' }, h('h2', { class: 'rowhead' }, `${st.roster.length}명`,
-      injN ? h('span', { class: 'stat-ico injured', title: `부상 ${injN}명` }, svgIcon('cross'), String(injN)) : null,
-      docN ? h('span', { class: 'stat-ico doc', title: `독토르 ${docN}명 (유형마다 둘 수 있다)` }, svgIcon('staff'), String(docN)) : null,
-      h('span', { style: 'flex:1' }), sortSel),
-    h('div', { class: 'cardgrid' }, ...sorted.map(g => gladCard(g, [
+// 검투사 카드의 행동 버튼(치료·매각·독토르·재훈련·재계약·내보내기·기술 제안). 켈라 방 시트가 쓴다
+function gladActions(g: Gladiator): (Node | null)[] {
+  return [
       g.injured ? h('button', { disabled: st.money < healCostOf(st), onclick: () => { heal(st, g); render(); } }, `치료 ${healCostOf(st)}`) : null,
       (g.status ?? 'slave') === 'slave' ? h('button', { onclick: () => { void ask(`${g.name} 을(를) ${sellPrice(g)} HS 에 매각합니까?`, { ok: '매각' }).then(ok => { if (ok) { sell(st, g); render(); } }); } }, `매각 ${sellPrice(g).toLocaleString()}`) : null,
       g.status === 'rudiarius' ? h('button', { title: `출전 대신 훈련을 맡긴다. 시즌 급료 ${CONFIG.doctorSalary} HS, 같은 유형 훈련 +${CONFIG.doctorBonus}`, onclick: () => { hireDoctor(st, g); render(); } }, `독토르 고용 ${CONFIG.doctorSalary}/시즌`) : null,
@@ -569,8 +558,20 @@ function rosterPanel(): Node {
       g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1 ? h('button', { class: 'primary', disabled: st.money < renewCost(g), title: `계약 ${CONFIG.origins.auctoratus.term}시즌 연장`, onclick: () => { renewContract(st, g); render(); } }, `재계약 ${renewCost(g).toLocaleString()}`) : null,
       g.status && g.status !== 'slave' ? h('button', { onclick: () => { void ask(`${g.name} 을(를) 루두스에서 내보냅니까? (자유민이라 값을 받을 수 없습니다)`, { ok: '내보내기' }).then(ok => { if (ok) { release(st, g); render(); } }); } }, '내보내기') : null,
       ...skillOfferRows(g),
-    ], { dis: !!g.injured }))),
-    st.graveyard.length ? h('div', { class: 'grave' }, '묘비: ' + st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ')) : null);
+    ];
+}
+// 켈라 방 시트: 방을 누르면 그 검투사의 카드 + 행동 버튼 + 이 방 강화 + 다른 방으로 옮기기 (검투사 목록 시트와 켈라 팝오버를 하나로 합쳤다)
+function gladSheet(): Node {
+  const g = st.roster.find(x => x.id === gladSel); if (!g) return h('div', { class: 'panel' }, h('h2', {}, '검투사'), h('div', { class: 'hint' }, '루두스를 떠났습니다.'));
+  const k = cellOf(st, g); const q = st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(st, 'cell', k) : null;
+  const cellRow = (j: number) => { const o = occupantOf(st, j), qj = st.ludus.cells[j] ?? 0; return h('div', { class: `drow${j === k ? ' sel' : ''}`, onclick: j === k ? undefined : () => { moveToCell(st, g, j); render(); } },
+    h('span', { class: 'nm' }, `${j + 1}번`), h('span', { class: 'stars', style: 'margin-left:6px' }, '★'.repeat(qj) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - qj)), h('span', { class: 'meta' }, o ? (o === g ? ' 지금 이 방' : ` ${o.name} 와 자리 바꿈`) : ' 빈 방'), h('span', { style: 'flex:1' }), j === k ? null : h('span', { class: 'hint' }, '옮기기 →')); };
+  return h('div', { class: 'panel' },
+    h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라와 검투사', '검투사가 자는 작은 방입니다. 방 장식이 상태입니다: 벽의 획수 = 승수(5승 묶음), 종려가지 = 5승마다, 월계관 = 명예 20 이상(40 이상 금빛), 하트 낙서 = 팬 스타, 목검 = 배운 기술 수, 오른쪽 벽 걸이 = 그 유형의 투구·방패·무기, 벽의 나무 검 = 자유민(루디스), 지팡이 = 독토르, 붕대·목발 = 부상. 피로는 자세로: 1 축 처져 앉음, 2 꾸벅임(z z), 3 벽에 기대 잠. 왼쪽 아래 ★ = 켈라 등급.\n\n숙소 질 ★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌. 여기서 치료·매각·재훈련·재계약을 하고, 방을 강화하거나 다른 방으로 옮깁니다.')),
+    gladCard(g, gladActions(g), { dis: !!g.injured }),
+    h('div', { class: 'frow', style: 'margin-top:8px' }, h('div', { class: 'grow' }, h('b', {}, '이 방 강화'), h('div', { class: 'meta' }, '★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `질↑ ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '최고')),
+    h('h3', { class: 'sub' }, '다른 방으로 옮기기'),
+    h('div', { class: 'dlist' }, ...st.ludus.cells.map((_, j) => cellRow(j))));
 }
 
 // ── 후계: 은퇴한 라니스타의 뒤를 이을 사람을 고른다
@@ -703,7 +704,7 @@ function renderDash(): Node[] {
   if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
   { const p = mortality(st.lanista.age + 1); const docs = st.roster.filter(g => g.status === 'doctor').length;
     if (st.lanista.age >= 46) out.push(item(p >= 0.045 ? 'warn' : 'idle', `${st.lanista.name} ${st.lanista.age}세 — 해마다 ${Math.round(p * 100)}%의 확률로 세상을 떠날 수 있습니다. 후계 후보: 독토르 ${docs}명${docs ? '' : ' (없으면 부하 해방노예가 잇습니다)'}. 헤더의 '은퇴'로 미리 물려줄 수 있습니다.`)); }
-  if (st.applicants.length) out.push(item('todo', `루두스 문 앞에 자유민 지원자 ${st.applicants.length}명: ${st.applicants.map(g => `${g.name}(${TYPE_KO[g.type]}·${g.rank === 'tiro' ? '티로' : '베테'}, 계약금 ${g.buyPrice.toLocaleString()})`).join(', ')} — 아래 '문 앞의 지원자'에서 계약.`));
+  if (st.applicants.length) out.push(item('todo', `루두스 문 앞에 자유민 지원자 ${st.applicants.length}명: ${st.applicants.map(g => `${g.name}(${TYPE_KO[g.type]}·${g.rank === 'tiro' ? '티로' : '베테'}, 계약금 ${g.buyPrice.toLocaleString()})`).join(', ')} — 아래 카드에서 계약.`));
   { const expiring = st.roster.filter(g => g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1); if (expiring.length) out.push(item('warn', `계약 만료 임박: ${expiring.map(g => `${g.name} (${Math.max(0, g.contractUntil! - st.season + 1)}시즌)`).join(', ')} — 재계약(계약금의 절반)하지 않으면 떠납니다.`)); }
   { const free = st.roster.filter(g => g.status === 'rudiarius'); const docs = st.roster.filter(g => g.status === 'doctor');
     if (free.length) out.push(item('todo', `자유민(루디아리우스) ${free.length}명: ${free.map(g => g.name).join(', ')} — 급료(대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%)를 받고 계속 출전하거나, 독토르로 고용(${CONFIG.doctorSalary} HS/시즌, 같은 유형 훈련 강화).`));
@@ -714,6 +715,7 @@ function renderDash(): Node[] {
   if (st.money < upkeep) out.push(item('warn', `자금이 시즌 유지비 ${upkeep.toLocaleString()} HS 보다 적습니다`));
   else out.push(item('idle', `시즌 유지비 ${upkeep.toLocaleString()} HS`));
   if (st.market.length) out.push(item('idle', `시장 매물 ${st.market.length}명 (${Math.min(...st.market.map(m => m.buyPrice)).toLocaleString()} HS 부터)`));
+  { const ap = applicantsPanel(); if (ap) out.push(ap); } // 문 앞의 지원자 카드 (검투사 목록 시트가 없어져 정문 대시보드에)
   return out;
 }
 
@@ -816,7 +818,7 @@ function renderTown() {
   c.onclick = (ev) => { // 켈라 화면이면 방 클릭, 아니면 시장 매물 클릭 (카메라 보정)
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
-    if (cellsP > 0.9) { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (TOWN.H / r.height); const k = cellRects(st.ludus.cells.length).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= 0) { const q = cellRects(st.ludus.cells.length)[k]; cellSel = k; cellPop = { cx: r.left + (q.x + q.w / 2) * (r.width / VW), cy: r.top + (q.y + q.h / 2) * (r.height / TOWN.H), fresh: true }; render(); } return; }
+    if (cellsP > 0.9) { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (TOWN.H / r.height); const k = cellRects(st.ludus.cells.length).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= 0) { const occ = occupantOf(st, k); if (occ) { gladSel = occ.id; sheet = 'glad'; cellPop = null; render(); return; } /* 사람이 있는 방 → 검투사 시트 */ const q = cellRects(st.ludus.cells.length)[k]; cellSel = k; cellPop = { cx: r.left + (q.x + q.w / 2) * (r.width / VW), cy: r.top + (q.y + q.h / 2) * (r.height / TOWN.H), fresh: true }; render(); } return; }
     if (view === 'grave') { document.querySelector('.dashbody')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; } // 묘비를 누르면 아래 연대기로
     if (view === 'yard') { // 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
       const lx = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.yardX, ly = (ev.clientY - r.top) * (TOWN.H / r.height) - (GY - 210);
@@ -1333,7 +1335,7 @@ function finishSeason() {
     if (tp === 'atk' || tp === 'def') { if (train(st, g, tp)) trained.push({ g, stat: tp }); }
     else if (tp === 'show') { const r = doShow(st, g); if (r) acted.push({ g, act: tp, note: `명예 +${r.honor}` }); }
     else if (tp === 'recover') { if (doRecover(st, g)) acted.push({ g, act: tp, note: '회복 가속' }); }
-    else if (tp === 'skill') { const r = doSkillTrain(st, g); if (r) acted.push({ g, act: tp, note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 카드에서 배울지 정하세요' : '실패'}` }); } }
+    else if (tp === 'skill') { const r = doSkillTrain(st, g); if (r) acted.push({ g, act: tp, note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 돌아오면 배울지 정합니다' : '실패'}` }); } }
   const skippedNow = [...skipped];
   if (skipped.length) st.contracts = st.contracts.filter(c => !skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
   const refused = st.contracts.length ? refuseAll(st) : 0;
