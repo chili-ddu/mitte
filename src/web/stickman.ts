@@ -108,7 +108,7 @@ export function lerpSkeleton(a: Skeleton, b: Skeleton, k: number): Skeleton {
 }
 
 // 클립: 키프레임(자세, 그 자세까지 걸리는 시간 ms). 마지막 자세에서 멈춘다
-export type ClipName = 'attack' | 'stab' | 'stab_secutor' | 'net_trident' | 'net_throw' | 'hit' | 'block' | 'die' | 'die_forward' | 'die_back' | 'die_side' | 'guard' | 'idle' | 'bound' | 'combo_slash' | 'combo_up' | 'combo_sweep' | 'victory' | 'salute' | 'bow' | 'lap' | 'plea' | 'rise' | 'slump';
+export type ClipName = 'yield' | 'plead' | 'attack' | 'stab' | 'stab_secutor' | 'net_trident' | 'net_throw' | 'hit' | 'block' | 'die' | 'die_forward' | 'die_back' | 'die_side' | 'guard' | 'idle' | 'bound' | 'combo_slash' | 'combo_up' | 'combo_sweep' | 'victory' | 'salute' | 'bow' | 'lap' | 'plea' | 'rise' | 'slump';
 const CLIPS: Record<ClipName, { pose: Pose; dur: number }[]> = {
   attack: [{ pose: 'guard', dur: 0 }, { pose: 'windup', dur: 140 }, { pose: 'attack', dur: 70 }, { pose: 'swing', dur: 70 }, { pose: 'recover', dur: 130 }, { pose: 'guard', dur: 150 }], // 시카 내려찍기
   stab:         [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 110 }, { pose: 'stab', dur: 60 }, { pose: 'stab_ready', dur: 120 }, { pose: 'guard', dur: 120 }], // 글라디우스
@@ -131,6 +131,8 @@ const CLIPS: Record<ClipName, { pose: Pose; dur: number }[]> = {
   die_side:    [{ pose: 'hit', dur: 0 }, { pose: 'sit', dur: 170 }, { pose: 'sit_slump', dur: 220 }, { pose: 'sit_slump', dur: 120 }, { pose: 'down_sit', dur: 240 }],
   guard:  [{ pose: 'guard', dur: 0 }],
   idle:   [{ pose: 'idle', dur: 0 }],
+  yield:  [{ pose: 'hit', dur: 0 }, { pose: 'stagger', dur: 140 }, { pose: 'kneel_up', dur: 260 }, { pose: 'plea', dur: 400 }, { pose: 'plea', dur: 200 }], // 쓰러지지 않고 비틀거리다 무릎 꿇고 검지를 든다 (항복, 아드 디기툼)
+  plead:  [{ pose: 'plea', dur: 0 }], // 판정 동안 검지를 든 채
   plea:   [{ pose: 'down', dur: 0 }, { pose: 'kneel_up', dur: 600 }, { pose: 'plea', dur: 500 }, { pose: 'plea', dur: 200 }],          // 쓰러진 채 → 무릎 → 검지 들기
   rise:   [{ pose: 'plea', dur: 0 }, { pose: 'kneel_up', dur: 300 }, { pose: 'captive', dur: 500 }, { pose: 'idle', dur: 300 }],        // 살았다: 천천히 일어섬
   slump:  [{ pose: 'plea', dur: 0 }, { pose: 'kneel_down', dur: 220 }, { pose: 'kneel_down', dur: 200 }, { pose: 'down_fwd', dur: 320 }], // 처형: 고개 떨구고 엎어짐

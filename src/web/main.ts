@@ -1691,24 +1691,32 @@ function vsGraffiti(): Node {
 }
 function renderBattle() {
   const r = report!;
-  app.replaceChildren();
+  app.replaceChildren(); app.classList.remove('fit');
   const canvas = h('canvas', { id: 'arena' }) as HTMLCanvasElement;
   const logEl = h('div', { class: 'log' });
   const skip = h('button', { style: DEBUG ? '' : 'display:none' }, '건너뛰기'); // 테스트용: 주소에 ?debug 가 있을 때만 보인다
   const legendShown = localStorage.getItem('lanista-legend') === '1'; localStorage.setItem('lanista-legend', '1'); // 범례는 처음 한 번만
-  const wrap = h('div', { class: 'panel battle' }, // 편성처럼 화면 전환 (모달 아님)
-    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`),
-    h('div', { class: 'lineup' }, // 누가 싸우는지: 윗줄 내 편, 아랫줄 상대, 사이 배경에 VS 문양 (유형·이름·서열·전적·공방)
+  const lineup = h('div', { class: 'lineup overlay-lineup' }, // 누가 싸우는지: 윗줄 내 편, 아랫줄 상대, 사이 배경에 VS 문양 (유형·이름·서열·전적·공방)
       h('div', { class: 'side mine' }, ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${skillsOf(g).length ? ` · 기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
       vsGraffiti(),
-      h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`))))),
-    legendShown ? null : h('div', { class: 'hint', style: 'margin:-2px 0 6px' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')), // 소요 시간 표시는 뺐다
-    canvas, h('div', { class: 'actions' }, skip));
-  app.append(headerEl(), wrap, tabbar([{ label: '전투 중…', disabled: true }])); window.scrollTo(0, 0); // 전투에서도 위 헤더와 아래 바를 유지
-  const W = canvas.clientWidth || 720, H = canvas.clientHeight || 500; // 높이는 CSS(min(500px, 60vh))를 따른다
+      h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))));
+  const miniSq = (g: Gladiator) => h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14));
+  const lineupTab = h('button', { class: 'lineup-tab', title: '편성 보기', onclick: () => { lineup.classList.remove('folded'); lineupTab.classList.remove('show'); } },
+    ...r.team.map(miniSq), h('span', { class: 'vs-mini' }, 'vs'), ...r.contract.enemy.map(miniSq)); // 접힌 뒤엔 유형 아이콘 vs 유형 아이콘 줄. 누르면 편성이 내려온다
+  const foldLineup = () => { lineup.classList.add('folded'); lineupTab.classList.add('show'); };
+  const wrap = h('div', { class: 'panel battle' }, // 편성처럼 화면 전환 (모달 아님). 편성(VS) 블록은 경기장 위에 겹쳐 띄웠다가 잠시 뒤 위로 접힌다
+    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`),
+    h('div', { class: 'stage' }, canvas, lineup, lineupTab,
+      legendShown ? null : h('div', { class: 'legend' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')),
+      h('div', { class: 'actions' }, skip)));
+  app.append(headerEl(), wrap, tabbar([{ label: '전투 중…', disabled: true }])); app.classList.add('fit'); window.scrollTo(0, 0); // 전투에서도 위 헤더와 아래 바를 유지, 페이지 스크롤 없음
+  { const top = canvas.getBoundingClientRect().top; const bar = document.querySelector<HTMLElement>('.tabbar'); const barH = bar ? bar.getBoundingClientRect().height : 58; canvas.style.height = `${Math.max(280, Math.floor(innerHeight - top - barH - 8))}px`; } // 경기장 높이 = 남는 높이 (스크롤 없이 바 바로 위까지)
+  lineup.addEventListener('click', foldLineup); canvas.addEventListener('click', () => { if (!lineup.classList.contains('folded')) foldLineup(); }); // 편성이나 전투 화면을 누르면 접힌다. 접힌 뒤엔 아이콘 줄을 누르면 내려온다
+  window.setTimeout(() => { if (phase === 'battle') foldLineup(); }, 4500); // 소개 연출이 끝날 즈음 접힌다
+  const W = canvas.clientWidth || 720, H = canvas.clientHeight || 500;
   canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
   const ctx = canvas.getContext('2d')!; ctx.scale(devicePixelRatio, devicePixelRatio);
-  const ZK = Math.max(0.72, Math.min(1, W / 1000)); // 좁은 화면: 줌을 낮춰 싸움이 화면에 들어오게 (폰 ≈ 0.72, 보이는 폭 ≈ 620)
+  const ZK = Math.max(0.72, Math.min(1, W / 1000)) * Math.min(1.2, Math.max(1, H / 540)); // 좁은 화면: 줌을 낮춰 싸움이 화면에 들어오게 (폰 ≈ 0.72, 보이는 폭 ≈ 620). 캔버스가 세로로 길면(화면 채움) 조금 더 당겨 위아래 빈 곳을 줄인다
   // 룰 좌표 → 월드 좌표 (바닥 타원 안, 화면 폭에 맞춤)
   const sx = (x: number) => (x / ARENA.w - 0.5) * 1120; // 바닥 폭 거의 전체
   const sy = (y: number) => (y / ARENA.h - 0.5) * floorRy(tilt) * 1.27 - 8;
@@ -1731,7 +1739,8 @@ function renderBattle() {
   const jolt: Record<number, { amp: number; until: number }> = {};
   let slowUntil = -1;
   let zoomAt: { x: number; y: number } | null = null; let zoomStart = -1;
-  const fx: { kind: 'slash' | 'dust' | 'ink'; x: number; y: number; t: number; dir: number; seed: number }[] = [];
+  type FxKind = 'slash' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
+  const fx: { kind: FxKind; x: number; y: number; t: number; dir: number; seed: number; id?: number; to?: number; life?: number }[] = []; // id: 붙어 다닐 검투사 · to: 상대 · life: 총 시간
   const shouts: { text: string; t: number; x: number }[] = [];
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
@@ -1796,11 +1805,30 @@ function renderBattle() {
       return;
     }
   }
+  // 기술별 낙서풍 연출 (파티클). 상대 위치는 붙어 있는 상대(engaged)로
+  function skillFx(id: number, skill: string, ct: number) {
+    const p0 = posAt(ct)[id]; const d = face[id]; const tid = engaged[id]; const pt = tid != null ? posAt(ct)[tid] : null;
+    const at = (kind: FxKind, life: number, extra: Partial<{ x: number; y: number; dir: number; to: number }> = {}) => fx.push({ kind, x: p0.x, y: p0.y, t: life, life, dir: d, seed: id * 13 + Math.floor(ct * 10), id, ...extra });
+    switch (skill) {
+      case 'feint': at('ghost', 0.45); break;                                                   // 잔상이 반대쪽으로 빠진다
+      case 'shield_bash': at('shock', 0.35, { x: p0.x + d * 22 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.5, dir: d, seed: id }); break; // 방패 앞 충격파 + 상대 발밑 먼지
+      case 'riposte': at('gslash', 0.3, { x: p0.x + d * 26, y: p0.y - 4 }); break;              // 금색 역방향 베기
+      case 'twin_cut': at('dslash', 0.34, { x: p0.x + d * 26, y: p0.y - 6 }); break;            // 엇갈린 두 획
+      case 'net_recover': if (pt) at('netline', 0.55, { x: pt.x, y: pt.y - 10, to: tid }); break;  // 그물이 줄에 끌려 되돌아온다
+      case 'spear_ward': at('push', 0.3, { x: p0.x + d * 30, y: p0.y - 8 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.4, dir: d, seed: id + 1 }); break; // 창 끝에서 밀치는 직선
+      case 'stand_firm': at('ring', 0.5, { y: p0.y + 34 }); break;                              // 발밑 먼지 고리 + 굵은 윤곽
+      case 'second_wind': at('halo', 2.0); crowdCheer = Math.max(crowdCheer, 0.4); break;        // 심판 지팡이가 내려오고 흰 원, 초록 점
+      case 'appeal': at('cloth', 1.2); crowdCloth = Math.min(1, crowdCloth + 0.3); break;         // 손수건이 날린다
+      case 'charge_plus': at('trail', 0.45); break;                                               // 긴 먼지 자국
+    }
+  }
+  if (DEBUG) { const keyFx = (ev: KeyboardEvent) => { const k = '1234567890'.indexOf(ev.key); if (k < 0 || phase !== 'battle') return; const id = r.team[0].id; engaged[id] ??= r.contract.enemy[0].id; skillFx(id, SKILLS[k].id, ct); flash.push({ id, t: 1.3, text: SKILLS[k].name, color: '#c58a1a' }); }; window.addEventListener('keydown', keyFx); } // 테스트: ?debug 에서 숫자키 1~0 으로 기술 연출을 강제로 띄운다
   function fireEvents(ct: number) {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
       const e = r.events[ei++];
-      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip(); continue; }
+      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip();
+        skillFx(e.actor, e.skill ?? '', ct); continue; }
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
@@ -1820,7 +1848,7 @@ function renderBattle() {
       const evIdx = ei; // 이벤트 순서. 연속 공격(2타)의 피격 반영이 1타보다 먼저 와도 앞선 값이 나중 값을 덮지 않게
       pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
         if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
-        play(tid, e.downed ? deathClipFor(byId[aid].g.type) : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay);
+        play(tid, e.downed ? (woundOf(tid) ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 쓰러지는 건 상처로 죽을 때만. 아니면 무릎 꿇고 검지(항복)
         if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
         const stack = flash.filter(f => f.id === tid).length;
         flash.push({ id: tid, t: 1 + stack * 0.35, text: `-${e.dmg}${e.counter ? '!' : ''}${e.charge ? ' 돌진' : ''}${e.combo ? ' 연속' : ''}${e.blocked ? ' 방패' : ''}${e.net ? ' 그물' : ''}`, color: e.counter ? '#9b2c1c' : e.blocked ? '#2c4f9b' : '#2b1d0e' });
@@ -1833,7 +1861,7 @@ function renderBattle() {
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
         if (!e.blocked && Math.random() < pBlood) bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2);
         if (e.crit) flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' });
-        if (e.downed) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x);
+        if (e.downed && !woundOf(tid)) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); else if (e.downed) shout('…', pt.x); // 상처로 숨지면 관중은 말을 잃는다
         else if (e.crit) shout('하베트!  하베트!', pt.x);
         else if (heavy) shout('하베트!', pt.x);
         else if (e.blocked) shout('오오…', pt.x);
@@ -2024,6 +2052,7 @@ function renderBattle() {
   const bleedAt: { at: number; x: number; y: number; dir: number }[] = [];
   const exits: Record<number, { start: number; dir: 1 | -1 }> = {};
   const fateOf = (id: number) => r.fates.find(f => f.g.id === id)?.fate;
+  const woundOf = (id: number) => !!(r.fates.find(f => f.g.id === id)?.wound || r.enemyFates.find(f => f.g.id === id)?.wound); // 상처로 죽는가 (판정 없이)
   const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
   let ct = 0, lastReal = performance.now(), done = false, doneAt = 0, lastDtReal = 0.016, frameNo = 0;
@@ -2035,11 +2064,12 @@ function renderBattle() {
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
     if (!done && hasJudge && !hasJudgeFailed && !judge && ct >= r.duration + 1.0) {
       const pos0 = posAt(ct);
-      const losersRaw = units.filter(u => u.side !== r.winner && hp[u.g.id] <= 0);
-      if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
+      const losersRaw = units.filter(u => u.side !== r.winner && hp[u.g.id] <= 0 && !woundOf(u.g.id)); // 상처로 이미 숨진 자는 판정 대상이 아니다
+      if (!losersRaw.length && units.some(u => u.side !== r.winner && woundOf(u.g.id))) { hasJudgeFailed = true; hostShout = '쓰러진 자는 다시 일어나지 못했다'; }
+      else if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
       const losers = losersRaw.map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
       judge = { start: ct, stage: 0, losers };
-      for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, 'plea', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; }
+      for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, 'plead', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; } // 이미 무릎 꿇고 검지를 든 채
       if (!losers.length) { judge = null; } else {
       const L0 = losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.3; zoomOutDur = 0.5;
       shout('미테!  미테!', L0.x); hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; }

@@ -63,6 +63,6 @@ export const CONFIG = {
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 30,
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
-  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5 },
+  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, woundDeath: 0.3 }, // woundDeath: 사망 판정 중 상처 자체로 죽는(판정 없이 쓰러져 숨지는) 비율
   fameDelta: { win: 5, classicWin: 2, lose: -3, refuse: -2, death: -1, decay: -1, active: 1 }, // refuse: 시즌당 1회, 받을 수 있었던 계약을 거절했을 때만. active: 시즌에 한 번이라도 출전하면 +1
 } as const;

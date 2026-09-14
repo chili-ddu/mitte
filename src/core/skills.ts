@@ -25,7 +25,8 @@ export const skillsOf = (g: Gladiator): SkillId[] => (g.skills ?? []) as SkillId
 export const hasSkill = (g: Gladiator, id: SkillId) => skillsOf(g).includes(id);
 export const masteryOf = (g: Gladiator, id: SkillId) => g.skillMastery?.[id] ?? 0;
 export const masteryBonus = (g: Gladiator, id: SkillId) => Math.min(MASTERY_MAX, masteryOf(g, id) * MASTERY_PER_USE);
-export const procChance = (g: Gladiator, id: SkillId) => SKILL_BY_ID[id].base + masteryBonus(g, id) + ((g.epithets ?? []).includes('dictata') ? 0.03 : 0); // 별칭 '딕타타의 달인' +3%
+let forceProc = false; export function setForceProc(v: boolean) { forceProc = v; } // 테스트용: 기술이 조건만 맞으면 반드시 발동 (?debug&proc)
+export const procChance = (g: Gladiator, id: SkillId) => forceProc ? 1 : SKILL_BY_ID[id].base + masteryBonus(g, id) + ((g.epithets ?? []).includes('dictata') ? 0.03 : 0); // 별칭 '딕타타의 달인' +3%
 export function addMastery(g: Gladiator, id: SkillId, n = 1) { (g.skillMastery ??= {})[id] = masteryOf(g, id) + n; }
 
 // 프리무스 팔루스: 같은 유형 안의 1등 (승수 8·명예 20). 슬롯 티로 1 · 베테라누스 2 · 프리무스 팔루스 3
