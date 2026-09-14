@@ -312,6 +312,26 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
 }
 
 // 상대를 덮은 그물: 머리부터 발까지 덮는 돔. (x, footY) = 발 위치, h = 키
+// 방에 거치해 둔 장비(켈라 장식). 기준점 = 벽 앞 바닥. 투구는 벽 선반 위, 검·시카는 못 두 개에 가로로 걸고, 창·삼지창은 벽에 비스듬히 세워 두고,
+// 방패는 벽에 기대 바닥에 놓고, 그물은 못에 걸어 늘어뜨린다
+export function drawGearRack(ctx: CanvasRenderingContext2D, who: GType | Loadout, x: number, floorY: number, s: number, seed: number, team?: string) {
+  const L = typeof who === 'string' ? loadoutFor(who) : who;
+  ctx.save(); ctx.translate(x, floorY); ctx.scale(s, s); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  const peg = (px: number, py: number) => { ctx.fillStyle = '#3a2412'; ctx.fillRect(px - 1.2, py - 1.2, 2.4, 3.2); };
+  // 선반 + 투구
+  if (L.helmet !== 'none') { ctx.fillStyle = '#6b4a22'; ctx.fillRect(-14, -54, 28, 3); ctx.fillRect(-11, -51, 3, 5); ctx.fillRect(8, -51, 3, 5); drawHead(ctx, L.helmet, 0, -63, 9, seed, '#a08a60'); }
+  // 무기
+  const long = L.main === 'spear' || L.main === 'trident';
+  if (long) { ctx.save(); ctx.translate(-13, -14); ctx.rotate(0.16); drawWeapon(ctx, L.main, 0, 0, 180, 'idle', seed); ctx.restore(); } // 자루 끝을 바닥에, 벽에 비스듬히 기대 세움
+  else { peg(-8, -38); peg(6, -38); ctx.save(); ctx.translate(9, -36); ctx.rotate(-Math.PI / 2); drawWeapon(ctx, L.main, 0, 0, 180, 'idle', seed); ctx.restore(); } // 못 둘에 가로로 (손잡이 오른쪽)
+  // 방패 / 그물 / 왼손 칼
+  const shieldBottom: Partial<Record<string, number>> = { scutum: 11, medium: 8, parma: 9, parmula: 7 };
+  const sb = shieldBottom[L.off];
+  if (sb != null) { ctx.save(); ctx.translate(7, -sb - 1); ctx.rotate(-0.14); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 벽에 기대 바닥에
+  else if (hasNet(L)) { peg(10, -44); ctx.save(); ctx.translate(10, -43); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 못에 걸어 늘어뜨림
+  else if (L.off === 'blade') { peg(-8, -28); peg(6, -28); ctx.save(); ctx.translate(9, -26); ctx.rotate(-Math.PI / 2 + 0.9); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 두 번째 칼도 가로로
+  ctx.restore();
+}
 export function drawNetOverlay(ctx: CanvasRenderingContext2D, x: number, footY: number, h: number, ink = INK, t = 0) {
   const rx = h * 0.42, ry = h * 0.56, cy = footY - h * 0.02; // 타원 중심은 발 근처, 위로 ry 만큼
   ctx.save(); ctx.strokeStyle = ink; ctx.lineWidth = 1.1; ctx.globalAlpha *= 0.65;
