@@ -121,7 +121,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .tabbar button.stage { flex:1 1 0; padding:4px 6px; overflow:hidden; text-overflow:ellipsis; }
 .tabbar button.stage.on { background:var(--ink); color:#fff; border-color:var(--ink); }
 .tabbar button.stage:disabled { opacity:.4; }
-.tabbar button.stage.primary { flex:1.4 1 0; }
+.tabbar button.stage.primary { flex:2 1 0; }
 .sidetools button.tool { position:relative; width:44px; height:44px; min-height:44px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(243,234,208,.94); border:1px solid #7a5a1c; color:#3a2412; box-shadow:0 1px 2px rgba(58,36,18,.35); }
 .sidetools button.tool.on { background:var(--ink); color:#f3ead0; border-color:var(--ink); }
 .nbadge { position:absolute; top:-6px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#5a3a1c; color:#f3ead0; font-size:11px; font-weight:700; line-height:18px; text-align:center; box-shadow:0 0 0 2px var(--sand2); } /* 현황 배지 (알림이 아니라 수를 보여 준다) */

@@ -327,12 +327,12 @@ function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
   return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 아이콘 토글은 탭 바가 아니라 화면 오른쪽에 세로로 뜬다 (fixed)
 }
-// 단계 버튼: 준비(관리) → 편성 → 전투. 현재 단계는 강조, 다음 단계가 실행 버튼, 지난 단계는 눌러 돌아간다
+// 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성 →', 편성에서는 '← 준비' 와 '전투 →')
 function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
   const toManage = () => { sheet = null; phase = 'manage'; render(); };
   const toPlan = () => { phase = 'plan'; sheet = null; planSel = st.contracts[0]?.id ?? null; render(); };
-  if (cur === 'manage') return [{ label: '준비', on: true }, { label: '편성 →', primary: true, onclick: toPlan }, { label: '전투', disabled: true }];
-  return [{ label: '← 준비', onclick: toManage }, { label: '편성', on: true }, { label: next?.label ?? '전투 →', primary: true, onclick: next?.onclick }];
+  if (cur === 'manage') return [{ label: '편성 →', primary: true, onclick: toPlan }];
+  return [{ label: '← 준비', onclick: toManage }, { label: next?.label ?? '전투 →', primary: true, onclick: next?.onclick }];
 }
 function renderSheet(): Node {
   if (sheet === 'menu') { // 메뉴는 헤더의 톱니바퀴 아래로 내려온다 (아래서 올라오는 시트가 아니라)
