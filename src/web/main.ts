@@ -1055,8 +1055,11 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     const cellCap = rosterCap(st); let cellK = 0;
     for (let x = 34; x < W; x += 68) {                                // 1층 아치 + 열주
       ctx.fillStyle = '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 18, 78); ctx.lineTo(x - 18, 48); ctx.arc(x, 48, 18, Math.PI, 0); ctx.lineTo(x + 18, 78); ctx.closePath(); ctx.fill();
-      const isCell = Math.abs(x - W / 2) > 40 && cellK < cellCap; if (isCell) cellK++; // 켈라은 상한 수만큼 열려 있고, 나머지는 막힌 벽
-      if (isCell) { const q = st.ludus.cells[cellK - 1] ?? 0; ctx.fillStyle = q >= 2 ? '#5a3a1c' : '#3a2412'; ctx.fillRect(x - 7, 56, 14, 22); ctx.fillStyle = q >= 1 ? '#e8c96a' : '#5a4224'; ctx.fillRect(x - 5, 60, 10, 2); ctx.fillRect(x - 5, 64, 10, 2); if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 9, 52, 18, 3); } } // 켈라 문: 질 1 창에 불빛, 2 나무문, 3 붉은 차양
+      const isDoor = x === 34; // 맨 왼쪽 아치 = 의무실로 통하는 통로 (의무실은 담 너머 독립 건물). 바닥에 문을 따로 세우지 않고 회랑 벽에 낸다
+      const isCell = !isDoor && Math.abs(x - W / 2) > 40 && cellK < cellCap; if (isCell) cellK++; // 켈라은 상한 수만큼 열려 있고, 나머지는 막힌 벽
+      if (isDoor) { ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(x - 12, 78); ctx.lineTo(x - 12, 56); ctx.arc(x, 56, 12, Math.PI, 0); ctx.lineTo(x + 12, 78); ctx.closePath(); ctx.fill(); // 열린 통로
+        ctx.strokeStyle = '#3b7a2c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, 34); ctx.stroke(); ctx.beginPath(); ctx.arc(x, 37, 3.5, 0.3, Math.PI * 1.7); ctx.stroke(); } // 문 위 작은 표지: 지팡이에 감긴 뱀(아스클레피오스)
+      else if (isCell) { const q = st.ludus.cells[cellK - 1] ?? 0; ctx.fillStyle = q >= 2 ? '#5a3a1c' : '#3a2412'; ctx.fillRect(x - 7, 56, 14, 22); ctx.fillStyle = q >= 1 ? '#e8c96a' : '#5a4224'; ctx.fillRect(x - 5, 60, 10, 2); ctx.fillRect(x - 5, 64, 10, 2); if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 9, 52, 18, 3); } } // 켈라 문: 질 1 창에 불빛, 2 나무문, 3 붉은 차양
       else { ctx.fillStyle = '#8f7a4e'; ctx.fillRect(x - 10, 52, 20, 26); } // 막힌 아치 (증축 전)
       ctx.fillStyle = '#d9c69a'; ctx.fillRect(x + 26, 32, 8, 46);     // 기둥
     }
@@ -1066,8 +1069,6 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, 76); ctx.lineTo(sx, 58); ctx.moveTo(sx - 7, 66); ctx.lineTo(sx + 7, 66); ctx.stroke(); ctx.beginPath(); ctx.arc(sx, 53, 4, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = '#3b7a2c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, 46, 16, 0.2, Math.PI - 0.2); ctx.stroke();
       if (st.events?.votum) { for (const dx of [-14, 14]) { ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx + dx - 2, 68, 4, 8); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(sx + dx, 65 + Math.sin(t * 9 + dx) * 0.6, 2, 3.5, 0, 0, Math.PI * 2); ctx.fill(); } } } // 봉헌: 촛불 둘
-    // 왼쪽: 의무실로 통하는 문 (의무실은 담 너머 독립 건물)
-    ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(14, H - 26); ctx.lineTo(14, 120); ctx.arc(28, 120, 14, Math.PI, 0); ctx.lineTo(42, H - 26); ctx.closePath(); ctx.fill();
     stickFn = stick; // 의무실 장면이 같은 보조 인물 리그를 쓴다
     // 작은 타원 연습장 + 관람석: 루두스 마그누스의 미니 원형경기장
     ctx.strokeStyle = '#c4ad76'; ctx.lineWidth = 2; ctx.beginPath(); ctx.beginPath(); ctx.ellipse(160, 142, 118, 30, 0, 0, Math.PI * 2); ctx.fillStyle = '#e4d3a4'; ctx.fill(); ctx.stroke();
