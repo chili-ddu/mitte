@@ -1268,7 +1268,9 @@ function renderPlan() {
     const at = assignedTo(g.id); const c = at != null ? st.contracts.find(x => x.id === at) : null;
     const selC = planSel != null ? st.contracts.find(x => x.id === planSel) : null;
     const isDoc = g.status === 'doctor';
-    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) < selC.size;
+    // 조건: 고른 계약의 남은 자리가 모두 베테라누스 몫이면 티로는 넣을 수 없다 (validTeam 의 베테라누스 조건을 미리 적용)
+    const vetBlock = (() => { if (!selC || at != null || g.rank === 'veteranus') return false; const team = (assign[selC.id] ?? []).map(id => st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const left = selC.size - team.length, vetsLeft = selC.needVeterans - team.filter(x => x.rank === 'veteranus').length; return left > 0 && vetsLeft >= left; })();
+    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) < selC.size && !vetBlock;
     const tp = trainPlan[g.id] ?? 'rest';
     if (at != null || isDoc) { // 배정된 검투사·독토르는 한 줄로 접는다 (누르면 배정 해제). 화면을 스크롤하지 않도록
       rpanel.append(h('div', { class: `card mini${at != null ? ' sel' : ''}`, onclick: at != null ? () => { assign[at] = assign[at].filter(x => x !== g.id); render(); } : undefined },
@@ -1292,7 +1294,7 @@ function renderPlan() {
         h('button', { class: tp === 'recover' ? 'on' : '', title: `요양: 이번 시즌 부상 회복 +${CONFIG.actions.recover.extra} (무료)`, onclick: (ev: Event) => { ev.stopPropagation(); trainPlan[g.id] = tp === 'recover' ? 'rest' : 'recover'; render(); } }, `요양 (부상 ${g.injured}→${Math.max(0, g.injured - 1 - CONFIG.actions.recover.extra)}시즌)`),
         h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)) : null,
       ...skillOfferRows(g),
-    ], { sel: at != null, dis: !!g.injured || isDoc, tag: at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : null, onclick: () => { if (at != null) { assign[at] = assign[at].filter(x => x !== g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } } }));
+    ], { sel: at != null, dis: !!g.injured || isDoc || vetBlock || (!!selC && at == null && !!g.fought), tag: at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : vetBlock ? h('span', { class: 'badge injured', style: 'margin-left:6px', title: '이 계약의 남은 자리는 베테라누스여야 합니다' }, '베테라누스 필요') : null, onclick: () => { if (at != null) { assign[at] = assign[at].filter(x => x !== g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } } }));
   }
   { const c = coach(); if (c) wrap.prepend(c); }
   wrap.append(cpanel, rpanel, proj, bar);
