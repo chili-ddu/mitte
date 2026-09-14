@@ -129,7 +129,11 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .panel.battle { position:relative; }
 .panel.battle .actions { position:absolute; right:18px; bottom:18px; margin:0; } /* 버튼을 캔버스 위에 띄워 화면이 짧아도 항상 보인다 */
 .panel.battle .actions button { min-height:40px; padding:6px 14px; background:rgba(255,248,229,.92); }
-.panel.battle h2 { font-size:18px; text-transform:none; letter-spacing:0; color:var(--ink); }
+.panel.battle h2 { font-size:18px; text-transform:none; letter-spacing:0; color:var(--ink); margin-bottom:4px; }
+.panel.battle .lineup { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; font-size:12.5px; margin:0 0 6px; }
+.panel.battle .lineup .fighter.mine b { color:#2c4f9b; }
+.panel.battle .lineup .fighter.enemy b { color:#7a2a6a; }
+.panel.battle .lineup .vs { font-weight:700; color:var(--dim); }
 .modal.ask p { margin:4px 0; }
 .log { font:12px/1.4 ui-monospace, Menlo, monospace; background:#fbf6e6; padding:8px; border-radius:4px; max-height:160px; overflow:auto; white-space:pre-wrap; }
 .fate { padding:4px 0; }

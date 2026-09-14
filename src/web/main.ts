@@ -1479,11 +1479,14 @@ function renderBattle() {
   const canvas = h('canvas', { id: 'arena' }) as HTMLCanvasElement;
   const logEl = h('div', { class: 'log' });
   const skip = h('button', {}, '건너뛰기');
-  const clock = h('span', { class: 'hint' }, '0.0s');
   const legendShown = localStorage.getItem('lanista-legend') === '1'; localStorage.setItem('lanista-legend', '1'); // 범례는 처음 한 번만
   const wrap = h('div', { class: 'panel battle' }, // 편성처럼 화면 전환 (모달 아님)
-    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size} · ${queue.length + 1}경기 남음`)),
-    h('div', { class: 'hint', style: 'margin:-6px 0 6px' }, ...(legendShown ? [] : [h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아'), '   ']), clock),
+    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size}`)),
+    h('div', { class: 'lineup' }, // 누가 싸우는지: 내 편 vs 상대 (유형·이름·서열·전적·공방)
+      ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${skillsOf(g).length ? ` · 기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`))),
+      h('span', { class: 'vs' }, 'vs'),
+      ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
+    legendShown ? null : h('div', { class: 'hint', style: 'margin:-2px 0 6px' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')), // 소요 시간 표시는 뺐다
     canvas, h('div', { class: 'actions' }, skip));
   app.append(wrap); window.scrollTo(0, 0);
   const W = canvas.clientWidth || 720, H = canvas.clientHeight || 500; // 높이는 CSS(min(500px, 60vh))를 따른다
@@ -1849,7 +1852,6 @@ function renderBattle() {
     for (let i = bleedAt.length - 1; i >= 0; i--) if (ct >= bleedAt[i].at) { const b = bleedAt[i]; bleed(b.x, b.y, b.dir, 18, 1.3); bleedAt.splice(i, 1); }
     if ((frameNo++ & 7) === 0) setCrowd(judge && judge.stage === 1 && !done ? 0.04 : 0.2 + density * 0.4 + (crowdCheer > 0 ? 0.35 : 0) + (frenzy ? 0.5 : 0)); // 판정 중엔 관중이 숨을 죽인다
     draw(ct, Math.max(dt, real * 0.25));
-    clock.textContent = intro < INTRO_HOLD + INTRO_ZOOM ? '준비…' : `${Math.min(ct, r.duration).toFixed(1)}s / ${r.duration.toFixed(1)}s`;
     if (!done && ct >= END) { done = true; skip.textContent = '결과 보기'; }
     if (phase === 'battle') requestAnimationFrame(anim);
   };
