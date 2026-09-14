@@ -1475,6 +1475,21 @@ function drawCheerOverlay(ctx: CanvasRenderingContext2D, seats: ReturnType<typeo
   }
 }
 
+// 폼페이 낙서풍 VS: 벽에 긁어 쓴 듯 삐뚤한 획을 두 번 겹친다 (스틱맨과 같은 잉크색)
+function vsGraffiti(): Node {
+  const el = h('span', { class: 'vs', 'aria-hidden': 'true' });
+  el.innerHTML = `<svg viewBox="0 0 120 60" width="120" height="60" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#3a2412" stroke-width="3.2" opacity=".55">
+      <path d="M14 12 L27 47 L41 10"/><path d="M16 14 L29 45"/>
+      <path d="M92 14 C80 6 66 12 70 22 C74 32 96 30 98 41 C99 51 78 55 66 46"/><path d="M90 16 C82 10 72 14 74 21"/>
+    </g>
+    <g stroke="#3a2412" stroke-width="1.4" opacity=".35">
+      <path d="M12 14 L26 49"/><path d="M42 12 L28 48"/><path d="M96 43 C97 52 77 56 68 48"/>
+      <path d="M50 30 L62 28"/><path d="M8 52 L112 8"/>
+    </g>
+  </svg>`;
+  return el;
+}
 function renderBattle() {
   const r = report!;
   app.replaceChildren();
@@ -1483,11 +1498,11 @@ function renderBattle() {
   const skip = h('button', { style: DEBUG ? '' : 'display:none' }, '건너뛰기'); // 테스트용: 주소에 ?debug 가 있을 때만 보인다
   const legendShown = localStorage.getItem('lanista-legend') === '1'; localStorage.setItem('lanista-legend', '1'); // 범례는 처음 한 번만
   const wrap = h('div', { class: 'panel battle' }, // 편성처럼 화면 전환 (모달 아님)
-    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size}`)),
-    h('div', { class: 'lineup' }, // 누가 싸우는지: 내 편 vs 상대 (유형·이름·서열·전적·공방)
-      ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${skillsOf(g).length ? ` · 기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`))),
-      h('span', { class: 'vs' }, 'vs'),
-      ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
+    h('h2', {}, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`),
+    h('div', { class: 'lineup' }, // 누가 싸우는지: 윗줄 내 편, 아랫줄 상대, 사이 배경에 VS 문양 (유형·이름·서열·전적·공방)
+      h('div', { class: 'side mine' }, ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${skillsOf(g).length ? ` · 기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
+      vsGraffiti(),
+      h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`))))),
     legendShown ? null : h('div', { class: 'hint', style: 'margin:-2px 0 6px' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')), // 소요 시간 표시는 뺐다
     canvas, h('div', { class: 'actions' }, skip));
   app.append(wrap); window.scrollTo(0, 0);
