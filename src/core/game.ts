@@ -368,8 +368,10 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
 }
 
 // 남은 계약 거절. 벌점은 시즌당 1회, 그리고 실제로 받을 수 있었던 계약이 있을 때만 (인원·베테라누스 부족은 벌점 없음)
+// 거절 벌점: 받을 수 있었던 '중요한' 계약(등급 2·3 — 큰 지방 경기·로마)을 안 치렀을 때만 시즌당 1회. 등급 1 소규모 무누스는 거절해도 벌점 없음
+export const isImportant = (c: Contract) => c.tier >= 2;
 export function refuseAll(st: GameState): number {
-  const penalized = st.contracts.some(c => canFulfill(st, c));
+  const penalized = st.contracts.some(c => isImportant(c) && canFulfill(st, c));
   const d = penalized ? CONFIG.fameDelta.refuse : 0;
   st.fame = Math.max(0, st.fame + d);
   st.contracts = [];
