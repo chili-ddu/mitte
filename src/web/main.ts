@@ -1308,7 +1308,7 @@ function renderSummary() {
           h('div', { class: 'mrow total' }, h('span', {}, '호감도'), h('span', {}, `${sum.fameBefore} → ${st.fame}`)))))),
       h('div', {}, h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '로스터'), ...rosterItems),
         st.over ? null : h('div', { class: 'panel' }, h('h2', {}, `다음 시즌 · ${seasonName(st.season)}`), ...nextItems))),
-    tabbar([{ label: `다음 시즌 (${seasonName(st.season)}) →`, primary: true, onclick: () => { phase = 'manage'; render(); } }]));
+    tabbar([{ label: `다음 시즌 (${seasonName(st.season)}) →`, primary: true, onclick: () => { phase = 'manage'; view = 'ludus'; cellsOpen = false; camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; camX = camFor('ludus'); camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
 }
 
 function renderOver() {
