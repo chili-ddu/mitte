@@ -1,4 +1,4 @@
-import { doSkillTrain, skillTrainable, newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, isImportant, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
+import { doSkillTrain, skillTrainable, newGame, available, canFulfill, buy, sell, heal, train, fight, fightExpense, refuseAll, isImportant, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, trainedCount, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, AUTO_REST_FATIGUE, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
 import { label, sellPrice, rentFee, fansOf, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
 import { HOST, FANS_STAR } from '../core/hosts.js';
@@ -64,7 +64,13 @@ function coach(): Node | null {
 let phase: 'manage' | 'plan' | 'battle' | 'result' | 'summary' | 'over' = 'manage';
 // 편성: 계약별 배정, 미배정 검투사의 훈련 선택
 let assign: Record<number, number[]> = {};            // contractId → gladiator ids
-let trainPlan: Record<number, Action> = {}; // gladiator id → 시즌 행동
+let trainPlan: Record<number, Action> = (() => { try { return JSON.parse(localStorage.getItem('lanista-plan') ?? '{}'); } catch { return {}; } })(); // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
+const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringify(trainPlan)); } catch {} };
+const setPlan = (g: Gladiator, a: Action) => { trainPlan[g.id] = a; savePlan(); };
+const planOf = (g: Gladiator): Action => trainPlan[g.id] ?? (g.injured ? 'rest' : 'auto'); // 정하지 않으면 자율 (부상자는 휴식)
+const isTrainAct = (a: Action) => a === 'atk' || a === 'def' || a === 'skill' || a === 'auto';
+// 자율의 실제 행동: 피로 2 이상이면 휴식, 피로 1이면 휴식까지 후보에 넣고, 할 수 있는 것(훈련 공·방 · 기술 훈련(조건이 되면) · 시범) 중 무작위
+const resolveAuto = (g: Gladiator): Exclude<Action, 'auto' | 'recover'> => { const f = g.fatigue ?? 0; if (f >= AUTO_REST_FATIGUE) return 'rest'; const pool: Exclude<Action, 'auto' | 'recover'>[] = ['atk', 'def', 'show']; if (skillTrainable(st, g)) pool.push('skill'); if (f >= 1) pool.push('rest'); return pool[Math.floor(st.rng.next() * pool.length)]; }; // 피로 1이면 휴식도 후보에, 2 이상이면 무조건 휴식
 let planSel: number | null = null;                    // 편성 중 선택된 계약 id
 let queue: { c: Contract; team: Gladiator[] }[] = [];
 let skipped: Contract[] = []; // 앞 경기 부상·사망으로 무산된 계약 // 시즌 진행 중 남은 경기
@@ -568,13 +574,15 @@ function gladSheet(): Node {
   const g = st.roster.find(x => x.id === gladSel); if (!g) return h('div', { class: 'panel' }, h('h2', {}, '검투사'), h('div', { class: 'hint' }, '루두스를 떠났습니다.'));
   const k = cellOf(st, g); const q = st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(st, 'cell', k) : null;
   const cellRow = (j: number) => { const o = occupantOf(st, j), qj = st.ludus.cells[j] ?? 0; return h('div', { class: `drow${j === k ? ' sel' : ''}`, onclick: j === k ? undefined : () => { moveToCell(st, g, j); render(); } },
-    h('span', { class: 'nm' }, `${j + 1}번`), h('span', { class: 'stars', style: 'margin-left:6px' }, '★'.repeat(qj) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - qj)), h('span', { class: 'meta' }, o ? (o === g ? ' 지금 이 방' : ` ${o.name} 와 자리 바꿈`) : ' 빈 방'), h('span', { style: 'flex:1' }), j === k ? null : h('span', { class: 'hint' }, '옮기기 →')); };
+    h('span', { class: 'nm' }, `${j + 1}번`), h('span', { class: 'stars', style: 'margin-left:6px' }, '★'.repeat(qj) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - qj)), o ? h('b', { style: 'margin-left:6px' }, o.name) : h('span', { class: 'meta' }, ' 빈 방'), h('span', { style: 'flex:1' }), j === k ? null : h('span', { class: 'hint' }, '옮기기 →')); }; // 방 줄: 번호 · ★ · 거주자 이름(굵게) — 누르면 그 방으로(사람이 있으면 자리를 바꾼다)
   return h('div', { class: 'panel' },
     h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라와 검투사', '검투사가 자는 작은 방입니다. 방 장식이 상태입니다: 벽의 획수 = 승수(5승 묶음), 종려가지 = 5승마다, 월계관 = 명예 20 이상(40 이상 금빛), 하트 낙서 = 팬 스타, 목검 = 배운 기술 수, 오른쪽 벽 걸이 = 그 유형의 투구·방패·무기, 벽의 나무 검 = 자유민(루디스), 지팡이 = 독토르, 붕대·목발 = 부상. 피로는 자세로: 1 축 처져 앉음, 2 꾸벅임(z z), 3 벽에 기대 잠. 왼쪽 아래 ★ = 켈라 등급.\n\n숙소 질 ★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌. 여기서 치료·매각·재훈련·재계약을 하고, 방을 강화하거나 다른 방으로 옮깁니다.')),
     gladCard(g, gladActions(g), { dis: !!g.injured }),
     h('div', { class: 'frow', style: 'margin-top:8px' }, h('div', { class: 'grow' }, h('b', {}, '이 방 강화'), h('div', { class: 'meta' }, '★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `질↑ ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '최고')),
-    h('h3', { class: 'sub' }, '다른 방으로 옮기기'),
-    h('div', { class: 'dlist' }, ...st.ludus.cells.map((_, j) => cellRow(j))));
+    h('div', { class: 'two' }, // 왼쪽 시즌 행동 · 오른쪽 방 옮기기
+      h('div', {}, h('h3', { class: 'sub' }, '시즌 행동', g.status === 'doctor' ? h('span', { class: 'hint', style: 'margin-left:6px' }, '독토르') : assignedTo(g.id) != null ? h('span', { class: 'hint', style: 'margin-left:6px' }, '출전 예정') : null),
+        g.status !== 'doctor' ? h('div', { class: 'segcol' }, ...actionSeg(g)) : h('div', { class: 'hint' }, '가르치는 중')),
+      h('div', {}, h('h3', { class: 'sub' }, '방 옮기기'), h('div', { class: 'dlist' }, ...st.ludus.cells.map((_, j) => cellRow(j))))));
 }
 
 // ── 후계: 은퇴한 라니스타의 뒤를 이을 사람을 고른다
@@ -1213,6 +1221,26 @@ function arenaIcon(tier: number) {
 }
 function assignedTo(gid: number): number | null { for (const cid in assign) if (assign[cid].includes(gid)) return +cid; return null; }
 
+// 시즌 행동 선택(휴식·자율·훈련 공/방·기술 훈련·시범 / 부상자는 요양·치료). 켈라 시트에서 정하고, 출전하지 않은 검투사는 시즌이 끝날 때 자동으로 한다
+function actionSeg(g: Gladiator): (Node | null)[] {
+  const at = assignedTo(g.id), isDoc = g.status === 'doctor', tp = planOf(g);
+  const trainN = st.roster.filter(x => assignedTo(x.id) == null && x !== g && isTrainAct(planOf(x)) && !x.injured && x.status !== 'doctor').length; // 나 말고 훈련하려는 인원
+  const trainRoom = trainCap(st) - trainedCount(st);
+  return [
+      !g.injured && !isDoc ? h('span', { class: `seg${at != null ? ' off' : ''}` },
+        ...(['auto', 'rest', 'atk', 'def', 'skill', 'show'] as const).map(k => {
+          const isTrain = k === 'atk' || k === 'def' || k === 'skill' || k === 'auto';
+          const trainFull = isTrain && !isTrainAct(tp) && trainN >= trainRoom;
+          const str = k === 'skill' ? skillTrainable(st, g) : null;
+          const dis = at != null || (isTrain && (st.money < CONFIG.trainCost || trainFull)) || (k === 'skill' && !str);
+          const title = at != null ? '출전 검투사는 다른 행동을 할 수 없습니다' : trainFull ? `훈련장 수용 인원 ${trainCap(st)}명이 찼습니다` : k === 'skill' ? (str ? `기술 훈련 (${CONFIG.trainCost} HS): ${str.from === 'doctor' ? '같은 유형 독토르에게' : '훈련 시설에서 독학으로'} ${str.pool.map(SKILL_NAME).join('·')} 중 하나를 ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}% 확률로 깨친다` : `같은 유형 독토르가 아는 기술이 없고 훈련 시설도 ${CONFIG.skills.gymLevel}단계 미만입니다`) : k === 'show' ? `훈련장을 열어 시민 앞에서 연습: 명예 +${CONFIG.actions.show.honor}` : k === 'rest' ? `피로 −${cellQuality(st, g) >= 1 ? 2 : 1}` : k === 'auto' ? `자율: 훈련 공·방 · 기술 훈련(조건이 되면) · 시범 중 무작위. 피로 1이면 휴식도 후보에, 2 이상이면 휴식 (훈련이면 ${CONFIG.trainCost} HS)` : '';
+          const label = ACTION_KO[k]; const gain = isTrain && k !== 'skill' && k !== 'auto' ? ` (+${trainGain(st, g, k as 'atk' | 'def')})` : k === 'show' ? ` (명예 +${CONFIG.actions.show.honor})` : ''; // +n 은 글자 대신 말풍선에
+          return h('button', { class: tp === k ? 'on' : '', disabled: dis, title: (title ? title : '') + (gain ? (title ? ' ' : '') + gain.trim() : ''), onclick: (ev: Event) => { ev.stopPropagation(); setPlan(g, k); render(); } }, label); })) : null,
+      g.injured && !isDoc ? h('span', { class: 'seg' },
+        h('button', { class: tp === 'recover' ? 'on' : '', title: `요양: 이번 시즌 부상 회복 +${CONFIG.actions.recover.extra} (무료)`, onclick: (ev: Event) => { ev.stopPropagation(); setPlan(g, tp === 'recover' ? 'rest' : 'recover'); render(); } }, `요양 (부상 ${g.injured}→${Math.max(0, g.injured - 1 - CONFIG.actions.recover.extra)}시즌)`),
+        h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)) : null,
+  ];
+}
 function renderPlan() {
   const wrap = h('div', {}); // 계약 → 검투사 → 시즌 예상. 행사·규칙은 탭 바에서 시트로
   const teamOf = (c: Contract) => (assign[c.id] ?? []).map(id => st.roster.find(g => g.id === id)!).filter(Boolean);
@@ -1247,7 +1275,7 @@ function renderPlan() {
   const readyQ = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(st, c, t); });
   const rentSum = readyQ.reduce((a, c) => a + Math.round(teamOf(c).reduce((b, g) => b + rentFee(g, c.tier), 0) * HOST[c.host].rent), 0);
   const expSum = readyQ.reduce((a, c) => a + fightExpense(teamOf(c), c.tier), 0);
-  const trainN = st.roster.filter(g => assignedTo(g.id) == null && (trainPlan[g.id] === 'atk' || trainPlan[g.id] === 'def' || trainPlan[g.id] === 'skill')).length;
+  const trainN = st.roster.filter(g => assignedTo(g.id) == null && !g.injured && g.status !== 'doctor' && isTrainAct(planOf(g)) && !(planOf(g) === 'auto' && (g.fatigue ?? 0) >= AUTO_REST_FATIGUE)).length; // 자율은 피로가 쌓이지 않았을 때만 훈련
   const trainRoom = trainCap(st) - trainedCount(st); // 훈련장 남은 자리
   const upkeep = upkeepOf(st);
   const ready = readyQ.length;
@@ -1274,7 +1302,6 @@ function renderPlan() {
       const freeVets = st.roster.filter(v => v.rank === 'veteranus' && v.alive && !v.injured && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
       return left > 0 && vetsLeft > 0 && (vetsLeft >= left || freeVets < vetsLeft); })();
     const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable;
-    const tp = trainPlan[g.id] ?? 'rest';
     if (at != null || isDoc) { // 배정된 검투사·독토르는 한 줄로 접는다 (누르면 배정 해제). 화면을 스크롤하지 않도록
       rpanel.append(h('div', { class: `card mini${at != null ? ' sel' : ''}`, onclick: at != null ? () => { assign[at] = assign[at].filter(x => x !== g.id); render(); } : undefined },
         portrait(g, 34), h('div', { class: 'grow' }, sq(g.type), ' ', h('b', {}, g.name), at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : h('span', { class: 'badge doc', style: 'margin-left:6px' }, '독토르')),
@@ -1284,18 +1311,7 @@ function renderPlan() {
     rpanel.append(gladCard(g, [
       isDoc ? h('span', { class: 'hint' }, `독토르 — ${TYPE_KO[g.type]} 훈련 (공 ${g.base.atk}·방 ${g.base.def} 기준)${g.wins >= CONFIG.doctorSkillWins ? ' · 기술 전수' : ''}`) : null,
       mentoredBy(st, g) ? h('span', { class: 'badge mentor', title: '독토르에게 유형 기술을 전수받음' }, '기술 전수') : null,
-      !g.injured && !isDoc ? h('span', { class: `seg${at != null ? ' off' : ''}` },
-        ...(['rest', 'atk', 'def', 'skill', 'show'] as const).map(k => {
-          const isTrain = k === 'atk' || k === 'def' || k === 'skill';
-          const trainFull = isTrain && !(tp === 'atk' || tp === 'def' || tp === 'skill') && trainN >= trainRoom;
-          const str = k === 'skill' ? skillTrainable(st, g) : null;
-          const dis = at != null || (isTrain && (st.money < CONFIG.trainCost || trainFull)) || (k === 'skill' && !str);
-          const title = at != null ? '출전 검투사는 다른 행동을 할 수 없습니다' : trainFull ? `훈련장 수용 인원 ${trainCap(st)}명이 찼습니다` : k === 'skill' ? (str ? `기술 훈련 (${CONFIG.trainCost} HS): ${str.from === 'doctor' ? '같은 유형 독토르에게' : '훈련 시설에서 독학으로'} ${str.pool.map(SKILL_NAME).join('·')} 중 하나를 ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}% 확률로 깨친다` : `같은 유형 독토르가 아는 기술이 없고 훈련 시설도 ${CONFIG.skills.gymLevel}단계 미만입니다`) : k === 'show' ? `훈련장을 열어 시민 앞에서 연습: 명예 +${CONFIG.actions.show.honor}` : k === 'rest' ? `피로 −${cellQuality(st, g) >= 1 ? 2 : 1}` : '';
-          const label = k === 'skill' ? ACTION_KO[k] : isTrain ? `${ACTION_KO[k]} +${trainGain(st, g, k as 'atk' | 'def')}` : k === 'show' ? `${ACTION_KO[k]} 명예 +${CONFIG.actions.show.honor}` : ACTION_KO[k];
-          return h('button', { class: tp === k ? 'on' : '', disabled: dis, title, onclick: (ev: Event) => { ev.stopPropagation(); trainPlan[g.id] = k; render(); } }, label); })) : null,
-      g.injured && !isDoc ? h('span', { class: 'seg' },
-        h('button', { class: tp === 'recover' ? 'on' : '', title: `요양: 이번 시즌 부상 회복 +${CONFIG.actions.recover.extra} (무료)`, onclick: (ev: Event) => { ev.stopPropagation(); trainPlan[g.id] = tp === 'recover' ? 'rest' : 'recover'; render(); } }, `요양 (부상 ${g.injured}→${Math.max(0, g.injured - 1 - CONFIG.actions.recover.extra)}시즌)`),
-        h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)) : null,
+      !isDoc ? h('button', { class: 'planbadge', title: '켈라에서 시즌 행동을 정합니다 (누르면 열림)', onclick: (ev: Event) => { ev.stopPropagation(); gladSel = g.id; sheet = 'glad'; render(); } }, `시즌 행동: ${ACTION_KO[planOf(g)]}`) : null,
       ...skillOfferRows(g),
     ], { sel: at != null, dis: !!g.injured || isDoc || vetBlock || unfulfillable || (!!selC && at == null && !!g.fought), tag: at != null ? h('span', { class: 'syn', style: 'margin-left:6px' }, `→ ${c?.venue.slice(0, 6) ?? '계약'}`) : unfulfillable ? h('span', { class: 'badge injured', style: 'margin-left:6px', title: '이 계약은 조건(베테라누스·인원)을 채울 수 없어 배정할 수 없습니다' }, '계약 조건 미달') : vetBlock ? h('span', { class: 'badge injured', style: 'margin-left:6px', title: '이 계약의 남은 자리는 베테라누스여야 합니다' }, '베테라누스 필요') : null, onclick: () => { if (at != null) { assign[at] = assign[at].filter(x => x !== g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } } }));
   }
@@ -1339,7 +1355,9 @@ function finishSeason() {
   // 훈련 처리
   const trained: { g: Gladiator; stat: 'atk' | 'def' }[] = [];
   const acted: { g: Gladiator; act: Action; note: string }[] = [];
-  for (const g of st.roster) { const tp = trainPlan[g.id]; if (!tp || tp === 'rest' || assignedTo(g.id) != null || g.fought) continue;
+  for (const g of st.roster) { let tp: Action = planOf(g); if (assignedTo(g.id) != null || g.fought || g.status === 'doctor') continue;
+    if (tp === 'auto') { const r = resolveAuto(g); if (r === 'rest') { acted.push({ g, act: 'auto', note: `피로 ${g.fatigue ?? 0} — 휴식` }); continue; } tp = r; } // 자율: 피로가 있으면 휴식, 아니면 훈련·기술 훈련·시범 중 무작위
+    if (tp === 'rest') continue;
     if (tp === 'atk' || tp === 'def') { if (train(st, g, tp)) trained.push({ g, stat: tp }); }
     else if (tp === 'show') { const r = doShow(st, g); if (r) acted.push({ g, act: tp, note: `명예 +${r.honor}` }); }
     else if (tp === 'recover') { if (doRecover(st, g)) acted.push({ g, act: tp, note: '회복 가속' }); }
@@ -1350,7 +1368,7 @@ function finishSeason() {
   const eventsHeld = { ...(st.events ?? { cena: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
   const { upkeep, gift } = endSeason(st);
   seasonSummary = { upkeep, gift, trained, acted, before: seasonSummary?.before ?? st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
-  assign = {}; trainPlan = {}; planSel = null;
+  assign = {}; trainPlan = {}; savePlan(); planSel = null; // 시즌 행동은 시즌마다 다시 (기본 자율)
   phase = st.over ? 'over' : 'summary';
   render();
 }

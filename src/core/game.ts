@@ -214,8 +214,9 @@ export function train(st: GameState, g: Gladiator, stat: 'atk' | 'def'): boolean
   return true;
 }
 // ── 시즌 행동 (편성에서 고르고 시즌 종료 때 실행)
-export type Action = 'rest' | 'atk' | 'def' | 'skill' | 'show' | 'recover';
-export const ACTION_KO: Record<Action, string> = { rest: '휴식', atk: '훈련·공', def: '훈련·방', skill: '기술 훈련', show: '시범', recover: '요양' };
+export type Action = 'auto' | 'rest' | 'atk' | 'def' | 'skill' | 'show' | 'recover'; // auto: 자율 — 피로 2 이상이면 휴식, 1이면 휴식 포함 무작위, 아니면 공·방 중 무작위 훈련
+export const ACTION_KO: Record<Action, string> = { auto: '자율', rest: '휴식', atk: '훈련·공', def: '훈련·방', skill: '기술 훈련', show: '시범', recover: '요양' };
+export const AUTO_REST_FATIGUE = 2; // 자율에서 무조건 휴식하는 피로 기준 (1이면 휴식도 무작위 후보)
 // 기술 훈련: 팔루스 자리를 쓰고 훈련비를 낸다. 같은 유형 독토르가 아는 기술(내가 모르는 것) 중 하나, 독토르가 없으면 훈련 시설 3단계부터 유형에 맞는 기술 하나를 확률로 깨친다 → 배울 기회(제안)
 export function skillTrainable(st: GameState, g: Gladiator): { from: 'doctor' | 'gym'; pool: SkillId[] } | null {
   if (g.injured > 0 || g.status === 'doctor' || !g.alive) return null;

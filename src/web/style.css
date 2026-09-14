@@ -350,3 +350,10 @@ h2.rowhead { display:flex; align-items:center; gap:4px; }
 .evrow > span:last-child { flex:1 1 100%; text-align:right; color:var(--dim); }
 
 button.small { padding:3px 8px; font-size:12px; }
+
+.planbadge { font-size:12px; padding:3px 10px; min-height:26px; background:#fff3c4; border-color:#c9a227; }
+
+.two { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; align-items:start; }
+.segcol .seg { display:flex; flex-direction:column; gap:4px; width:100%; }
+.segcol .seg button { width:100%; text-align:left; }
+.two .dlist .drow { padding:4px 6px; }
