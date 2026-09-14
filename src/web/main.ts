@@ -81,7 +81,7 @@ let sheet: 'help' | 'roster' | 'facilities' | 'doctors' | 'rivals' | 'events' | 
 let cellSel = 0; // 켈라 팝오버에서 고른 칸
 let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
 let cellsOpen = false, cellsP = 0;
-let offersDismissed = 0; // 이 시즌에 '나중에'를 눌렀으면 시즌 번호 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
+let offersDismissed = 0, offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 이 시즌에 '나중에'를 눌렀으면 시즌 번호 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
 const hintSpan = (t: string) => h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, t);
 // 확인 창: 브라우저 confirm/alert 대신 게임 안 모달 (폰에서도 같은 모양, 화면 재구성과 무관하게 body 에 붙는다)
 function ask(msg: string, opts: { ok?: string; cancel?: boolean; title?: string } = {}): Promise<boolean> {
@@ -229,14 +229,21 @@ const hostSpan = (c: Contract) => { const H = HOST[c.host]; return h('span', { c
 function skillBadges(g: Gladiator): Node[] {
   return skillsOf(g).map(id => { const d = SKILL_BY_ID[id]; const mb = masteryBonus(g, id); return h('span', { class: 'badge skill', title: `${d.name}: ${d.desc} 발동 ${Math.round(procChance(g, id) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}` }, d.name); });
 }
-// 배울 기회: 배우기 / 넘기기. 슬롯이 차 있으면 버릴 기술을 고른다
+// 배울 기회: 배우기 / 넘기기. 슬롯이 차 있으면 '배우기'를 누른 뒤 배운 기술 중 버릴 것을 고른다
 function skillOfferRows(g: Gladiator, after: () => void = render): Node[] {
   const offers = (g.skillOffers ?? []) as SkillId[]; if (!offers.length) return [];
   const slots = skillSlots(g), have = skillsOf(g);
-  return offers.map(id => { const d = SKILL_BY_ID[id]; let replace: SkillId | undefined = have[0];
-    const row = h('div', { class: 'offer' }, h('div', { class: 'grow' }, h('b', {}, `새 기술 '${d.name}'`), h('span', { class: 'meta' }, ` ${d.desc}`), h('div', { class: 'meta' }, `슬롯 ${have.length}/${slots}${isPrimusPalus(g) ? ' · 프리무스 팔루스' : ''}`)));
-    if (have.length >= slots) row.append(dropdown(`rep-${g.id}-${id}`, have.map(x => ({ value: x, label: `${SKILL_NAME(x)} 버림` })), replace ?? '', v => { replace = v as SkillId; }, '버릴 기술'));
-    row.append(h('button', { class: 'primary', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id, have.length >= slots ? replace : undefined)) { sfx.coin(); after(); } } }, '배우기'), h('button', { onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기'));
+  return offers.map(id => { const d = SKILL_BY_ID[id]; const full = have.length >= slots;
+    const row = h('div', { class: 'offer' }, h('div', { class: 'grow' }, h('b', {}, `새 기술 '${d.name}'`), h('span', { class: 'meta' }, ` ${d.desc}`)));
+    if (full) { // 슬롯이 찼으면 바로 교체 목록: 배운 기술 중 하나를 버리고 배운다 (넘기면 제안 포기)
+      row.append(h('div', { class: 'replace' },
+        h('div', { class: 'rhead' }, h('span', { class: 'meta' }, `슬롯이 찼습니다 (${have.length}/${slots}). 버릴 기술을 고르세요`), h('button', { class: 'small', onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기')),
+        ...have.map(x => { const dx = SKILL_BY_ID[x]; const mb = masteryBonus(g, x); return h('div', { class: 'ritem' },
+          h('div', { class: 'grow' }, h('div', {}, h('b', {}, dx.name), h('span', { class: 'meta' }, ` 발동 ${Math.round(procChance(g, x) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}`)), h('div', { class: 'meta desc' }, dx.desc)),
+          h('button', { class: 'primary small', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id, x)) { sfx.coin(); after(); } } }, '교체하기')); })));
+    } else {
+      row.append(h('button', { class: 'primary', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id)) { sfx.coin(); after(); } } }, '배우기'), h('button', { onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기'));
+    }
     return row; });
 }
 function epithetBadges(g: Gladiator): Node[] {
@@ -262,10 +269,19 @@ function render() {
   if (sheet) app.append(renderSheet());
   if (phase === 'manage' && !showIntro && !st.pendingSuccession && offersDismissed !== st.season) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다
     const learners = st.roster.filter(g => (g.skillOffers ?? []).length);
-    if (learners.length) app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
-      h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 버릴 기술을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
-      ...learners.map(g => h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · 기술 ${skillsOf(g).length ? skillsOf(g).map(SKILL_NAME).join('·') : '없음'}`)), ...skillOfferRows(g)))),
-      h('div', { class: 'actions' }, h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에 (카드에서 정하기)')))));
+    if (learners.length) { // 한 명씩 보여주고 ◀ ▶ 로 넘긴다
+      offerPage = Math.max(0, Math.min(offerPage, learners.length - 1)); const g = learners[offerPage];
+      app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
+        h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 배운 기술 중 버릴 것을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
+        h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)),
+          h('div', { class: 'meta' }, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음'])), ...skillOfferRows(g))),
+        h('div', { class: 'actions pager' },
+          h('button', { disabled: offerPage <= 0, onclick: () => { offerPage--; render(); } }, '◀'),
+          h('span', { class: 'meta' }, `${offerPage + 1} / ${learners.length}`),
+          h('button', { disabled: offerPage >= learners.length - 1, onclick: () => { offerPage++; render(); } }, '▶'),
+          h('span', { style: 'flex:1' }),
+          h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에')))));
+    }
   }
   if (showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
     h('div', { class: 'title' }, '미테!'), h('div', { class: 'sub' }, '라니스타의 길'),
