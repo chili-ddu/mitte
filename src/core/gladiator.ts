@@ -75,3 +75,10 @@ export function maybePromote(g: Gladiator): boolean {
 export function label(g: Gladiator): string {
   return `${g.name}(${TYPE_KO[g.type]}·${LINEAGE_KO[g.lineage]}·${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전)`;
 }
+
+// 전력 점수: 계약 난이도(상대가 나보다 강한가)를 재는 대략치. 능력치 + 서열 + 기술 수. 전투 규칙 자체는 아니다
+export function powerOf(g: Gladiator): number {
+  const b = g.base; const skills = (g.skills ?? []).length;
+  return b.hp * 0.35 + b.atk * 4 + b.def * 3.5 + b.spd * 2 + skills * 6 + (g.rank === 'veteranus' ? 8 : 0) - (g.fatigue ?? 0) * 6;
+}
+export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);
