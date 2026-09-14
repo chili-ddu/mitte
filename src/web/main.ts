@@ -5,7 +5,6 @@ import { HOST, FANS_STAR } from '../core/hosts.js';
 import { accessoriesOf, EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
 import { SKILLS, SKILL_BY_ID, SKILL_NAME, skillsOf, skillSlots, learnSkill, declineSkill, masteryBonus, isPrimusPalus, procChance, type SkillId } from '../core/skills.js';
 import { computeSynergies, describeSynergies, classicMatchup } from '../core/synergy.js';
-import { survivalChance } from '../core/missio.js';
 import { CONFIG } from '../core/config.js';
 import type { HostKind, Contract, Gladiator, GType } from '../core/types.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, unlockAudio, soundEnabled, setSoundEnabled } from './sound.js';
@@ -256,13 +255,17 @@ function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boole
     ...extra);
 }
 
+// 헤더(라니스타·자금·호감도·검투사 수·톱니바퀴): 관리·편성·전투·결과 화면이 같이 쓴다
+function headerEl(): Node {
+  return h('header', {},
+    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
+    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
+      gearBtn()));
+}
 function render() {
   save();
   app.replaceChildren();
-  app.append(h('header', {},
-    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
-    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
-      gearBtn())));
+  app.append(headerEl());
   if (sheet) app.append(renderSheet());
   if (phase === 'manage' && !showIntro && !st.pendingSuccession && offersDismissed !== st.season) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다
     const learners = st.roster.filter(g => (g.skillOffers ?? []).length);
@@ -1233,7 +1236,7 @@ function renderPlan() {
         enemyLine(c),
         HOST[c.host].bet ? h('div', { class: 'betline' }, h('span', { class: 'meta' }, `스폰시오: 이기면 상금 ${(hostPrize(c) * 2).toLocaleString()}, 지면 −${hostPrize(c).toLocaleString()}`), h('button', { class: `tiny bet${c.bet ? ' on' : ''}`, title: '기량 시합에 거는 내기(스폰시오)는 로마법이 허용했다. 무승부는 무효', onclick: (ev: Event) => { ev.stopPropagation(); c.bet = !c.bet; render(); } }, c.bet ? '내기 받음 ✓' : '내기 받기')) : null,
         h('div', { class: 'slots' }, ...Array.from({ length: c.size }, (_, i) => { const g = team[i]; return h('span', { class: `slot${g ? ' filled' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); if (g) { assign[c.id] = assign[c.id].filter(x => x !== g.id); render(); } else { planSel = c.id; render(); } } }, ...(g ? [sq(g.type), ' ', g.name] : ['빈 자리'])); })),
-        h('div', { class: 'meta fixedline' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : null, describeSynergies(syn).length || classicNow || classicMaybe ? '' : '시너지 없음', team.length ? ` · 생존 ${team.map(g => `${g.name} ${Math.round(survivalChance(g, st.fame, c.host, syn, classicNow, CONFIG.missio.tierBonus[c.tier] ?? 0) * 100)}%`).join(', ')} · 대여료 ${Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * HOST[c.host].rent).toLocaleString()} 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '', tired.length ? h('span', { style: 'color:var(--red)' }, ` · 피로 ${tired.map(g => `${g.name} −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty}`).join(', ')}`) : null),
+        h('div', { class: 'meta fixedline' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : null, describeSynergies(syn).length || classicNow || classicMaybe ? '' : '시너지 없음', team.length ? ` · 대여료 ${Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * HOST[c.host].rent).toLocaleString()} 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '', tired.length ? h('span', { style: 'color:var(--red)' }, ` · 피로 ${tired.map(g => `${g.name} −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty}`).join(', ')}`) : null),
         h('div', { class: err ? 'req' : 'req ok' }, err ?? '출전 준비 완료 ✓'))));
   }
   if (!st.contracts.length) cpanel.append(h('div', { class: 'hint' }, '이번 시즌 계약이 없습니다. 전원 훈련 또는 휴식.'));
@@ -1582,7 +1585,7 @@ function renderBattle() {
       h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`))))),
     legendShown ? null : h('div', { class: 'hint', style: 'margin:-2px 0 6px' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')), // 소요 시간 표시는 뺐다
     canvas, h('div', { class: 'actions' }, skip));
-  app.append(wrap); window.scrollTo(0, 0);
+  app.append(headerEl(), wrap, tabbar([{ label: '전투 중…', disabled: true }])); window.scrollTo(0, 0); // 전투에서도 위 헤더와 아래 바를 유지
   const W = canvas.clientWidth || 720, H = canvas.clientHeight || 500; // 높이는 CSS(min(500px, 60vh))를 따른다
   canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
   const ctx = canvas.getContext('2d')!; ctx.scale(devicePixelRatio, devicePixelRatio);
@@ -1975,7 +1978,6 @@ function renderResult() {
       if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
     for (const ne of r.newEpithets.filter(x => x.g === g)) parts.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `별칭 '${ne.e.name}' 획득`));
     for (const so of r.newSkillOffers.filter(x => x.g === g)) parts.push(h('span', { class: 'badge skill', title: '시즌이 끝나고 루두스로 돌아오면 배울지 정합니다' }, `기술 '${SKILL_BY_ID[so.id].name}' 깨침`));
-    if (f?.p != null) parts.push(h('span', { class: 'hint' }, ` 생존 확률 ${(f.p * 100).toFixed(0)}%`));
     return parts;
   };
   const myCards = r.team.map(g => h('div', { class: 'fatecard' }, portrait(g, 56), h('div', { class: 'grow' },
@@ -1987,7 +1989,7 @@ function renderResult() {
     h('div', {}, ef ? h('span', { class: `badge ${ef.fate === 'dead' ? 'dead' : ef.fate === 'injured' ? 'injured' : 'missio'}` }, ef.fate === 'dead' ? '사망' : ef.fate === 'injured' ? '미시오 · 부상' : '미시오 생존') : h('span', { class: 'badge ok' }, won ? '무사' : '승리'),
       r.revenges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge revenge' }, '복수 성공') : null, r.grudges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge grudge' }, '원한 재대결') : null))); });
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
-  app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal result' },
+  app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
     h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, won ? '승리' : r.winner === 'draw' ? '무승부 (스탄테스 미시)' : '패배', h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.venue} · ${HOST_KO[r.contract.host]} · ${r.duration.toFixed(1)}초${rivalOf(st.rivals, r.contract.rivalId) ? ` · ${rivalOf(st.rivals, r.contract.rivalId)!.name} (${recordVsMe(rivalOf(st.rivals, r.contract.rivalId)!)})` : ''}`), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:8px' }, '전통 짝 대결') : null),
     h('div', { class: 'rcols' },
       h('div', {}, h('h3', {}, '내 루두스'), ...myCards),
@@ -1996,7 +1998,9 @@ function renderResult() {
       h('div', { class: 'mrow total' }, h('span', {}, '이번 경기 수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
       h('div', { class: 'mrow' }, h('span', {}, '호감도' + (r.classic && r.winner === 'A' ? ` (전통 짝 +${CONFIG.fameDelta.classicWin} 포함)` : '')), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`))),
     h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))),
-    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { phase = 'battle'; nextFight(); } }, queue.length ? `다음 경기 → (${queue.length}경기 남음)` : '시즌 정산으로 →')))));
+  ));
+  app.prepend(headerEl()); window.scrollTo(0, 0);
+  app.append(tabbar([{ label: queue.length ? `다음 경기 → (${queue.length}경기 남음)` : '시즌 정산으로 →', primary: true, onclick: () => { phase = 'battle'; nextFight(); } }])); // 다음 경기 버튼은 아래 바에
 }
 
 render();
