@@ -69,7 +69,7 @@ let assign: Record<number, number[]> = {};            // contractId → gladiato
 let trainPlan: Record<number, Action> = (() => { try { return JSON.parse(localStorage.getItem('lanista-plan') ?? '{}'); } catch { return {}; } })(); // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
 const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringify(trainPlan)); } catch {} };
 const setPlan = (g: Gladiator, a: Action) => { trainPlan[g.id] = a; savePlan(); };
-const planOf = (g: Gladiator): Action => trainPlan[g.id] ?? (g.injured ? 'rest' : 'auto'); // 정하지 않으면 자율 (부상자는 휴식)
+const planOf = (g: Gladiator): Action => trainPlan[g.id] ?? (g.injured ? 'recover' : 'auto'); // 정하지 않으면 자율 (부상자는 요양: 무료, 시즌당 부상 −2)
 const isTrainAct = (a: Action) => a === 'atk' || a === 'def' || a === 'skill' || a === 'auto';
 // 자율의 실제 행동: 피로 2 이상이면 휴식, 피로 1이면 휴식까지 후보에 넣고, 할 수 있는 것(훈련 공·방 · 기술 훈련(조건이 되면) · 시범) 중 무작위
 const resolveAuto = (g: Gladiator): Exclude<Action, 'auto' | 'recover'> => { const f = g.fatigue ?? 0; if (f >= AUTO_REST_FATIGUE) return 'rest'; const pool: Exclude<Action, 'auto' | 'recover'>[] = ['atk', 'def', 'show']; if (skillTrainable(st, g)) pool.push('skill'); if (f >= 1) pool.push('rest'); return pool[Math.floor(st.rng.next() * pool.length)]; }; // 피로 1이면 휴식도 후보에, 2 이상이면 무조건 휴식
@@ -90,14 +90,14 @@ let gladSel: number | null = null; // 검투사 시트에 보이는 검투사 id
 let cellSel = 0; // 켈라 팝오버에서 고른 칸
 let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
 let cellsOpen = false, cellsP = 0;
-let offersDismissed = 0, offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 이 시즌에 '나중에'를 눌렀으면 시즌 번호 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
+let offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
 const hintSpan = (t: string) => h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, t);
 // 확인 창: 브라우저 confirm/alert 대신 게임 안 모달 (폰에서도 같은 모양, 화면 재구성과 무관하게 body 에 붙는다)
 function ask(msg: string, opts: { ok?: string; cancel?: boolean; title?: string } = {}): Promise<boolean> {
   return new Promise(res => {
     const close = (v: boolean) => { ov.remove(); res(v); };
     const ov = h('div', { class: 'overlay', onclick: (ev: Event) => { if (ev.target === ev.currentTarget) close(false); } },
-      h('div', { class: 'modal ask' }, opts.title ? h('h2', {}, opts.title) : null, ...msg.split('\n').map(l => h('p', {}, l)),
+      h('div', { class: 'modal ask' }, opts.title ? h('h2', {}, opts.title) : null, ...msg.split('\n').map(l => l.startsWith('· ') ? h('p', { class: 'fx' }, l.slice(2)) : h('p', {}, l)), // '· ' 로 시작하는 줄은 효과 설명 (다른 색)
         h('div', { class: 'actions' }, opts.cancel === false ? null : h('button', { onclick: () => close(false) }, '취소'), h('button', { class: 'primary', onclick: () => close(true) }, opts.ok ?? '확인'))));
     document.body.append(ov); (ov.querySelector('button.primary') as HTMLButtonElement).focus();
   });
@@ -235,19 +235,19 @@ function skillBadges(g: Gladiator): Node[] {
   return skillsOf(g).map(id => { const d = SKILL_BY_ID[id]; const mb = masteryBonus(g, id); return h('span', { class: 'badge skill', title: `${d.name}: ${d.desc} 발동 ${Math.round(procChance(g, id) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}` }, d.name); });
 }
 // 배울 기회: 배우기 / 넘기기. 슬롯이 차 있으면 '배우기'를 누른 뒤 배운 기술 중 버릴 것을 고른다
-function skillOfferRows(g: Gladiator, after: () => void = render): Node[] {
+function skillOfferRows(g: Gladiator, after: () => void = render, opts: { noDecline?: boolean } = {}): Node[] { // noDecline: 넘기기 버튼은 모달 페이징 줄 오른쪽에 하나만
   const offers = (g.skillOffers ?? []) as SkillId[]; if (!offers.length) return [];
   const slots = skillSlots(g), have = skillsOf(g);
   return offers.map(id => { const d = SKILL_BY_ID[id]; const full = have.length >= slots;
     const row = h('div', { class: 'offer' }, h('div', { class: 'grow' }, h('b', {}, `새 기술 '${d.name}'`), h('span', { class: 'meta' }, ` ${d.desc}`)));
     if (full) { // 슬롯이 찼으면 바로 교체 목록: 배운 기술 중 하나를 버리고 배운다 (넘기면 제안 포기)
       row.append(h('div', { class: 'replace' },
-        h('div', { class: 'rhead' }, h('span', { class: 'meta' }, `슬롯이 찼습니다 (${have.length}/${slots}). 버릴 기술을 고르세요`), h('button', { class: 'small', onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기')),
+        h('div', { class: 'rhead' }, h('span', { class: 'meta' }, `슬롯이 찼습니다 (${have.length}/${slots}). 버릴 기술을 고르세요`), opts.noDecline ? null : h('button', { class: 'small', onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기')),
         ...have.map(x => { const dx = SKILL_BY_ID[x]; const mb = masteryBonus(g, x); return h('div', { class: 'ritem' },
           h('div', { class: 'grow' }, h('div', {}, h('b', {}, dx.name), h('span', { class: 'meta' }, ` 발동 ${Math.round(procChance(g, x) * 100)}%${mb ? ` (숙련 +${Math.round(mb * 100)}%)` : ''}`)), h('div', { class: 'meta desc' }, dx.desc)),
           h('button', { class: 'primary small', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id, x)) { sfx.coin(); after(); } } }, '교체하기')); })));
     } else {
-      row.append(h('button', { class: 'primary', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id)) { sfx.coin(); after(); } } }, '배우기'), h('button', { onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기'));
+      row.append(h('button', { class: 'primary', onclick: (ev: Event) => { ev.stopPropagation(); if (learnSkill(g, id)) { sfx.coin(); after(); } } }, '배우기')); if (!opts.noDecline) row.append(h('button', { onclick: (ev: Event) => { ev.stopPropagation(); declineSkill(g, id); after(); } }, '넘기기'));
     }
     return row; });
 }
@@ -271,25 +271,32 @@ function headerEl(): Node {
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
       gearBtn()));
 }
+// 준비 화면 대시보드 높이: 화면에 그린 뒤 남는 높이를 재서 하단 바 바로 위까지 채운다 (창 크기가 바뀌면 다시)
+function fitDash() {
+  const body = document.querySelector<HTMLElement>('.dash .dashbody'); const bar = document.querySelector<HTMLElement>('.tabbar'); if (!body) return;
+  const top = body.getBoundingClientRect().top; const barH = bar ? bar.getBoundingClientRect().height : 58;
+  body.style.height = `${Math.max(140, Math.floor(innerHeight - top - barH - 8))}px`; // 8 = 바 위 여백. 페이지는 스크롤되지 않고 대시보드 안에서만 스크롤
+}
+window.addEventListener('resize', () => { if (phase === 'manage') fitDash(); });
 function render() {
   save();
-  app.replaceChildren();
+  app.replaceChildren(); app.classList.remove('fit');
   app.append(headerEl());
   if (sheet) app.append(renderSheet());
-  if (phase === 'manage' && !showIntro && !st.pendingSuccession && offersDismissed !== st.season) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다
+  if (phase === 'manage' && !showIntro && !st.pendingSuccession) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다 (배우기/넘기기 중 하나로 끝낸다)
     const learners = st.roster.filter(g => (g.skillOffers ?? []).length);
     if (learners.length) { // 한 명씩 보여주고 ◀ ▶ 로 넘긴다
       offerPage = Math.max(0, Math.min(offerPage, learners.length - 1)); const g = learners[offerPage];
       app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
         h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 배운 기술 중 버릴 것을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
         h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)),
-          h('div', { class: 'meta' }, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음'])), ...skillOfferRows(g))),
+          h('div', { class: 'meta' }, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음'])), ...skillOfferRows(g, render, { noDecline: true }))),
         h('div', { class: 'actions pager' },
           h('button', { disabled: offerPage <= 0, onclick: () => { offerPage--; render(); } }, '◀'),
           h('span', { class: 'meta' }, `${offerPage + 1} / ${learners.length}`),
           h('button', { disabled: offerPage >= learners.length - 1, onclick: () => { offerPage++; render(); } }, '▶'),
           h('span', { style: 'flex:1' }),
-          h('button', { onclick: () => { offersDismissed = st.season; render(); } }, '나중에 (켈라에서)')))));
+          h('button', { onclick: () => { for (const id of [...(g.skillOffers ?? [])]) declineSkill(g, id as SkillId); render(); } }, '넘기기'))))); // 넘기기는 페이징 줄 오른쪽: 이 검투사의 제안을 모두 넘긴다. 여기서 끝낸다 (켈라에서 다시 정하지 않는다)
     }
   }
   if (showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
@@ -577,7 +584,6 @@ function gladActions(g: Gladiator): (Node | null)[] {
       !g.injured && g.status !== 'doctor' && !g.fought ? dropdown(`retrain-${g.id}`, (Object.keys(TYPE_KO) as GType[]).filter(t => t !== g.type).map(t => ({ value: t, label: TYPE_KO[t] })), '', v => { const t = v as GType; void ask(`${g.name} 을(를) ${TYPE_KO[t]} 로 재훈련합니까? ${CONFIG.retrainCost} HS, 이번 시즌 출전 불가. 공·방은 유지, 속도·사거리는 새 유형`, { ok: '재훈련' }).then(ok => { if (ok) { if (!retrain(st, g, t)) void tell('자금이 모자랍니다'); } render(); }); }, '유형 전환…') : null,
       g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1 ? h('button', { class: 'primary', disabled: st.money < renewCost(g), title: `계약 ${CONFIG.origins.auctoratus.term}시즌 연장`, onclick: () => { renewContract(st, g); render(); } }, `재계약 ${renewCost(g).toLocaleString()}`) : null,
       g.status && g.status !== 'slave' ? h('button', { onclick: () => { void ask(`${g.name} 을(를) 루두스에서 내보냅니까? (자유민이라 값을 받을 수 없습니다)`, { ok: '내보내기' }).then(ok => { if (ok) { release(st, g); render(); } }); } }, '내보내기') : null,
-      ...skillOfferRows(g),
     ];
 }
 // 켈라 방 시트: 방을 누르면 그 검투사의 카드 + 행동 버튼 + 이 방 강화 + 다른 방으로 옮기기 (검투사 목록 시트와 켈라 팝오버를 하나로 합쳤다)
@@ -705,19 +711,18 @@ function renderDash(): Node[] {
     const injured = st.roster.filter(g => g.injured);
     const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${st.ludus.beds} · 부상 ${injured.length}명 · 치료 ${healCostOf(st)} HS`), helpBtn('의무실', `부상자는 ${injurySeasons(st)}시즌 동안 출전하지 못합니다. 치료(${healCostOf(st)} HS)하면 바로 복귀하고, 편성에서 요양을 고르면 무료로 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술 ${CONFIG.ludus.medicine.injuryAt}단계부터 부상 1시즌, ${CONFIG.ludus.medicine.cheapAt}단계부터 치료 250 HS. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
     if (!injured.length) out.push(item('idle', '부상자 없음'));
-    for (const g of injured) out.push(h('div', { class: 'drow' }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), h('span', { class: 'meta' }, ` 부상 ${g.injured}시즌`), h('span', { style: 'flex:1' }),
-      h('button', { class: 'tiny', disabled: st.money < healCostOf(st), onclick: () => { heal(st, g); render(); } }, `치료 ${healCostOf(st)}`)));
+    // 부상자 개별 표시는 디스플레이의 침상(십자 팻말·치료 금액·이름·무기 아이콘)에서. 대시보드에는 두지 않는다
     if (injured.length > st.ludus.beds) out.push(item('warn', `침상 ${st.ludus.beds}개보다 부상자가 많아 ${injured.length - st.ludus.beds}명은 회복이 1시즌 늦어집니다.`));
     out.push(h('div', { class: 'dlist' }, ...facRows('medic')));
     return out;
   }
-  if (view === 'yard') { // 훈련소: 검투사 상태와 팔루스·훈련 시설. 행동 선택은 편성 단계
+  if (view === 'yard') { // 훈련소: 팔루스·훈련 시설·독토르. 검투사 개인 정보는 켈라, 행동 선택도 켈라
     const docs = st.roster.filter(g => g.status === 'doctor');
     const out: Node[] = [h('h3', {}, '훈련소', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `검투사 ${st.roster.length}명 · 출전 가능 ${available(st).length} · 팔루스 ${st.ludus.palus}`))];
     if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 사들이세요.'));
-    for (const g of st.roster) out.push(h('div', { class: 'drow' }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테'} · ${g.wins}승/${g.fights}전${g.status === 'doctor' ? ' · 독토르' : g.status === 'rudiarius' ? ' · 자유민' : ''}${g.injured ? ` · 부상 ${g.injured}` : ''}${(g.fatigue ?? 0) > 0 ? ` · 피로 ${g.fatigue}` : ''}`)));
+    // 검투사 개인 정보는 켈라에서 본다 (여기서는 훈련 시설과 독토르만)
     if (docs.length) out.push(item('idle', `독토르 ${docs.map(g => `${g.name}(${TYPE_KO[g.type]})`).join(', ')} — 같은 유형 훈련 +1~2.`));
-    out.push(item('idle', `훈련 정원 ${trainCap(st) >= 99 ? '∞' : trainCap(st)}명 · 훈련 폭 +${1 + gymBonus(st)}`, helpBtn('훈련', `출전하지 않는 검투사는 편성 단계에서 휴식·훈련(공/방)·시범 중 하나를, 부상자는 요양을 고릅니다. 훈련은 1인당 ${CONFIG.trainCost.toLocaleString()} HS, 시즌당 팔루스 수만큼만. 같은 유형 독토르가 있으면 격차에 따라 +1~2.`)));
+    out.push(item('idle', `훈련 정원 ${trainCap(st) >= 99 ? '∞' : trainCap(st)}명 · 훈련 폭 +${1 + gymBonus(st)}`, helpBtn('훈련', `출전하지 않는 검투사는 켈라에서 정한 시즌 행동(자율·휴식·훈련 공/방·기술 훈련·시범, 부상자는 요양)을 시즌이 끝날 때 합니다. 훈련은 1인당 ${CONFIG.trainCost.toLocaleString()} HS, 시즌당 팔루스 수만큼만. 같은 유형 독토르가 있으면 격차에 따라 +1~2.`)));
     out.push(h('div', { class: 'dlist' }, ...facRows('yard')));
     return out;
   }
