@@ -196,7 +196,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 
 /* 디스플레이 아래 대시보드: 왼쪽 결정할 일, 오른쪽 위 이동 버튼 */
 .dash { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; align-items:stretch; }
-.dashbody { flex:1; height:auto; max-height:max(140px, calc(100vh - 244px - var(--yard-h, 276px))); overflow-y:auto; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:10px 12px; }
+.dashbody { flex:none; height:auto; max-height:none; overflow-y:auto; /* 높이는 fitDash() 가 하단 바 바로 위까지로 잡는다 (flex:1 이면 인라인 높이가 무시된다) */ background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:10px 12px; }
 .dashbody h3 { margin:0 0 8px; font-size:14px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
 .dashbody .card { margin-bottom:8px; }
 .ditem { display:flex; gap:8px; align-items:flex-start; padding:4px 0; font-size:13px; line-height:1.45; }
@@ -377,3 +377,67 @@ button.small { padding:3px 8px; font-size:12px; }
 .odds.none { background:transparent; color:var(--dim); border:1px dashed var(--dim); }
 .card.contract.lineup .slots { min-height:44px; }
 .card.contract.lineup .betline { min-height:26px; }
+
+/* 준비 화면: 페이지 스크롤 없음. 아래 여백을 없애고 대시보드가 남는 높이를 다 쓴다 (fitDash) */
+#app.fit { padding-bottom:0; }
+#app.fit .dash { margin-bottom:0; }
+body:has(#app.fit) { overflow:hidden; }
+
+/* 준비 화면: 토글을 디스플레이 오른쪽 아래에 (대시보드를 가리지 않게) */
+.yardwrap .sidetools.indisplay { position:absolute; right:8px; top:52px; bottom:auto; z-index:5; gap:8px; } /* 팻말 줄 아래 오른쪽: 시장 판매대·가격표를 가리지 않는다 */
+.yardwrap .sidetools.indisplay button.tool { width:44px; height:44px; min-height:44px; }
+.yardwrap .sidetools.indisplay button.tool svg { width:22px; height:22px; }
+/* 폰(좁은 화면)에서는 디스플레이 안 토글을 조금 작게: 장면을 덜 가린다 */
+@media (max-width: 480px) {
+  .yardwrap .sidetools.indisplay { right:6px; top:46px; gap:6px; }
+  .yardwrap .sidetools.indisplay button.tool { width:36px; height:36px; min-height:36px; }
+  .yardwrap .sidetools.indisplay button.tool svg { width:18px; height:18px; }
+}
+
+
+/* 편성 페이지 전환: 계약 → 검투사는 오른쪽에서, 돌아올 때는 왼쪽에서 밀려 들어온다 */
+.slide-fwd { animation:slidefwd .24s cubic-bezier(.2,.7,.3,1); }
+.slide-back { animation:slideback .24s cubic-bezier(.2,.7,.3,1); }
+@keyframes slidefwd { from { opacity:.4; transform:translateX(40px); } to { opacity:1; transform:none; } }
+@keyframes slideback { from { opacity:.4; transform:translateX(-40px); } to { opacity:1; transform:none; } }
+
+/* 계약 효과 칩 */
+.effrow { display:flex; flex-wrap:wrap; gap:3px 4px; margin:3px 0; }
+.eff { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:8px; font-size:11px; line-height:1.4; background:#f3ead0; border:1px solid #d9c69a; color:#3a2412; }
+.eff svg { width:12px; height:12px; }
+.eff.up { background:#e4f0dc; border-color:#9cc48a; color:#2c5a1e; }
+.eff.down { background:#f7e1dc; border-color:#d9a79c; color:#8a2417; }
+
+.arenacol { display:flex; flex-direction:column; align-items:center; gap:2px; margin-right:4px; flex:none; }
+.arenacol .arena-icon { margin-right:0; }
+.arenacol .count { font-size:12px; font-weight:700; color:var(--dim); }
+.arenacol .count.ok { color:var(--ok); }
+
+.arenacol { position:relative; }
+.arenacol .ready-check { position:absolute; top:12px; left:2px; width:44px; height:34px; line-height:0; pointer-events:none; transform:rotate(-7deg); } /* 경기장 그림 중앙에서 조금 오른쪽 위, 긁어 그린 낙서 체크 */
+.arenacol .ready-check svg { width:44px; height:34px; }
+
+/* 계약 카드 높이 고정: 칩 줄 두 줄 분량, 배정 줄 한 줄 */
+.card.contract.detail { height:92px; box-sizing:border-box; align-items:flex-start; padding-top:6px; padding-bottom:6px; overflow:hidden; } /* 높이를 완전히 고정: 줄마다 높이를 못 박고 넘치면 자른다 */
+.card.contract.detail > .grow { display:flex; flex-direction:column; gap:2px; height:100%; min-width:0; }
+.card.contract.detail > .grow > div:first-child { height:18px; line-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card.contract.detail .effrow { height:46px; overflow:hidden; align-content:flex-start; margin:0; } /* 칩 2줄(≈19px×2 + 간격) 이 잘리지 않게 */
+.card.contract.detail .fixedline { height:16px; line-height:16px; }
+.card.contract.detail .assignline { height:20px; line-height:20px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.arenacol .tierchip { font-size:11px; font-weight:700; padding:1px 8px; border-radius:9px; background:#3a2412; color:#f3ead0; }
+
+.badge.prof.local { background:#c9b283; color:#3a2412; }
+.badge.prof.major { background:#7a2a6a; color:#fff; }
+.badge.prof.grand { background:#3a2412; color:#f3ead0; }
+
+/* 전투: 경기장 위에 겹치는 편성(VS) 블록. 잠시 뒤 위로 접힌다 (누르면 다시 펼침) */
+.panel.battle .stage { position:relative; }
+.panel.battle .stage .legend { position:absolute; left:10px; bottom:10px; font-size:11px; background:rgba(255,248,229,.85); padding:2px 8px; border-radius:6px; }
+.panel.battle .overlay-lineup { position:absolute; top:8px; left:8px; right:8px; margin:0; background:rgba(243,234,208,.94); border:1px solid #c9b283; box-shadow:0 4px 14px rgba(43,29,14,.25); transition:transform .45s cubic-bezier(.4,0,.2,1), opacity .35s; cursor:pointer; z-index:3; }
+.panel.battle .overlay-lineup.folded { transform:translateY(calc(-100% - 12px)); opacity:0; pointer-events:none; }
+.panel.battle .lineup-tab { position:absolute; top:0; left:50%; transform:translate(-50%, -110%); z-index:2; min-height:26px; padding:3px 10px; display:inline-flex; align-items:center; gap:3px; font-size:11px; border-radius:0 0 8px 8px; background:rgba(243,234,208,.94); border:1px solid #c9b283; border-top:0; opacity:0; transition:transform .35s, opacity .3s; pointer-events:none; }
+.panel.battle .lineup-tab.show { transform:translate(-50%, 0); opacity:1; pointer-events:auto; }
+.panel.battle .lineup-tab .vs-mini { margin:0 4px; font:italic 700 11px Georgia, serif; color:#9b2c1c; }
+
+.modal.ask p.fx { color:#7a3b1e; font-size:12.5px; margin:0 0 8px; padding-left:10px; border-left:3px solid #d9a79c; } /* 확인 모달의 효과 설명 줄: 문구 아래 다른 색 */

@@ -41,6 +41,7 @@ const app = document.getElementById('app')!;
 document.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
 const SAVE_KEY = 'lanista-save';
 const DEBUG = /[?&]debug/.test(location.search); // 테스트용 버튼(건너뛰기·결과 보기) 표시
+if (DEBUG && /[?&]proc/.test(location.search)) setForceProc(true); // ?debug&proc: 기술이 조건만 맞으면 반드시 발동 (연출 확인용)
 function loadSave(): GameState | null { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? deserialize(JSON.parse(raw)) : null; } catch { return null; } }
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(st))); } catch { /* 저장 불가 환경 */ } }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
@@ -149,16 +150,16 @@ const h = (tag: string, attrs: Record<string, any> = {}, ...kids: (Node | string
   return el;
 };
 // ── 말풍선(툴팁): data-tip 이 있는 요소를 폰에서 길게 누르거나(450ms), 버튼이 아닌 요소는 탭하면, PC 에서는 마우스를 올리면 보인다
-let tipEl: HTMLElement | null = null; let tipTimer = 0; let tipSuppressClick = false;
+let tipEl: HTMLElement | null = null; let tipFor: Element | null = null; let tipTimer = 0; let tipSuppressClick = false;
 function showTip(target: Element) {
   const text = target.getAttribute('data-tip'); if (!text) return;
-  hideTip(); const el = h('div', { class: 'tip' }, ...text.split('\n').map(l => h('div', {}, l))); document.body.append(el); tipEl = el;
+  hideTip(); tipFor = target; const el = h('div', { class: 'tip' }, ...text.split('\n').map(l => h('div', {}, l))); document.body.append(el); tipEl = el;
   const r = target.getBoundingClientRect(); el.style.maxWidth = Math.min(280, innerWidth - 16) + 'px'; const w = el.offsetWidth;
   const left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)); el.style.left = left + 'px';
   const above = r.top > el.offsetHeight + 16; el.style.top = (above ? r.top - el.offsetHeight - 8 : r.bottom + 8) + 'px'; el.classList.toggle('below', !above);
   el.style.setProperty('--ax', (r.left + r.width / 2 - left) + 'px');
 }
-function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } }
+function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } tipFor = null; }
 const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
 const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt');
 document.addEventListener('pointerdown', (ev) => { hideTip(); clearTimeout(tipTimer); const t = tipTarget(ev); if (!t) return;
@@ -168,8 +169,9 @@ document.addEventListener('pointerup', () => clearTimeout(tipTimer), { capture: 
 document.addEventListener('pointercancel', () => clearTimeout(tipTimer), { capture: true });
 document.addEventListener('click', (ev) => { if (tipSuppressClick) { tipSuppressClick = false; ev.stopPropagation(); ev.preventDefault(); return; } // 길게 눌러 말풍선을 봤으면 그 클릭은 동작하지 않는다
   const t = tipTarget(ev); if (t && !isAction(t)) { showTip(t); ev.stopPropagation(); } }, { capture: true });
-document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t) showTip(t); });
-document.addEventListener('mouseout', (ev) => { if (tipTarget(ev)) hideTip(); });
+// 마우스: 같은 대상 안에서 자식(아이콘·배지) 사이를 오가도 말풍선을 다시 만들지 않고, 대상 밖으로 나갈 때만 지운다 (깜박임 방지)
+document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t && t !== tipFor) showTip(t); });
+document.addEventListener('mouseout', (ev) => { const t = tipTarget(ev); if (!t) return; const to = (ev as MouseEvent).relatedTarget as Element | null; if (to && t.contains(to)) return; hideTip(); });
 addEventListener('scroll', hideTip, { capture: true });
 const sq = (t: GType) => h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, glyphSvg(t));
 
@@ -219,7 +221,7 @@ function originBadge(g: Gladiator): Node | null {
 // 계약 상대 설명: 파밀리아 이름 + 이름(유형·전적). 원한·복수 관계 표시
 function enemyLine(c: Contract): Node {
   const rv = rivalOf(st.rivals, c.rivalId);
-  const parts: (Node | string)[] = [h('b', {}, rv ? rv.name : '떠돌이 검투사단'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)}) `) : '', ': '];
+  const parts: (Node | string)[] = [h('b', {}, rv ? rv.name : '타지 라니스타의 검투사'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)}) `) : '', ': '];
   const star = rv ? rivalStar(rv) : undefined;
   c.enemy.forEach((e, i) => { parts.push(i ? ', ' : '', sq(e.type), ' ', `${e.name.replace('(적)', '')} (${e.rank === 'tiro' ? '티로' : '베테'} ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? ` · 기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''})`); if (star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5)) parts.push(' ', h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판'));
     const spBy = st.roster.filter(g => (g.spared ?? []).includes(e.id)), beat = st.roster.filter(g => (g.beatenBy ?? []).includes(e.id));
@@ -311,13 +313,14 @@ function render() {
   if (phase === 'plan') { app.append(renderPlan()); return; }
   if (phase === 'summary') { app.append(renderSummary()); return; }
   if (st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
-  app.append(renderTown());
+  { const town = renderTown(); (town as HTMLElement).append(sideTools([{ icon: 'cells', title: '켈라', badge: st.roster.length, on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아', badge: st.rivals.length }])); app.append(town); } // 토글은 디스플레이 오른쪽 아래
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
   const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
   app.append(h('div', { class: 'dash' }, h('div', { class: 'dashbody' }, noticeEl, ...renderDash()))); // 편성으로 가는 버튼은 아래 탭 바의 단계 버튼
+  app.classList.add('fit'); fitDash(); requestAnimationFrame(() => { if (phase === 'manage') fitDash(); }); // 준비 화면은 페이지 스크롤 없이 대시보드가 하단 바 바로 위까지 (첫 프레임엔 바 높이가 달라 한 번 더)
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
-  app.append(tabbar(stageItems('manage'), [{ icon: 'cells', title: '켈라', on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; render(); } }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아', badge: st.rivals.length }])); // 규칙은 메뉴에 // 배지 = 현황 (독토르 수 · 파밀리아 수). 검투사는 켈라에서
+  app.append(tabbar(stageItems('manage'))); // 규칙은 메뉴에. 토글(켈라·독토르·파밀리아)은 디스플레이 안
 }
 // ── 탭 바 (화면 아래 고정): 왼쪽은 준비 → 편성 → 전투 단계, 오른쪽은 시트를 여닫는 아이콘 토글(현황 배지). 시트는 화면 위에 여는 상세
 type StageItem = { label: string; on?: boolean; primary?: boolean; disabled?: boolean; onclick?: () => void };
@@ -335,7 +338,11 @@ function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
   const toolEls = tools.map(t => { const on = t.key ? sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; sheet = sheet === k ? null : k; render(); } : t.onclick });
     b.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TOOL_SVG[t.icon]}</svg>`;
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
-  return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 아이콘 토글은 탭 바가 아니라 화면 오른쪽에 세로로 뜬다 (fixed)
+  return h('nav', { class: 'tabbar' }, h('div', { class: 'stages' }, ...stageEls), tools.length ? h('div', { class: 'sidetools' }, ...toolEls) : null); // 편성 등에서는 화면 오른쪽에 세로로 뜬다 (fixed)
+}
+// 준비 화면의 아이콘 토글: 디스플레이(장면) 오른쪽 아래에 세로로 — 대시보드를 가리지 않는다
+function sideTools(tools: ToolItem[]): Node {
+  const nav = tabbar([], tools) as HTMLElement; const el = nav.querySelector('.sidetools')!; el.classList.add('indisplay'); return el;
 }
 // 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성', 편성에서는 '준비' 와 '전투'). 화살표 없이
 function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
@@ -481,15 +488,18 @@ function doctorsPanel(): Node {
     !docs.length && !free.length ? h('div', { class: 'hint' }, `검투사가 ${CONFIG.rudis.wins}승에 이르면 루디스(자유)를 받을 수 있고, 그 자유민을 독토르로 고용합니다.`) : null);
 }
 // 연대기: 역대 라니스타 · 명예의 전당(루디스) · 묘비 · 최근 연혁
+// 연혁 중 '특별한 일'만: 일상 기록(구매·매각·훈련·시범·요양·재계약·시설·매 경기 결과)은 뺀다
+const ROUTINE = /( 매각 \d| 훈련\(| 기술 훈련 | 시범 \(| 요양$| 재계약 \d| 대여 \d| 번 칸 \d|: (켈라|숙소|침상|의술|약재|조리장|팔루스|훈련 시설|증축|공개 만찬|행렬|네메시스 봉헌|벽화 광고|귀족 손님)[^:]* \d+$)/;
+const isSpecialEvent = (l: string) => !ROUTINE.test(l);
 function chroniclePanel(): Node {
-  const hall = [...(st.hall ?? [])].reverse(), dead = [...st.graveyard].reverse(), log = [...st.history].reverse().slice(0, 40);
+  const hall = [...(st.hall ?? [])].reverse(), dead = [...st.graveyard].reverse(), log = [...st.history].reverse().filter(isSpecialEvent); // 특별한 일은 전부 (최근이 위)
   const sec = (title: string, hint: string, kids: (Node | null)[]) => h('div', { class: 'chsec' }, h('h3', { class: 'sub' }, title, hintSpan(hint)), ...(kids.length ? kids : [h('div', { class: 'hint' }, '아직 없음')]));
   const lanistas = [...(st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, st.lanista.name), h('span', { class: 'meta' }, ` ${st.lanista.age}세 · ${st.lanista.since}번째 시즌부터 · ${st.lanista.trait === 'doctor' ? '전직 독토르' : st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
   return h('div', { class: 'panel' }, h('h2', {}, '연대기', helpBtn('연대기', '루두스의 역사입니다. 역대 라니스타는 은퇴·사망으로 물려준 순서, 명예의 전당은 루디스(나무 검)로 자유를 얻은 검투사, 묘비는 경기장에서 죽은 검투사입니다. 폼페이 낙서와 묘비처럼 이름·전적·별칭이 남습니다.')),
     sec('역대 라니스타', `${(st.lineageLog?.length ?? 0) + 1}대`, lanistas),
     sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; }), ...(e.skills ?? []).map(id => h('span', { class: 'badge skill', style: 'margin-left:4px' }, SKILL_NAME(id)))))),
     sec('묘비', `${dead.length}명`, dead.map(g => h('div', { class: 'drow' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전${g.age ? ` · ${g.age}세` : ''} — 관중은 침묵했다`)))),
-    sec('연혁', '최근 40건', log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
+    sec('연혁', `특별한 일 ${log.length}건`, log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
 }
 function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
@@ -552,7 +562,7 @@ function rivalsPanel(): Node {
     return h('div', { class: 'panel' }, h('h2', {}, '상대 파밀리아', hintSpan(`${st.rivals.length}곳 · 이번 시즌 계약 상대 ${new Set(st.contracts.map(c => c.rivalId).filter(Boolean)).size}곳`)),
       h('div', { class: 'rivals' }, ...st.rivals.map(rv => { const star = rivalStar(rv); const inContracts = st.contracts.filter(c => c.rivalId === rv.id).length;
         return h('div', { class: 'rivalcard' }, star ? portrait(star, 56, true) : h('div', { class: 'portrait', style: 'width:56px;height:56px' }),
-          h('div', { class: 'grow' }, h('div', {}, h('b', {}, rv.name), inContracts ? h('span', { class: 'badge revenge', style: 'margin-left:6px' }, `이번 시즌 계약 ${inContracts}`) : null),
+          h('div', { class: 'grow' }, h('div', {}, h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}`, style: 'margin-left:6px', title: rivalDef(rv)?.desc ?? '' }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), inContracts ? h('span', { class: 'badge revenge', style: 'margin-left:6px' }, `이번 시즌 계약 ${inContracts}`) : null),
             h('div', { class: 'meta' }, star && ((star.honor ?? 0) >= 20 || star.wins >= 3) ? `간판: ${star.name} (${TYPE_KO[star.type]} ${star.rank === 'tiro' ? '티로' : '베테'}, ${star.wins}승/${star.fights}전, 명예 ${star.honor ?? 0}${(star.skills ?? []).length ? `, 기술 ${(star.skills ?? []).map(SKILL_NAME).join('·')}` : ''})` : '아직 이름난 검투사가 없음'),
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
             h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`))))); })));
@@ -672,11 +682,13 @@ function renderDash(): Node[] {
     const full = st.roster.length >= rosterCap(st);
     if (full) out.push(item('warn', `켈라이 가득 찼습니다 (${st.roster.length}/${rosterCap(st)}). 루두스에서 켈라을 증축하거나 검투사를 매각해야 살 수 있습니다.`));
     if (g && g.origin && g.origin !== 'slave') out.push(item('idle', `${ORIGIN_KO[g.origin]}: ` + (g.origin === 'captive' ? `값 ${Math.round((1 - CONFIG.origins.captive.price) * 100)}% 저렴, 공격 +${CONFIG.origins.captive.atk}·HP +${CONFIG.origins.captive.hp}. 관중이 이방인에게 냉담해 미시오 ${Math.round(CONFIG.origins.captive.missio * 100)}%.` : g.origin === 'damnatus' ? `값 ${Math.round((1 - CONFIG.origins.damnatus.price) * 100)}% 저렴, 능력치 ${CONFIG.origins.damnatus.stat}. 사망 배상 절반. ${CONFIG.origins.damnatus.freeAfter}시즌 뒤 형기 만료로 자유민이 됨.` : `계약금 ${g.buyPrice.toLocaleString()} HS 로 ${CONFIG.origins.auctoratus.term}시즌 계약. 자유민이라 매각·배상 없음, 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}% 급료. 만료 전 재계약(계약금의 절반) 가능.`)));
-    if (g) out.push(gladCard(g, [h('button', { class: 'primary', disabled: st.money < priceOf(st, g) || full, onclick: () => { if (buy(st, g)) { sfx.coin(); marketSel = null; render(); } } }, `구매 ${priceOf(st, g).toLocaleString()}${priceOf(st, g) < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }),
-      st.money < priceOf(st, g) ? item('warn', `자금이 ${(priceOf(st, g) - st.money).toLocaleString()} HS 부족합니다.`) : null as unknown as Node);
-    else out.push(h('div', { class: 'card ghost' }, h('span', { class: 'hint' }, '매물을 고르세요'))); // 선택 전에도 같은 높이를 차지해 목록이 움직이지 않는다
-    out.push(h('div', { class: 'dlist' }, ...st.market.map(m => h('div', { class: `drow${m.id === marketSel ? ' sel' : ''}${st.money < priceOf(st, m) ? ' dis' : ''}`, onclick: () => { marketSel = m.id; render(); } },
-      h('span', { class: 'sq small', style: `background:${TYPE_COLOR[m.type]}` }, glyphSvg(m.type, 14)), ' ', h('span', { class: 'nm' }, m.name), ' ', originBadge(m), m.scaeva ? h('span', { class: 'badge scaeva' }, '왼손잡이') : null, h('span', { class: 'meta' }, `${TYPE_KO[m.type]} · ${m.age ?? '?'}세 · HP ${m.base.hp} 공 ${m.base.atk} 방 ${m.base.def}`), h('span', { style: 'flex:1' }), h('span', { class: 'price' }, `${priceOf(st, m).toLocaleString()} HS`)))));
+    if (g) { // 고른 매물의 자세한 정보 (목록은 없다: 위 판매대의 검투사를 눌러 고른다)
+      const price = priceOf(st, g);
+      out.push(gladCard(g, [h('button', { class: 'primary', disabled: st.money < price || full, onclick: () => { if (buy(st, g)) { sfx.coin(); marketSel = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
+      out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 속도 ${g.base.spd} · 사거리 ${g.base.range}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
+      if (st.money < price) out.push(item('warn', `자금이 ${(price - st.money).toLocaleString()} HS 부족합니다.`));
+      const idx = st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${st.market.length} — 위 판매대의 다른 검투사를 누르면 바꿔 본다`));
+    } else out.push(h('div', { class: 'card ghost' }, h('span', { class: 'hint' }, '위 판매대의 검투사를 누르면 자세히 보입니다')));
     return out.filter(Boolean);
   }
   if (cellsOpen) { // 켈라 화면: 칸별 숙소 질 강화 + 증축·조리장
@@ -714,6 +726,7 @@ function renderDash(): Node[] {
   const injured = st.roster.filter(g => g.injured); const avail = available(st);
   const upkeep = upkeepOf(st);
   if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
+  for (const rv of st.rivals.filter(r => r.since === st.season && st.season > 1)) out.push(item('todo', `${rv.name} 이(가) 이 지방에 나타났다 — ${rivalDef(rv)?.desc ?? ''}. 앞으로 계약 상대로 만난다.`)); // 호감도가 올라 큰 루두스가 온 시즌
   { const p = mortality(st.lanista.age + 1); const docs = st.roster.filter(g => g.status === 'doctor').length;
     if (st.lanista.age >= 46) out.push(item(p >= 0.045 ? 'warn' : 'idle', `${st.lanista.name} ${st.lanista.age}세 — 해마다 ${Math.round(p * 100)}%의 확률로 세상을 떠날 수 있습니다. 후계 후보: 독토르 ${docs}명${docs ? '' : ' (없으면 부하 해방노예가 잇습니다)'}. 헤더의 '은퇴'로 미리 물려줄 수 있습니다.`)); }
   if (st.applicants.length) out.push(item('todo', `루두스 문 앞에 자유민 지원자 ${st.applicants.length}명: ${st.applicants.map(g => `${g.name}(${TYPE_KO[g.type]}·${g.rank === 'tiro' ? '티로' : '베테'}, 계약금 ${g.buyPrice.toLocaleString()})`).join(', ')} — 아래 카드에서 계약.`));
@@ -832,6 +845,13 @@ function renderTown() {
     const r = c.getBoundingClientRect();
     if (cellsP > 0.9) { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (TOWN.H / r.height); const k = cellRects(st.ludus.cells.length).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= 0) { const occ = occupantOf(st, k); if (occ) { gladSel = occ.id; sheet = 'glad'; cellPop = null; render(); return; } /* 사람이 있는 방 → 검투사 시트 */ const q = cellRects(st.ludus.cells.length)[k]; cellSel = k; cellPop = { cx: r.left + (q.x + q.w / 2) * (r.width / VW), cy: r.top + (q.y + q.h / 2) * (r.height / TOWN.H), fresh: true }; render(); } return; }
     if (view === 'grave') { document.querySelector('.dashbody')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; } // 묘비를 누르면 아래 연대기로
+    if (view === 'medic') { // 침상 위 부상자를 누르면 치료 (확인 후). 침상이 모자라 탁자 옆에 앉은 부상자도 같다
+      const lx = (ev.clientX - r.left) * (VW / r.width) + camX, ly = (ev.clientY - r.top) * (TOWN.H / r.height) - (GY - 210);
+      const injured = st.roster.filter(g => g.injured); const beds = Math.max(1, Math.min(4, st.ludus.beds)); const H = MEDIC.H, TX = 350;
+      let hit: Gladiator | null = null;
+      injured.forEach((g, i) => { if (hit) return; if (i < beds) { const bx = 16 + i * 80; if (lx >= bx - 4 && lx <= bx + 88 && ly >= H - 90 && ly <= H - 16) hit = g; } else { const sx = TX + 60 + (i - beds) * 22; if (Math.abs(lx - sx) <= 12 && ly >= H - 70 && ly <= H - 12) hit = g; } });
+      if (hit) { const g = hit as Gladiator; const cost = healCostOf(st); void ask(`${g.name} (부상 ${g.injured}시즌) 을(를) ${cost.toLocaleString()} HS 에 치료합니까?`, { ok: '치료', title: '의무실' }).then(ok => { if (!ok) return; if (st.money < cost) { void tell('자금이 모자랍니다'); return; } heal(st, g); sfx.coin(); render(); }); }
+      return; }
     if (view === 'yard') { // 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
       const lx = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.yardX, ly = (ev.clientY - r.top) * (TOWN.H / r.height) - (GY - 210);
       if (Math.abs(lx - YARD.W / 2) <= 30 && ly >= 30 && ly <= 86) void tell(`복수와 운명의 여신 네메시스의 감실입니다. 검투사들은 경기 전에 여기서 기도하고 봉헌했습니다(원형경기장 곁의 네메세움 비문 근거).\n이번 시즌 봉헌: ${st.events?.votum ? '함 (미시오 +3%)' : '안 함'}. 편성 화면의 시즌 행사에서 ${CONFIG.events.votum.cost} HS 로 봉헌하면 그 시즌 미시오 확률이 +${Math.round(CONFIG.events.votum.missio * 100)}% 오릅니다.`, '네메시스 사당');
@@ -1026,10 +1046,17 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
     stick(medic.x, H - 22, 0.9, pose, t, 3, facing);
   }
   // 부상자: 침상에 눕고(머리 왼쪽), 침상이 모자라면 오른쪽 벽가에 앉는다
+  // 부상 표시: 남은 시즌 수만큼 구급 십자 (침상 위 작은 팻말). 누르면 치료
+  const cost = `${healCostOf(st).toLocaleString()}`; ctx.font = 'bold 10px sans-serif'; const costW = ctx.measureText(cost).width;
+  const crosses = (cx: number, cy: number, n: number, k: number) => { const w = n * 17 + 10 + costW + 6; ctx.fillStyle = '#f3ead0'; ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - 10, w, 20, 4); ctx.fill(); ctx.stroke(); // 십자(남은 시즌) + 치료 금액
+    for (let j = 0; j < n; j++) { const x = cx - w / 2 + 12 + j * 17, bob = Math.sin(t * 2 + k + j) * 0.6; ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 6.5, cy - 2 + bob, 13, 4); ctx.fillRect(x - 2, cy - 6.5 + bob, 4, 13); }
+    ctx.fillStyle = '#3a2412'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(cost, cx - w / 2 + 12 + n * 17, cy + 3.5); ctx.textAlign = 'center'; };
+  const nameTag = (g: Gladiator, cx: number, cy: number) => { ctx.font = 'bold 10px sans-serif'; const nw = ctx.measureText(g.name).width; const x0 = cx - (nw + 18) / 2; ctx.fillStyle = TYPE_COLOR[g.type]; ctx.fillRect(x0, cy - 12, 14, 14); drawGlyph(ctx, g.type, x0 + 7, cy - 5, 11); ctx.fillStyle = '#3a2412'; ctx.textAlign = 'left'; ctx.fillText(g.name, x0 + 18, cy - 1); ctx.textAlign = 'center'; }; // 무기(유형) 아이콘 + 이름
   injured.forEach((g, i) => { const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
     if (i < bedX.length) { const bx = bedX[i]; ctx.save(); ctx.beginPath(); ctx.rect(bx - 4, 0, 92, H); ctx.clip();
-      drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); }
-    else drawStickman(ctx, g.type, { x: TX + 60 + (i - bedX.length) * 22, y: H - 20, scale: 0.9, pose: 'sit', t: t + i, team, bare: true, facing: -1 });
+      drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); crosses(bx + 37, H - 80, Math.min(4, g.injured), i);
+      nameTag(g, bx + 37, H - 6); } // 침상 아래 무기 아이콘 + 이름
+    else { const sx = TX + 60 + (i - bedX.length) * 22; drawStickman(ctx, g.type, { x: sx, y: H - 20, scale: 0.9, pose: 'sit', t: t + i, team, bare: true, facing: -1 }); crosses(sx, H - 74, Math.min(4, g.injured), i); nameTag(g, sx, H - 4); }
   });
 }
 // 성벽: 도시 경계. 높은 벽·총안·아치 성문(열림). 발 = 0
@@ -1484,7 +1511,7 @@ function renderOver() {
 
 // ── 경기장(월드 좌표, 검투사 비율). 바닥 타원 중심 (0,0). 관객석은 타원 링으로 사방을 두르되 먼 쪽이 높이 들린다.
 const hash01 = (a: number, b: number) => { const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return h - Math.floor(h); };
-const WORLD = { rx: 680, ry: 150, rows: 6, seat: 46, sc: 0.9, wood: false, velarium: false }; // ry 는 tilt=1(낮은 각도)일 때. 관중 = 검투사 비율. 경기마다 등급에 맞춰 바뀐다
+const WORLD = { rx: 680, ry: 150, rows: 6, seat: 46, sc: 0.9, wood: false, velarium: false, seatLift: 30 }; // seatLift: 관객 머리를 좌석선보다 위로 올려 몸이 좌석 띠 안에 앉게 (0이면 머리가 좌석선에 붙어 앞줄이 경기장 밖으로 내려앉아 보인다) // ry 는 tilt=1(낮은 각도)일 때. 관중 = 검투사 비율. 경기마다 등급에 맞춰 바뀐다
 // 등급별 경기장: 1 = 목조 가설 경기장(작고 관중석 3단, 나무 판자), 2 = 지방 석조 경기장, 3 = 대경기장(9단, 벨라리움 차양)
 const ARENA_BY_TIER: Record<number, Partial<typeof WORLD>> = {
   1: { rx: 520, ry: 118, rows: 3, wood: true, velarium: false },
@@ -1511,7 +1538,7 @@ function seatList(density: number, tilt = 1) {
       const h = hash01(j, k); if (h > fill) continue;
       const a = (j / n) * Math.PI * 2;
       if (k <= 2 && Math.abs(a - Math.PI * 1.5) < [0.26, 0.19, 0.13][k]) continue; // 주최자석 뒤·옆은 비움
-      out.push({ x: Math.cos(a) * mid.rx + (hash01(k, j) - 0.5) * 8, y: mid.cy + Math.sin(a) * mid.ry, h, k, j, toga: k === 0, near: Math.sin(a) > 0.25 });
+      out.push({ x: Math.cos(a) * mid.rx + (hash01(k, j) - 0.5) * 8, y: mid.cy + Math.sin(a) * mid.ry - WORLD.seatLift * lerp(0.6, 1, tilt), h, k, j, toga: k === 0, near: Math.sin(a) > 0.25 }); // 머리를 좌석선 위로
     }
   }
   return out;
@@ -1920,6 +1947,17 @@ function renderBattle() {
       ctx.save(); ctx.strokeStyle = '#3a2412'; ctx.fillStyle = '#3a2412'; ctx.lineCap = 'round';
       if (f.kind === 'slash') { const k2 = 1 - f.t / 0.28; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 26 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); }
       else if (f.kind === 'dust') { const k2 = 1 - f.t / 0.5; ctx.globalAlpha = 0.6 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI + Math.PI; const rr = 8 + k2 * 22; ctx.beginPath(); ctx.arc(f.x - f.dir * 10 + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.4, 3 + k2 * 4, 0, Math.PI * 2); ctx.stroke(); } }
+      else { const life = f.life ?? 0.5, k2 = 1 - f.t / life; const u = f.id != null ? byId[f.id] : null; const cur = f.id != null ? pos[f.id] : null; // 기술 연출
+        if (f.kind === 'ghost' && u && cur) { ctx.globalAlpha = 0.35 * (1 - k2); drawStickman(ctx, u.g.type, { x: cur.x - f.dir * (10 + k2 * 26), y: cur.y + 30 * SC, scale: 1.15 * SC, facing: f.dir as 1 | -1, pose: 'guard', t: 0, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); }
+        else if (f.kind === 'shock') { ctx.globalAlpha = 0.8 * (1 - k2); ctx.lineWidth = 3 - k2 * 1.5; for (let i = 0; i < 2; i++) { const rr = 14 + k2 * 26 + i * 8; ctx.beginPath(); ctx.arc(f.x, f.y - 6, rr, -Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI), Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI)); ctx.stroke(); } }
+        else if (f.kind === 'gslash') { ctx.strokeStyle = '#d4a52a'; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 4 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 24 + k2 * 12, 0.5 * f.dir + (f.dir > 0 ? Math.PI : 0), -0.9 * f.dir + (f.dir > 0 ? Math.PI : 0), f.dir > 0); ctx.stroke(); }
+        else if (f.kind === 'dslash') { ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; for (const o of [-7, 7]) { ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y + o, 24 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); } }
+        else if (f.kind === 'netline' && cur) { const nx = f.x + (cur.x + f.dir * 10 - f.x) * k2, ny = f.y + (cur.y - 20 - f.y) * k2; ctx.globalAlpha = 0.9 * (1 - k2 * 0.5); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cur.x + f.dir * 6, cur.y - 22); ctx.lineTo(nx, ny); ctx.stroke(); drawNetProjectile(ctx, nx, ny, 18, 1 - k2 * 0.8, k2 * 8); }
+        else if (f.kind === 'push') { ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x + f.dir * (18 + k2 * 30), f.y); ctx.moveTo(f.x + f.dir * (12 + k2 * 30), f.y - 6); ctx.lineTo(f.x + f.dir * (18 + k2 * 30), f.y); ctx.lineTo(f.x + f.dir * (12 + k2 * 30), f.y + 6); ctx.stroke(); }
+        else if (f.kind === 'ring') { ctx.globalAlpha = 0.7 * (1 - k2); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, 10 + k2 * 30, 4 + k2 * 10, 0, 0, Math.PI * 2); ctx.stroke(); if (u && cur && k2 < 0.6) { ctx.globalAlpha = 0.5 * (1 - k2 / 0.6); ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cur.x, cur.y + 4, 24, 0, Math.PI * 2); ctx.stroke(); } }
+        else if (f.kind === 'halo' && cur) { ctx.globalAlpha = 0.7 * (1 - Math.max(0, k2 - 0.7) / 0.3); ctx.strokeStyle = '#f3ead0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cur.x, cur.y + 30, 34, 12, 0, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; const sy = cur.y - 70 + Math.min(1, k2 * 4) * 30; ctx.beginPath(); ctx.moveTo(cur.x - 40, sy - 40); ctx.lineTo(cur.x - 18, sy); ctx.stroke(); ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.arc(cur.x - 18, sy, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3b7a2c'; for (let i = 0; i < 5; i++) { const ph = (k2 * 2 + i * 0.2) % 1; ctx.globalAlpha = 0.8 * (1 - ph); ctx.beginPath(); ctx.arc(cur.x - 16 + i * 8, cur.y - 10 - ph * 40, 2.2, 0, Math.PI * 2); ctx.fill(); } }
+        else if (f.kind === 'cloth' && cur) { ctx.fillStyle = '#f3ead0'; for (let i = 0; i < 4; i++) { const ph = (k2 + i * 0.25) % 1; ctx.globalAlpha = 0.9 * (1 - ph); ctx.save(); ctx.translate(cur.x - 12 + i * 8 + Math.sin(k2 * 10 + i) * 6, cur.y - 40 - ph * 50); ctx.rotate(Math.sin(k2 * 8 + i) * 0.6); ctx.fillRect(-4, -3, 8, 6); ctx.restore(); } }
+        else if (f.kind === 'trail' && cur) { ctx.globalAlpha = 0.55 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const rr = 4 + i * 3 + k2 * 6; ctx.beginPath(); ctx.arc(cur.x - f.dir * (14 + i * 14), cur.y + 34 - i * 1.5, rr, 0, Math.PI * 2); ctx.stroke(); } } }
       ctx.restore();
     }
     for (const f of flash) { ctx.fillStyle = f.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.text, pos[f.id].x + 30, pos[f.id].y - 14 - (1 - Math.min(1, f.t)) * 14 - Math.max(0, f.t - 1) * 30); }
@@ -2022,7 +2060,7 @@ function renderBattle() {
 
 function renderResult() {
   const r = report!;
-  app.replaceChildren();
+  app.replaceChildren(); app.classList.remove('fit');
   const won = r.winner === 'A';
   const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
   const fateBadge = (g: Gladiator) => {
@@ -2043,10 +2081,10 @@ function renderResult() {
   const myCards = r.team.map(g => h('div', { class: 'fatecard' }, portrait(g, 56), h('div', { class: 'grow' },
     h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name)),
     h('div', {}, ...fateBadge(g)))));
-  const enemyCards = r.contract.enemy.map(g => { const ef = r.enemyFates.find(f => f.g.id === g.id); const rvName = rivalOf(st.rivals, r.contract.rivalId)?.name ?? '떠돌이 검투사단';
+  const enemyCards = r.contract.enemy.map(g => { const ef = r.enemyFates.find(f => f.g.id === g.id); const rvName = rivalOf(st.rivals, r.contract.rivalId)?.name ?? '타지 라니스타의 검투사';
     return h('div', { class: `fatecard enemy${ef ? ' down' : ''}` }, portrait(g, 56, true), h('div', { class: 'grow' },
     h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${rvName}`)),
-    h('div', {}, ef ? h('span', { class: `badge ${ef.fate === 'dead' ? 'dead' : ef.fate === 'injured' ? 'injured' : 'missio'}` }, ef.fate === 'dead' ? '사망' : ef.fate === 'injured' ? '미시오 · 부상' : '미시오 생존') : h('span', { class: 'badge ok' }, won ? '무사' : '승리'),
+    h('div', {}, ef ? h('span', { class: `badge ${ef.fate === 'dead' ? 'dead' : ef.fate === 'injured' ? 'injured' : 'missio'}` }, ef.fate === 'dead' ? (ef.wound ? '상처로 사망' : '사망') : ef.fate === 'injured' ? '미시오 · 부상' : '미시오 생존') : h('span', { class: 'badge ok' }, won ? '무사' : '승리'),
       r.revenges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge revenge' }, '복수 성공') : null, r.grudges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge grudge' }, '원한 재대결') : null))); });
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
   app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
