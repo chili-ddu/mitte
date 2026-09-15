@@ -16,7 +16,7 @@ export function survivalChance(g: Gladiator, fame: number, host: HostKind, syn: 
   p += extra; // 봉헌 등
   p += epithetMods(g).missio; // 별칭 '불사'
   if (g.origin === 'captive') p += CONFIG.origins.captive.missio; // 이방인 포로에게 관중은 냉담
-  p -= (g.fatigue ?? 0) * CONFIG.fatigue.missioPenalty;
+  p -= Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.missioPenalty;
   return Math.min(0.98, Math.max(0.02, p));
 }
 

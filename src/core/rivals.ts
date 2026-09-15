@@ -18,13 +18,13 @@ export const RIVAL_DEFS: { id: number; name: string; profile: RivalProfile; fame
 const ROSTER_SIZE = 6;
 const PROFILE = { local: { vet: 0, grow: 0, skills: 0 }, major: { vet: 0.35, grow: 1, skills: 1 }, grand: { vet: 0.6, grow: 2, skills: 1 } }; // 서열 확률 가산 · 공방 가산 · 기술 가산
 
-function strengthAt(season: number) { return 0.75 + season * 0.03; }
+function strengthAt(season: number, fame = 0) { return 0.75 + season * 0.03 + Math.max(0, fame - 50) * CONFIG.rivalFameGrow; } // 시즌 + 내 명성(50 위로 1점당 0.4%): 이름난 루두스에는 강한 파밀리아가 붙는다
 const ORD = ['', ' 세쿤두스', ' 테르티우스', ' 콰르투스', ' 퀸투스'];
-function makeMember(rng: Rng, season: number, roster: Gladiator[] = [], profile: RivalProfile = 'local'): Gladiator {
-  const P = PROFILE[profile]; const s = strengthAt(season); const rank = rng.chance(Math.min(0.95, s - 0.6 + P.vet)) ? 'veteranus' : 'tiro';
-  const g = makeGladiator(rng, rank); if (rank === 'veteranus' && P.grow) { g.base.atk += P.grow; g.base.def += P.grow; }
-  // 상대도 시즌을 거치며 훈련한다: 베테라누스는 3시즌마다 공·방 +1 (최대 +6), 승수도 쌓인 채로 온다 (내 검투사만 자라면 후반 승률이 70%를 넘는다)
-  if (rank === 'veteranus') { const grow = Math.min(6, Math.floor((season - 1) / 3)); g.base.atk += grow; g.base.def += grow; g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
+function makeMember(rng: Rng, season: number, roster: Gladiator[] = [], profile: RivalProfile = 'local', fame = 0): Gladiator {
+  const P = PROFILE[profile]; const s = strengthAt(season, fame); const rank = rng.chance(Math.min(0.95, s - 0.6 + P.vet)) ? 'veteranus' : 'tiro';
+  const g = makeGladiator(rng, rank, { season }); if (rank === 'veteranus' && P.grow) { g.base.atk += P.grow; g.base.def += P.grow; }
+  // 상대도 시즌을 거치며 훈련한다: 베테라누스 시즌 단련은 makeGladiator(statRoll.vetGrow)에서, 승수·명예도 쌓인 채로 온다 (내 검투사만 자라면 후반 승률이 70%를 넘는다)
+  if (rank === 'veteranus') { g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
   if (rank === 'veteranus') { const n = rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1]) + P.skills; for (let k = 0; k < n; k++) { const e = eligibleSkills(g); if (!e.length) break; (g.skills ??= []).push(rng.pick(e).id); } } // 상대 베테라누스도 기술을 1~2개 가진다
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
@@ -43,10 +43,10 @@ export function arriveRivals(rng: Rng, rivals: Rival[], season: number, fame: nu
 }
 export const rivalDef = (r: Rival) => RIVAL_DEFS.find(d => d.id === r.id);
 // 시즌마다: 부상 회복, 빈자리 보충, 봄에는 나이
-export function replenishRivals(rng: Rng, rivals: Rival[], season: number) {
+export function replenishRivals(rng: Rng, rivals: Rival[], season: number, fame = 0) {
   for (const r of rivals) {
     for (const g of r.roster) { if (g.injured > 0) g.injured--; if ((season - 1) % 4 === 0) g.age = (g.age ?? 22) + 1; }
-    while (r.roster.length < ROSTER_SIZE) r.roster.push(makeMember(rng, season, r.roster, r.profile ?? 'local'));
+    while (r.roster.length < ROSTER_SIZE) r.roster.push(makeMember(rng, season, r.roster, r.profile ?? 'local', fame));
   }
 }
 // 출전 가능한 검투사에서 size 명을 고른다 (부족하면 null)

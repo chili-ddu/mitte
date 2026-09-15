@@ -19,7 +19,7 @@ export function resetContractIds() { cid = 1; }
 
 // 난이도 분포: 내 로스터 전력을 기준으로 약·중·중·강 (계약 3개면 약·중·강, 2개면 중·강). 목표 = 내 검투사 평균 전력 × 인원 × 비율
 export type Difficulty = 'weak' | 'even' | 'strong';
-const DIFF_RATIO: Record<Difficulty, number> = { weak: 0.75, even: 1.0, strong: 1.3 };
+const DIFF_RATIO = (): Record<Difficulty, number> => CONFIG.contractDiff.ratio; // 설정값 (밸런스 스윕용)
 const DIST: Record<number, Difficulty[]> = { 2: ['even', 'strong'], 3: ['weak', 'even', 'strong'], 4: ['weak', 'even', 'even', 'strong'] };
 // 파밀리아에서 목표 전력에 가장 가까운 조합 (조합 수가 작아 전부 본다). 보정은 없다: 있는 검투사 그대로
 function closestCombo(pool: Gladiator[], size: number, target: number): Gladiator[] | null {
@@ -31,27 +31,27 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
   const n = rng.int(2, 4); // 1대1 위주라 계약 수를 늘려 시즌 총 출전 자리를 유지
   const out: Contract[] = [];
   const mine = roster.filter(g => g.alive && g.status !== 'doctor'); const ref = mine.length ? teamPower(mine) / mine.length : 0; // 내 검투사 한 명의 평균 전력 (없으면 옛 방식)
-  const dist = [...DIST[n]].sort(() => rng.next() - 0.5); // 순서는 섞는다
+  const CD = CONFIG.contractDiff; const dist = [...DIST[n]].map(d => season <= 2 && d === 'strong' ? 'even' : season >= CD.lateFrom && d === 'weak' && rng.chance(CD.lateWeakToStrong) ? 'strong' : d).sort(() => rng.next() - 0.5); // 순서는 섞는다. 첫 두 시즌은 강한 상대 없음, 후반엔 약한 계약이 강한 계약으로 바뀌기도
   for (let i = 0; i < n; i++) {
     // 시즌이 갈수록, 호감도가 높을수록 상위 등급
     let tier: 1 | 2 | 3 = 1;
-    if (season >= 2 && fame >= CONFIG.fameTierReq[2] && rng.chance(0.3 + season * 0.04)) tier = 2; // 첫 시즌은 등급 1만
+    if (season >= 3 && fame >= CONFIG.fameTierReq[2] && rng.chance(0.3 + season * 0.04)) tier = 2; // 첫 두 시즌은 등급 1만
     if (fame >= CONFIG.fameTierReq[3] && rng.chance(0.3)) tier = 3;
     const host: HostKind = rng.pick(HOSTS_BY_TIER[tier]);
     const strength = 0.75 + season * 0.03 + (tier - 1) * 0.15; // 적 강도
     const size: 1 | 2 | 3 = tier === 1 ? rng.pick([1, 1, 1, 1, 2, 2] as const) : tier === 2 ? rng.pick([1, 1, 2, 2, 3] as const) : rng.pick([2, 3, 3] as const); // 고증: 무누스의 기본은 1대1 결투(파리아). 집단전은 대형 경기에만
     // 상대: 파밀리아 중 하나에서 뽑는다 (맞는 조합이 없으면 타지 라니스타의 검투사)
     let rivalId: number | undefined; let enemy: Gladiator[] | null = null;
-    const diff = dist[i]; const target = ref * size * DIFF_RATIO[diff];
+    const diff = dist[i]; const target = ref * size * DIFF_RATIO()[diff];
     if (rivals.length) {
       if (ref > 0) { let bd = Infinity; for (const rv of rivals) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0), size, target); if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
         if (enemy && bd > target * 0.15) { enemy = null; rivalId = undefined; } } // 목표에 가장 가까운 파밀리아 조합. 15% 넘게 벗어나면 파밀리아 밖에서 (주최자가 다른 라니스타에게서 빌려 온 검투사 — 고증: 지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
       else { const order = [...rivals].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy) { rivalId = rv.id; break; } } }
     }
     if (!enemy) enemy = Array.from({ length: size }, () => { // 타지 라니스타의 검투사: 서열로만 난이도를 맞춘다 (약 = 형 선고자 티로 · 중 = 티로/베테라누스 반반 · 강 = 베테라누스). 능력치를 따로 깎거나 올리지 않는다
-      if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro');
-      if (diff === 'strong') return makeGladiator(rng, 'veteranus');
-      if (diff === 'even') return makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro');
+      if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
+      if (diff === 'strong') return makeGladiator(rng, 'veteranus', { season });
+      if (diff === 'even') return makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season });
       const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
     });
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
