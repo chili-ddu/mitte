@@ -57,12 +57,12 @@ export const CONFIG = {
   retrainCost: 2000,   // 유형 전환(재훈련): 비용, 그 시즌은 출전 불가 // 기술 전수: 세쿠토르 연속 +4% / 무르밀로 방패 첫 타격 감소 60% / 트라엑스 방어 무시 40% / 레티아리우스 속박 1.6초
   promoteWins: 3,
   teamSize: 3,   // 최대 규모 (계약마다 size 1~3)
-  fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 3 }, // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
+  fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 4, overworkPer: 0.12 }, // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 30,
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
-  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, woundDeath: 0.3 }, // woundDeath: 사망 판정 중 상처 자체로 죽는(판정 없이 쓰러져 숨지는) 비율
+  missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, instantDeath: { base: 0.06, crit: 0.14 } }, // instantDeath: 쓰러뜨리는 타격이 그 자리에서 목숨을 앗을 확률 (치명타면 더). 판정과 별개, 승리 측도 해당
   fameDelta: { win: 5, classicWin: 2, lose: -3, refuse: -2, death: -1, decay: -1, active: 1 }, // refuse: 시즌당 1회, 받을 수 있었던 계약을 거절했을 때만. active: 시즌에 한 번이라도 출전하면 +1
 } as const;

@@ -11,6 +11,7 @@ const VENUES: Record<number, string[]> = {
   3: ['로마 콜로세움', '베로나 경기장', '카르타고 경기장'],
 };
 import { HOST, HOSTS_BY_TIER } from './hosts.js';
+import { offerClauses } from './clauses.js';
 export const HOST_KO: Record<HostKind, string> = Object.fromEntries(Object.entries(HOST).map(([k, v]) => [k, v.ko])) as Record<HostKind, string>;
 
 let cid = 1;
@@ -54,7 +55,7 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
       const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
     });
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
-    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier >= 2 ? 1 : 0, size, enemy, enemyPreview, rivalId });
+    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier >= 2 ? 1 : 0, size, enemy, enemyPreview, rivalId, clauses: offerClauses(rng, host, tier), accepted: [] });
   }
   // 매 시즌 등급 1 계약이 최소 하나는 있어야 한다 (베테라누스 없는 루두스가 한 시즌을 날리지 않도록)
   if (!out.some(c => c.tier === 1)) { out[0].tier = 1; out[0].venue = rng.pick(VENUES[1]); out[0].needVeterans = 0; }

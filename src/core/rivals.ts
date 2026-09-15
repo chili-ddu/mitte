@@ -62,4 +62,4 @@ export function memberById(rivals: Rival[], id: number): { rival: Rival; g: Glad
 export const GRUDGE = CONFIG.grudge;
 // 간판 검투사: 명예가 가장 높은(같으면 승수) 검투사
 export function rivalStar(r: Rival): Gladiator | undefined { return [...r.roster].filter(g => g.alive).sort((a, b) => ((b.honor ?? 0) - (a.honor ?? 0)) || (b.wins - a.wins))[0]; }
-export function recordVsMe(r: Rival): string { const v = r.vsMe ?? { wins: 0, losses: 0, draws: 0 }; const total = v.wins + v.losses + v.draws; return total ? `나와 ${total}전: 내 ${v.losses}승 ${v.wins}패${v.draws ? ` ${v.draws}무` : ''}` : '나와 첫 대결'; }
+export function recordVsMe(r: Rival): string { const v = r.vsMe ?? { wins: 0, losses: 0, draws: 0 }; const total = v.wins + v.losses + v.draws; return total ? `${total}전 ${v.losses}승 ${v.wins}패${v.draws ? ` ${v.draws}무` : ''}` : '첫 대결'; } // 내 기준 (내 승/패)

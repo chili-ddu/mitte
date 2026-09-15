@@ -32,7 +32,7 @@ interface Unit {
   holdUntil: number;            // 공격·피격 동작 중 제자리
   sprint: boolean;              // 전력 질주 중(도착하면 돌진 공격)
   prevTarget?: number;
-  secondWind: boolean; netRecovered: boolean; blocksMade: number; guardUntil: number; // guardUntil: 심판 중단(숨 돌리기) 동안 공격받지 않는다 // 기술: 숨 고르기·그물 회수 1회, 방패로 막은 횟수
+  secondWind: boolean; netRecovered: boolean; blocksMade: number; guardUntil: number; // guardUntil: 심판 중단(숨고르기) 동안 공격받지 않는다 // 기술: 숨 고르기·그물회수 1회, 방패로 막은 횟수
 }
 
 function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus = 0, boosted?: Set<number>, boostMul = 1): Unit[] {
@@ -149,7 +149,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       // ── 공격
       if (u.cooldown > 0 || dist(u, target) > u.reach) continue;
       if (t < target.guardUntil || t < u.guardUntil) continue; // 심판이 멈춘 동안은 공격하지 않는다
-      if (target.range >= 2 && u.range < 2 && proc(target, 'spear_ward')) { u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; continue; } // 창 견제: 근접 공격이 무산된다
+      if (target.range >= 2 && u.range < 2 && proc(target, 'spear_ward')) { u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; continue; } // 창견제: 근접 공격이 무산된다
       const charge = u.sprint; u.sprint = false;
       u.cooldown = u.interval;
       u.holdUntil = t + 0.45;                                        // 공격 동작이 끝날 때까지 제자리
@@ -177,22 +177,22 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (blocked) { target.blocksMade++; exp[target.g.id].blocks++; exp[u.g.id].blockedOn++; }
         if (target.hp / initialHp[target.g.id] < 0.3 && proc(target, 'stand_firm')) dmg = Math.round(dmg * 0.75); // 버티기 // 치명타는 방패 반감 무시
         target.hp -= dmg; target.lastAttacker = u.g.id; target.holdUntil = Math.max(target.holdUntil, t + 0.3); // 피격 경직
-        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.05); target.guardUntil = t + 2; target.retreatUntil = t + 2; u.retreatUntil = Math.max(u.retreatUntil, t + 1.2); } // 숨 돌리기: 심판이 잠시 멈춘다
+        if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.05); target.guardUntil = t + 2; target.retreatUntil = t + 2; u.retreatUntil = Math.max(u.retreatUntil, t + 1.2); } // 숨고르기: 심판이 잠시 멈춘다
         if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.2) exp[target.g.id].lowHp = true;
         let net = false, stun = false;
         if (!u.netUsed && !combo) { u.netUsed = true; target.boundUntil = t + (mentored.has(u.g.id) ? M.bindSec : BIND_SEC); net = true; }
-        else if (u.netUsed && !combo && !u.netRecovered && OFF_HAND[uEq.off].skill === 'bind' && proc(u, 'net_recover')) { u.netRecovered = true; target.boundUntil = t + BIND_SEC; net = true; } // 그물 회수
-        if (blocked && proc(target, 'shield_bash')) { u.boundUntil = Math.max(u.boundUntil, t + 0.5); stun = true; } // 방패 밀치기: 공격자가 비틀거린다
+        else if (u.netUsed && !combo && !u.netRecovered && OFF_HAND[uEq.off].skill === 'bind' && proc(u, 'net_recover')) { u.netRecovered = true; target.boundUntil = t + BIND_SEC; net = true; } // 그물회수
+        if (blocked && proc(target, 'shield_bash')) { u.boundUntil = Math.max(u.boundUntil, t + 0.5); stun = true; } // 방패치기: 공격자가 비틀거린다
         if (mySyn.nature3 && natureFirst[u.side]) { natureFirst[u.side] = false; target.boundUntil = Math.max(target.boundUntil, t + 0.8); stun = true; }
         const downed = target.hp <= 0;
         if (downed) { if (combo) exp[u.g.id].comboKill = true; if (t < target.boundUntil && net) exp[u.g.id].netKill = true; if (charge && !combo) exp[u.g.id].chargeKill = true; if (target.range < 2 && u.range >= 2) exp[u.g.id].meleeKill = true; if (u.blocksMade > 0) exp[u.g.id].wonAfterBlock = true; }
         log.push(`${fmt(t)} ${u.g.name}(${u.side}) → ${target.g.name} ${dmg}${crit ? ' 치명타!' : ''}${charge && !combo ? ' 돌진!' : ''}${combo ? ' 연속!' : ''}${blocked ? ' 방패!' : ''}${net ? ' 그물!' : ''}${stun ? ' 기세!' : ''}${downed ? ' 쓰러짐' : ''}`);
         events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: u.g.id, target: target.g.id, dmg, targetHp: Math.max(0, target.hp), counter: false, net, blocked, combo, charge: charge && !combo, crit, downed });
         if (downed) break;
-        if (blocked && u.hp > 0 && proc(target, 'riposte')) { // 되받아치기: 막은 직후 반격 (공격력 80%)
+        if (blocked && u.hp > 0 && proc(target, 'riposte')) { // 되치기: 막은 직후 반격 (공격력 80%)
           const rd = Math.max(1, Math.round(target.atk * 0.8 * rng.range(0.85, 1.15) - u.def)); u.hp -= rd; u.lastAttacker = target.g.id; u.holdUntil = Math.max(u.holdUntil, t + 0.3);
           events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: target.g.id, target: u.g.id, dmg: rd, targetHp: Math.max(0, u.hp), counter: true, net: false, blocked: false, combo: false, charge: false, crit: false, downed: u.hp <= 0, skill: 'riposte' });
-          log.push(`${fmt(t)} ${target.g.name} 되받아치기 → ${u.g.name} ${rd}${u.hp <= 0 ? ' 쓰러짐' : ''}`);
+          log.push(`${fmt(t)} ${target.g.name} 되치기 → ${u.g.name} ${rd}${u.hp <= 0 ? ' 쓰러짐' : ''}`);
           if (u.hp <= 0) break;
         }
       }

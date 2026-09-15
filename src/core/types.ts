@@ -1,7 +1,7 @@
 export type GType = 'murmillo' | 'secutor' | 'thraex' | 'retiarius' | 'hoplomachus' | 'provocator' | 'eques' | 'dimachaerus';
 export type Lineage = 'nature' | 'victory' | 'myth' | 'nickname' | 'place';
 export type Rank = 'tiro' | 'veteranus';
-export type HostKind = 'candidate' | 'miser' | 'mourner' | 'gambler' | 'imperial'; // 선거 후보 · 인색한 유지 · 장례 상주 · 도박꾼 · 황제
+export type HostKind = 'magistrate' | 'candidate' | 'miser' | 'mourner' | 'gambler' | 'imperial'; // 지방 관리(보통) · 선거 후보 · 인색한 유지 · 장례 상주 · 도박꾼 · 황제
 
 export interface Stats { hp: number; atk: number; def: number; spd: number; range: number; }
 
@@ -48,12 +48,16 @@ export interface Gladiator {
   rudisSeason?: number; // 루디스를 받은 시즌
 }
 
+export type ClauseId = 'sponsio' | 'vela' | 'sine_missione'; // 특약: 내기 / 차양·살수 / 미시오 없음
 export interface Contract {
   id: number;
   tier: 1 | 2 | 3;
   venue: string;
   host: HostKind;
-  bet?: boolean;          // 도박꾼 주최자의 내기(스폰시오)를 받았는가
+  bet?: boolean;          // 스폰시오를 받았는가 (accepted 에 'sponsio' 가 있으면 true — 옛 코드 호환)
+  clauses?: ClauseId[];   // 이 계약이 내건 특약 후보 (최대 2)
+  accepted?: ClauseId[];  // 라니스타가 서명 때 받아들인 특약
+  guest?: boolean;        // 초대했던 귀족이 들고 온 계약 (이기면 사례금)
   needVeterans: number;
   size: 1 | 2 | 3;        // 경기 규모: 1대1 / 2대2 / 3대3
   enemy: Gladiator[];
