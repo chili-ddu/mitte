@@ -49,6 +49,7 @@ export const sfx = {
   cheer(strength = 0.6) { const c = ac(); if (!c) return; burst(c, { dur: 0.9 + strength, freq: 700, q: 0.5, gain: 0.35 + strength * 0.4, type: 'bandpass', attack: 0.12, pitchTo: 500 }); }, // 함성 한 번
   boo() { const c = ac(); if (!c) return; burst(c, { dur: 1.2, freq: 240, q: 0.6, gain: 0.5, type: 'bandpass', attack: 0.2, pitchTo: 180 }); }, // 야유
   fanfare() { const c = ac(); if (!c) return; const seq = [[392, 0], [523, 0.16], [659, 0.32], [784, 0.5]]; for (const [f, at] of seq) tone(c, f, 0.35, 0.25, 'sawtooth', at); tone(c, 784, 0.9, 0.2, 'sawtooth', 0.7); }, // 코르누(뿔나팔) 팡파르
+  step() { const c = ac(); if (!c) return; burst(c, { dur: 0.06, freq: 900, q: 0.8, gain: 0.22, type: 'bandpass', attack: 0.002 }); }, // 발소리: 짧고 마른 모래 밟는 소리
   drum(n = 2) { const c = ac(); if (!c) return; for (let i = 0; i < n; i++) { burst(c, { dur: 0.16, freq: 120, q: 1, gain: 0.7, type: 'lowpass', attack: 0.004 }); tone(c, 80, 0.18, 0.4, 'sine', i * 0.22, 45); } }, // 북
   chant(n = 2) { const c = ac(); if (!c) return; for (let i = 0; i < n; i++) { const at = i * 0.5; tone(c, 330, 0.16, 0.35, 'sawtooth', at); burst(c, { dur: 0.16, freq: 700, q: 0.6, gain: 0.35, attack: 0.03 }); tone(c, 262, 0.22, 0.35, 'sawtooth', at + 0.22); } }, // 관중 구호 "미-테, 미-테"
   gate() { const c = ac(); if (!c) return; burst(c, { dur: 0.6, freq: 180, q: 0.8, gain: 0.5, type: 'lowpass', attack: 0.05 }); tone(c, 60, 0.5, 0.3, 'sine', 0.1, 40); }, // 문루
