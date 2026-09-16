@@ -15,6 +15,7 @@ export interface DrawOpts { x: number; y: number; scale?: number; facing?: 1 | -
 
 export const INK = '#7a3b1e'; // 먹색: 폼페이 벽 광고의 붉은 황토(루브리카) 톤
 export const ENEMY = '#5e2a5c'; // 상대 파밀리아 팀 색 (먹색이 붉어져 자주로)
+const RUBRICA = '#9b2c1c'; // 공격 궤적에 쓰는 붉은 흙 안료
 
 // 관절 각도(도). 몸통 기준. 0 = 아래, 양수 = 앞쪽(facing 방향)
 export interface Skeleton { lean: number; frontArm: [number, number]; backArm: [number, number]; frontLeg: [number, number]; backLeg: [number, number]; headBob: number; lying?: boolean; sink?: number; lieK?: number; shift?: number; lift?: number; lieDir?: 1 | -1; turn?: number; reach?: { x: number; y: number }; /* 앞손이 이 점(발 기준)을 향하도록 팔 IK */ }
@@ -196,6 +197,17 @@ export function clipSkeleton(name: ClipName, elapsed: number): Skeleton {
 
 // 낙서 느낌: 선을 살짝 흔든다 (시드 기반, 프레임마다 떨리지 않게)
 function jit(seed: number, amp: number) { const x = Math.sin(seed * 12.9898) * 43758.5453; return (x - Math.floor(x) - 0.5) * amp; }
+function scratchLine(ctx: CanvasRenderingContext2D, seed: number, x0: number, y0: number, x1: number, y1: number, amp = 1.2) {
+  ctx.beginPath(); ctx.moveTo(x0 + jit(seed, amp), y0 + jit(seed + 1, amp)); ctx.lineTo(x1 + jit(seed + 2, amp), y1 + jit(seed + 3, amp)); ctx.stroke();
+}
+function bodyProfile(L: Loadout) {
+  if (hasNet(L) || L.main === 'trident') return { leg: 26, body: 24, arm: 20, head: 8, line: 3.2, hip: -1.5, sh: 1.5 }; // 레티아리우스: 길고 마른 창잡이
+  if (L.off === 'scutum') return { leg: 20, body: 23, arm: 16.5, head: 10.6, line: 4.5, hip: 1, sh: 4 }; // 무르밀로: 큰 머리·큰 방패의 덩어리
+  if (L.helmet === 'smooth') return { leg: 21, body: 22, arm: 17, head: 10.2, line: 4.1, hip: 0.5, sh: 3 }; // 세쿠토르: 매끈한 투구와 전진 덩어리
+  if (L.main === 'sica') return { leg: 23, body: 19, arm: 18.5, head: 8.5, line: 3.8, hip: 1.5, sh: -1.5 }; // 트라엑스/디마카이루스: 낮고 각진 곡도잡이
+  if (L.main === 'spear') return { leg: 24, body: 23, arm: 19, head: 8.7, line: 3.5, hip: -0.5, sh: 1 }; // 호플로마쿠스/에퀘스: 긴 창 실루엣
+  return { leg: 22, body: 22, arm: 17, head: 9, line: 3.6, hip: 0, sh: 0 };
+}
 
 export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout, o0: DrawOpts) {
   let o = o0;
@@ -204,23 +216,36 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   const type: GType = typeof who === 'string' ? who : 'murmillo'; // 시드용
   const s = o.scale ?? 1, f = o.facing ?? 1, pose = o.pose ?? 'idle', t = o.t ?? 0;
   const sk = o.skeleton ?? POSES[pose];
+  const active = pose === 'attack' || pose === 'swing' || pose === 'stab' || pose === 'stab_deep' || pose === 'trident_thrust' || pose === 'slash' || pose === 'up_swing' || pose === 'sweep' || pose === 'net_throw';
   ctx.save();
   ctx.translate(o.x, o.y);
   ctx.scale(s * f, s);
   if (o.wobble) { ctx.translate(Math.sin(t * 28) * 1.6, 0); ctx.rotate(Math.sin(t * 22) * 0.06); } // 버둥거림
   if (sk.shift || sk.lift) ctx.translate(sk.shift ?? 0, -(sk.lift ?? 0));
   if (sk.turn) ctx.scale(1 - sk.turn * 0.6, 1); // 카메라 쪽으로 돌아 납작해짐
+  const prof = o.bare ? { leg: 22, body: 22, arm: 17, head: 9, line: 3.2, hip: 0, sh: 0 } : bodyProfile(L);
   ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK;
-  ctx.lineWidth = 3.0 / Math.sqrt(s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = prof.line / Math.sqrt(s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
   // 기준: 발이 (0,0). 몸통 길이 30, 다리 24, 팔 22, 머리 반지름 7
   // 아기자기한 비율(2026-09-09): 머리 크게, 다리·몸 짧게. 전체 키 ≈ 58
-  const LEG = 22, BODY = 22, ARM = 17, HEAD = 9;
+  const LEG = prof.leg, BODY = prof.body, ARM = prof.arm, HEAD = prof.head;
   const rad = (d: number) => d * Math.PI / 180;
   const seed = type.length * 7 + (pose === 'attack' ? 3 : 0);
+  if (!o.garment && !o.bare) { // 발밑의 긁힌 표식: 작은 말도 같은 세계에 박혀 보이게 한다
+    ctx.save(); ctx.globalAlpha = 0.22; ctx.strokeStyle = o.ink ?? INK; ctx.lineWidth = 1.2 / Math.sqrt(s);
+    ctx.beginPath(); ctx.ellipse(0, 1.5, 23 + jit(seed + 40, 3), 4.5 + jit(seed + 41, 1), 0, 0, Math.PI * 2); ctx.stroke();
+    scratchLine(ctx, seed + 42, -17, 3.5, 14, 1.5, .9); ctx.restore();
+  }
+  if (active && !o.garment) { // 공격 순간에만 남는 붉은 붓자국: 애니메이션 방향을 더 잘 읽히게 한다
+    ctx.save(); ctx.globalAlpha = 0.22; ctx.strokeStyle = RUBRICA; ctx.lineWidth = 4.5 / Math.sqrt(s); ctx.lineCap = 'round';
+    const dir = pose === 'up_swing' ? -1 : 1;
+    ctx.beginPath(); ctx.moveTo(-18, -51 + dir * 5); ctx.quadraticCurveTo(10, -75, 38, -42 + dir * 2); ctx.stroke();
+    ctx.globalAlpha = 0.13; ctx.lineWidth = 2.1 / Math.sqrt(s); scratchLine(ctx, seed + 46, -24, -36, 34, -60, 1.8); ctx.restore();
+  }
 
   // sink: 엉덩이를 낮춘다 (발은 땅에 그대로)
-  const hipY = -LEG + (sk.sink ?? 0);
+  const hipY = -LEG + (sk.sink ?? 0) + prof.hip;
   const lieK = sk.lying ? (sk.lieK ?? 1) : 0;
   if (lieK > 0) {
     // 엉덩이를 축으로 90도 눕힌다 (lieK 로 보간). lieDir: -1 = 뒤로(머리가 뒤), 1 = 앞으로(머리가 앞)
@@ -242,7 +267,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
 
   // 몸통
   const lean = rad(sk.lean);
-  const shX = Math.sin(lean) * BODY, shY = hipY - Math.cos(lean) * BODY + idleBob;
+  const shX = Math.sin(lean) * BODY + prof.sh * (sk.lying ? 0 : 1), shY = hipY - Math.cos(lean) * BODY + idleBob;
   ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(shX + jit(seed + 2, 1.2), shY); ctx.stroke();
   if (!o.garment) { // 로인클로스(허리 천): 낙서에서 눈에 띄는 삼각형
     ctx.save(); ctx.translate(0, hipY); ctx.rotate(lean * 0.6);
@@ -285,7 +310,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
     const forearmFront = p.hx > shX + 3; // 손이 어깨선보다 앞이면 아래팔은 옷 앞
     seg(shX, shY, p.ex, p.ey);
     if (!forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
-    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s); ctx.lineCap = 'round';
+    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); ctx.lineCap = 'round';
     if (forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
   } else {
     back = arm(sk.backArm);
@@ -303,11 +328,11 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   drawHead(ctx, o.bare ? 'none' : L.helmet, hx0, hy0, HEAD, seed);
   if (o.beard) { ctx.lineWidth = 2.2 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(hx0 + 4, hy0 + 4); ctx.quadraticCurveTo(hx0 + 6, hy0 + 10, hx0 - 1, hy0 + 11); ctx.stroke(); }
   if (!o.bare) drawAccessories(ctx, L, hx0, hy0, HEAD, shX, shY, hipY, seed);
-  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s);
+  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s);
   const front = arm(frontA);
   if (lieK < 0.5 && !o.bare) drawWeapon(ctx, L.main, front.hx, front.hy, front.ang, pose, seed);
   if (!o.bare) drawExtras(ctx, L, shX, shY, hipY, seed); // 쓰러지면 무기를 놓친다
-  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s); }
+  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); }
 
 
   ctx.restore();
@@ -376,20 +401,22 @@ function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: n
   ctx.beginPath(); ctx.arc(x + jit(seed + 3, .8), y, r, 0, Math.PI * 2); ctx.save(); ctx.fillStyle = skin; ctx.fill(); ctx.restore(); ctx.stroke();
   switch (helmet) {
     case 'crested': // 큰 볏 + 얼굴 격자 (무르밀로)
-      ctx.beginPath(); ctx.moveTo(x - 2, y - r); ctx.quadraticCurveTo(x + 2, y - r - 12, x + 12, y - r - 2); ctx.lineTo(x + 6, y - r + 1); ctx.stroke();
-      ctx.beginPath(); for (let i = -1; i <= 1; i++) { ctx.moveTo(x + 2, y + i * 3); ctx.lineTo(x + r, y + i * 3); } ctx.stroke();
+      ctx.save(); ctx.lineWidth *= 1.08; ctx.beginPath(); ctx.moveTo(x - 4, y - r + 1); ctx.quadraticCurveTo(x - 2, y - r - 17, x + 15, y - r - 9); ctx.quadraticCurveTo(x + 10, y - r - 3, x + 5, y - r + 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + 1, y, r + 2, Math.PI * 1.12, Math.PI * 2.08); ctx.stroke();
+      ctx.beginPath(); for (let i = -1; i <= 2; i++) { ctx.moveTo(x + 1, y - 4 + i * 3); ctx.lineTo(x + r + 3, y - 5 + i * 3); } ctx.stroke(); ctx.restore();
       break;
     case 'smooth': // 매끈한 투구, 작은 눈구멍 (세쿠토르)
-      ctx.beginPath(); ctx.arc(x, y, r + 1.5, Math.PI * 0.95, Math.PI * 2.05); ctx.stroke();
-      ctx.beginPath(); ctx.arc(x + 3, y - 1, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.lineWidth *= 1.12; ctx.beginPath(); ctx.ellipse(x + 1, y + 1, r + 3.2, r + 1.5, 0, Math.PI * 0.95, Math.PI * 2.08); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 1, y - 2); ctx.lineTo(x + r + 3, y - 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + 5, y - 2, 1.1, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       break;
     case 'griffin': // 굽은 볏 + 챙 (트라엑스)
-      ctx.beginPath(); ctx.moveTo(x - 4, y - r + 1); ctx.quadraticCurveTo(x - 2, y - r - 11, x + 8, y - r - 8); ctx.quadraticCurveTo(x + 4, y - r - 3, x + 4, y - r + 1); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - r - 2, y + 1); ctx.lineTo(x + r + 2, y + 1); ctx.stroke();
+      ctx.save(); ctx.lineWidth *= 1.05; ctx.beginPath(); ctx.moveTo(x - 6, y - r + 1); ctx.quadraticCurveTo(x - 6, y - r - 16, x + 11, y - r - 13); ctx.quadraticCurveTo(x + 3, y - r - 7, x + 6, y - r + 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - r - 4, y + 2); ctx.lineTo(x + r + 5, y + 1); ctx.lineTo(x + r + 1, y + 4); ctx.stroke(); ctx.restore();
       break;
     case 'brimmed': // 챙 넓은 투구 + 볏 (호플로마쿠스)
-      ctx.beginPath(); ctx.moveTo(x - r - 3, y - 2); ctx.lineTo(x + r + 3, y - 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x, y - r - 11, x + 9, y - r - 4); ctx.lineTo(x + 5, y - r + 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - r - 6, y - 2); ctx.lineTo(x + r + 6, y - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x, y - r - 14, x + 11, y - r - 5); ctx.lineTo(x + 5, y - r + 1); ctx.stroke();
       break;
     case 'visored': // 면갑 투구: 둥근 머리 + 얼굴 가리개 격자, 볏 없음 (프로보카토르)
       ctx.beginPath(); ctx.arc(x, y, r + 1.5, Math.PI * 0.9, Math.PI * 2.1); ctx.stroke();
@@ -409,30 +436,30 @@ function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: nu
   if (L.off === 'scutum' || L.off === 'parmula' || L.off === 'parma' || L.off === 'medium') ctx.rotate(Math.max(-25, Math.min(0, -(handAng - 40) * 0.5)) * Math.PI / 180); // 앞으로 뻗을수록 정면
   switch (L.off) {
     case 'scutum': // 큰 직사각형, 빗금 (팀 색)
-      ctx.beginPath(); ctx.rect(-5, -13, 10, 24); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
-      ctx.beginPath(); for (let i = -9; i < 10; i += 5) { ctx.moveTo(-5, i); ctx.lineTo(5, i - 4); } ctx.stroke();
+      ctx.save(); ctx.lineWidth *= 1.06; ctx.beginPath(); ctx.rect(-7, -17, 14, 31); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.9; ctx.fill(); ctx.restore(); } ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-7, -7); ctx.lineTo(7, -11); ctx.moveTo(-7, 2); ctx.lineTo(7, -2); ctx.moveTo(0, -17); ctx.lineTo(0, 14); ctx.stroke(); ctx.restore();
       break;
     case 'parmula': // 작은 원형 (팀 색)
-      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 6.8, 0, 0, Math.PI * 2); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
       break;
     case 'parma': // 둥근 청동 방패: 조금 크고 테두리 이중, 가운데 돌기 (팀 색)
-      ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 10.5, 9, 0, 0, Math.PI * 2); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, 6.7, 5.4, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 2.4, 0, Math.PI * 2); ctx.fill();
       break;
     case 'medium': // 중형 직사각형 (스쿠툼보다 짧다)
-      ctx.beginPath(); ctx.rect(-5, -9, 10, 17); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-5, -1); ctx.lineTo(5, -1); ctx.stroke();
+      ctx.beginPath(); ctx.rect(-6.5, -11, 13, 21); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.lineTo(6.5, -3); ctx.moveTo(0, -11); ctx.lineTo(0, 10); ctx.stroke();
       break;
     case 'blade': // 왼손 시카: 굽은 칼을 거꾸로 쥠
-      ctx.save(); ctx.rotate(-0.9); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -8); ctx.quadraticCurveTo(1, -15, 6, -18); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3, -1); ctx.lineTo(3, -1); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.rotate(-0.9); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -9); ctx.quadraticCurveTo(2, -19, 10, -23); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3.5, -1); ctx.lineTo(4, -1); ctx.stroke(); ctx.restore();
       break;
   }
   if (hasNet(L) && !noNet) { // 손에 든 그물
-    ctx.save(); ctx.lineWidth *= 0.55;
+    ctx.save(); ctx.lineWidth *= 0.7;
     ctx.beginPath();
-    for (let i = 0; i < 5; i++) { ctx.moveTo(0, 0); ctx.quadraticCurveTo(-6 + i * 2, 7, -13 + i * 5, 16); }
-    for (let j = 1; j <= 3; j++) { const y = 5 * j; ctx.moveTo(-3 - j * 2.5, y); ctx.quadraticCurveTo(0, y + 2, 3 + j * 2, y); }
+    for (let i = 0; i < 6; i++) { ctx.moveTo(0, 0); ctx.quadraticCurveTo(-8 + i * 2.5, 8, -17 + i * 6, 20); }
+    for (let j = 1; j <= 4; j++) { const y = 5 * j; ctx.moveTo(-4 - j * 3, y); ctx.quadraticCurveTo(1, y + 2, 5 + j * 2.5, y); }
     ctx.stroke(); ctx.restore();
   }
   ctx.restore();
@@ -488,18 +515,18 @@ function drawWeapon(ctx: CanvasRenderingContext2D, w: MainHand, x: number, y: nu
   ctx.rotate(dir * Math.PI / 180);
   switch (w) {
     case 'gladius': // 글라디우스: 짧고 넓은 검
-      ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(0, -20); ctx.lineTo(2.2, -24); ctx.lineTo(-2.2, -24); ctx.lineTo(0, -20); ctx.moveTo(-5, -2); ctx.lineTo(5, -2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(1.2, -4); ctx.lineTo(1.2, -19); ctx.stroke(); // 날 두께
+      ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(0, -22); ctx.lineTo(3, -27); ctx.lineTo(-3, -27); ctx.lineTo(0, -22); ctx.moveTo(-5.5, -2); ctx.lineTo(5.5, -2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(1.4, -4); ctx.lineTo(1.4, -20); ctx.stroke(); // 날 두께
       break;
     case 'sica': // 시카: 굽은 칼
-      ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(0, -12); ctx.quadraticCurveTo(0, -23, 11, -26); ctx.moveTo(-4, -1); ctx.lineTo(4, -1); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(1.5, -12); ctx.quadraticCurveTo(1.5, -20, 9, -23); ctx.stroke(); // 날 두께
+      ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(0, -11); ctx.quadraticCurveTo(2, -26, 15, -31); ctx.moveTo(-4.5, -1); ctx.lineTo(4.8, -1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, -12); ctx.quadraticCurveTo(3, -23, 12, -27); ctx.stroke(); // 날 두께
       break;
     case 'trident': // 삼지창: 길다
-      ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -30); ctx.moveTo(-5.5, -26); ctx.lineTo(-5.5, -37); ctx.moveTo(5.5, -26); ctx.lineTo(5.5, -37); ctx.moveTo(-5.5, -26); ctx.lineTo(5.5, -26); ctx.moveTo(0, -30); ctx.lineTo(0, -39); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(0, -36); ctx.moveTo(-7, -31); ctx.lineTo(-7, -45); ctx.moveTo(7, -31); ctx.lineTo(7, -45); ctx.moveTo(-7, -31); ctx.lineTo(7, -31); ctx.moveTo(0, -36); ctx.lineTo(0, -49); ctx.stroke();
       break;
     case 'spear': // 창: 긴 자루 + 잎날
-      ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -32); ctx.moveTo(0, -32); ctx.lineTo(3, -37); ctx.lineTo(0, -44); ctx.lineTo(-3, -37); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(0, -38); ctx.moveTo(0, -38); ctx.lineTo(4, -44); ctx.lineTo(0, -53); ctx.lineTo(-4, -44); ctx.closePath(); ctx.stroke();
       break;
   }
   ctx.restore();
