@@ -306,5 +306,5 @@ async function checkUpdate() {
     if (m && !m[0].endsWith(BUNDLE) && !sessionStorage.getItem('reloaded')) { sessionStorage.setItem('reloaded', '1'); location.reload(); }
   } catch { /* 오프라인이면 그냥 둔다 */ }
 }
-window.setTimeout(checkUpdate, 2000);                                   // 켤 때 한 번
+void checkUpdate();                                                      // 켜자마자 (비동기라 첫 화면을 막지 않는다. 늦게 새로고침하면 조작 중에 튕기는 꼴이 된다)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkUpdate(); }); // 홈 화면 앱으로 돌아올 때마다
