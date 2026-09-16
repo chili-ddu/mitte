@@ -771,8 +771,8 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .detailpage { position:absolute; left:6px; right:6px; top:46px; height:var(--yard-h, 300px); z-index:8; background:#cbb67f; border-radius:6px; display:grid; grid-template-columns:200px 1fr 190px; grid-template-rows:1fr; gap:8px; padding:8px 10px; overflow:hidden; animation:pagein-r .38s cubic-bezier(.16,.84,.3,1); }
 #app.land > .detailpage.confirm { z-index:9; grid-template-columns:200px 1fr; }
 #app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
-.detailpage .talkscene { position:relative; height:256px; flex:none; }
-.detailpage .talkscene canvas { display:block; width:100% !important; height:256px !important; border-radius:6px; }
+.detailpage .talkscene { position:relative; height:220px; flex:none; overflow:hidden; border-radius:6px; }
+.detailpage .talkscene canvas { display:block; width:100% !important; height:220px !important; border-radius:6px; }
 .detailpage .bubble { position:absolute; max-width:300px; padding:6px 11px; background:#f6efd8; border:1.5px solid #3a2412; border-radius:10px; font-size:13px; line-height:1.4; color:#3a2412; opacity:0; animation:bubblein .3s ease-out forwards; box-shadow:1px 2px 0 rgba(58,36,18,.35); }
 .detailpage .bubble::after { content:''; position:absolute; bottom:-9px; width:14px; height:9px; background:#f6efd8; border:1.5px solid #3a2412; border-top:0; }
 .detailpage .bubble.g { left:calc(36% - 60px); } .detailpage .bubble.g::after { left:52px; clip-path:polygon(0 0,100% 0,30% 100%); }
@@ -802,6 +802,10 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .detailpage .stamp, .planpage .stamp { position:absolute; left:50%; top:40%; z-index:3; pointer-events:none; transform:translate(-50%,-50%) rotate(-12deg) scale(3); opacity:0; animation:stampin .32s cubic-bezier(.2,1.4,.4,1) forwards; }
 .detailpage .stamp span, .planpage .stamp span { display:block; padding:6px 22px; border:5px double #9b2c1c; border-radius:8px; color:#9b2c1c; font:900 44px/1.1 'Georgia', 'Times New Roman', serif; letter-spacing:.12em; text-transform:uppercase; mix-blend-mode:multiply; opacity:.86; -webkit-mask-image:radial-gradient(circle at 30% 40%, #000 60%, transparent 100%), radial-gradient(circle at 70% 60%, #000 55%, transparent 100%); mask-image:radial-gradient(circle at 30% 40%, #000 60%, transparent 100%), radial-gradient(circle at 70% 60%, #000 55%, transparent 100%); -webkit-mask-composite:source-over; }
 @keyframes stampin { 0% { opacity:0; transform:translate(-50%,-50%) rotate(-12deg) scale(3); } 60% { opacity:1; transform:translate(-50%,-50%) rotate(-12deg) scale(.92); } 80% { transform:translate(-49%,-51%) rotate(-11deg) scale(1.04); } 100% { opacity:1; transform:translate(-50%,-50%) rotate(-12deg) scale(1); } }
+.detailpage.confirm.talk:has(.stamp.confirmstamp) .sealbtn { visibility:hidden; } /* 도장을 찍은 뒤에는 버튼 도장을 숨겨 실제 도장 하나만 남긴다 */
+.detailpage.confirm.talk .stamp.confirmstamp { left:auto; top:auto; right:18px; bottom:196px; transform:rotate(-6deg) scale(2.2); animation:confirmstampin .28s cubic-bezier(.2,1.25,.4,1) forwards; }
+.detailpage.confirm.talk .stamp.confirmstamp span { padding:4px 14px; border-width:3px; font-size:28px; letter-spacing:.09em; }
+@keyframes confirmstampin { 0% { opacity:0; transform:rotate(-6deg) scale(2.4); } 65% { opacity:.92; transform:rotate(-6deg) scale(.92); } 100% { opacity:.92; transform:rotate(-6deg) scale(1); } }
 .detailpage .stamp ~ .cbox button, .detailpage.confirm .stamp ~ .backbtn { pointer-events:none; }
 #app.land > .detailpage.still { animation:none; }
 #app.land > .detailpage.closing { animation:pageout-r .28s cubic-bezier(.5,0,.8,.4) forwards; }
@@ -861,6 +865,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .scenepanel .sheetbody .cardgrid { grid-template-columns:1fr; }
 #app.land > .detailpage { grid-template-columns:1fr; grid-template-rows:auto auto auto; overflow:auto; padding:8px 8px 40px; gap:6px; }
 #app.land > .detailpage.confirm { grid-template-columns:1fr; }
+#app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; overflow:hidden; padding:8px 10px 40px; }
 .detailpage .dleft { display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:start; gap:10px 16px; padding:22px 6px 6px 0; } /* 초상이 뒤로가기 화살표와 살짝 겹쳐도 위로 (사용자) */ /* 초상 왼쪽에 붙이고(뒤로가기 줄 아래), 오른쪽 정보, 아래 별칭 칩 — 넓게 */
 .detailpage .dinfo { display:flex; flex-direction:column; gap:8px; min-width:0; padding-top:6px; } .detailpage .dinfo .dname { font-size:19px; } .detailpage .dinfo .dname .age { font-size:13px; } .detailpage .dinfo .dmeta { font-size:13px; line-height:1.4; } .detailpage .dbadges { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:6px; padding:0; } .detailpage .dbadges:empty { display:none; }
 .detailpage .dleft .portrait.big { width:112px; height:112px; }
@@ -870,7 +875,8 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .detailpage .cbox.row { flex:0 0 auto; flex-direction:column; align-items:stretch; gap:10px; }
 .detailpage .cbox .cbtns { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
 /* 계약 벽: 2×2 */
-#app.land.plan > .panel.contracts { grid-template-columns:1fr 1fr; grid-template-rows:none; grid-auto-rows:max-content; align-content:start; align-items:start; padding:38px 8px 60px; gap:8px; overflow:auto; } /* 카드는 내용 높이, 위에서부터 */
+#app.land.plan > .panel.contracts { grid-template-columns:1fr 1fr; grid-template-rows:repeat(2, minmax(0, 1fr)); grid-auto-rows:minmax(0, 1fr); align-content:stretch; align-items:stretch; padding:38px 8px 116px; gap:8px; overflow:hidden; } /* 모바일 계약 벽은 2×2 광고가 벽 안에 들어오도록 벽 높이를 반으로 나누고, 아래 결투 도장 자리는 비워 둔다 */
+#app.land.plan .card.contract.detail, #app.land.plan .card.contract.empty { height:100%; min-height:0; }
 /* 편성: 위 계약 카드, 아래 3열 타일 */
 #app.land > .planpage > .panel.roster { grid-template-columns:1fr; grid-template-rows:auto minmax(0, 1fr); padding:6px 6px 6px 6px; gap:6px; }
 #app.land > .planpage .pleft { overflow:visible; max-height:none; }

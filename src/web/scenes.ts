@@ -130,7 +130,8 @@ export function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = ink; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('MVNERA', 8, -20); // 벽 아래 붉은 띠 옆 (위쪽은 처마에 가린다) // 벽 머리에 긁어 쓴 글자
   // 공고문: 계약마다 하나. 등급이 높을수록 크고 붉은 글자 줄이 많다. 배정이 끝난 계약엔 낙서 체크
   for (let i = S.st.contracts.length; i < 4; i++) { const { x: px, y: py } = FORUM.posterAt(i); ctx.strokeStyle = 'rgba(155,44,28,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.strokeRect(px + 0.5, py + 0.5, FORUM.posterW, FORUM.posterH); ctx.setLineDash([]); } // 빈 자리: 옛 공고를 긁어낸 자국
-  S.st.contracts.forEach((c, i) => { const { x: px, y: py } = FORUM.posterAt(i); drawMiniContract(ctx, c, px, py, FORUM.posterW, FORUM.posterH); }); // 2×2
+  ctx.save(); ctx.beginPath(); ctx.rect(0, -178, FORUM.wallW, 164); ctx.clip(); // 공고와 낙서 체크는 회벽 안에서만 보인다. 작은 화면·확대 연출에서도 벽 밖으로 삐져나오지 않게
+  S.st.contracts.forEach((c, i) => { const { x: px, y: py } = FORUM.posterAt(i); drawMiniContract(ctx, c, px, py, FORUM.posterW, FORUM.posterH); }); ctx.restore(); // 2×2
   // 제단(가운데): 돌 제단 + 불
   { const ax = FORUM.wallW + 50; ctx.fillStyle = '#b39c6a'; ctx.fillRect(ax - 12, -26, 24, 26); ctx.fillStyle = '#a58f60'; ctx.fillRect(ax - 15, -30, 30, 5); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(ax, -34 + Math.sin(t * 9) * 0.8, 3, 5, 0, 0, Math.PI * 2); ctx.fill(); }
   // 구경꾼: 벽을 따라 걷다가 공고 앞에 멈춰 구경하고(팔짱·손가락질·발돋움) 다시 걸어간다. 세 사람이 서로 다른 주기·경로로

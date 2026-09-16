@@ -84,10 +84,12 @@ function closeDetail() { const el = document.querySelector('.detailpage'); S.sho
 const detailOrder = (kind: 'roster' | 'market'): Gladiator[] => kind === 'market' ? S.st.market : Array.from({ length: S.st.ludus.cells.length }, (_, k) => occupantOf(S.st, k)).filter((g): g is Gladiator => !!g);
 function swipeDetail(dir: 1 | -1) { const d = S.detail; if (!d || d.confirm) return; const list = detailOrder(d.kind); if (list.length < 2) return; const i = list.findIndex(g => g.id === d.id); if (i < 0) return; d.id = list[(i + dir + list.length) % list.length].id; S.detailSwipe = dir; sfx.step(); render(); }
 function swipeArea(el: HTMLElement): HTMLElement { // 가로로 60px 넘게 끌면 이웃으로. 세로로 더 움직였으면 스크롤, 버튼에서 시작했으면 그 버튼의 몫
-  let p: { x: number; y: number; t: number } | null = null;
-  el.addEventListener('pointerdown', (ev: PointerEvent) => { p = (ev.target as Element).closest?.('button, input, .dd') ? null : { x: ev.clientX, y: ev.clientY, t: performance.now() }; });
-  el.addEventListener('pointercancel', () => { p = null; });
-  el.addEventListener('pointerup', (ev: PointerEvent) => { const q = p; p = null; if (!q) return; const dx = ev.clientX - q.x, dy = ev.clientY - q.y; if (performance.now() - q.t > 800 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; swipeDetail(dx < 0 ? 1 : -1); });
+  let p: { x: number; y: number; t: number; id: number; live: boolean } | null = null;
+  const settle = (ms = 180) => { el.style.transition = `transform ${ms}ms cubic-bezier(.16,.84,.3,1), opacity ${ms}ms`; window.setTimeout(() => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; el.style.willChange = ''; }, ms + 30); };
+  el.addEventListener('pointerdown', (ev: PointerEvent) => { p = (ev.target as Element).closest?.('button, input, .dd') ? null : { x: ev.clientX, y: ev.clientY, t: performance.now(), id: ev.pointerId, live: false }; if (p) el.style.willChange = 'transform, opacity'; });
+  el.addEventListener('pointermove', (ev: PointerEvent) => { const q = p; if (!q) return; const dx = ev.clientX - q.x, dy = ev.clientY - q.y; if (!q.live) { if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) { p = null; el.style.willChange = ''; return; } if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.25) return; q.live = true; el.setPointerCapture(q.id); } ev.preventDefault(); const pull = Math.sign(dx) * Math.min(70, Math.pow(Math.abs(dx), 0.84)); el.style.transition = ''; el.style.transform = `translateX(${pull}px) rotate(${pull * 0.011}deg)`; el.style.opacity = String(Math.max(0.8, 1 - Math.abs(pull) / 520)); });
+  el.addEventListener('pointercancel', () => { p = null; settle(160); });
+  el.addEventListener('pointerup', (ev: PointerEvent) => { const q = p; p = null; if (!q) return; const dx = ev.clientX - q.x, dy = ev.clientY - q.y, dt = performance.now() - q.t; if (!q.live || dt > 900 || Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.35) { settle(170); return; } const dir: 1 | -1 = dx < 0 ? 1 : -1; el.style.transition = 'transform 170ms cubic-bezier(.5,0,.8,.4), opacity 170ms'; el.style.transform = `translateX(${dir > 0 ? -105 : 105}%) rotate(${dir > 0 ? -1.8 : 1.8}deg)`; el.style.opacity = '0.72'; window.setTimeout(() => swipeDetail(dir), 135); });
   return el;
 }
 export function openConfirm(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal') { if (!S.detail) S.detail = { kind: what === 'buy' ? 'market' : 'roster', id: g.id, solo: true }; S.detail.confirm = what; render(); }
@@ -96,7 +98,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
   const ctx = e.c.getContext('2d')!; const W = e.c.width / devicePixelRatio, H = e.c.height / devicePixelRatio;
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#e3d3a6'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, H - 10, W, 10);
-  const el = (performance.now() - e.start) / 1000; const sc = 1.35, gy = H - 8; // 폭 384 장면에 맞춘 인물 크기
+  const el = (performance.now() - e.start) / 1000; const sc = Math.min(1.08, Math.max(0.92, W / 340)), gy = H - 10; /* 확인 대화 장면용 인물 크기: 모바일 패널 안에서 라니스타와 검투사가 잘리지 않게 */
   // 검투사: 왼쪽에서 걸어 들어와 라니스타 앞에 선다 (구매는 사슬 풀린 노예가 상인 쪽에서 오듯 조금 늦게)
   const ENTER = 0.9; const gx1 = W * 0.36; const k = Math.min(1, el / ENTER), ease = 1 - Math.pow(1 - k, 2); const gx = -40 + (gx1 + 40) * ease;
   if (e.what === 'heal') { // 치료 장면: 침상에 걸터앉은 부상자(왼쪽) + 붕대 뭉치를 든 의사(오른쪽에서 걸어와 살핀다). 도장이 찍히면 일어선다
@@ -108,7 +110,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
     const mix = (a: Skeleton, b: Skeleton, u: number): Skeleton => ({ lean: lerp(a.lean, b.lean, u), frontArm: pair(a.frontArm, b.frontArm, u), backArm: pair(a.backArm, b.backArm, u), frontLeg: pair(a.frontLeg, b.frontLeg, u), backLeg: pair(a.backLeg, b.backLeg, u), headBob: lerp(a.headBob, b.headBob, u), sink: lerp(a.sink ?? 0, b.sink ?? 0, u) });
     drawStickman(ctx, e.g.type, { x: gx1 + 6 * sc, y: gy, scale: sc, skeleton: mix(sit, stand, up), t, team, accessories: accessoriesOf(e.g), facing: 1 });
     { const ax = gx1 + 12 * sc, ay = gy - 34 * sc - 18 * sc * (1 - up); ctx.strokeStyle = '#f3ead0'; ctx.lineWidth = 3.5 * (1 - up * 0.8) + 0.1; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(ax - 2 * sc, ay - 2); ctx.lineTo(ax + 3 * sc, ay + 3); ctx.moveTo(ax - 2 * sc, ay + 3); ctx.lineTo(ax + 3 * sc, ay + 8); ctx.stroke(); } // 팔의 붕대 (일어서며 옅어진다)
-    const mk = Math.min(1, el / 1.0), mease = 1 - Math.pow(1 - mk, 2); const mx = W + 40 - (W + 40 - W * 0.62) * mease; // 의사: 오른쪽에서 걸어온다
+    const mk = Math.min(1, el / 1.0), mease = 1 - Math.pow(1 - mk, 2); const mx = W + 40 - (W + 40 - W * 0.64) * mease; // 의사: 오른쪽에서 걸어온다
     const tending = mk >= 1 && ((el > 1.2 && el < 2.4) || (el > 3.6 && el < 4.8)); const msk: Skeleton = mk < 1 ? { ...walkSkeleton(el * 9, 0.8), frontArm: [55, 50] } : tending ? { ...NPC_POSES.tend, lean: 14 + w * 2, frontArm: [72 + w * 6, 34], backArm: [50, 45], headBob: 5 } : { ...NPC_POSES.tablet, lean: 3, headBob: w * 0.6 };
     drawStickman(ctx, 'murmillo', { x: mx, y: gy, scale: sc, facing: -1, skeleton: msk, t, ink: INK, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16', hands: (c, f) => { c.fillStyle = '#f3ead0'; c.beginPath(); c.arc(f.hx - 3, f.hy - 4, 5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#c9b283'; c.lineWidth = 1; c.stroke(); } }); // 붕대 뭉치
     return; }
@@ -122,7 +124,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
   } else drawStickman(ctx, e.g.type, { x: gx, y: gy, scale: sc, skeleton: gsk, t, team, accessories: accessoriesOf(e.g), facing: 1 });
   // 라니스타: 오른쪽에 서서 서판을 들고 말한다 (말풍선이 뜰 때 손짓)
   const talking = (el > 0.2 && el < 1.4) || (el > 2.6 && el < 3.8); const lsk: Skeleton = talking ? { ...NPC_POSES.point, lean: 5, frontArm: [80 + w * 15, 30 - w * 8], backArm: [-40, -25], headBob: 1 + w } : { ...NPC_POSES.tablet, lean: 3, headBob: w * 0.6 };
-  drawStickman(ctx, 'murmillo', { x: W * 0.64, y: gy, scale: sc, facing: -1, skeleton: lsk, t, ink: INK, bare: true, garment: 'toga', garmentColor: '#f3ead0', beard: true,
+  drawStickman(ctx, 'murmillo', { x: W * 0.68, y: gy, scale: sc, facing: -1, skeleton: lsk, t, ink: INK, bare: true, garment: 'toga', garmentColor: '#f3ead0', beard: true,
     hands: (c, f) => { c.fillStyle = '#d9c69a'; c.fillRect(f.hx - 7, f.hy - 12, 9, 12); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(f.hx - 7, f.hy - 12, 9, 12); } });
 }
 function talkLines(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal'): { who: 'l' | 'g'; text: string }[] {
@@ -167,7 +169,7 @@ export function confirmPage(): Node {
     if (stamped) return; stamped = true;
     if (what === 'buy' && !canBuy(S.st, g)) return;
     const page = document.querySelector('.detailpage.confirm');
-    if (page) page.append(h('div', { class: 'stamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
+    if (page) page.append(h('div', { class: 'stamp confirmstamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
     if (what === 'heal') for (const sc of talkScenes) if (sc.g === g) sc.healed = performance.now() + 250; // 도장 뒤 일어선다
     window.setTimeout(() => {
       if (what === 'heal') { if (!heal(S.st, g)) return; sfx.coin(); S.notice = `${g.name} 이(가) 자리에서 일어났다`; }
@@ -177,8 +179,9 @@ export function confirmPage(): Node {
       S.detail = null; S.shownDetail = null; render();
     }, what === 'heal' ? 1400 : 900);
   };
-  // 장면 캔버스 (무대 폭) + 말풍선 (검투사 위 왼쪽, 라니스타 위 오른쪽), 차례로 1.2초 간격
-  const SW = 384, SH = 256; const c = document.createElement('canvas'); // 세로: 말풍선(위쪽 3줄)이 인물 머리를 가리지 않게 인물은 아래 반, 풍선은 위 반 c.width = SW * devicePixelRatio; c.height = SH * devicePixelRatio; c.style.width = SW + 'px'; c.style.height = SH + 'px'; c.className = 'talkcanvas'; // 장면 폭은 무대 폭에 맞춘다 (그림은 W 비율로 배치되어 그대로 따라온다)
+  // 장면 캔버스 (패널 폭) + 말풍선 (검투사 위 왼쪽, 라니스타 위 오른쪽), 차례로 1.2초 간격
+  const SW = 340, SH = 220; const c = document.createElement('canvas');
+  c.width = SW * devicePixelRatio; c.height = SH * devicePixelRatio; c.style.width = '100%'; c.style.height = `${SH}px`; c.className = 'talkcanvas'; /* 그림은 논리 폭 340 기준으로 그리고 CSS 가 패널 폭에 맞춘다 */
   const e = { c, g, start: performance.now(), what }; talkScenes.add(e); drawTalkScene(e, 0);
   const bubbles = talkLines(g, what).map((l, i) => h('div', { class: `bubble ${l.who}`, style: `animation-delay:${0.25 + i * 1.2}s; top:${6 + i * 40}px` }, l.text)); // 순서대로 위에서 아래로 (대화 순서가 읽히게)
   return h('div', { class: 'detailpage confirm talk' },
@@ -200,7 +203,7 @@ export function detailPage(): Node {
   const { mid, side } = detailRight(g, d.kind);
   const page = h('div', { class: `detailpage${again || S.detailSwipe ? ' still' : ''}` }, left, h('div', { class: 'dright' }, mid), h('div', { class: 'dright side' }, side),
     backBtn(closeDetail, d.kind === 'market' ? '판매대로 돌아가기' : '켈라로 돌아가기'));
-  if (S.detailSwipe) { const from = S.detailSwipe > 0 ? 105 : -105; S.detailSwipe = null; requestAnimationFrame(() => page.animate([{ transform: `translateX(${from}%)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.16,.84,.3,1)' })); } /* 민 방향에서 밀려 들어온다. style.css 는 Codex 담당이라 애니메이션을 여기서 직접 준다 */
+  if (S.detailSwipe) { const from = S.detailSwipe > 0 ? 105 : -105; S.detailSwipe = null; requestAnimationFrame(() => page.animate([{ transform: `translateX(${from}%) rotate(${from > 0 ? 1.6 : -1.6}deg)`, opacity: 0.74 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.16,.84,.3,1)' })); } /* 민 방향에서 밀려 들어온다. style.css 는 Codex 담당이라 애니메이션을 여기서 직접 준다 */
   return swipeArea(page);
 }
 // 상세 페이지 오른쪽: 왼쪽(초상·이름·유형·신분·별칭)과 겹치지 않게 능력치 → 전적 → 상태 → 기술 → 시즌 행동 → 행동 → 방 순서. 시장 노예는 능력치·전적·기술·출신·가격
