@@ -11,8 +11,8 @@ import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
 import { classicMatchup, computeSynergies, describeSynergies, isClassicPair } from '../core/synergy.js';
 import { SKILL_BY_ID, SKILL_NAME, skillSlots, skillsOf } from '../core/skills.js';
-import { backBtn, h, sq, tell } from './dom.js';
-import { app, render, save, sideToolsLand } from './main.js';
+import { backBtn, h, sq, tell, ro } from './dom.js';
+import { app, render, save, sideToolsLand, VIEW_KO } from './main.js';
 import { hostPrize, hostSpan, moneyRow } from './detail.js';
 import { arenaIcon } from './scenes.js';
 import { graffitiCheck, renderBattle } from './battle-view.js';
@@ -72,7 +72,7 @@ function tabletsPage(cs: Contract[]): Node {
       h('div', { class: 'tfoot' }, `${S.st.lanista.name} · ${seasonName(S.st.season)}`))); };
   const sign = () => { if (stamped) return; stamped = true; const wraps = [...document.querySelectorAll('.planpage.tablet .tabletwrap')];
     wraps.forEach((w, i) => window.setTimeout(() => { w.append(h('div', { class: 'stamp small' }, h('span', {}, stampText))); sfx.down(); }, i * 160)); window.setTimeout(() => sfx.drum(1), 40); // 서판마다 차례로 쾅
-    window.setTimeout(() => { S.notice = cs.length > 1 ? `계약서 ${cs.length}장에 서명했다` : `${cs[0].venue} 계약서에 서명했다`; S.shownTablet = false; S.tabletQueue = null; S.seasonConfirm = true; render(); }, 900 + wraps.length * 160); };
+    window.setTimeout(() => { S.notice = cs.length > 1 ? `계약서 ${cs.length}장에 서명했다` : `${cs[0].venue} 계약서에 서명했다`; S.shownTablet = false; S.tabletQueue = null; openSeasonConfirm('plan'); }, 900 + wraps.length * 160); };
   const btn = h('button', { class: 'sealbtn', title: '도장을 찍어 계약을 맺습니다', onclick: sign }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, cs.length > 1 ? `${cs.length}장 서명` : '서명'));
   return h('div', { class: `planpage tablet n${cs.length}${again ? ' still' : ''}` }, h('div', { class: 'tablets' }, ...cs.map(tablet)), h('div', { class: 'cbtns tbtns' }, btn), backBtn(closePlanConfirm, '계약 벽으로 돌아가기'));
 }
@@ -103,6 +103,21 @@ const COINS_SVG = `<svg viewBox="0 0 96 52" width="92" height="50" fill="none" s
 export function graffitiBtn(kind: 'duel' | 'coins', word: string, title: string, onclick: () => void, badge?: number): Node {
   const b = h('button', { class: 'tabletbtn gfbtn', title, 'aria-label': title, onclick }); b.innerHTML = kind === 'duel' ? DUEL_SVG : COINS_SVG;
   b.prepend(h('span', { class: 'tword' }, word)); if (badge) b.append(h('span', { class: 'nbadge' }, String(badge))); return b;
+}
+// 시즌 시작 전 경고 줄 (계약 벽에서도, 마을에서 바로 넘길 때도 같은 것을 보여준다)
+export function seasonWarnings(): string[] {
+  const readyQ = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(S.st, c, t); }), ready = readyQ.length;
+    const healable = S.st.roster.filter(g => g.injured && S.st.money >= healCostOf(S.st)).length;
+    const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
+    const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
+    // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
+    const warn = [
+      !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
+      refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
+      healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
+      (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),
+    ].filter(Boolean);
+    return warn;
 }
 export function renderPlan() {
   S.pageSlide = null; const lineupTop = h('div', { class: 'lineuptop' }); // 가로 배치: 왼쪽 계약 목록, 오른쪽 위 고른 계약의 편성 카드 + 아래 검투사 목록
@@ -174,20 +189,7 @@ export function renderPlan() {
   const ready = readyQ.length;
   const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? CONFIG.events[k].cost : 0), 0), evN = EVENT_KEYS.filter(k => S.eventPlan[k]).length;
   // 시즌 예상 줄은 뺐다 (계약 페이지는 계약만)
-  const warnings = () => {
-    const healable = S.st.roster.filter(g => g.injured && S.st.money >= healCostOf(S.st)).length;
-    const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
-    const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
-    // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
-    const warn = [
-      !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
-      refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
-      healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
-      (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),
-    ].filter(Boolean);
-    return warn;
-  };
-  const goConfirm = () => { const ids = readyQ.map(c => c.id); if (ids.length) { S.tabletQueue = ids; S.tabletIdx = 0; } else S.seasonConfirm = true; render(); }; // 준비된 계약이 있으면 서판부터, 없으면 바로 시즌 시작 확인
+  const goConfirm = () => { const ids = readyQ.map(c => c.id); if (ids.length) { S.tabletQueue = ids; S.tabletIdx = 0; S.seasonFrom = 'plan'; render(); } else openSeasonConfirm('plan'); }; // 준비된 계약이 있으면 서판부터, 없으면 바로 시즌 시작 확인
   // 벽 오른쪽 아래의 밀랍 서판: 집어 들면 시즌 시작 확인(계약서·행사·도장)으로. 준비된 계약 수를 붉은 표로
   const tabletBtn = h('button', { class: 'tabletbtn', title: ready ? `준비된 계약 ${ready}건\n경기로 넘어갑니다` : '경기로 넘어갑니다\n경기 없이 넘길 수도 있습니다', 'aria-label': '시즌 시작', onclick: goConfirm });
   // 폼페이 낙서풍 결투 그림: 왼쪽 큰 방패의 무르밀로가 찌르고, 오른쪽 작은 방패의 트라이크스가 받는다. 삐뚤한 겹선(검댕 + 붉은 덧선)
@@ -259,23 +261,25 @@ export function renderPlan() {
     void done;
   }
   if (S.tabletQueue) { const cs = S.tabletQueue.map(id => S.st.contracts.find(x => x.id === id)).filter((c): c is Contract => !!c); if (cs.length) frag.append(tabletsPage(cs)); else S.tabletQueue = null; }
-  if (S.seasonConfirm) frag.append(seasonConfirmPage(warnings()));
+  if (S.seasonConfirm) frag.append(seasonConfirmPage(seasonWarnings()));
   return frag; // 가로: 토글 띠 · 계약 4칸 · 버튼 (+ 편성 페이지 · 시즌 시작 확인)
 }
-function closeSeasonConfirm() { const el = document.querySelector('.planpage.season'); S.shownSeason = false; if (!el) { S.seasonConfirm = false; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.seasonConfirm = false; render(); }, 280); }
-function seasonConfirmPage(warn: string[]): Node {
+// 시즌 넘기기: 계약 벽(광고)·서판을 거치지 않고 마을에서 바로 시즌 진행 창을 연다. 배정해 둔 계약이 있으면 그대로 치른다
+export function openSeasonConfirm(from: 'plan' | 'manage') { S.seasonFrom = from; S.seasonConfirm = true; S.shownSeason = false; if (from === 'manage') { S.sheet = null; S.cellsOpen = false; S.cellPop = null; S.bedPick = null; S.palusMode = false; } render(); }
+function closeSeasonConfirm() { const el = document.querySelector('.planpage.season'); S.shownSeason = false; const done = () => { S.seasonConfirm = false; render(); }; if (!el) { done(); return; } el.classList.add('closing'); window.setTimeout(done, 280); } /* 뒤로가기: 온 곳(계약 벽이든 마을이든)이 그대로 남아 있으므로 창만 닫는다 */
+export function seasonConfirmPage(warn: string[]): Node {
   const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? E[k].cost : 0), 0);
   const again = S.shownSeason; S.shownSeason = true;
   let stamped = false; const stampText = 'INCIPIT'; // 시작하다 — 경기의 막이 오른다
   const start = () => { if (stamped) return; stamped = true; const page = document.querySelector('.planpage.season'); if (page) page.append(h('div', { class: 'stamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
-    window.setTimeout(() => { S.seasonConfirm = false; S.shownSeason = false; startSeason(); }, 900); };
+    window.setTimeout(() => { S.seasonConfirm = false; S.shownSeason = false; S.seasonFrom = 'plan'; startSeason(); }, 900); };
   const left = h('div', { class: 'scol warn' }, h('h3', {}, '시즌 시작 전에'),
     ...(warn.length ? warn.map(w => { const [f, ...rest] = w.split('\n'); return h('div', { class: 'wblock' }, h('div', { class: 'flavor' }, f), ...rest.map(r => h('div', { class: 'effect' }, r))); }) : [h('div', { class: 'flavor' }, '준비가 끝났습니다. 검투사들이 문 앞에 서 있습니다.')]));
   const right = h('div', { class: 'scol events' }, h('h3', {}, '시즌 행사', h('span', { class: 'hint', style: 'margin-left:6px' }, '이 시즌에만 효과')), ...eventRows());
   return h('div', { class: `planpage season${again ? ' still' : ''}` }, h('div', { class: 'scols' }, left, right),
     h('div', { class: 'cbox row sfoot' }, evCost ? moneyRow({ amount: evCost, verb: '지불' }) : h('div'), // 행사가 없으면 빈 자리, 있으면 금액만
       h('div', { class: 'cbtns' }, h('button', { class: 'sealbtn', title: '도장을 찍어 시즌을 시작합니다', onclick: start }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, '시즌 시작')))),
-    backBtn(closeSeasonConfirm, '계약으로 돌아가기'));
+    backBtn(closeSeasonConfirm, S.seasonFrom === 'manage' ? `${VIEW_KO[S.view]}${ro(VIEW_KO[S.view])} 돌아가기` : '계약으로 돌아가기'));
 }
 // ── 3단계: 시즌 진행
 function startSeason() {

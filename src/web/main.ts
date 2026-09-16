@@ -11,7 +11,7 @@ import { renderSheet, renderSheetBody } from './sheets.js';
 import { confirmPage, detailPage, gladSheet, skillBadges, skillOfferRows } from './detail.js';
 import { cellPanel } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
-import { renderPlan } from './plan.js';
+import { renderPlan, seasonConfirmPage, seasonWarnings } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
 
 export const app = document.getElementById('app')!;
@@ -74,6 +74,7 @@ S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신
  // news·market·medic·yard·applicants: 대시보드를 대신하는 서랍 // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
 S.gladSel = null; // 검투사 시트에 보이는 검투사 id
  // 검투사 시트에 보이는 검투사 id
+S.detailSwipe = null;
 S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
  // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
 S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
@@ -183,6 +184,7 @@ export function render() {
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
   const noticeEl = S.notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, S.notice)) : null; S.notice = '';
   if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
+  if (S.seasonConfirm && S.seasonFrom === 'manage') app.append(seasonConfirmPage(seasonWarnings())); /* 시즌 넘기기: 계약 벽을 거치지 않고 마을 위로 바로 (뒤로가기는 마을 그대로) */
   if (noticeEl) app.append(h('div', { class: 'toast' }, noticeEl.textContent ?? '')); // 토스트: 배경 없이 굵은 글자, 위 가운데에 나타나 위로 떠오르며 사라진다. 정보는 서랍과 장면 클릭으로
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
@@ -256,6 +258,7 @@ S.tabletQueue = null;
 // 계약서(밀랍 서판): 라니스타 ↔ 주최자의 대여 계약. 나무 틀 안 검은 밀랍에 조건을 적고, 도장(SIGNATVM)을 찍어 서명한다 (가이우스 3.146: 무사 귀환 시 대여료, 사망·불구 시 배상)
 S.shownTablet = false; // 서판 페이지가 떠 있는지 (특약 체크로 재렌더될 때 다시 밀려 들어오지 않게)
 // 시즌 시작 확인 페이지: 왼쪽에 경고(문구 한 줄 + '· ' 효과 줄), 오른쪽에 시즌 행사 고르기, 아래 금화 줄과 도장(INCIPIT)
+S.seasonFrom = 'plan';
 S.seasonConfirm = false;
  S.shownSeason = false;
 render();

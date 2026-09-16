@@ -51,6 +51,8 @@ export function showTip(target: Element) {
   const hd = document.querySelector('#app.land > header')?.getBoundingClientRect(); const above = r.top - el.offsetHeight - 8 > (hd ? hd.bottom : 0) + 4; el.style.top = (above ? r.top - el.offsetHeight - 8 : r.bottom + 8) + 'px'; el.classList.toggle('below', !above); // 위에 자리가 있어도 헤더를 가리면 아래로 (헤더 밑 토글 줄)
   el.style.setProperty('--ax', (r.left + r.width / 2 - left) + 'px');
 }
+// 한국어 조사: 받침이 있으면 '으로', 없거나 ㄹ 받침이면 '로' (포룸으로 · 훈련소로 · 의무실로)
+export function ro(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; const jong = c >= 0 && c <= 11171 ? c % 28 : 0; return jong === 0 || jong === 8 ? '로' : '으로'; }
 export function hideTip() { if (S.tipEl) { S.tipEl.remove(); S.tipEl = null; } S.tipFor = null; }
 export const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
 export const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile');

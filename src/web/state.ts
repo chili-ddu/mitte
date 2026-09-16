@@ -24,6 +24,7 @@ export interface State {
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
   gladSel: number | null;
   detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null;
+  detailSwipe: 1 | -1 | null; /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;
   cellSel: number;
   cellSide: 'glad' | 'empty' | null;
@@ -58,6 +59,7 @@ export interface State {
   tabletIdx: number;
   shownTablet: boolean;
   seasonConfirm: boolean;
+  seasonFrom: 'plan' | 'manage'; /* 시즌 진행 창을 연 자리 (뒤로가기가 돌아갈 곳): 계약 벽에서 왔나, 마을에서 바로 넘겼나 */
   shownSeason: boolean;
 }
 export const S = {} as State; // 초기값은 main.ts 가 원래 순서대로 대입한다

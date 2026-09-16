@@ -5,6 +5,7 @@ import { TYPE_KO } from '../core/gladiator.js';
 import { h } from './dom.js';
 import { render } from './main.js';
 import { renderDash } from './sheets.js';
+import { openSeasonConfirm } from './plan.js';
 
  // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
 // 첫 시즌 안내: 지금 상태에서 다음에 할 일을 한 줄로. 화면 위쪽에 손가락 표시와 함께
@@ -53,7 +54,7 @@ function fameMeter(): Node {
 }
 export function headerEl(): Node {
   headerBox.replaceChildren(
-    h('div', { class: 'hrow' }, h('span', { class: 'stat', title: S.st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[S.st.lanista.type!]} 훈련 +1)` : S.st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, S.st.lanista.name, h('span', {}, ` ${S.st.lanista.age}세`)), fameMeter(), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((S.st.season - 1) / 4) + 1}년차`, seasonIcon(S.st.season))),
+    h('div', { class: 'hrow' }, h('span', { class: 'stat', title: S.st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[S.st.lanista.type!]} 훈련 +1)` : S.st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, S.st.lanista.name, h('span', {}, ` ${S.st.lanista.age}세`)), fameMeter(), h('span', { style: 'flex:1' }), h('span', { class: `stat season${S.phase === 'manage' ? ' go' : ''}`, title: S.phase === 'manage' ? '시즌 넘기기 — 계약 벽을 거치지 않고 바로 시즌 진행으로. 배정해 둔 계약이 있으면 그대로 치릅니다' : `${SEASON_KO[(S.st.season - 1) % 4]} — ${S.st.season}번째 시즌`, onclick: S.phase === 'manage' ? () => openSeasonConfirm('manage') : undefined }, `${Math.floor((S.st.season - 1) / 4) + 1}년차`, seasonIcon(S.st.season))),
     h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${S.st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(S.st).toLocaleString()}`)), h('span', { style: 'flex:1' }),
       newsBtn(), gearBtn()));
   return headerBox;

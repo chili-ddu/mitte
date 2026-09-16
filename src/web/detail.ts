@@ -80,6 +80,16 @@ function gladActions(g: Gladiator): (Node | null)[] {
 }
  // 지금 떠 있는 상세 페이지 (kind:id)
 function closeDetail() { const el = document.querySelector('.detailpage'); S.shownDetail = null; if (!el) { S.detail = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.detail = null; render(); }, 280); }
+// 상세를 좌우로 밀면 이웃 검투사로 간다 (켈라는 격자 순서, 시장은 판매대 순서). 끝에서는 반대쪽 끝으로 돈다
+const detailOrder = (kind: 'roster' | 'market'): Gladiator[] => kind === 'market' ? S.st.market : Array.from({ length: S.st.ludus.cells.length }, (_, k) => occupantOf(S.st, k)).filter((g): g is Gladiator => !!g);
+function swipeDetail(dir: 1 | -1) { const d = S.detail; if (!d || d.confirm) return; const list = detailOrder(d.kind); if (list.length < 2) return; const i = list.findIndex(g => g.id === d.id); if (i < 0) return; d.id = list[(i + dir + list.length) % list.length].id; S.detailSwipe = dir; sfx.step(); render(); }
+function swipeArea(el: HTMLElement): HTMLElement { // 가로로 60px 넘게 끌면 이웃으로. 세로로 더 움직였으면 스크롤, 버튼에서 시작했으면 그 버튼의 몫
+  let p: { x: number; y: number; t: number } | null = null;
+  el.addEventListener('pointerdown', (ev: PointerEvent) => { p = (ev.target as Element).closest?.('button, input, .dd') ? null : { x: ev.clientX, y: ev.clientY, t: performance.now() }; });
+  el.addEventListener('pointercancel', () => { p = null; });
+  el.addEventListener('pointerup', (ev: PointerEvent) => { const q = p; p = null; if (!q) return; const dx = ev.clientX - q.x, dy = ev.clientY - q.y; if (performance.now() - q.t > 800 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; swipeDetail(dx < 0 ? 1 : -1); });
+  return el;
+}
 export function openConfirm(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal') { if (!S.detail) S.detail = { kind: what === 'buy' ? 'market' : 'roster', id: g.id, solo: true }; S.detail.confirm = what; render(); }
 function closeConfirm() { const el = document.querySelector('.detailpage.confirm'); const done = () => { if (S.detail?.solo) S.detail = null; else if (S.detail) delete S.detail.confirm; render(); }; if (!el || !S.detail) { done(); return; } el.classList.add('closing'); window.setTimeout(done, 280); }
 export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: number; what: 'sell' | 'release' | 'buy' | 'heal'; healed?: number }, t: number) {
@@ -188,8 +198,10 @@ export function detailPage(): Node {
   const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g, false)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
   S.gladSel = g.id; S.marketSel = d.kind === 'market' ? g.id : S.marketSel;
   const { mid, side } = detailRight(g, d.kind);
-  return h('div', { class: `detailpage${again ? ' still' : ''}` }, left, h('div', { class: 'dright' }, mid), h('div', { class: 'dright side' }, side),
+  const page = h('div', { class: `detailpage${again || S.detailSwipe ? ' still' : ''}` }, left, h('div', { class: 'dright' }, mid), h('div', { class: 'dright side' }, side),
     backBtn(closeDetail, d.kind === 'market' ? '판매대로 돌아가기' : '켈라로 돌아가기'));
+  if (S.detailSwipe) { const from = S.detailSwipe > 0 ? 105 : -105; S.detailSwipe = null; requestAnimationFrame(() => page.animate([{ transform: `translateX(${from}%)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.16,.84,.3,1)' })); } /* 민 방향에서 밀려 들어온다. style.css 는 Codex 담당이라 애니메이션을 여기서 직접 준다 */
+  return swipeArea(page);
 }
 // 상세 페이지 오른쪽: 왼쪽(초상·이름·유형·신분·별칭)과 겹치지 않게 능력치 → 전적 → 상태 → 기술 → 시즌 행동 → 행동 → 방 순서. 시장 노예는 능력치·전적·기술·출신·가격
 const SEC_ICON: Record<string, string> = {
