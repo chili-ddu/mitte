@@ -54,7 +54,8 @@ function fameMeter(): Node {
 export function headerEl(): Node {
   headerBox.replaceChildren(
     h('div', { class: 'hrow' }, h('span', { class: 'stat', title: S.st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[S.st.lanista.type!]} 훈련 +1)` : S.st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, S.st.lanista.name, h('span', {}, ` ${S.st.lanista.age}세`)), fameMeter(), h('span', { style: 'flex:1' }), h('span', { class: 'stat season', title: `${SEASON_KO[(S.st.season - 1) % 4]} — ${S.st.season}번째 시즌. 시즌을 넘기려면 포룸 하늘의 해를 누릅니다` }, `${Math.floor((S.st.season - 1) / 4) + 1}년차`, seasonIcon(S.st.season))),
-    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${S.st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(S.st).toLocaleString()}`)), h('span', { style: 'flex:1' }),
+    h('div', { class: 'hrow' }, (() => { const live = S.phase === 'battle' || S.phase === 'result'; const shown = live ? (S.seasonSummary?.before ?? S.st.money) : S.st.money; /* 경기·결과 화면에서는 시즌 시작 때 금액 그대로 — 대여료·상금이 미리 들어오면 승패가 새어 나간다. 정산에서 한꺼번에 들어온다 */
+      return h('span', { class: 'stat', title: live ? '경기 중에는 시즌 시작 때 금액입니다. 대여료·상금·경비는 시즌 정산에서 한꺼번에 들어옵니다' : undefined }, `${shown.toLocaleString()} HS`, h('span', {}, live ? ' 정산 전' : ` 유지비 ${upkeepOf(S.st).toLocaleString()}`)); })(), h('span', { style: 'flex:1' }),
       newsBtn(), gearBtn()));
   return headerBox;
 }

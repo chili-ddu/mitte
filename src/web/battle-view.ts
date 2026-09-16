@@ -10,7 +10,7 @@ import { MAIN_HAND, equipOf } from '../core/equipment.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
-import { refuseRudis, type FightReport } from '../core/game.js';
+import { refuseRudis, rivalOf, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { ask, h, sq, eun, ga } from './dom.js';
 import { DEBUG, app } from './main.js';
@@ -211,7 +211,7 @@ export function renderBattle() {
       h('div', { class: 'actions' }, skip)));
   app.append(headerEl(), wrap); app.classList.add('land', 'battle'); window.scrollTo(0, 0); // 전투도 같은 가로 무대 안: 위 헤더는 그대로, 아래는 경기장이 채운다 (하단 바 없음)
 // 경기장 높이 = 남는 높이 (스크롤 없이 바 바로 위까지)
-  lineup.addEventListener('click', foldLineup); canvas.addEventListener('click', () => { if (!lineup.classList.contains('folded')) foldLineup(); }); // 편성이나 전투 화면을 누르면 접힌다. 접힌 뒤엔 아이콘 줄을 누르면 내려온다
+  lineup.addEventListener('click', foldLineup); canvas.addEventListener('click', () => { introSkip(); if (!lineup.classList.contains('folded')) foldLineup(); }); // 편성이나 전투 화면을 누르면 접힌다. 접힌 뒤엔 아이콘 줄을 누르면 내려온다
   window.setTimeout(() => { if (S.phase === 'battle') foldLineup(); }, 4500); // 소개 연출이 끝날 즈음 접힌다
   const W = canvas.clientWidth || 868, H = canvas.clientHeight || 354; const SK = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1) * devicePixelRatio; // 무대 배율 × DPR 만큼 실제 픽셀을 잡아 선명하게
   canvas.width = W * SK; canvas.height = H * SK;
@@ -224,6 +224,12 @@ export function renderBattle() {
   const units = [...r.team.map(g => ({ g, side: 'A' as const })), ...r.contract.enemy.map(g => ({ g, side: 'B' as const }))];
   const byId = Object.fromEntries(units.map(u => [u.g.id, u]));
   const hp: Record<number, number> = { ...r.initialHp };
+  // 반전 연출: 지고 있던 쪽이 앞서는 순간을 짚는다. 체력 비율(남은 합/처음 합)의 차이로 본다
+  const sideIds = { A: r.team.map(g => g.id), B: r.contract.enemy.map(g => g.id) };
+  const shareOf = (ids: number[]) => { const init = ids.reduce((a, id) => a + (r.initialHp[id] ?? 0), 0); return init ? ids.reduce((a, id) => a + Math.max(0, hp[id] ?? 0), 0) / init : 0; };
+  let lead = 0, worstA = 0, worstB = 0, flips = 0; // worst*: 그 편이 가장 뒤처졌던 정도
+  const REVERSE_GAP = 0.22, MAX_FLIPS = 2; // 이만큼 뒤처졌다가 앞서면 '뒤집혔다'. 한 경기에 두 번까지만
+
   const hpAppliedIdx: Record<number, number> = {}; // 대상별로 마지막에 반영한 이벤트 순번
   const face: Record<number, 1 | -1> = Object.fromEntries(units.map(u => [u.g.id, u.side === 'A' ? 1 : -1]));
   const engaged: Record<number, number | undefined> = {};
@@ -271,6 +277,8 @@ export function renderBattle() {
   let frenzy = false;
   let hostMood: 'none' | 'pleased' | 'flat' | 'judging' = 'none';
   let hostGesture: 'none' | 'cloth' | 'thumb' = 'none'; // 판정: 손 들어 올림(살려라) / 엄지 내림(죽여라)
+  // 연출은 조건 자체가 드물 때만 건다(경기당 0.1~0.2회) — 드문 일은 확률로 또 거르지 않고 무조건 보여 준다(사용자)
+  const brink = new Set<number>(); // 벼랑에서 버틴 순간을 본 검투사 (한 번만)
   let crowdCloth = 0; // 천을 흔드는 관중 비율 (판정 중)
   let hostShout = '';
   let palmAt = -1; let palmTarget = { x: 0, y: 0 }; let throwUntil = -1; let palmKind: 'palm' | 'rudis' = 'palm';
@@ -326,7 +334,7 @@ export function renderBattle() {
       case 'net_recover': if (pt) at('netline', 0.55, { x: pt.x, y: pt.y - 10, to: tid }); break;  // 그물이 줄에 끌려 되돌아온다
       case 'spear_ward': at('push', 0.3, { x: p0.x + d * 30, y: p0.y - 8 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.4, dir: d, seed: id + 1 }); break; // 창 끝에서 밀치는 직선
       case 'stand_firm': at('ring', 0.5, { y: p0.y + 34 }); break;                              // 발밑 먼지 고리 + 굵은 윤곽
-      case 'second_wind': at('halo', 2.0); crowdCheer = Math.max(crowdCheer, 0.4); break;        // 심판 지팡이가 내려오고 흰 원, 초록 점
+      case 'second_wind': at('halo', 2.0); crowdCheer = 1; slowUntil = Math.max(slowUntil, ct + 0.6); sfx.cheer(0.7); break; // 심판이 경기를 멈추는 순간 — 반전의 문턱        // 심판 지팡이가 내려오고 흰 원, 초록 점
       case 'appeal': at('cloth', 1.2); crowdCloth = Math.min(1, crowdCloth + 0.3); break;         // 손수건이 날린다
       case 'charge_plus': at('trail', 0.45); break;                                               // 긴 먼지 자국
     }
@@ -338,7 +346,8 @@ export function renderBattle() {
       const e = r.events[ei++];
       if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip();
         skillFx(e.actor, e.skill ?? '', ct); continue; }
-      if (e.kind === 'stumble') { flash.push({ id: e.actor, t: 1.3, text: '헛디딤!', color: '#6b4a22' }); const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
+      if (e.kind === 'stumble') { const trip = !!e.trip; flash.push({ id: e.actor, t: trip ? 1.8 : 1.3, text: trip ? '넘어졌다!' : '헛디딤!', color: trip ? '#9b1f14' : '#6b4a22' });
+        if (trip) { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.7); const pp = posAt(ct)[e.actor]; shouts.length = 0; shouts.push({ text: '넘어졌다!', t: 1.4, x: pp.x }); } const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
@@ -349,6 +358,7 @@ export function renderBattle() {
       { const p0 = posAt(ct)[aid], pt0 = posAt(ct)[tid], big = e.crit || e.downed || e.charge || e.counter; fx.push({ kind: 'tell', x: p0.x + face[aid] * 26, y: p0.y - 10, t: hitDelay, life: hitDelay, dir: face[aid], seed: aid * 17 + tid }); sfx.swing(big); if (e.crit && !e.downed) { zoomAt = { x: (p0.x + pt0.x) / 2, y: (p0.y + pt0.y) / 2 - 12 }; zoomStart = ct; holdUntil = Math.max(holdUntil, ct + hitDelay + 0.18); zoomOutDur = 0.35; } } // 공격 예고: 휘두름 소리와 붉은 궤적이 먼저 나오고, 치명타는 잠깐 당겨 본다
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
+        slowUntil = Math.max(slowUntil, ct + 0.45); crowdCheer = Math.max(crowdCheer, 0.8); /* 그물에 걸리면 판이 뒤집힌다 */
         play(aid, 'net_throw', ct); netAway[aid] = true;
         nets.push({ from: aid, to: tid, start: ct + 0.14, dur: 0.38 }); sfx.net();
         pending.push({ at: ct + 0.5, fn: () => { boundUntil[tid] = ct + 0.5 + 1.2; } });
@@ -358,6 +368,12 @@ export function renderBattle() {
       const evIdx = ei; // 이벤트 순서. 연속 공격(2타)의 피격 반영이 1타보다 먼저 와도 앞선 값이 나중 값을 덮지 않게
       pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
         if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
+        { const nl = shareOf(sideIds.A) - shareOf(sideIds.B); // 체력 우세가 뒤집히는 순간: 잠깐 늦추고 관중이 술렁인다
+          if (flips < MAX_FLIPS && nl > 0.02 && worstA <= -REVERSE_GAP) { flips++; worstA = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 1; sfx.cheer(0.8); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); flash.push({ id: aid, t: 1.6, text: '반전!', color: '#9b1f14' }); }
+          else if (flips < MAX_FLIPS && nl < -0.02 && worstB <= -REVERSE_GAP) { flips++; worstB = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 0.6; sfx.boo(); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); }
+          worstA = Math.min(worstA, nl); worstB = Math.min(worstB, -nl); lead = nl; void lead; }
+        if (!e.downed && (e.targetHp ?? 0) > 0 && (e.targetHp ?? 0) / r.initialHp[tid] <= 0.08 && (hp[aid] ?? 0) / r.initialHp[aid] >= 0.4 && !brink.has(tid)) { brink.add(tid); /* 상대는 멀쩡한데 벼랑 끝에서 버텼다 */ // 벼랑 끝에서 버텼다
+          slowUntil = Math.max(slowUntil, ct + 0.35); const p = posAt(ct)[tid]; shouts.length = 0; shouts.push({ text: '아직 섰다!', t: 1.4, x: p.x }); crowdCheer = Math.max(crowdCheer, 0.9); }
         play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
         if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
@@ -379,6 +395,10 @@ export function renderBattle() {
         if (!e.blocked && Math.random() < pBlood) bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2);
         if (e.crit) flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' });
         if (e.open) flash.push({ id: tid, t: 1.3, text: '빈틈!', color: '#9b1f14' });
+        if (e.downed && woundOf(tid)) { // 그 자리에서 숨이 끊기는 타격: 무기에 맞춰 마지막 장면을 길게 눌러 준다
+          const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6); shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
+          bleed(pt.x, pt.y - (cut ? 16 : 6), pa.x <= pt.x ? 1 : -1, 30, 2.2); flash.push({ id: tid, t: 2, text: cut ? '목을 베었다' : '심장을 꿰뚫었다', color: '#9b1f14' }); }
+        else if (e.downed && e.skill === 'riposte') { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
         if (e.downed && !woundOf(tid)) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); else if (e.downed) shout('…', pt.x); // 상처로 숨지면 관중은 말을 잃는다
         else if (e.crit) shout('하베트!  하베트!', pt.x);
         else if (heavy) shout('하베트!', pt.x);
@@ -395,15 +415,26 @@ export function renderBattle() {
   const CAM_IN = { z: 0.86 * ZK, x: 0, y: -130 * ZK }; // 관객석 1~2층까지 보이되 검투사 장비가 읽히도록 한 걸음 당긴다. x 는 싸움 중심을 따라감
   let followX = 0;
   const CAM_OUT = { z: ZOUT, x: 0, y: 0 };
-  const INTRO_HOLD = 1.0, INTRO_ZOOM = 2.2;
-  let intro = 0; // 실시간 경과
+  // 입장(폼파): 왼쪽 파밀리아에 한 번, 오른쪽에 한 번, 그리고 가운데로 — 북이 한 번씩 울린다. 아무 곳이나 누르면 건너뛴다
+  const INTRO_HOLD = 0.6, INTRO_LEFT = 1.9, INTRO_RIGHT = 3.2, INTRO_ZOOM = 4.0; // 누적 시각 (마지막이 가운데로 빠지는 끝)
+  let intro = 0, introStage = -1, introSkipped = false; // 실시간 경과
+  const introText = { big: '', sub: '', t: 0 };
+  const sideCenter = (side: 'A' | 'B') => { const ids = side === 'A' ? r.team.map(g => g.id) : r.contract.enemy.map(g => g.id); const f = frames[0];
+    const pts = f.u.filter(u => ids.includes(u[0])); if (!pts.length) return { x: 0, y: 0 };
+    return { x: sx(pts.reduce((a, u) => a + u[1], 0) / pts.length), y: sy(pts.reduce((a, u) => a + u[2], 0) / pts.length) }; };
+  const rivalName = rivalOf(S.st.rivals, r.contract.rivalId)?.name ?? '타지 라니스타의 검투사';
+  const introSkip = () => { if (intro < INTRO_ZOOM) { intro = INTRO_ZOOM; introSkipped = true; introText.t = 0; } };
 
   // 카메라 상태: 목표(z, cx, cy)를 향해 부드럽게 따라간다. 들어갈 땐 빠르게(8/s), 빠질 땐 느리게(2/s)
   const camCur = { z: 0, cx: 0, cy: 0, init: false };
   function camera(ct: number, dtReal: number) {
     let z: number, cx: number, cy: number;
     if (intro < INTRO_HOLD) { z = CAM_OUT.z; cx = CAM_OUT.x; cy = CAM_OUT.y; tilt = 0; }
-    else if (intro < INTRO_HOLD + INTRO_ZOOM) { const k = (intro - INTRO_HOLD) / INTRO_ZOOM; const e = 1 - Math.pow(1 - k, 3); tilt = e; z = CAM_OUT.z + (CAM_IN.z - CAM_OUT.z) * e; cx = CAM_OUT.x + (followX - CAM_OUT.x) * e; cy = CAM_OUT.y + (CAM_IN.y - CAM_OUT.y) * e; }
+    else if (!introSkipped && intro < INTRO_RIGHT) { // 파밀리아 소개: 한쪽씩 당겨 본다
+      const first = intro < INTRO_LEFT; const k = first ? (intro - INTRO_HOLD) / (INTRO_LEFT - INTRO_HOLD) : (intro - INTRO_LEFT) / (INTRO_RIGHT - INTRO_LEFT);
+      const e = 1 - Math.pow(1 - Math.min(1, k), 3); tilt = 1; const c = sideCenter(first ? 'A' : 'B');
+      z = CAM_IN.z * 1.35; cx = c.x; cy = c.y - 40; void e; }
+    else if (intro < INTRO_ZOOM) { const k = (intro - (introSkipped ? INTRO_HOLD : INTRO_RIGHT)) / (INTRO_ZOOM - (introSkipped ? INTRO_HOLD : INTRO_RIGHT)); const e = 1 - Math.pow(1 - k, 3); tilt = introSkipped ? e : 1; z = CAM_OUT.z + (CAM_IN.z - CAM_OUT.z) * e; cx = CAM_OUT.x + (followX - CAM_OUT.x) * e; cy = CAM_OUT.y + (CAM_IN.y - CAM_OUT.y) * e; }
     else { z = CAM_IN.z; cx = followX; cy = CAM_IN.y; tilt = 1; }
     // 시네마틱 목표: 줌 유지 구간이면 ZMAX 로 zoomAt 을 본다
     const ZMAX = 1.9;
@@ -567,6 +598,13 @@ export function renderBattle() {
       ctx.save(); ctx.fillStyle = '#7a3b1e'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.6 + Math.sin(ct * 6) * 0.4; ctx.fillText('화면을 두드려 함께 외쳐라!', W / 2, H - 30); ctx.restore(); }
     if (hostShout) { ctx.save(); ctx.fillStyle = hostMood === 'pleased' ? '#3b7a2c' : '#7a6a4e'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(hostShout, W / 2, 96); ctx.restore(); }
     if (intro < INTRO_HOLD) { ctx.save(); ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(r.contract.venue, W / 2, H - 22); ctx.restore(); }
+    if (introText.t > 0) { // 입장 소개: 파밀리아 이름과 검투사들 (벽에 긁어 쓴 글씨처럼)
+      const k = Math.min(1, (1.6 - introText.t) * 6), a = Math.min(1, introText.t * 2);
+      ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.translate(W / 2, H - 92 + (1 - k) * 10); ctx.rotate(-0.02);
+      ctx.fillStyle = '#9b2c1c'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(introText.big, 0, 0);
+      ctx.fillStyle = '#3a2412'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(introText.sub, 0, 22);
+      ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2; ctx.globalAlpha = a * 0.7; ctx.beginPath(); ctx.moveTo(-90 * k, 8); ctx.lineTo(90 * k, 8); ctx.stroke(); ctx.restore(); }
+    if (intro < INTRO_ZOOM && intro > INTRO_HOLD) { ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#7a6a4e'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('두드리면 건너뜁니다', W / 2, H - 20); ctx.restore(); }
   }
 
   const CEREMONY = 3.2;
@@ -601,7 +639,13 @@ export function renderBattle() {
   const anim = () => {
     const now = performance.now(); const realRaw = (now - lastReal) / 1000; const real = Math.min(0.05, realRaw); lastReal = now; lastDtReal = real;
     let dt = real * (engagedAt(ct) ? TEMPO_NEAR : TEMPO_FAR);
-    if (intro < INTRO_HOLD + INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
+    if (intro < INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; // 입장 동안은 경기를 멈춰 둔다
+      const st2 = introSkipped ? 3 : intro < INTRO_HOLD ? 0 : intro < INTRO_LEFT ? 1 : intro < INTRO_RIGHT ? 2 : 3;
+      if (st2 !== introStage) { introStage = st2; // 뚜둥 — 한쪽씩 소개하고 마지막에 가운데로
+        if (st2 === 1) { introText.big = S.st.lanista.name + ' 의 파밀리아'; introText.sub = r.team.map(g => g.name).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); }
+        else if (st2 === 2) { introText.big = rivalName; introText.sub = r.contract.enemy.map(g => g.name.replace('(적)', '')).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); }
+        else if (st2 === 3) { introText.big = ''; introText.sub = ''; sfx.cheer(0.9); } }
+      if (introText.t > 0) introText.t -= realRaw; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
     else if (ct < slowUntil) dt = real * 0.25;
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
     if (!done && hasJudge && !hasJudgeFailed && !judge && ct >= r.duration + 1.0) {
@@ -662,8 +706,20 @@ export function renderBattle() {
   skip.onclick = () => { if (intro < INTRO_HOLD + INTRO_ZOOM) { intro = INTRO_HOLD + INTRO_ZOOM; return; } toResult(); };
 }
 // 이 경기가 갈린 자리 한 줄. 새 규칙이 아니라 이벤트를 읽어 고른다 — 우연(헛디딤·빈틈·치명타·몸 상태)이 왜 승패가 됐는지 보이게
+function comeback(r: FightReport): boolean { // 이긴 쪽이 경기 도중 크게 밀렸던가 (체력 비율 차 −0.25 아래)
+  if (r.winner === 'draw') return false;
+  const ids = { A: r.team.map(g => g.id), B: r.contract.enemy.map(g => g.id) };
+  const init = (a: number[]) => a.reduce((s, id) => s + (r.initialHp[id] ?? 0), 0);
+  const iA = init(ids.A), iB = init(ids.B); if (!iA || !iB) return false;
+  let worst = 0;
+  for (const f of r.frames) { const m = new Map(f.u.map(u => [u[0], u[3]]));
+    const sA = ids.A.reduce((s, id) => s + Math.max(0, m.get(id) ?? 0), 0) / iA, sB = ids.B.reduce((s, id) => s + Math.max(0, m.get(id) ?? 0), 0) / iB;
+    const d = r.winner === 'A' ? sA - sB : sB - sA; worst = Math.min(worst, d); }
+  return worst <= -0.25;
+}
 function turningPoint(r: FightReport): string | null {
   const mine = new Set(r.team.map(g => g.id)), last = [...r.events].reverse().find(e => e.kind === 'attack' && e.downed);
+  if (comeback(r)) return r.winner === 'A' ? '무너지기 직전에 뒤집었다.' : '이겨 가던 경기를 내주었다.';
   if (last?.open) { const n = nameOf(r, last.target!); return `${n}${ga(n)} 지쳐 헛디딘 틈이 마지막을 갈랐다.`; }
   if (last?.crit) return `${nameOf(r, last.actor)}의 깨끗한 일격이 갑주 틈을 찔렀다.`;
   const stumbles = r.events.filter(e => e.kind === 'stumble');

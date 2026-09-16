@@ -151,7 +151,9 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       const vlen = holding ? 0 : Math.hypot(vx, vy);
       if (vlen > 0) {
         const sp = u.moveSpeed * (u.sprint ? 1.7 : 1) * (winded ? ST.windedMove : 1) * (t < u.slowUntil ? 1 - CONFIG.legs.slow : 1); /* 다리를 맞으면 걸음이 무디다 */
-        if (u.sprint) u.stamina = Math.max(0, u.stamina - ST.sprintPerSec * DT); // 질주는 숨을 먹는다
+        if (u.sprint) u.stamina = Math.max(0, u.stamina - ST.sprintPerSec * DT);
+        if (winded && rng.chance(CONFIG.trip.chance * (u.sprint ? 2.5 : 1))) { const TR = CONFIG.trip; u.boundUntil = Math.max(u.boundUntil, t + TR.sec); u.sprint = false; u.holdUntil = t + TR.sec; /* 지친 채 달리다 넘어진다 */
+          events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'stumble', actor: u.g.id, trip: true }); log.push(`${fmt(t)} ${u.g.name} 발이 걸려 넘어짐!`); } // 질주는 숨을 먹는다
         u.x += vx / vlen * sp * DT; u.y += vy / vlen * sp * DT;
         u.x = Math.max(ARENA.margin, Math.min(ARENA.w - ARENA.margin, u.x));
         u.y = Math.max(ARENA.margin, Math.min(ARENA.h - ARENA.margin, u.y));
