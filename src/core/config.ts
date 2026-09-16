@@ -33,12 +33,12 @@ export const CONFIG = {
   doctorSalary: 800,   // 독토르 시즌 급료 (유지비 대신)
   doctorBonus: { gapSmall: 1, gapBig: 5 }, // 같은 유형 독토르의 해당 능력치가 훈련생보다 gapSmall 이상 높으면 +1, gapBig 이상이면 +2
   ludus: { // 루두스 시설 (장기 지출처). 모든 항목이 유한 단계
-    cells: { start: 4, max: 16, per: 2, addCost: (n: number) => 5000 + n * 3000, qualityCost: [3000, 6000, 10000] }, // 칸 증축(n = 증축 횟수) / 칸마다 숙소 질 0~3
+    cells: { start: 3, max: 15, per: 3, addCost: (n: number) => 8000 + n * 4000, qualityCost: [3000, 6000, 10000] }, // 칸 증축 = 한 줄(3칸)씩, 3 → 6 → 9 → 12 → 15 (2026-09-16, 켈라 3×5 격자에 맞춤). 비용 8,000 + 4,000×n (n = 증축 횟수, 총 56,000) / 칸마다 숙소 질 0~3
     kitchen: { cost: [4000, 8000, 14000], hpPerLevel: 5 },                    // 조리장: 출전 HP +5/단계
     beds: { start: 1, max: 4, cost: [3000, 6000, 10000] },                    // 침상: 동시에 회복 중인 부상자 수. 모자라면 부상 +1시즌
-    medicine: { cost: [4000, 6000, 9000, 13000, 18000], injuryAt: 2, cheapAt: 4 }, // 의술: 2단계 부상 1시즌, 4단계 치료비 250
+    medicine: { cost: [4000, 6000, 9000, 13000, 18000], injuryAt: 2, healCostByLevel: [500, 400, 400, 250, 250, 250], injuryChanceByLevel: [0.5, 0.5, 0.5, 0.5, 0.4, 0.3], fatigueRestAt: 5 }, // 의술(메디쿠스) 5단계 모두 효과 (2026-09-16 A안): 1 치료비 400 · 2 부상 1시즌 · 3 치료비 250 · 4 쓰러진 뒤 부상 확률 40% (의사가 경기장에 따라간다) · 5 부상 30% + 시즌 끝 피로 회복 +1. 내 검투사에게만
     herbs: { cost: [5000, 9000, 15000], skipFatiguePer: 0.2 },                // 약재: 경기 후 피로 면제 확률 20%/단계
-    palus: { start: 2, max: 6, cost: [4000, 6000, 9000, 13000] },             // 팔루스 수 = 시즌당 훈련 인원
+    palus: { start: 2, max: 8, cost: [4000, 6000, 9000, 13000, 18000, 24000] }, // 팔루스 수 = 시즌당 훈련 인원 (최대 8, 2026-09-16)
     gym: { cost: [3000, 5000, 8000, 12000, 18000], bonusAt: [3, 5] },         // 훈련 시설: 3·5단계에서 훈련 폭 +1
   },
   events: { // 시즌 행사 (전투 밖 명예·호감도 이벤트, 고증: 케나 리베라·폼파·봉헌)
@@ -72,8 +72,10 @@ export const CONFIG = {
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
-  startFame: 30,
+  startFame: 0,       // 무명에서 시작 (2026-09-16, 월계관 단계에 맞춰). 시뮬: 30→0 이 파산율을 올리지 않고(등급1만 14%→1%) 초반 사망만 조금 늘어난다(미시오 보정 없음)
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
+  synergy: { cavalrySpd: 2, cavalrySec: 5, spearFirst: 1.2, sicaBrothers: 0.10, mythMissio: 0.05, hometownRest: 1, nicknameFame: 1, captiveAtk: 1 }, // 추가 조합 7종 (2026-09-16, 열세에서도 뒤집을 여지): 기병대 = 에퀘스 첫 5초 속도 +2 · 창 벽 = 첫 타 피해 ×1.2 · 곡도 형제 = 시카 방어 무시 +10%p · 신화×2 = 미시오 +5% · 동향 = 지명 계보 둘이 함께 싸우면 시즌 끝 피로 −1 · 별칭×2 = 승리 호감도 +1 · 동포 = 포로 둘 이상 공격 +1
+  tierPowerCap: { 1: 160, 2: 200, 3: Infinity } as Record<number, number>, // 경기장 등급별 **상대** 전력 상한. 내 편은 제한 없음 (사용자: 나는 마음대로 내고, 상대가 등급에 맞춰 나오길 원한다 — 상대가 무작위라 출전을 망설였다). 티로 104~145(중간 121), 베테라누스 118~164(1시즌)·163~212(16시즌): 시골 목조는 티로·초기 베테 무대, 석조는 단련된 베테까지, 대경기장은 무제한 (2026-09-16)
   missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, instantDeath: { base: 0.03, crit: 0.08 } }, // instantDeath: 쓰러뜨리는 타격이 그 자리에서 목숨을 앗을 확률 (치명타면 더). 판정과 별개, 승리 측도 해당
   fameDelta: { win: 5, classicWin: 2, lose: -3, refuse: -2, refuseFrom: 40, death: -1, decay: -1, decayAt: [[50, -2], [80, -3]] as [number, number][], winAt: [[50, 3], [80, 2]] as [number, number][], active: 1 }, // winAt: 이미 유명하면 승리 한 번의 호감도가 작다 (50↑ +3, 80↑ +2) // decayAt: 호감도가 높을수록 망각이 빠르다 (50↑ −2, 80↑ −3) // refuse: 시즌당 1회, 받을 수 있었던 계약을 거절했을 때만. active: 시즌에 한 번이라도 출전하면 +1
 } as const;

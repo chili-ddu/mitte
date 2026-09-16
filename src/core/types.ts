@@ -33,6 +33,7 @@ export interface Gladiator {
   skills?: string[];      // 기술 id 목록 (core/skills.ts)
   skillMastery?: Record<string, number>; // 기술별 발동 횟수 (숙련)
   skillOffers?: string[]; // 배울 수 있게 된 기술 (플레이어가 배울지 정한다)
+  bonded?: boolean;     // 이번 시즌 동향(지명 계보 둘) 조합으로 싸웠다 — 시즌 끝 피로 −1 뒤 지움
   streak?: number;      // 현재 연승
   injuries?: number;    // 부상 생존 횟수
   soloWins?: number;    // 동료 전멸 뒤 홀로 이긴 횟수
@@ -62,6 +63,7 @@ export interface Contract {
   accepted?: ClauseId[];  // 라니스타가 서명 때 받아들인 특약
   guest?: boolean;        // 초대했던 귀족이 들고 온 계약 (이기면 사례금)
   needVeterans: number;
+  powerCap?: number;      // 상대 전력 상한 (경기장 등급별). 내 편은 제한 없음. 없으면 무제한 (옛 저장)
   size: 1 | 2 | 3;        // 경기 규모: 1대1 / 2대2 / 3대3
   enemy: Gladiator[];
   enemyPreview: GType[];  // 공개 정보 (에딕타처럼 상대 전원 공개)

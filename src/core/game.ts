@@ -130,7 +130,8 @@ export function cellOf(st: GameState, g: Gladiator): number {
 export function occupantOf(st: GameState, k: number): Gladiator | undefined { return st.roster.find(g => cellOf(st, g) === k); }
 export function cellQuality(st: GameState, g: Gladiator): number { const i = cellOf(st, g); return i >= 0 && i < st.ludus.cells.length ? st.ludus.cells[i] : 0; }
 export function injurySeasons(st: GameState): number { return st.ludus.medicine >= CONFIG.ludus.medicine.injuryAt ? 1 : 2; } // 침상은 여기가 아니라 시즌 말 회복 인원 상한으로 작용한다
-export function healCostOf(st: GameState): number { return st.ludus.medicine >= CONFIG.ludus.medicine.cheapAt ? 250 : CONFIG.healCost; }
+export function healCostOf(st: GameState): number { const M = CONFIG.ludus.medicine; return M.healCostByLevel[Math.min(st.ludus.medicine, M.healCostByLevel.length - 1)]; }
+export function injuryChanceOf(st: GameState): number { const M = CONFIG.ludus.medicine; return M.injuryChanceByLevel[Math.min(st.ludus.medicine, M.injuryChanceByLevel.length - 1)]; } // 내 검투사가 쓰러진 뒤 부상 확률 (의술 4·5단계에서 내려간다)
 export function trainCap(st: GameState): number { return st.ludus.palus; }
 export function trainedCount(st: GameState): number { return st.roster.filter(g => g.trained).length; }
 export function gymBonus(st: GameState): number { return CONFIG.ludus.gym.bonusAt.filter(a => st.ludus.gym >= a).length; }
@@ -159,7 +160,7 @@ export function facilityLevel(st: GameState, f: Facility, idx = 0): number { con
 export function upgrade(st: GameState, f: Facility, idx = 0): boolean {
   const cost = upgradeCost(st, f, idx); if (cost == null || st.money < cost) return false;
   st.money -= cost;
-  if (f === 'cells') for (let k = 0; k < CONFIG.ludus.cells.per; k++) st.ludus.cells.push(0);
+  if (f === 'cells') for (let k = 0; k < CONFIG.ludus.cells.per && st.ludus.cells.length < CONFIG.ludus.cells.max; k++) st.ludus.cells.push(0); // 마지막 증축은 상한(15)에 맞춰 1칸만
   else if (f === 'cell') st.ludus.cells[idx]++;
   else st.ludus[f]++;
   st.history.push(`${seasonName(st.season)}: ${FACILITY_KO[f]}${f === 'cell' ? ` ${idx + 1}번 칸` : ''} ${cost}`);
@@ -310,6 +311,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   const boosted = new Set(grudges.map(x => x.enemy.id));
   const res = battle(st.rng, team, c.enemy, { mentored: new Set(team.filter(g => mentoredBy(st, g)).map(g => g.id)), hpBonusA: st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk });
   const syn = computeSynergies(team);
+  if (syn.hometown) for (const g of team) g.bonded = true; // 동향: 시즌 끝에 서로 돌본다 (피로 −1)
   const classic = classicMatchup(team.map(g => g.type), c.enemy.map(g => g.type)) || (c.size === 1 && (team[0].epithets ?? []).includes('omnia_solus')); // 만능 검투사는 어떤 짝이든 볼거리
   const HK = HOST[c.host];
   const rent = Math.round(team.reduce((s, g) => s + rentFee(g, c.tier), 0) * HK.rent); // 인색한 유지는 깎고 황제는 후하다
@@ -344,12 +346,12 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
         const p = CONFIG.rudis.base + st.fame * CONFIG.rudis.perFame + HK.rudis;
         if (st.rng.chance(p)) { g.status = 'rudiarius'; g.rudisSeason = st.season; rudis.push(g); hallAdd(st, g, 'rudis'); st.history.push(`${seasonName(st.season)}: ${g.name} 루디스 수여 — 자유 (${c.venue}, ${HOST[c.host].ko})`); }
       }
-      if (downed) { const f = judgeWinnerDowned(st.rng); if (f === 'injured') { g.injured = injurySeasons(st); g.injuries = (g.injuries ?? 0) + 1; } fates.push({ g, fate: f }); }
+      if (downed) { const f = judgeWinnerDowned(st.rng, injuryChanceOf(st)); if (f === 'injured') { g.injured = injurySeasons(st); g.injuries = (g.injuries ?? 0) + 1; } fates.push({ g, fate: f }); }
       else fates.push({ g, fate: 'unharmed' });
     } else if (downed) {
       const grudged = grudges.some(x => x.mine === g);
       let appeal = 0; if (hasSkill(g, 'appeal') && st.rng.chance(procChance(g, 'appeal'))) { appeal = 0.10; addMastery(g, 'appeal'); res.events.push({ t: res.duration, turn: res.turns, kind: 'skill', actor: g.id, skill: 'appeal' }); } // 관중호소
-      const { fate, p } = sine ? { fate: 'dead' as Fate, p: 0 } : judgeLoser(st.rng, g, st.fame, c.host, syn, classic, (st.events?.votum ? CONFIG.events.votum.missio : 0) + (grudged ? CONFIG.grudge.missio : 0) + (CONFIG.missio.tierBonus[c.tier] ?? 0) + appeal); // 시네 미시오네: 판정 없이 죽는다 // 등급이 낮은 지방 경기일수록 주최자가 배상을 꺼려 살려 준다
+      const { fate, p } = sine ? { fate: 'dead' as Fate, p: 0 } : judgeLoser(st.rng, g, st.fame, c.host, syn, classic, (st.events?.votum ? CONFIG.events.votum.missio : 0) + (grudged ? CONFIG.grudge.missio : 0) + (CONFIG.missio.tierBonus[c.tier] ?? 0) + appeal, injuryChanceOf(st)); // 시네 미시오네: 판정 없이 죽는다 // 등급이 낮은 지방 경기일수록 주최자가 배상을 꺼려 살려 준다
       if (fate === 'dead') killMine(g, '처형됨'); // 판정에서 죽음 (이우굴라). 자유민은 재산이 아니라 배상 없음
       else { g.missios++; if (fate === 'injured') { g.injured = injurySeasons(st); g.injuries = (g.injuries ?? 0) + 1; } } // 의무실 없으면 2 = 이번 시즌 남은 계약 + 다음 시즌
       fates.push({ g, fate, p }); // 판정 사망은 처형 (즉사는 위에서)
@@ -385,6 +387,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   const fd = CONFIG.fameDelta;
   let winFame: number = fd.win; for (const [at, v] of fd.winAt) if (st.fame >= at) winFame = v; // 명성이 높을수록 승리 한 번의 값이 작다
   if (won) fameDelta += winFame + (classic ? fd.classicWin : 0) + HK.fameWin + (c.host === 'candidate' && team.some(g => fansOf(g) >= FANS_STAR) ? 1 : 0); // 선거 후보는 스타가 나온 경기에 표가 모인다
+  if (won && syn.nickname2) fameDelta += CONFIG.synergy.nicknameFame; // 별칭×2: 낙서에 오르는 이름들
   if (HK.honorAll) for (const g of team) if (g.alive) g.honor = Math.min(100, (g.honor ?? 0) + HK.honorAll); // 장례 경기: 출전 자체가 기록에 남는다
   else if (res.winner === 'B') fameDelta += fd.lose;
   const H = CONFIG.honor; const crowned = won && fameDelta >= 5; // 주최자 만족 = 화관
@@ -451,7 +454,7 @@ export function endSeason(st: GameState): { upkeep: number; gift: number } {
   const evFame = (st.events?.cena ? CONFIG.events.cena.fame : 0) + (st.events?.pompa ? CONFIG.events.pompa.fame : 0) + (st.events?.guests ? CONFIG.events.guests.fame : 0);
   st.fame = Math.max(0, Math.min(100, st.fame + evFame));
   const recoverSet = new Set(st.roster.filter(g => g.injured > 0 && inBed(st, g))); st.lastNoBed = st.roster.filter(g => g.injured > 0 && !recoverSet.has(g)).map(g => g.name); // 침상에 누운 부상자만 낫는다. 눕지 않은 부상자는 이번 시즌 회복 없음
-  for (const g of st.roster) { const q = cellQuality(st, g); if (g.injured > 0 && recoverSet.has(g)) g.injured--; if (!g.fought) g.fatigue = Math.max(0, (g.fatigue ?? 0) - (q >= 1 ? 2 : 1)); if (q >= 3) g.honor = Math.min(100, (g.honor ?? 0) + 1); g.fought = false; g.trained = false; } // 쉰 검투사는 피로 회복 (좋은 숙소는 −2), 최고 숙소는 명예 +1
+  for (const g of st.roster) { const q = cellQuality(st, g); if (g.injured > 0 && recoverSet.has(g)) g.injured--; if (!g.fought) g.fatigue = Math.max(0, (g.fatigue ?? 0) - (q >= 1 ? 2 : 1) - (st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? 1 : 0)); /* 의술 5단계: 의사가 몸을 돌봐 피로 회복 +1 */ if (g.bonded) { g.fatigue = Math.max(0, (g.fatigue ?? 0) - CONFIG.synergy.hometownRest); g.bonded = false; } /* 동향: 함께 싸운 시즌 끝 피로 −1 */ if (q >= 3) g.honor = Math.min(100, (g.honor ?? 0) + 1); g.fought = false; g.trained = false; } // 쉰 검투사는 피로 회복 (좋은 숙소는 −2), 최고 숙소는 명예 +1
   pruneBeds(st); prunePalus(st); // 나은 사람은 침상에서 내려오고, 다친 사람·떠난 사람은 팔루스에서 내려온다
   let decay: number = CONFIG.fameDelta.decay; for (const [at, v] of CONFIG.fameDelta.decayAt) if (st.fame >= at) decay = v; // 망각: 기본 −1, 호감도 50↑ −2, 80↑ −3 (명성은 유지하기 어렵다)
   st.fame = Math.max(0, st.fame + decay + (active ? CONFIG.fameDelta.active : 0)); // 출전했으면 +1

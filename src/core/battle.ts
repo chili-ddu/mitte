@@ -17,7 +17,7 @@ const BIND_SEC = 1.5;
 interface Unit {
   g: Gladiator; side: 'A' | 'B';
   x: number; y: number; hp: number;
-  atk: number; def: number; spd: number; range: number; reach: number;
+  atk: number; def: number; spd: number; range: number; reach: number; spd0: number; struck?: boolean; // spd0: 기본 속도 (기병대 보너스 계산용) · struck: 첫 타를 냈는가 (창 벽)
   moveSpeed: number;            // px/초
   interval: number;             // 공격 간격(초)
   cooldown: number;             // 남은 대기(초)
@@ -43,12 +43,13 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
     const eq = equipOf(g.type);
     if (syn.shieldWall && eq.off === 'scutum') def += 3;
     if (syn.nature2) atk = Math.round(atk * 1.08);
+    if (syn.captives && g.origin === 'captive') atk += CONFIG.synergy.captiveAtk; // 동포
     const range = MAIN_HAND[eq.main].range;
     const n = team.length;
     const y = ARENA.h / 2 + (i - (n - 1) / 2) * 90;
     const x = side === 'A' ? (range >= 2 ? 80 : 170) : (range >= 2 ? ARENA.w - 80 : ARENA.w - 170);
     return {
-      g, side, x, y, hp: s.hp, atk, def, spd: s.spd, range, reach: range >= 2 ? 95 : 48,
+      g, side, x, y, hp: s.hp, atk, def, spd: s.spd, spd0: s.spd, range, reach: range >= 2 ? 95 : 48,
       moveSpeed: 60 + s.spd * 7, interval: Math.max(0.8, 1.8 - s.spd * 0.08),
       cooldown: 1.0 + ((i * 0.37 + (side === 'A' ? 0 : 0.2)) % 1.0) * 1.2, // 시작은 견제부터 (1.0~2.2초)
       retreatUntil: 0, circleDir: (i % 2 === 0 ? 1 : -1) as 1 | -1, feintUntil: 0, feintIn: true, holdUntil: 0, sprint: false,
@@ -84,6 +85,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
 
   for (t = 0; t < MAX_T; t = +(t + DT).toFixed(2)) {
     // 행동 순서: 속도 높은 순 (동률은 난수)
+    for (const u of units) if (syn[u.side].cavalry && u.g.type === 'eques') u.spd = u.spd0 + (t < CONFIG.synergy.cavalrySec ? CONFIG.synergy.cavalrySpd : 0); // 기병대: 첫 몇 초 기세
     const order = units.filter(u => u.hp > 0).sort((a, b) => b.spd - a.spd || rng.next() - 0.5);
     for (const u of order) {
       if (u.hp <= 0) continue;
@@ -165,8 +167,9 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         const tEq = equipOf(target.g.type), uEq = equipOf(u.g.type);
         if (theirSyn.lightHeavy) mult *= 0.92; // 경중 조합: 받는 피해 −8%
         if (mySyn.huntPair && trait.pursuer && t < target.boundUntil) mult *= 1.5;
+        if (mySyn.spearWall && !u.struck) mult *= CONFIG.synergy.spearFirst; u.struck = true; // 창 벽: 첫 타
         const feint = !combo && proc(u, 'feint'); // 허초: 방패 감소 무시 + 방어 1/3만
-        const ignore = feint ? 0.2 : mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore;
+        const ignore = Math.min(0.9, (feint ? 0.2 : mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore) + (mySyn.sicaBrothers && uEq.main === 'sica' ? CONFIG.synergy.sicaBrothers : 0)); // 곡도 형제
         const def = Math.round(target.def * (1 - ignore));
         if (feint) mult *= 1.1; // 허초: 빈틈을 찔러 피해 +10%
         if (charge && !combo) { mult *= mentored.has(u.g.id) && (u.g.type === 'hoplomachus' || u.g.type === 'eques') ? M.chargeMult : 1.15; exp[u.g.id].charges++; if (proc(u, 'charge_plus')) { mult *= 2.5; target.boundUntil = Math.max(target.boundUntil, t + 1.5); } } // 돌진 공격: 기세 보너스 (창 유형 전수 시 ×1.3)
