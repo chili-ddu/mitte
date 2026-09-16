@@ -1704,7 +1704,7 @@ let shownPlan: number | null = null; // 지금 떠 있는 편성 페이지의 �
 let lineupView: 'record' | 'stats' = 'stats'; // 편성 왼쪽 타일 아래 줄: 능력치(기본) / 전적 (스위치)
 const teamOf = (c: Contract) => (assign[c.id] ?? []).map(id => st.roster.find(g => g.id === id)!).filter(Boolean); // 계약에 배정된 검투사들
 let tabletQueue: number[] | null = null, tabletIdx = 0; // 결투 낙서를 누르면 준비된 계약마다 밀랍 서판이 차례로 나온다 (도장으로 서명) → 마지막 뒤 시즌 시작 확인
-function closePlanConfirm() { const el = document.querySelector('.planpage.tablet'); shownTablet = false; if (!el) { tabletQueue = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { tabletQueue = null; render(); }, 280); }
+function closePlanConfirm() { const el = document.querySelector('.planpage.tabletpage'); shownTablet = false; if (!el) { tabletQueue = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { tabletQueue = null; render(); }, 280); }
 function closePlanPage() { const el = document.querySelector('.planpage'); shownPlan = null; if (!el) { planSel = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { planSel = null; render(); }, 280); }
 // 계약서(밀랍 서판): 라니스타 ↔ 주최자의 대여 계약. 나무 틀 안 검은 밀랍에 조건을 적고, 도장(SIGNATVM)을 찍어 서명한다 (가이우스 3.146: 무사 귀환 시 대여료, 사망·불구 시 배상)
 let shownTablet = false; // 서판 페이지가 떠 있는지 (특약 체크로 재렌더될 때 다시 밀려 들어오지 않게)
@@ -1723,13 +1723,13 @@ function tabletsPage(cs: Contract[]): Node {
         return h('label', { class: `tcheck${on ? ' on' : ''}`, title: d.desc }, h('input', { type: 'checkbox', checked: on ? 'checked' : undefined, onchange: (e: Event) => { setClause(c, id, (e.target as HTMLInputElement).checked); render(); } }), h('span', {}, h('b', {}, d.ko), h('span', { class: 'meta' }, ` ${d.effect(c, hostPrize(c))}`))); }))),
       row('배상', '사망·불구 시 라니스타에게 몸값을 치른다'),
       h('div', { class: 'tfoot' }, `${st.lanista.name} · ${seasonName(st.season)}`))); };
-  const sign = () => { if (stamped) return; stamped = true; const wraps = [...document.querySelectorAll('.planpage.tablet .tabletwrap')];
+  const sign = () => { if (stamped) return; stamped = true; const wraps = [...document.querySelectorAll('.planpage.tabletpage .tabletwrap')];
     wraps.forEach((w, i) => window.setTimeout(() => { w.append(h('div', { class: 'stamp small' }, h('span', {}, stampText))); sfx.down(); }, i * 160)); window.setTimeout(() => sfx.drum(1), 40); // 서판마다 차례로 쾅
     window.setTimeout(() => { notice = cs.length > 1 ? `계약서 ${cs.length}장에 서명했다` : `${cs[0].venue} 계약서에 서명했다`; shownTablet = false; tabletQueue = null; seasonConfirm = true; render(); }, 900 + wraps.length * 160); };
   const btn = h('button', { class: 'sealbtn', title: '도장을 찍어 계약을 맺습니다', onclick: sign }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, cs.length > 1 ? `${cs.length}장 서명` : '서명'));
-  return h('div', { class: `planpage tablet n${cs.length}${again ? ' still' : ''}` }, h('div', { class: 'tablets' }, ...cs.map(tablet)), h('div', { class: 'cbtns tbtns' }, btn), backBtn(closePlanConfirm, '계약 벽으로 돌아가기'));
+  return h('div', { class: `planpage tabletpage n${cs.length}${again ? ' still' : ''}` }, h('div', { class: 'tablets' }, ...cs.map(tablet)), h('div', { class: 'cbtns tbtns' }, btn), backBtn(closePlanConfirm, '계약 벽으로 돌아가기'));
 }
-const honorBadge = (g: Gladiator) => { const b = h('span', { class: 'honor', title: `명예 ${g.honor ?? 0}: 쓰러졌을 때 관중이 살려 줄 확률과 루디스에 영향` }); b.innerHTML = `<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>`; b.append(String(g.honor ?? 0)); return b; }; // 초상 왼쪽 아래 명예 배지
+const honorBadge = (g: Gladiator) => { const honor = g.honor ?? 0; if (honor < 20) return null; const b = h('span', { class: `honor${honor >= 40 ? ' gold' : ''}`, title: `명예 ${honor}: 이름난 검투사. 미시오 확률과 별칭·루디스에 영향` }); b.innerHTML = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>`; b.append(String(honor)); return b; }; // 초상 왼쪽 아래 월계관: 명예 20 이상만 표시해 호감도와 다른 '이름난 검투사' 표식으로 둔다
 const tileMeta = (g: Gladiator) => lineupView === 'record' ? `${g.wins}승/${g.fights}전` : `HP${g.base.hp}·ATK${g.base.atk}·DEF${g.base.def}`; // 편성 왼쪽 타일 아래 줄 (HP부터, 약자)
 // 낙서 그림 버튼: 결투(두 검투사) / 셈판(동전 더미). 위에 붉은 라틴어를 덧쓴다. 계약 벽의 PVGNABVNT 와 같은 만듦새
 const DUEL_SVG = `<svg viewBox="0 0 96 52" width="92" height="50" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -2003,6 +2003,21 @@ function renderSummary() {
   const badge = (cls: string, text: string) => h('span', { class: `badge ${cls}` }, text);
   const fateOf = (r: FightReport, g: Gladiator) => { const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const won = r.winner === 'A';
     return f?.fate === 'dead' ? badge('dead', f.wound ? '즉사' : '처형') : f?.fate === 'injured' ? badge('injured', '부상') : downed ? badge('missio', won ? '쓰러졌으나 무사' : '미테! 살았다') : badge('ok', '무사'); };
+  const fightNet = rent - expense + prize + comp - betLoss - salary;
+  const harms = seasonReports.flatMap(r => r.fates.map(f => `${f.g.name} ${f.fate === 'dead' ? '사망' : '부상'}`));
+  const downedSafe = seasonReports.flatMap(r => r.downed.filter(g => !r.fates.some(f => f.g.id === g.id)).map(g => `${g.name} 미시오`));
+  const summaryPromoted = seasonReports.flatMap(r => r.promoted.map(g => `${g.name} 승급`));
+  const summaryEpithets = seasonReports.flatMap(r => r.newEpithets.map(x => `${x.g.name} '${x.e.name}'`));
+  const summaryRudis = seasonReports.flatMap(r => r.rudis.map(g => `${g.name} 루디스`));
+  const keyChanges = [...harms, ...summaryPromoted, ...summaryEpithets, ...summaryRudis, ...downedSafe].slice(0, 4);
+  const moreChanges = harms.length + summaryPromoted.length + summaryEpithets.length + summaryRudis.length + downedSafe.length - keyChanges.length;
+  const resultTone = W > L ? 'win' : L > W ? 'lose' : 'draw';
+  const verdict = seasonReports.length ? `${W}승 ${L}패 ${D}무` : '경기 없음';
+  const netText = `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`;
+  const fightText = `${fightNet >= 0 ? '+' : '−'}${Math.abs(fightNet).toLocaleString()} HS`;
+  const harmNames = harms.map(x => x.split(' ')[0]);
+  const harmText = harmNames.length ? `${harmNames[0]}${harmNames.length > 1 ? ` 외 ${harmNames.length - 1}명` : ''} 부상` : '';
+  const ledgerLine = !seasonReports.length ? '모래는 비었고 유지비만 나갔다' : harmText ? `${net >= 0 ? '돈은 남겼지만' : '돈도 잃고'} ${harmText}` : W > L ? '승리가 이름을 벽에 남겼다' : L > W ? `${net >= 0 ? '졌지만 대여료는 챙겼다' : '패배가 장부까지 물들였다'}` : net >= 0 ? '승부는 갈리지 않았지만 돈은 남았다' : '조용한 시즌, 장부는 줄었다';
   // 경기 카드
   const games = seasonReports.map(r => h('div', { class: `gamecard ${r.winner === 'A' ? 'win' : r.winner === 'B' ? 'lose' : 'draw'}` },
     h('div', { class: 'ghead' }, arenaIcon(r.contract.tier), h('div', { class: 'grow' },
@@ -2031,6 +2046,10 @@ function renderSummary() {
   // 다음 시즌 예고는 뺐다: 새 계약·매물·유지비는 다음 시즌에 들어가서 본다
   return h('div', {}, coach(),
     h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, `${sum.label} 정산`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `경기 ${seasonReports.length}회 · ${W}승 ${L}패 ${D}무`)),
+      h('div', { class: `sumstrip ${resultTone}` },
+        h('div', { class: 'sumcopy' }, h('div', { class: 'ledgerline' }, h('span', {}, 'TABVLA'), h('strong', {}, ledgerLine)),
+          h('div', { class: 'sumhero' }, h('b', {}, verdict), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `시즌 ${netText}`), h('span', { class: fightNet >= 0 ? 'plus' : 'minus' }, `경기 ${fightText}`))),
+        h('div', { class: 'sumchips' }, ...(keyChanges.length ? keyChanges.map(x => h('span', { class: 'badge warn' }, x)) : [h('span', { class: 'badge ok' }, seasonReports.length ? '큰 사고 없음' : '로스터 변화 없음')]), moreChanges > 0 ? h('span', { class: 'badge' }, `외 ${moreChanges}건`) : null)),
       seasonReports.length ? h('div', { class: 'games' }, ...games) : h('div', { class: 'hint' }, '이번 시즌 경기 없음'),
       sum.skipped.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `무산된 계약 (앞 경기 부상·사망): ${sum.skipped.map(c => c.venue).join(', ')}`) : null),
     h('div', { class: 'cols' },
@@ -2277,12 +2296,13 @@ function renderBattle() {
   const jolt: Record<number, { amp: number; until: number }> = {};
   let slowUntil = -1;
   let zoomAt: { x: number; y: number } | null = null; let zoomStart = -1;
-  type FxKind = 'slash' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
+  type FxKind = 'slash' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail' | 'tell' | 'blockhit';
   const fx: { kind: FxKind; x: number; y: number; t: number; dir: number; seed: number; id?: number; to?: number; life?: number }[] = []; // id: 붙어 다닐 검투사 · to: 상대 · life: 총 시간
   const shouts: { text: string; t: number; x: number }[] = [];
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
   let zoomOutDur = 1.2;
+  let cinematicCount = 0; // 결정타 줌은 경기당 적게 써야 묵직하다
   let crowdCheer = 0;
   const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
@@ -2313,6 +2333,11 @@ function renderBattle() {
       drops.push({ x, y: y - 10 - Math.random() * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.4 - 40 - Math.random() * 80 * power, r: 1 + Math.random() * 1.8 * power, ground: y + 18 + Math.random() * 12 }); }
   };
   const speedOf: Record<number, number> = {}; const prevPos: Record<number, { x: number; y: number }> = {};
+  const attackTiming = (type: GType, combo: boolean) => {
+    const base: Record<GType, number> = { murmillo: 0.22, secutor: 0.17, thraex: 0.2, retiarius: 0.26, hoplomachus: 0.25, provocator: 0.22, eques: 0.24, dimachaerus: 0.16 };
+    const wind: Record<GType, number> = { murmillo: 0.12, secutor: 0.08, thraex: 0.11, retiarius: 0.16, hoplomachus: 0.15, provocator: 0.12, eques: 0.13, dimachaerus: 0.07 };
+    return { windup: combo ? 0.05 : wind[type], hit: combo ? Math.min(0.12, base[type] * 0.7) : base[type] };
+  }; // 병종별 박자: 큰 방패는 무겁게, 추격자·쌍검은 빠르게, 장병기는 길게 보여 준다
 
   const frames = r.frames; let fi = 0;
   function posAt(ct: number): Record<number, { x: number; y: number; hp: number }> {
@@ -2332,11 +2357,13 @@ function renderBattle() {
       const e = r.events[k]; if (e.kind !== 'attack') continue;
       if (e.t - ct > 0.45) return;
       if (!e.downed) return; // 쓰러뜨리는 타격만 시네마틱 (치명타는 흔들림·표시만)
+      const isLast = !r.events.slice(k + 1).some(x => x.kind === 'attack' && x.downed); // 마지막으로 쓰러지는 타격인가
+      if (!isLast && cinematicCount >= 1) return; // 중간 쓰러짐은 한 번만, 마지막은 항상
       const pp = posAt(ct);
       zoomAt = { x: (pp[e.actor].x + pp[e.target!].x) / 2, y: (pp[e.actor].y + pp[e.target!].y) / 2 - 10 };
       zoomStart = ct; armedEi = k;
-      const hitDelay = (e.combo ? 0.12 : 0.2) + (e.net ? 0.55 : 0);
-      const isLast = !r.events.slice(k + 1).some(x => x.kind === 'attack' && x.downed); // 마지막으로 쓰러지는 타격인가
+      cinematicCount++;
+      const hitDelay = attackTiming(byId[e.actor].g.type, !!e.combo).hit + (e.net ? 0.55 : 0);
       holdUntil = e.t + hitDelay + (isLast ? 0.95 : 0.35); // 마지막만 눕는 장면까지, 중간은 짧게
       slowUntil = holdUntil;
       zoomOutDur = isLast ? 1.2 : 0.5;
@@ -2373,7 +2400,9 @@ function renderBattle() {
       if (e.skill === 'riposte') flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); shout('우와아!', p0.x); }
-      const hitDelay = e.combo ? 0.12 : 0.2;
+      const timing = attackTiming(byId[aid].g.type, !!e.combo);
+      const hitDelay = timing.hit + (e.net ? 0.55 : 0);
+      { const pa0 = posAt(ct)[aid]; fx.push({ kind: 'tell', x: pa0.x + face[aid] * 18, y: pa0.y + 22, t: timing.windup, life: timing.windup, dir: face[aid], seed: aid * 17 + ei, id: aid }); } // 공격 직전 발·무기 쪽에 짧은 전조선
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
         play(aid, 'net_throw', ct); netAway[aid] = true;
@@ -2383,7 +2412,7 @@ function renderBattle() {
         pending.push({ at: ct + 1.6, fn: () => { netAway[aid] = false; } });
       } else play(aid, e.combo ? comboClipFor(byId[aid].g.type) : attackClipFor(byId[aid].g.type), ct);
       const evIdx = ei; // 이벤트 순서. 연속 공격(2타)의 피격 반영이 1타보다 먼저 와도 앞선 값이 나중 값을 덮지 않게
-      pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
+      pending.push({ at: ct + hitDelay, fn: () => {
         if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
         play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
@@ -2394,7 +2423,8 @@ function renderBattle() {
         const amp = e.downed ? 7 : e.crit ? 9 : heavy ? 5 : 3; // 치명타는 흔들림 최대
         jolt[tid] = { amp, until: ct + (e.crit ? 0.32 : 0.22) }; jolt[aid] = { amp: amp * 0.6, until: ct + 0.16 };
         const pt = posAt(ct)[tid]; const pa = posAt(ct)[aid];
-        fx.push({ kind: 'slash', x: pt.x, y: pt.y - 6, t: 0.28, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
+        if (e.blocked) fx.push({ kind: 'blockhit', x: pt.x - (pa.x <= pt.x ? 1 : -1) * 12, y: pt.y - 8, t: 0.24, life: 0.24, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
+        else fx.push({ kind: 'slash', x: pt.x, y: pt.y - 6, t: 0.28, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
         if (!e.blocked && Math.random() < pBlood) bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2);
@@ -2546,6 +2576,8 @@ function renderBattle() {
       ctx.save(); ctx.strokeStyle = '#3a2412'; ctx.fillStyle = '#3a2412'; ctx.lineCap = 'round';
       if (f.kind === 'slash') { const k2 = 1 - f.t / 0.28; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 26 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); }
       else if (f.kind === 'dust') { const k2 = 1 - f.t / 0.5; ctx.globalAlpha = 0.6 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI + Math.PI; const rr = 8 + k2 * 22; ctx.beginPath(); ctx.arc(f.x - f.dir * 10 + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.4, 3 + k2 * 4, 0, Math.PI * 2); ctx.stroke(); } }
+      else if (f.kind === 'tell') { const life = f.life ?? 0.1, k2 = 1 - f.t / life; ctx.globalAlpha = 0.55 * (1 - k2); ctx.strokeStyle = '#7a3b1e'; ctx.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const yy = f.y + i * 4; ctx.beginPath(); ctx.moveTo(f.x - f.dir * (8 + i * 3), yy); ctx.lineTo(f.x + f.dir * (12 + k2 * 10), yy - 5 - i * 2); ctx.stroke(); } }
+      else if (f.kind === 'blockhit') { const life = f.life ?? 0.24, k2 = 1 - f.t / life; ctx.globalAlpha = 0.85 * (1 - k2); ctx.strokeStyle = '#2c4f9b'; ctx.lineWidth = 3 - k2; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(f.x - f.dir * 4, f.y + i * 8); ctx.lineTo(f.x - f.dir * (26 + k2 * 14), f.y + i * 14); ctx.stroke(); } ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(f.x - f.dir * 5, f.y + 3, 18 + k2 * 12, -0.8 * f.dir + (f.dir > 0 ? Math.PI : 0), 0.8 * f.dir + (f.dir > 0 ? Math.PI : 0), f.dir > 0); ctx.stroke(); }
       else { const life = f.life ?? 0.5, k2 = 1 - f.t / life; const u = f.id != null ? byId[f.id] : null; const cur = f.id != null ? pos[f.id] : null; // 기술 연출
         if (f.kind === 'ghost' && u && cur) { ctx.globalAlpha = 0.35 * (1 - k2); drawStickman(ctx, u.g.type, { x: cur.x - f.dir * (10 + k2 * 26), y: cur.y + 30 * SC, scale: 1.15 * SC, facing: f.dir as 1 | -1, pose: 'guard', t: 0, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); }
         else if (f.kind === 'shock') { ctx.globalAlpha = 0.8 * (1 - k2); ctx.lineWidth = 3 - k2 * 1.5; for (let i = 0; i < 2; i++) { const rr = 14 + k2 * 26 + i * 8; ctx.beginPath(); ctx.arc(f.x, f.y - 6, rr, -Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI), Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI)); ctx.stroke(); } }
@@ -2702,7 +2734,10 @@ function renderResult() {
     h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))))),
   ));
   app.prepend(headerEl()); window.scrollTo(0, 0);
-  app.append(queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${queue.length}경기 남음)`, () => { phase = 'battle'; nextFight(); }, queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', () => { phase = 'battle'; nextFight(); })); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
+  const needsChoice = r.rudis.some(g => g.status === 'rudiarius');
+  const advance = () => { if (phase !== 'result' || report !== r) return; phase = 'battle'; nextFight(); };
+  app.append(queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${queue.length}경기 남음)`, advance, queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', advance)); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
+  if (!needsChoice) window.setTimeout(advance, r.fates.length || r.promoted.length || r.newEpithets.length || r.rudis.length ? 5200 : 3600); // 루디스 선택이 없으면 짧게 보여 주고 자동으로 다음 경기·정산으로 넘긴다
 }
 
 render();
