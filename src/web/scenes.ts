@@ -77,7 +77,7 @@ export function drawCountryside(ctx: CanvasRenderingContext2D, x0: number, w: nu
   void t; ctx.restore();
 }
 // 포룸(광장): 뒤 회랑(열주·엔타블러처), 왼쪽 회벽에 이번 시즌 계약 공고문(에딕타: 붉은 글자, 등급이 높을수록 큼, 배정이 끝났으면 낙서 체크), 가운데 작은 제단, 공고 앞 심부름꾼, 오른쪽에 자유민 지원자. 기준점 = 광장 왼쪽 끝, 발 = 0
-export const FORUM = { wallW: 200, posterW: 52, posterH: 66, posterGapX: 68, posterGapY: 74, posterX0: 40, posterY0: -170, posterAt: (i: number) => ({ x: 40 + (i % 2) * 68, y: -170 + Math.floor(i / 2) * 74 }) }; // 공고 2×2 (52×66). 벽 위가 처마(캔버스 위 ~54 유닛)에 가리지 않게 벽 꼭대기는 -178 까지만 // 공고벽: 공고 4장이 한 줄에, 계약 카드와 같은 세로 비율 (줌인하면 카드로 이어진다)
+export const FORUM = { sun: { x: 222, y: -258, r: 18 }, wallW: 200, posterW: 52, posterH: 66, posterGapX: 68, posterGapY: 74, posterX0: 40, posterY0: -170, posterAt: (i: number) => ({ x: 40 + (i % 2) * 68, y: -170 + Math.floor(i / 2) * 74 }) }; // 공고 2×2 (52×66). 벽 위가 처마(캔버스 위 ~54 유닛)에 가리지 않게 벽 꼭대기는 -178 까지만 // 공고벽: 공고 4장이 한 줄에, 계약 카드와 같은 세로 비율 (줌인하면 카드로 이어진다)
  // 공고 2×2 (52×66). 벽 위가 처마(캔버스 위 ~54 유닛)에 가리지 않게 벽 꼭대기는 -178 까지만 // 공고벽: 공고 4장이 한 줄에, 계약 카드와 같은 세로 비율 (줌인하면 카드로 이어진다)
 // 공고문 = 계약 카드의 축소판. 위: 붉은 등급 칩 · 벽화풍 경기장 · 배정 수 / 가운데: 붉은 경기장 이름 / 아래: 효과 칩 줄(작은 알약). 배정이 끝나면 낙서 체크
 function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: number, py0: number, pw0: number, ph0: number) {
@@ -111,6 +111,16 @@ function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: numbe
 }
 export function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
   const W = TOWN.forumW, ink = INK;
+  { // 하늘의 해: 누르면 계약 벽·서판을 건너뛰고 바로 시즌 진행 창으로 (시즌 넘기기). 해가 한 바퀴 돌면 한 철이 간다
+    const s = FORUM.sun, pulse = 1 + Math.sin(t * 1.6) * 0.035;
+    ctx.save(); ctx.translate(s.x, s.y); ctx.scale(pulse, pulse);
+    ctx.fillStyle = '#e8c96a'; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, s.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t * 0.05; ctx.beginPath(); ctx.moveTo(Math.cos(a) * (s.r + 4), Math.sin(a) * (s.r + 4)); ctx.lineTo(Math.cos(a) * (s.r + 10), Math.sin(a) * (s.r + 10)); ctx.stroke(); } /* 살: 아주 천천히 돈다 */
+    ctx.restore();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#9b2c1c'; ctx.font = 'bold 9px serif'; ctx.fillText('TEMPVS', s.x, s.y + s.r + 22); /* 시간 — 폼페이 낙서처럼 붉은 글씨 */
+    ctx.fillStyle = ink; ctx.font = 'bold 8px sans-serif'; ctx.fillText('시즌 넘기기', s.x, s.y + s.r + 33); ctx.textAlign = 'left';
+  }
   // 회랑: 뒤 벽 + 기둥 + 엔타블러처·지붕
   ctx.fillStyle = '#d9c9a2'; ctx.fillRect(0, -184, W, 170); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, -196, W + 16, 12); ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -184, W, 6); // 세로 무대: 공고 2×2 가 들어가게 벽을 높였다
   for (let x = FORUM.wallW + 10; x < W - 10; x += 52) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(x, -178, 10, 164); ctx.fillStyle = '#a58f60'; ctx.fillRect(x - 2, -178, 14, 5); ctx.fillRect(x - 2, -18, 14, 4); } // 열주

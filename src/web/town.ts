@@ -9,6 +9,7 @@ import { FORUM, MARKET, MK, YARD, drawCityWall, drawCountryside, drawForumScene,
 import { View, app, render, save } from './main.js';
 import { h, tell } from './dom.js';
 import { roadBoard } from './board.js';
+import { openSeasonConfirm } from './plan.js';
 import { cellRects, drawCellsScene } from './cells.js';
 import { openConfirm } from './detail.js';
 
@@ -143,6 +144,8 @@ export function renderTown() {
   c.onclick = (ev) => { // 켈라 화면이면 방 클릭, 아니면 시장 매물 클릭 (카메라 보정)
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
+    { const su = FORUM.sun, sx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, sy = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 하늘의 해: 옆 장소에서 걸쳐 보일 때도 눌린다
+      if (Math.hypot(sx - su.x, sy - su.y) <= su.r + 16) { sfx.step(); openSeasonConfirm('manage'); return; } } // 시즌 넘기기: 계약 벽·서판을 건너뛰고 바로 시즌 진행 창
     if (S.view === 'grave') { S.sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기 서랍
     if (S.view === 'medic') { // 침상 위 부상자를 누르면 치료 (확인 후). 침상이 모자라 탁자 옆에 앉은 부상자도 같다
       const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.medicX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
