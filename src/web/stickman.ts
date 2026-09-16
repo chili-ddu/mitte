@@ -200,14 +200,7 @@ function jit(seed: number, amp: number) { const x = Math.sin(seed * 12.9898) * 4
 function scratchLine(ctx: CanvasRenderingContext2D, seed: number, x0: number, y0: number, x1: number, y1: number, amp = 1.2) {
   ctx.beginPath(); ctx.moveTo(x0 + jit(seed, amp), y0 + jit(seed + 1, amp)); ctx.lineTo(x1 + jit(seed + 2, amp), y1 + jit(seed + 3, amp)); ctx.stroke();
 }
-function bodyProfile(L: Loadout) {
-  if (hasNet(L) || L.main === 'trident') return { leg: 26, body: 24, arm: 20, head: 8, line: 3.2, hip: -1.5, sh: 1.5 }; // 레티아리우스: 길고 마른 창잡이
-  if (L.off === 'scutum') return { leg: 20, body: 23, arm: 16.5, head: 10.6, line: 4.5, hip: 1, sh: 4 }; // 무르밀로: 큰 머리·큰 방패의 덩어리
-  if (L.helmet === 'smooth') return { leg: 21, body: 22, arm: 17, head: 10.2, line: 4.1, hip: 0.5, sh: 3 }; // 세쿠토르: 매끈한 투구와 전진 덩어리
-  if (L.main === 'sica') return { leg: 23, body: 19, arm: 18.5, head: 8.5, line: 3.8, hip: 1.5, sh: -1.5 }; // 트라엑스/디마카이루스: 낮고 각진 곡도잡이
-  if (L.main === 'spear') return { leg: 24, body: 23, arm: 19, head: 8.7, line: 3.5, hip: -0.5, sh: 1 }; // 호플로마쿠스/에퀘스: 긴 창 실루엣
-  return { leg: 22, body: 22, arm: 17, head: 9, line: 3.6, hip: 0, sh: 0 };
-}
+const BODY_PROFILE = { leg: 22, body: 22, arm: 17, head: 9, line: 2.65, hip: 0, sh: 0 }; // 모든 인물의 기준 골격: 병종 차이는 몸이 아니라 장비 실루엣으로만 낸다
 
 export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout, o0: DrawOpts) {
   let o = o0;
@@ -223,7 +216,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   if (o.wobble) { ctx.translate(Math.sin(t * 28) * 1.6, 0); ctx.rotate(Math.sin(t * 22) * 0.06); } // 버둥거림
   if (sk.shift || sk.lift) ctx.translate(sk.shift ?? 0, -(sk.lift ?? 0));
   if (sk.turn) ctx.scale(1 - sk.turn * 0.6, 1); // 카메라 쪽으로 돌아 납작해짐
-  const prof = o.bare ? { leg: 22, body: 22, arm: 17, head: 9, line: 3.2, hip: 0, sh: 0 } : bodyProfile(L);
+  const prof = BODY_PROFILE;
   ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK;
   ctx.lineWidth = prof.line / Math.sqrt(s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
@@ -310,7 +303,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
     const forearmFront = p.hx > shX + 3; // 손이 어깨선보다 앞이면 아래팔은 옷 앞
     seg(shX, shY, p.ex, p.ey);
     if (!forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
-    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); ctx.lineCap = 'round';
+    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s); ctx.lineCap = 'round';
     if (forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
   } else {
     back = arm(sk.backArm);
@@ -328,11 +321,11 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   drawHead(ctx, o.bare ? 'none' : L.helmet, hx0, hy0, HEAD, seed);
   if (o.beard) { ctx.lineWidth = 2.2 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(hx0 + 4, hy0 + 4); ctx.quadraticCurveTo(hx0 + 6, hy0 + 10, hx0 - 1, hy0 + 11); ctx.stroke(); }
   if (!o.bare) drawAccessories(ctx, L, hx0, hy0, HEAD, shX, shY, hipY, seed);
-  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s);
+  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s);
   const front = arm(frontA);
   if (lieK < 0.5 && !o.bare) drawWeapon(ctx, L.main, front.hx, front.hy, front.ang, pose, seed);
   if (!o.bare) drawExtras(ctx, L, shX, shY, hipY, seed); // 쓰러지면 무기를 놓친다
-  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); }
+  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s); }
 
 
   ctx.restore();
