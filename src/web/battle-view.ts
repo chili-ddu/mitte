@@ -248,8 +248,14 @@ export function renderBattle() {
   let shakeStart = -1, shakeUntil = -1, shakeAmp = 0;
   let slowUntil = -1;
   let zoomAt: { x: number; y: number } | null = null; let zoomStart = -1;
-  type FxKind = 'tell' | 'slash' | 'pierce' | 'cleave' | 'thrust' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
-  const fx: { kind: FxKind; x: number; y: number; t: number; dir: number; seed: number; id?: number; to?: number; life?: number }[] = []; // id: 붙어 다닐 검투사 · to: 상대 · life: 총 시간
+  type FxKind = 'weaponfly' | 'weapondown' | 'sandwall' | 'tell' | 'slash' | 'pierce' | 'cleave' | 'thrust' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
+  // 벽 낙서: 경기 중 관중이 포디움 벽에 긁는 글씨. 폼페이 낙서의 정형구를 쓴다 — V(이겼다) · M(살려 보냄) · HABET(맞았다)
+  const wallMarks: { a: number; text: string; t: number; red: boolean }[] = [];
+  const addWall = (text: string, red = false) => { if (wallMarks.length > 12) wallMarks.shift();
+    const a = -Math.PI * (0.12 + 0.76 * ((wallMarks.length * 0.37 + hash01(wallMarks.length, 3)) % 1)); wallMarks.push({ a, text, t: 0, red }); };
+  const sandMarks: { x: number; y: number; kind: 'step' | 'blood' | 'drag'; a: number; r: number; seed: number }[] = []; // 모래에 남는 자취 (경기 내내 쌓인다)
+  const addMark = (x: number, y: number, kind: 'step' | 'blood' | 'drag', r = 6) => { if (sandMarks.length > 160) sandMarks.shift(); sandMarks.push({ x, y, kind, a: kind === 'blood' ? 0.3 : 0.24, r, seed: sandMarks.length }); };
+  const fx: { kind: FxKind; x: number; y: number; t: number; dir: number; seed: number; id?: number; to?: number; life?: number; x2?: number; y2?: number; main?: string }[] = []; // id: 붙어 다닐 검투사 · to: 상대 · life: 총 시간
   function impactProfile(type: GType) {
     const main = loadoutFor(type).main;
     if (main === 'sica') return { fx: 'cleave' as const, dist: 1.08, dur: 0.24, shake: 1.12, life: 0.3 }; // 찍어 꺾음
@@ -260,7 +266,7 @@ export function renderBattle() {
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
   let zoomOutDur = 1.2;
-  let crowdCheer = 0;
+  let crowdCheer = 0, hushUntil = -1; // hushUntil: 판정 직후의 정적 (소리도 함성도 멎는다)
   const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
   const fansAvg = [...r.team, ...r.contract.enemy].reduce((a, g) => a + fansOf(g), 0) / (r.team.length + r.contract.enemy.length);
@@ -376,6 +382,8 @@ export function renderBattle() {
           slowUntil = Math.max(slowUntil, ct + 0.35); const p = posAt(ct)[tid]; shouts.length = 0; shouts.push({ text: '아직 섰다!', t: 1.4, x: p.x }); crowdCheer = Math.max(crowdCheer, 0.9); }
         play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
+        if (e.downed) addWall(`${byId[aid].g.name.replace('(적)', '')} V`, true); // 이긴 자의 이름과 V(vicit)
+        if (e.downed && isFinal && !woundOf(tid)) { const pw = posAt(ct)[tid]; fx.push({ kind: 'sandwall', x: pw.x, y: pw.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); } // 항복으로 끝나도 먼지는 인다
         if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
         const stack = flash.filter(f => f.id === tid).length;
         flash.push({ id: tid, t: 1 + stack * 0.35, text: `-${e.dmg}${e.counter ? '!' : ''}${e.charge ? ' 돌진' : ''}${e.combo ? ' 연속' : ''}${e.blocked ? ' 방패' : ''}${e.net ? ' 그물' : ''}`, color: e.counter ? '#9b2c1c' : e.blocked ? '#2c4f9b' : '#2b1d0e' });
@@ -390,13 +398,19 @@ export function renderBattle() {
         else fx.push({ kind: 'shock', x: pt.x - dir * 10, y: pt.y - 8, t: 0.26, life: 0.26, dir, seed: aid * 11 + tid });
         if (!e.blocked && imp.fx === 'thrust') fx.push({ kind: 'dust', x: pt.x + dir * 10, y: pt.y + 34, t: 0.42, dir, seed: tid + 9 }); // 창·삼지창은 밀린 발밑 먼지를 함께 낸다
         fx.push({ kind: 'slash', x: pt.x, y: pt.y - 6, t: 0.28, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
+        if (e.disarm && e.dropX != null && e.dropY != null) { // 무기를 놓친다: 손에서 튕겨 나가 모래에 꽂힌다
+          const main = equipOf(byId[tid].g.type).main, dx = sx(e.dropX), dy = sy(e.dropY);
+          fx.push({ kind: 'weaponfly', x: dx, y: dy, x2: pt.x, y2: pt.y - 18, t: 0.55, life: 0.55, dir: dx > pt.x ? 1 : -1, seed: tid, main });
+          fx.push({ kind: 'weapondown', x: dx, y: dy, t: CONFIG.disarm.sec, life: CONFIG.disarm.sec, dir: 1, seed: tid, main });
+          flash.push({ id: tid, t: 1.6, text: '무기를 놓쳤다!', color: '#9b1f14' }); addWall(byId[aid].g.name.replace('(적)', '')); slowUntil = Math.max(slowUntil, ct + 0.3); sfx.block(); }
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
-        if (!e.blocked && Math.random() < pBlood) bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2);
-        if (e.crit) flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' });
+        if (!e.blocked && Math.random() < pBlood) { addMark(pt.x + (Math.random() - 0.5) * 22, pt.y + 26, 'blood', 4 + ratioDmg * 12); bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2); }
+        if (e.crit) { flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' }); addWall('HABET', true); }
         if (e.open) flash.push({ id: tid, t: 1.3, text: '빈틈!', color: '#9b1f14' });
         if (e.downed && woundOf(tid)) { // 그 자리에서 숨이 끊기는 타격: 무기에 맞춰 마지막 장면을 길게 눌러 준다
-          const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6); shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
+          const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6);
+          if (isFinal) fx.push({ kind: 'sandwall', x: pt.x, y: pt.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); // 먼지가 확 일고, 가라앉으면 승자만 서 있다 shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
           bleed(pt.x, pt.y - (cut ? 16 : 6), pa.x <= pt.x ? 1 : -1, 30, 2.2); flash.push({ id: tid, t: 2, text: cut ? '목을 베었다' : '심장을 꿰뚫었다', color: '#9b1f14' }); }
         else if (e.downed && e.skill === 'riposte') { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
         if (e.downed && !woundOf(tid)) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); else if (e.downed) shout('…', pt.x); // 상처로 숨지면 관중은 말을 잃는다
@@ -466,6 +480,19 @@ export function renderBattle() {
     if (tilt < 1) drawArenaWorld(ctx, density, tilt, view, 'lite'); // 인트로: 그 순간의 기울기로 직접 그림 (간략 관중)
     else if (frenzy) { const ph = Math.floor(ct * 7) % 2; ctx.drawImage(ph ? arenaCacheUp : arenaCache, -AOX, ph ? -AOY - 5 : -AOY); } // 열광: 두 판 번갈아 + 들썩
     else ctx.drawImage(arenaCache, -AOX, -AOY);                     // 경기 중: 캐시
+    if (wallMarks.length && tilt > 0.75) { ctx.save(); // 포디움 벽에 긁힌 낙서 (뒤쪽 벽면)
+      const rxw = WORLD.rx, ryw = floorRy(tilt);
+      for (const m of wallMarks) { m.t = Math.min(1, m.t + dt * 2.5);
+        const wx = Math.cos(m.a) * rxw * 0.94, wy = Math.sin(m.a) * ryw * 0.94 - 6;
+        ctx.save(); ctx.translate(wx, wy); ctx.rotate(-0.06 + hash01(Math.round(m.a * 50), 7) * 0.12);
+        ctx.globalAlpha = 0.5 * m.t; ctx.fillStyle = m.red ? '#9b2c1c' : '#5a4224'; ctx.font = 'bold 8px serif'; ctx.textAlign = 'center';
+        ctx.fillText(m.text, 0, 0); ctx.restore(); }
+      ctx.restore(); }
+    if (sandMarks.length && tilt > 0.6) { ctx.save(); // 모래의 기억: 발자국·끌린 자국·굳은 핏자국이 경기 내내 쌓인다
+      for (const m of sandMarks) { ctx.globalAlpha = m.a * (m.kind === 'blood' ? 0.8 : 0.5);
+        ctx.fillStyle = m.kind === 'blood' ? '#6e1f12' : '#b9a26f';
+        ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r, m.r * (m.kind === 'drag' ? 0.16 : 0.3), m.kind === 'drag' ? 0.1 : 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore(); }
     if (tilt >= 0.5) drawCheerOverlay(ctx, seats, ct, crowdCheer, view, crowdCloth); if (crowdCheer > 0) crowdCheer -= dt;
     // 주최자 반응 (세레모니)
     if (hostMood !== 'none') {
@@ -503,6 +530,7 @@ export function renderBattle() {
       if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) { mdir = p.x > pv.x ? 1 : -1; face[id] = mdir; } }
       prevPos[id] = { x: p.x, y: p.y };
       speedOf[id] = sp; phaseOf[id] = (phaseOf[id] ?? 0) + dt * (sp > 120 ? 16 : 7);
+      if (sp > 40 && isAlive && Math.random() < dt * (sp > 140 ? 9 : 4)) addMark(p.x + (Math.random() - 0.5) * 6, p.y + 30, sp > 140 ? 'drag' : 'step', sp > 140 ? 9 : 4); // 모래에 자취가 남는다
       const eng = engaged[id]; if (eng != null && hp[eng] > 0) face[id] = pos[eng].x >= p.x ? 1 : -1; // 붙은 상대는 물러날 때도 계속 본다 (등을 돌려 달리지 않는다)
       const a = clips[id]; const el = (ct - a.start) * 1000;
       let sk = clipSkeleton(a.clip, el);
@@ -579,6 +607,22 @@ export function renderBattle() {
         else if (f.kind === 'ring') { ctx.globalAlpha = 0.7 * (1 - k2); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, 10 + k2 * 30, 4 + k2 * 10, 0, 0, Math.PI * 2); ctx.stroke(); if (u && cur && k2 < 0.6) { ctx.globalAlpha = 0.5 * (1 - k2 / 0.6); ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cur.x, cur.y + 4, 24, 0, Math.PI * 2); ctx.stroke(); } }
         else if (f.kind === 'halo' && cur) { ctx.globalAlpha = 0.7 * (1 - Math.max(0, k2 - 0.7) / 0.3); ctx.strokeStyle = '#f3ead0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cur.x, cur.y + 30, 34, 12, 0, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; const sy = cur.y - 70 + Math.min(1, k2 * 4) * 30; ctx.beginPath(); ctx.moveTo(cur.x - 40, sy - 40); ctx.lineTo(cur.x - 18, sy); ctx.stroke(); ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.arc(cur.x - 18, sy, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3b7a2c'; for (let i = 0; i < 5; i++) { const ph = (k2 * 2 + i * 0.2) % 1; ctx.globalAlpha = 0.8 * (1 - ph); ctx.beginPath(); ctx.arc(cur.x - 16 + i * 8, cur.y - 10 - ph * 40, 2.2, 0, Math.PI * 2); ctx.fill(); } }
         else if (f.kind === 'cloth' && cur) { ctx.fillStyle = '#f3ead0'; for (let i = 0; i < 4; i++) { const ph = (k2 + i * 0.25) % 1; ctx.globalAlpha = 0.9 * (1 - ph); ctx.save(); ctx.translate(cur.x - 12 + i * 8 + Math.sin(k2 * 10 + i) * 6, cur.y - 40 - ph * 50); ctx.rotate(Math.sin(k2 * 8 + i) * 0.6); ctx.fillRect(-4, -3, 8, 6); ctx.restore(); } }
+        else if (f.kind === 'weaponfly' || f.kind === 'weapondown') { // 날아가는 무기와 모래에 떨어진 무기
+          const fly = f.kind === 'weaponfly', k3 = fly ? k2 : 1;
+          const wx = fly ? (f.x2 ?? f.x) + (f.x - (f.x2 ?? f.x)) * k3 : f.x, wy = fly ? (f.y2 ?? f.y) + (f.y - (f.y2 ?? f.y)) * k3 - Math.sin(k3 * Math.PI) * 40 : f.y;
+          ctx.save(); ctx.translate(wx, wy); ctx.rotate(fly ? k3 * 9 * f.dir : 1.5); ctx.globalAlpha = fly ? 1 : 0.85;
+          ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = fly ? 3 : 2.4; ctx.lineCap = 'round'; ctx.beginPath();
+          if (f.main === 'trident') { ctx.moveTo(-16, 0); ctx.lineTo(12, 0); ctx.moveTo(12, -6); ctx.lineTo(18, -6); ctx.moveTo(12, 0); ctx.lineTo(19, 0); ctx.moveTo(12, 6); ctx.lineTo(18, 6); }
+          else if (f.main === 'spear') { ctx.moveTo(-20, 0); ctx.lineTo(18, 0); ctx.moveTo(12, -4); ctx.lineTo(19, 0); ctx.lineTo(12, 4); }
+          else if (f.main === 'sica') { ctx.moveTo(-8, 4); ctx.quadraticCurveTo(4, 2, 12, -7); }
+          else { ctx.moveTo(-9, 0); ctx.lineTo(11, 0); ctx.moveTo(-9, -3); ctx.lineTo(-9, 3); }
+          ctx.stroke(); ctx.restore(); }
+        else if (f.kind === 'sandwall') { // 마지막 일격의 먼지 장막: 확 일었다가 가라앉으며 승자만 남는다
+          const up = Math.min(1, k2 * 3.2), fade = 1 - Math.max(0, (k2 - 0.35) / 0.65);
+          ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = '#d9c49a';
+          for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2 + f.seed; const rr = (18 + hash01(f.seed + i, 5) * 90) * up; const rx = 26 + hash01(f.seed + i, 9) * 40;
+            ctx.beginPath(); ctx.ellipse(f.x + Math.cos(a) * rr, f.y + 18 + Math.sin(a) * rr * 0.4, rx * (0.5 + up * 0.8), rx * 0.4 * (0.5 + up * 0.8), 0, 0, Math.PI * 2); ctx.fill(); }
+          ctx.globalAlpha = 1; }
         else if (f.kind === 'trail' && cur) { ctx.globalAlpha = 0.55 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const rr = 4 + i * 3 + k2 * 6; ctx.beginPath(); ctx.arc(cur.x - f.dir * (14 + i * 14), cur.y + 34 - i * 1.5, rr, 0, Math.PI * 2); ctx.stroke(); } } }
       ctx.restore();
     }
@@ -616,7 +660,7 @@ export function renderBattle() {
   // 미시오 판정: 패배 측의 쓰러진 검투사. 내 검투사는 실제 판정(r.fates), 상대는 연출용 결과
   let judge: { start: number; stage: number; losers: { id: number; live: boolean; x: number; y: number }[] } | null = null;
   // 판정 중에 화면을 두드리면 내 루두스 식솔과 팬들이 함께 "미테!"를 외친다 (연출: 함성·손수건이 늘어난다. 결정은 주최자의 몫)
-  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
+  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2 || hushUntil > 0) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
   const judged = new Set<number>();
   const yielded = new Set<number>(); // 항복 자세로 끝난 검투사 (마지막 쓰러짐)
   const judgeLive: Record<number, boolean> = {};
@@ -654,12 +698,13 @@ export function renderBattle() {
       if (!losersRaw.length && units.some(u => u.side !== r.winner && woundOf(u.g.id))) { hasJudgeFailed = true; hostShout = '쓰러진 자는 다시 일어나지 못했다'; }
       else if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
       const losers = losersRaw.map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
-      judge = { start: ct, stage: 0, losers };
+      judge = { start: ct, stage: 0, losers }; setCrowd(0); hushUntil = ct + 1.6; slowUntil = Math.max(slowUntil, ct + 0.7); // 판정의 정적: 함성이 멎고 관중의 손만 남는다
       for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, yielded.has(l.id) ? 'plead' : 'plea', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; } // 항복 자세면 그대로, 누워 있던 자는 일어나 무릎 꿇고 검지를 든다
       if (!losers.length) { judge = null; } else {
       const L0 = losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.3; zoomOutDur = 0.5;
-      shout('미테!  미테!', L0.x); hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; }
+      hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; } // 정적 뒤에 관중이 돌아온다 (아래 hushUntil)
     }
+    if (judge && hushUntil > 0 && ct >= hushUntil) { hushUntil = -1; setCrowd(0.5); shout('미테!  미테!', judge.losers[0]?.x ?? 0); crowdCheer = 1; } // 정적이 걷히며 관중이 한꺼번에
     if (judge && !done) {
       const e = ct - judge.start; const py = -floorRy(1) * 1.03;
       if (judge.stage === 0 && e >= 1.6) { judge.stage = 1; hostMood = 'judging'; sfx.drum(1); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 2.6; zoomOutDur = 0.5; hostShout = '주최자가 일어선다… 관중이 숨을 죽인다'; shouts.length = 0; lastBeat = ct; }

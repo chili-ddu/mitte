@@ -100,6 +100,8 @@ export interface BattleEvent {
   open?: boolean;         // 빈틈 강타 (헛디딘 상대를 침)
   leg?: boolean;          // 다리를 노려 걸음을 묶음
   trip?: boolean;         // 지친 채 달리다 넘어짐 (일어날 때까지 무방비)
+  disarm?: boolean;       // 무기를 놓쳤다 (dropX·dropY 로 날아간다)
+  dropX?: number; dropY?: number;
   parried?: boolean;      // 무기로 받아넘김
   netMiss?: boolean;      // 그물을 던졌으나 빗나감 (그물을 잃는다)
   downed?: boolean;

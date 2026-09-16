@@ -22,7 +22,7 @@ interface Unit {
   interval: number;             // 공격 간격(초)
   cooldown: number;             // 남은 대기(초)
   boundUntil: number;
-  blockChance: number; netUsed: boolean; slowUntil: number; lastD: number; pokeUntil: number; // lastD: 지난 틱의 대상 거리 (길목 찌르기 판정) · pokeUntil: 다음 길목 찌르기까지 // slowUntil: 다리를 맞아 걸음이 느린 동안 // blockChance: 매 타 방패로 막을 확률 (막을 때마다 닳는다)
+  blockChance: number; netUsed: boolean; slowUntil: number; lastD: number; pokeUntil: number; disarmUntil: number; // disarmUntil: 무기를 놓친 동안 (줍기 전까지) // lastD: 지난 틱의 대상 거리 (길목 찌르기 판정) · pokeUntil: 다음 길목 찌르기까지 // slowUntil: 다리를 맞아 걸음이 느린 동안 // blockChance: 매 타 방패로 막을 확률 (막을 때마다 닳는다)
   target?: number;
   lastAttacker?: number;
   retreatUntil: number;         // 타격 후 이탈하는 동안
@@ -55,7 +55,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
       moveSpeed: 60 + s.spd * 7, interval: Math.max(0.8, 1.8 - s.spd * 0.08),
       cooldown: 1.0 + ((i * 0.37 + (side === 'A' ? 0 : 0.2)) % 1.0) * 1.2, // 시작은 견제부터 (1.0~2.2초)
       retreatUntil: 0, circleDir: (i % 2 === 0 ? 1 : -1) as 1 | -1, feintUntil: 0, feintIn: true, holdUntil: 0, sprint: false,
-      boundUntil: 0, blockChance: OFF_HAND[eq.off].role === 'guard' ? (OFF_HAND[eq.off].block ?? 0) : 0, slowUntil: 0, lastD: 999, pokeUntil: 0, netUsed: OFF_HAND[eq.off].skill !== 'bind',
+      boundUntil: 0, blockChance: OFF_HAND[eq.off].role === 'guard' ? (OFF_HAND[eq.off].block ?? 0) : 0, slowUntil: 0, lastD: 999, pokeUntil: 0, disarmUntil: 0, netUsed: OFF_HAND[eq.off].skill !== 'bind',
       secondWind: false, netRecovered: false, blocksMade: 0, guardUntil: 0,
       stamina: CONFIG.stamina.max, weight: CONFIG.stamina.weight[eq.off], openUntil: 0,
     };
@@ -193,6 +193,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (theirSyn.lightHeavy) mult *= 0.92; // 경중 조합: 받는 피해 −8%
         if (mySyn.huntPair && trait.pursuer && t < target.boundUntil) mult *= 1.5;
         if (mySyn.spearWall && !u.struck) mult *= CONFIG.synergy.spearFirst; u.struck = true; // 창 벽: 첫 타
+        if (t < u.disarmUntil) mult *= OFF_HAND[uEq.off].skill === 'bind' ? CONFIG.disarm.pugioMul : CONFIG.disarm.atkMul; // 무기를 놓친 손 (레티아리우스는 허리에 단검이 있다)
         const feint = !combo && proc(u, 'feint'); // 허초: 방패 감소 무시 + 방어 1/3만
         const ignore = Math.min(0.9, (feint ? 0.2 : mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore) + (mySyn.sicaBrothers && uEq.main === 'sica' ? CONFIG.synergy.sicaBrothers : 0)); // 곡도 형제
         const def = Math.round(target.def * (1 - ignore));
@@ -211,6 +212,10 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         let parried = false;
         if (!blocked && !crit && t >= target.boundUntil) { const PR = CONFIG.parry, pc = ((MAIN_HAND[tEq.main].parry ?? 0) + (OFF_HAND[tEq.off].parry ?? 0)) * PR.scale; /* 방패로 못 막으면 무기로 받아넘긴다 */
           if (pc > 0 && rng.chance(pc)) { dmg = Math.max(1, Math.round(dmg * (1 - PR.cut))); parried = true; } }
+        let disarm = false, dropX = 0, dropY = 0;
+        if ((blocked || parried) && t >= target.disarmUntil && rng.chance(CONFIG.disarm.chance * (target.stamina < CONFIG.stamina.windedAt ? CONFIG.disarm.windedMul : 1))) { // 막아 낸 손이 저려 무기를 놓친다
+          const D = CONFIG.disarm; target.disarmUntil = t + D.sec; disarm = true;
+          const a = rng.range(-1, 1) * Math.PI; dropX = Math.max(ARENA.margin, Math.min(ARENA.w - ARENA.margin, target.x + Math.cos(a) * D.dist)); dropY = Math.max(ARENA.margin, Math.min(ARENA.h - ARENA.margin, target.y + Math.sin(a) * D.dist * 0.5)); }
         if (target.hp / initialHp[target.g.id] < 0.5 && proc(target, 'stand_firm')) dmg = Math.round(dmg * 0.55); // 버티기 // 치명타는 방패 반감 무시
         target.hp -= dmg; target.lastAttacker = u.g.id; target.holdUntil = Math.max(target.holdUntil, t + 0.3); // 피격 경직
         if (target.hp > 0 && target.hp / initialHp[target.g.id] < 0.25 && !target.secondWind && proc(target, 'second_wind')) { target.secondWind = true; target.hp += Math.round(initialHp[target.g.id] * 0.25); target.guardUntil = t + 2; target.retreatUntil = t + 2; u.retreatUntil = Math.max(u.retreatUntil, t + 1.2); } // 숨고르기: 심판이 잠시 멈춘다
@@ -226,8 +231,8 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (!downed0 && u.range < 2 && !combo) { const LG = CONFIG.legs; if (rng.chance(LG.chance * Math.pow(1 - LG.perGreave, TYPE_TRAIT[target.g.type].greaves))) { target.slowUntil = Math.max(target.slowUntil, t + LG.sec); leg = true; } } /* 정강이받이가 없을수록 하체가 열린다 */
         const downed = target.hp <= 0;
         if (downed) { if (combo) exp[u.g.id].comboKill = true; if (t < target.boundUntil && net) exp[u.g.id].netKill = true; if (charge && !combo) exp[u.g.id].chargeKill = true; if (target.range < 2 && u.range >= 2) exp[u.g.id].meleeKill = true; if (u.blocksMade > 0) exp[u.g.id].wonAfterBlock = true; }
-        log.push(`${fmt(t)} ${u.g.name}(${u.side}) → ${target.g.name} ${dmg}${crit ? ' 치명타!' : ''}${open ? ' 빈틈!' : ''}${charge && !combo ? ' 돌진!' : ''}${combo ? ' 연속!' : ''}${blocked ? ' 방패!' : ''}${parried ? ' 받아넘김!' : ''}${net ? ' 그물!' : ''}${netMiss ? ' 그물 빗나감!' : ''}${leg ? ' 다리!' : ''}${stun ? ' 기세!' : ''}${downed ? ' 쓰러짐' : ''}`);
-        events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: u.g.id, target: target.g.id, dmg, targetHp: Math.max(0, target.hp), counter: false, net, blocked, combo, charge: charge && !combo, crit, open, leg, parried, netMiss, downed });
+        log.push(`${fmt(t)} ${u.g.name}(${u.side}) → ${target.g.name} ${dmg}${crit ? ' 치명타!' : ''}${open ? ' 빈틈!' : ''}${charge && !combo ? ' 돌진!' : ''}${combo ? ' 연속!' : ''}${blocked ? ' 방패!' : ''}${parried ? ' 받아넘김!' : ''}${disarm ? ' 무기를 놓침!' : ''}${net ? ' 그물!' : ''}${netMiss ? ' 그물 빗나감!' : ''}${leg ? ' 다리!' : ''}${stun ? ' 기세!' : ''}${downed ? ' 쓰러짐' : ''}`);
+        events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, kind: 'attack', actor: u.g.id, target: target.g.id, dmg, targetHp: Math.max(0, target.hp), counter: false, net, blocked, combo, charge: charge && !combo, crit, open, leg, parried, netMiss, disarm, dropX: disarm ? +dropX.toFixed(1) : undefined, dropY: disarm ? +dropY.toFixed(1) : undefined, downed });
         if (downed) break;
         if (blocked && u.hp > 0 && proc(target, 'riposte')) { // 되치기: 막은 직후 반격 (공격력 80%)
           const rd = Math.max(1, Math.round(target.atk * 2.0 * rng.range(0.85, 1.15) - u.def)); u.hp -= rd; u.lastAttacker = target.g.id; u.holdUntil = Math.max(u.holdUntil, t + 0.3);
