@@ -2094,12 +2094,16 @@ function seatList(density: number, tilt = 1) {
 function drawArenaWorld(ctx: CanvasRenderingContext2D, density: number, tilt: number, view: { x0: number; y0: number; x1: number; y1: number }, lod: 'full' | 'lite' = 'full', armsUp = false) {
   const rx = WORLD.rx, ry = floorRy(tilt);
   const R = (k: number) => ringOf(k, tilt);
+  // 회벽에 긁어 넣은 경기장처럼 보이도록 넓은 안료 얼룩을 먼저 깐다
+  ctx.save(); ctx.globalAlpha = 0.2; ctx.fillStyle = '#efe1bd';
+  for (let i = 0; i < 18; i++) { const x = -rx * 1.1 + hash01(i, 11) * rx * 2.2, y = -ry * 1.8 + hash01(i, 17) * ry * 3.2; ctx.beginPath(); ctx.ellipse(x, y, 28 + hash01(i, 19) * 70, 9 + hash01(i, 23) * 24, hash01(i, 29) * Math.PI, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
   // 바깥 벽 그림자
-  { const o = R(WORLD.rows - 1); ctx.fillStyle = '#9c8656'; ctx.beginPath(); ctx.ellipse(0, o.cy + 16 * tilt, o.rx * 1.03, o.ry * 1.06, 0, 0, Math.PI * 2); ctx.fill(); }
+  { const o = R(WORLD.rows - 1); ctx.fillStyle = '#8f7047'; ctx.beginPath(); ctx.ellipse(0, o.cy + 16 * tilt, o.rx * 1.03, o.ry * 1.06, 0, 0, Math.PI * 2); ctx.fill(); }
   // 관객석 링 (바깥부터)
   for (let k = WORLD.rows - 1; k >= 0; k--) {
     const o = R(k), i = k === 0 ? { cy: 0, rx: rx * 1.03, ry: ry * 1.04 } : R(k - 1);
-    ctx.fillStyle = WORLD.wood ? (k % 2 ? '#a97f4f' : '#9d7446') : (k % 2 ? '#c9b283' : '#bfa877');
+    ctx.fillStyle = WORLD.wood ? (k % 2 ? '#94633c' : '#835735') : (k % 2 ? '#c3aa72' : '#af9561');
     ctx.beginPath(); ctx.ellipse(0, o.cy, o.rx, o.ry, 0, 0, Math.PI * 2); ctx.ellipse(0, i.cy, i.rx, i.ry, 0, 0, Math.PI * 2, true); ctx.fill();
     ctx.strokeStyle = WORLD.wood ? '#6b4a22' : '#a58f60'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, o.cy, o.rx, o.ry, 0, 0, Math.PI * 2); ctx.stroke();
     if (WORLD.wood) { ctx.strokeStyle = '#7a5a30'; ctx.lineWidth = 1; ctx.beginPath(); const n = Math.floor(Math.PI * 2 * o.rx / 30); for (let j = 0; j < n; j++) { const a = (j / n) * Math.PI * 2; ctx.moveTo(Math.cos(a) * i.rx, i.cy + Math.sin(a) * i.ry); ctx.lineTo(Math.cos(a) * o.rx, o.cy + Math.sin(a) * o.ry); } ctx.stroke(); } // 판자 이음새
@@ -2117,14 +2121,20 @@ function drawArenaWorld(ctx: CanvasRenderingContext2D, density: number, tilt: nu
     ctx.globalAlpha = 1;
   }
   // 포디움 벽 + 문 + 주최자석
-  ctx.fillStyle = '#a89064'; ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.03, ry * 1.04, 0, 0, Math.PI * 2); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2, true); ctx.fill();
-  ctx.strokeStyle = '#7d6743'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#98794f'; ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.03, ry * 1.04, 0, 0, Math.PI * 2); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2, true); ctx.fill();
+  ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
   for (const side of [-1, 1]) { const gx = side * rx * 0.995, gy = 0; ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.ellipse(gx, gy, 14, 26, 0, 0, Math.PI * 2); ctx.fill(); }
   drawHostBox(ctx, -ry * 1.03, tilt);
   // 모래 바닥 + 자국
-  ctx.fillStyle = '#d8c48f'; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#cbb67f'; ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#d1b576'; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = '#efe1bd';
+  for (let i = 0; i < 38; i++) { const x = (hash01(i, 31) - 0.5) * rx * 1.7, y = (hash01(i, 37) - 0.5) * ry * 1.4; ctx.fillRect(x, y, 1 + hash01(i, 41) * 5, 1); }
+  ctx.restore();
+  ctx.strokeStyle = '#9f8355'; ctx.lineWidth = 1.5;
   for (let i = 0; i < 8; i++) { const yy = -ry * 0.7 + i * ry * 0.2; ctx.beginPath(); ctx.moveTo(-rx * 0.6 + hash01(i, 3) * 60, yy); ctx.quadraticCurveTo(hash01(i, 5) * 100 - 50, yy + 8, rx * 0.55 - hash01(i, 7) * 60, yy); ctx.stroke(); }
+  ctx.save(); ctx.globalAlpha = 0.28; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) { const x = -rx * 0.45 + i * rx * 0.22 + hash01(i, 47) * 18, y = ry * (0.18 + hash01(i, 53) * 0.42); ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x + 12, y - 2); ctx.moveTo(x + 2, y - 7); ctx.lineTo(x + 8, y + 5); ctx.stroke(); }
+  ctx.restore();
   // 관중: 앉은 스틱맨 (정적). 함성 동작은 drawCheerOverlay 가 덧그린다
   // 관중 전환: 탑뷰(전원, 점) → 기울기 0~0.45 서서히 사라짐 → 0.65~1 먼 쪽만 앉은 스틱맨으로 서서히 나타남. 가까운 쪽은 돌아오지 않음
   const fadeOut = Math.max(0, 1 - tilt / 0.45), fadeIn = Math.max(0, Math.min(1, (tilt - 0.8) / 0.2));

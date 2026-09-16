@@ -15,6 +15,7 @@ export interface DrawOpts { x: number; y: number; scale?: number; facing?: 1 | -
 
 export const INK = '#7a3b1e'; // 먹색: 폼페이 벽 광고의 붉은 황토(루브리카) 톤
 export const ENEMY = '#5e2a5c'; // 상대 파밀리아 팀 색 (먹색이 붉어져 자주로)
+const RUBRICA = '#9b2c1c', CHARCOAL = '#2f2116', OCHRE = '#c58a1a'; // 벽 낙서의 보조 안료: 붉은 흙·목탄·황토
 
 // 관절 각도(도). 몸통 기준. 0 = 아래, 양수 = 앞쪽(facing 방향)
 export interface Skeleton { lean: number; frontArm: [number, number]; backArm: [number, number]; frontLeg: [number, number]; backLeg: [number, number]; headBob: number; lying?: boolean; sink?: number; lieK?: number; shift?: number; lift?: number; lieDir?: 1 | -1; turn?: number; reach?: { x: number; y: number }; /* 앞손이 이 점(발 기준)을 향하도록 팔 IK */ }
@@ -196,6 +197,17 @@ export function clipSkeleton(name: ClipName, elapsed: number): Skeleton {
 
 // 낙서 느낌: 선을 살짝 흔든다 (시드 기반, 프레임마다 떨리지 않게)
 function jit(seed: number, amp: number) { const x = Math.sin(seed * 12.9898) * 43758.5453; return (x - Math.floor(x) - 0.5) * amp; }
+function scratchLine(ctx: CanvasRenderingContext2D, seed: number, x0: number, y0: number, x1: number, y1: number, amp = 1.2) {
+  ctx.beginPath(); ctx.moveTo(x0 + jit(seed, amp), y0 + jit(seed + 1, amp)); ctx.lineTo(x1 + jit(seed + 2, amp), y1 + jit(seed + 3, amp)); ctx.stroke();
+}
+function roleMark(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: number, seed: number) {
+  ctx.save(); ctx.globalAlpha *= 0.72; ctx.strokeStyle = L.main === 'trident' ? '#2f5d66' : L.main === 'sica' ? RUBRICA : L.off === 'scutum' || L.off === 'medium' ? OCHRE : CHARCOAL; ctx.lineWidth *= 0.55;
+  if (L.main === 'trident') { ctx.beginPath(); ctx.arc(x, y, 10, Math.PI * .15, Math.PI * 1.35); ctx.stroke(); scratchLine(ctx, seed + 88, x - 8, y - 8, x + 8, y + 8, .8); }
+  else if (L.main === 'sica') { ctx.beginPath(); ctx.moveTo(x - 8, y + 4); ctx.quadraticCurveTo(x + 1, y - 13, x + 12, y - 6); ctx.stroke(); }
+  else if (L.off === 'scutum' || L.off === 'medium') { ctx.beginPath(); ctx.rect(x - 7, y - 9, 14, 18); ctx.stroke(); scratchLine(ctx, seed + 91, x - 6, y - 3, x + 6, y - 6, .7); }
+  else { ctx.beginPath(); ctx.moveTo(x - 9, y + 7); ctx.lineTo(x + 9, y - 7); ctx.moveTo(x - 6, y - 8); ctx.lineTo(x + 6, y + 8); ctx.stroke(); }
+  ctx.restore();
+}
 
 export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout, o0: DrawOpts) {
   let o = o0;
@@ -204,6 +216,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   const type: GType = typeof who === 'string' ? who : 'murmillo'; // 시드용
   const s = o.scale ?? 1, f = o.facing ?? 1, pose = o.pose ?? 'idle', t = o.t ?? 0;
   const sk = o.skeleton ?? POSES[pose];
+  const active = pose === 'attack' || pose === 'swing' || pose === 'stab' || pose === 'stab_deep' || pose === 'trident_thrust' || pose === 'slash' || pose === 'up_swing' || pose === 'sweep' || pose === 'net_throw';
   ctx.save();
   ctx.translate(o.x, o.y);
   ctx.scale(s * f, s);
@@ -211,13 +224,24 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   if (sk.shift || sk.lift) ctx.translate(sk.shift ?? 0, -(sk.lift ?? 0));
   if (sk.turn) ctx.scale(1 - sk.turn * 0.6, 1); // 카메라 쪽으로 돌아 납작해짐
   ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK;
-  ctx.lineWidth = 3.0 / Math.sqrt(s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = 3.6 / Math.sqrt(s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
   // 기준: 발이 (0,0). 몸통 길이 30, 다리 24, 팔 22, 머리 반지름 7
   // 아기자기한 비율(2026-09-09): 머리 크게, 다리·몸 짧게. 전체 키 ≈ 58
   const LEG = 22, BODY = 22, ARM = 17, HEAD = 9;
   const rad = (d: number) => d * Math.PI / 180;
   const seed = type.length * 7 + (pose === 'attack' ? 3 : 0);
+  if (!o.garment && !o.bare) { // 발밑의 긁힌 표식: 작은 말도 같은 세계에 박혀 보이게 한다
+    ctx.save(); ctx.globalAlpha = 0.22; ctx.strokeStyle = o.ink ?? INK; ctx.lineWidth = 1.2 / Math.sqrt(s);
+    ctx.beginPath(); ctx.ellipse(0, 1.5, 23 + jit(seed + 40, 3), 4.5 + jit(seed + 41, 1), 0, 0, Math.PI * 2); ctx.stroke();
+    scratchLine(ctx, seed + 42, -17, 3.5, 14, 1.5, .9); ctx.restore();
+  }
+  if (active && !o.garment) { // 공격 순간에만 남는 붉은 붓자국: 애니메이션 방향을 더 잘 읽히게 한다
+    ctx.save(); ctx.globalAlpha = 0.22; ctx.strokeStyle = RUBRICA; ctx.lineWidth = 4.5 / Math.sqrt(s); ctx.lineCap = 'round';
+    const dir = pose === 'up_swing' ? -1 : 1;
+    ctx.beginPath(); ctx.moveTo(-18, -51 + dir * 5); ctx.quadraticCurveTo(10, -75, 38, -42 + dir * 2); ctx.stroke();
+    ctx.globalAlpha = 0.13; ctx.lineWidth = 2.1 / Math.sqrt(s); scratchLine(ctx, seed + 46, -24, -36, 34, -60, 1.8); ctx.restore();
+  }
 
   // sink: 엉덩이를 낮춘다 (발은 땅에 그대로)
   const hipY = -LEG + (sk.sink ?? 0);
@@ -285,7 +309,7 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
     const forearmFront = p.hx > shX + 3; // 손이 어깨선보다 앞이면 아래팔은 옷 앞
     seg(shX, shY, p.ex, p.ey);
     if (!forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
-    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s); ctx.lineCap = 'round';
+    drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); ctx.lineCap = 'round';
     if (forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
   } else {
     back = arm(sk.backArm);
@@ -303,11 +327,12 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   drawHead(ctx, o.bare ? 'none' : L.helmet, hx0, hy0, HEAD, seed);
   if (o.beard) { ctx.lineWidth = 2.2 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(hx0 + 4, hy0 + 4); ctx.quadraticCurveTo(hx0 + 6, hy0 + 10, hx0 - 1, hy0 + 11); ctx.stroke(); }
   if (!o.bare) drawAccessories(ctx, L, hx0, hy0, HEAD, shX, shY, hipY, seed);
-  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s);
+  ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s);
   const front = arm(frontA);
   if (lieK < 0.5 && !o.bare) drawWeapon(ctx, L.main, front.hx, front.hy, front.ang, pose, seed);
   if (!o.bare) drawExtras(ctx, L, shX, shY, hipY, seed); // 쓰러지면 무기를 놓친다
-  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.0 / Math.sqrt(s); }
+  if (!o.bare && lieK < 0.5) roleMark(ctx, L, shX - 9, shY + 12, seed); // 병종을 멀리서 읽게 하는 낙서 문양
+  if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = 3.6 / Math.sqrt(s); }
 
 
   ctx.restore();
