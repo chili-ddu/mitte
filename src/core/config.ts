@@ -64,14 +64,16 @@ export const CONFIG = {
   doctorSkillWins: 8,  // 승수가 이 이상인 독토르는 같은 유형 제자에게 유형 기술을 전수
   mentor: { comboBonus: 0.04, shieldReduce: 0.6, sicaIgnore: 0.4, bindSec: 1.6, chargeMult: 1.3, critTaken: 0.6, twinBonus: 0.10 }, // 추가 4유형: 호플로마쿠스·에퀘스 돌진 ×1.3, 프로보카토르 치명타 피격 0.6, 디마카에루스 연속 +10% 더
   grudge: { atk: 1.10, missio: -0.15, revengeHonor: 8 }, // 원한: 내가 살려 준 상대는 재대결에서 공격 ×1.1, 그 상대에게 지면 미시오 −15% (우르비쿠스의 경고). 나를 이겼던 상대를 꺾으면 '복수자' 명예 +8
-  skills: { expChance: 0.25, trainChance: 0.35, masterBonus: 0.15, gymChance: 0.25, gymLevel: 3, rivalSkillsVet: [1, 2] as [number, number] }, // 기술: 경험으로 깨칠 확률, 독토르 훈련 성공률(+8승 독토르 보너스), 훈련 시설(3단계~) 독학 성공률, 상대 베테라누스 기술 수
+  skills: { expChance: 0.14, trainChance: 0.35, masterBonus: 0.15, gymChance: 0.25, gymLevel: 3, rivalSkillsVet: [1, 2] as [number, number] }, // 기술: 경험으로 깨칠 확률(2026-09-16 0.25→0.14, 검투사당 경기 1회 굴림 — 8시즌에 티로 슬롯이 전부 차 있었다), 독토르 훈련 성공률(+8승 독토르 보너스), 훈련 시설(3단계~) 독학 성공률, 상대 베테라누스 기술 수
   retrainCost: 2000,   // 유형 전환(재훈련): 비용, 그 시즌은 출전 불가 // 기술 전수: 세쿠토르 연속 +4% / 무르밀로 방패 첫 타격 감소 60% / 트라엑스 방어 무시 40% / 레티아리우스 속박 1.6초
   promoteWins: 3,
   teamSize: 3,   // 최대 규모 (계약마다 size 1~3)
   fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 4, overworkPer: 0.12, free: 1, cleanWinHp: 0.7, chanceHard: 0.8, chanceClean: 0.3, perCellStar: 0.15, trainAfterFight: 0.6 }, // trainAfterFight: 출전한 시즌에 훈련까지 하면 그 확률로 피로 +1 (숙소 ★마다 −15%) // free: 페널티 없는 피로 점수(첫 1점 무료). 피로가 쌓일 확률: 힘든 경기 80%, 가벼운 경기(쓰러지지 않고 HP 70%↑ 이김) 30%, 숙소 ★마다 −15% // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
-  crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
+  form: { atk: 5, def: 4, team: 0.5, tell: 0.5 }, // 그날의 몸 상태(2026-09-16): 경기마다 f∈[−1,1]을 굴려 공 +round(f×atk)·방 +round(f×def). f 는 팀 공통분(team: 그날 파밀리아의 분위기)과 개인분을 섞는다 — 다인전에서 개인 우연이 평균으로 묻히지 않게. 시즌 단위 피로와 별개인 '경기 당일'의 우연 — 수십 번 굴리는 타격 흔들림은 평균으로 수렴하지만 이건 경기 내내 남아 승부를 바꾼다(열세 역전의 주된 통로). |f|≥tell 이면 기록에 '몸이 가볍다/무겁다'로 드러난다
+  stamina: { max: 100, swing: 20, sprintPerSec: 10, regen: 4, windedAt: 30, windedInterval: 1.35, windedMove: 0.8, stumble: 0.15, stumbleSec: 0.9, openMult: 1.5, openIgnore: 1.0, weight: { scutum: 1.2, medium: 1.1, parma: 1.0, parmula: 0.95, net: 0.9, blade: 0.9, none: 1.0 } }, // 스태미나(2026-09-16): 휘두를 때마다 swing×장비 무게, 질주 중 초당 sprintPerSec 소모, 초당 regen 회복 (1대1 평균 17타·11초: 중무장은 4~5타, 경무장은 6~7타째부터 지친다). windedAt 밑이면 지침 — 공격 간격 ×1.35, 걸음 ×0.8, 휘두를 때 15%로 헛디딤(0.9초 무방비 — 그 사이 맞는 타격은 빈틈 강타: 방어 openIgnore 무시·×openMult). 무게는 보조 장비 기준: 스쿠툼·중형 방패를 든 중무장(무르밀로·세쿠토르·프로보카토르)이 먼저 지친다 — 검투 경기의 승부처는 지치는 쪽이 나오는 것이었다
+  crit: { base: 0.08, perSpd: 0.005, mult: 1.3, defIgnore: 1.0 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 갑주 틈을 찌른 깨끗한 일격 — 방어를 defIgnore 만큼 무시(1.0 = 전부)하고 ×1.3, 방패 반감 무시. (2026-09-16 ×1.6·방어 적용 → 방어 무시·×1.3: 약자가 방어 높은 상대를 뚫는 통로) // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 0,       // 무명에서 시작 (2026-09-16, 월계관 단계에 맞춰). 시뮬: 30→0 이 파산율을 올리지 않고(등급1만 14%→1%) 초반 사망만 조금 늘어난다(미시오 보정 없음)
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
   synergy: { cavalrySpd: 2, cavalrySec: 5, spearFirst: 1.2, sicaBrothers: 0.10, mythMissio: 0.05, hometownRest: 1, nicknameFame: 1, captiveAtk: 1 }, // 추가 조합 7종 (2026-09-16, 열세에서도 뒤집을 여지): 기병대 = 에퀘스 첫 5초 속도 +2 · 창 벽 = 첫 타 피해 ×1.2 · 곡도 형제 = 시카 방어 무시 +10%p · 신화×2 = 미시오 +5% · 동향 = 지명 계보 둘이 함께 싸우면 시즌 끝 피로 −1 · 별칭×2 = 승리 호감도 +1 · 동포 = 포로 둘 이상 공격 +1

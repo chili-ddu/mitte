@@ -319,6 +319,7 @@ export function renderBattle() {
       const e = r.events[ei++];
       if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip();
         skillFx(e.actor, e.skill ?? '', ct); continue; }
+      if (e.kind === 'stumble') { flash.push({ id: e.actor, t: 1.3, text: '헛디딤!', color: '#6b4a22' }); const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
@@ -351,6 +352,7 @@ export function renderBattle() {
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
         if (!e.blocked && Math.random() < pBlood) bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2);
         if (e.crit) flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' });
+        if (e.open) flash.push({ id: tid, t: 1.3, text: '빈틈!', color: '#9b1f14' });
         if (e.downed && !woundOf(tid)) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); else if (e.downed) shout('…', pt.x); // 상처로 숨지면 관중은 말을 잃는다
         else if (e.crit) shout('하베트!  하베트!', pt.x);
         else if (heavy) shout('하베트!', pt.x);

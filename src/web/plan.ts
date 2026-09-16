@@ -131,7 +131,7 @@ export function renderPlan() {
         H.honorAll ? chip(I.award, `명예 +${H.honorAll}`, 'up', '출전자 전원 명예') : null,
         H.bet ? chip(I.dice, c.bet ? '내기 받음' : '내기 가능', 'flat', '스폰시오: 이기면 상금 두 배, 지면 상금만큼 물어냄') : null,
         c.needVeterans ? chip(I.shield, `베테 ${c.needVeterans}명`, 'flat', '베테라누스가 이만큼 있어야 치를 수 있다') : null].filter((n): n is HTMLElement => !!n);
-      cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), c.powerCap != null ? h('span', { class: 'badge cap', title: `이 등급 경기장의 상대는 전력 ${c.powerCap} 이하로만 나온다 (내 편은 제한 없음)` }, `상대 ≤${c.powerCap}`) : null, scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
+      cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
         h('div', { class: 'grow' },
           h('div', { class: 'ctitle' }, h('b', {}, c.venue)), // 이름 한 줄
           h('div', { class: 'cmeta' }, h('span', { class: `eff count${err ? '' : ' ok'}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c)), // 인원 칩('3대0', 조금 크게) · 주최자 한 줄
@@ -178,11 +178,9 @@ export function renderPlan() {
     const healable = S.st.roster.filter(g => g.injured && S.st.money >= healCostOf(S.st)).length;
     const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
     const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
-    const blocked = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !!validTeam(S.st, c, t); }).map(c => `${c.venue}: ${validTeam(S.st, c, teamOf(c))}`);
     // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
     const warn = [
       !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
-      blocked.length ? `배정한 계약 ${blocked.length}건은 문이 열리지 않습니다.\n· 조건 미달 — 그 경기는 치르지 않은 것으로 칩니다.` : '',
       refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
       healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
       (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),

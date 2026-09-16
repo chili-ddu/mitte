@@ -85,7 +85,7 @@ export interface BattleUnit {
 export interface BattleEvent {
   t: number;              // 초
   turn: number;           // 표시용(초 올림)
-  kind: 'attack' | 'bound' | 'skill';
+  kind: 'attack' | 'bound' | 'skill' | 'stumble'; // stumble: 지쳐서 헛디딤 (공격 무산, 잠시 무방비)
   actor: number;          // gladiator id
   target?: number;
   dmg?: number;
@@ -96,6 +96,7 @@ export interface BattleEvent {
   combo?: boolean;        // 연속 공격(추가타)
   charge?: boolean;       // 달려들며 공격(돌진)
   crit?: boolean;         // 치명타
+  open?: boolean;         // 빈틈 강타 (헛디딘 상대를 침)
   downed?: boolean;
   skill?: string;         // 발동한 기술 id (kind 'skill', 또는 공격에 실린 기술)
 }
@@ -115,4 +116,5 @@ export interface BattleResult {
   skillUses?: Record<number, Record<string, number>>; // 검투사별 기술 발동 횟수 (숙련에 반영)
   exp?: Record<number, { blocks: number; blockedOn: number; combos: number; comboKill: boolean; netKill: boolean; charges: number; chargeKill: boolean; lowHp: boolean; meleeKill: boolean; wonAfterBlock: boolean }>; // 경험 조건 집계
   counterWin: boolean;   // (구) 상성 우위. 상성 제거 후 항상 false
+  form?: Record<number, number>; // 검투사별 그날의 몸 상태 f∈[−1,1] (표시용)
 }

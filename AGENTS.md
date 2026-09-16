@@ -10,6 +10,7 @@ AI 에이전트(Claude Code · Codex CLI)가 이 저장소에서 일할 때의 �
 npx vite              # 웹 (http://localhost:5173, 주소 뒤 #42 로 시드 고정, ?debug 로 디버그 버튼)
 npm run typecheck     # 변경 후 반드시
 npm run sim -- 1000   # 봇 전략별 밸런스 시뮬레이션 (둘째 인자 = 시즌 수)
+npm run curve -- 4000 1   # 전력 차별 승률 곡선 (둘째 인자 = 팀 인원). 전투 규칙·우연성을 바꾸면 sim 과 함께 본다
 npm run play          # 콘솔 대화형 (npm run play -- 42)
 npm run build
 ```

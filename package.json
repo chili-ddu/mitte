@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "curve": "tsx src/cli/curve.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
