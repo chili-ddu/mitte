@@ -1,7 +1,8 @@
 // 화면의 공유 가변 상태. main.ts 의 모듈 수준 let 을 한 객체로 모았다 (2026-09-16 리팩터링). 각 화면 모듈은 여기서 읽고 쓴다
 import type { Action, SeasonEvents, GameState, FightReport } from '../core/game.js';
 import type { Contract, Gladiator } from '../core/types.js';
-import type { View, StickPose } from './main.js';
+import type { View } from './main.js';
+import type { StickPose } from './scenes.js';
 export interface State {
   st: GameState;
   resumed: boolean;
