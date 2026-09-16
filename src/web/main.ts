@@ -5,7 +5,7 @@ import { declineSkill, isPrimusPalus, setForceProc, skillSlots, skillsOf, type S
 import { available, deserialize, newGame, palusTrainees, serialize, type GameState } from '../core/game.js';
 import { TYPES, TYPE_KO } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
-import { MAIN_HAND, OFF_HAND, equipOf } from '../core/equipment.js';
+import { equipHandsKo } from '../core/equipment.js';
 import type { GType } from '../core/types.js';
 import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget } from './dom.js';
 import { portrait, startPortraitLoop } from './portrait.js';
@@ -166,19 +166,25 @@ export function render() {
     h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); S.showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
   if (S.setup && !S.showIntro) { // 새 게임 설정: 파밀리아 색과 시작 검투사 두 유형. 능력치는 여느 티로처럼 굴린다 (고르는 것은 개성이지 힘이 아니다)
     const st = S.setup;
-    const swatch = (c: { id: string; ko: string; ink: string }) => h('button', { class: `tpick${st.color === c.id ? ' on' : ''}`, title: c.ko, style: `background:${c.ink}`, onclick: () => { st.color = c.id; sfx.step(); render(); } });
-    const typeBtn = (t: GType) => { const on = st.types.includes(t); const full = st.types.length >= CONFIG.startGladiators;
-      return h('button', { class: `gpick${on ? ' on' : ''}`, disabled: !on && full, title: `${TYPE_KO[t]} — ${MAIN_HAND[equipOf(t).main].label} · ${OFF_HAND[equipOf(t).off].label}`,
-        onclick: () => { st.types = on ? st.types.filter(x => x !== t) : [...st.types, t]; sfx.step(); render(); } }, sq(t), h('span', {}, TYPE_KO[t])); };
-    const ready = st.types.length === CONFIG.startGladiators;
+    const swatches: HTMLElement[] = [], picks: HTMLElement[] = [];
+    const hint = h('div', { class: 'hint' }), go = h('button', { class: 'primary' }, '문을 연다') as HTMLButtonElement;
+    const sync = () => { // 고를 때마다 화면을 다시 그리지 않는다 (깜박임) — 이 자리에서만 바꾼다
+      swatches.forEach((b, i) => b.classList.toggle('on', TEAM_COLORS[i].id === st.color));
+      picks.forEach((b, i) => { const on = st.types.includes(TYPES[i]); b.classList.toggle('on', on); (b as HTMLButtonElement).disabled = !on && st.types.length >= CONFIG.startGladiators; });
+      const ready = st.types.length === CONFIG.startGladiators;
+      hint.textContent = ready ? st.types.map(t => TYPE_KO[t]).join(' · ') : `유형을 ${CONFIG.startGladiators - st.types.length}명 더 고르세요`;
+      go.disabled = !ready;
+    };
+    for (const c of TEAM_COLORS) { const b = h('button', { class: 'tpick', title: c.ko, style: `background:${c.ink}`, onclick: () => { st.color = c.id; sfx.step(); sync(); } }); swatches.push(b); }
+    for (const t of TYPES) { const hands = equipHandsKo(t);
+      const b = h('button', { class: 'gpick', title: `${TYPE_KO[t]} — ${hands}`, onclick: () => { st.types = st.types.includes(t) ? st.types.filter(x => x !== t) : [...st.types, t]; sfx.step(); sync(); } }, sq(t), h('span', {}, TYPE_KO[t])); picks.push(b); }
+    go.onclick = () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
+      S.st = newGame(seed, { types: st.types, color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); };
+    sync();
     app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox setup' },
       h('div', { class: 'title' }, '파밀리아를 꾸린다'),
       h('p', { class: 'hint' }, '우리 색을 고르고, 물려받을 검투사 두 사람의 유형을 정하세요. 능력치는 여느 티로처럼 굴려집니다.'),
-      h('div', { class: 'colors' }, ...TEAM_COLORS.map(swatch)),
-      h('div', { class: 'types' }, ...TYPES.map(typeBtn)),
-      h('div', { class: 'hint' }, ready ? st.types.map(t => TYPE_KO[t]).join(' · ') : `유형을 ${CONFIG.startGladiators - st.types.length}명 더 고르세요`),
-      h('button', { class: 'primary', disabled: !ready, onclick: () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
-        S.st = newGame(seed, { types: st.types, color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); } }, '문을 연다'))));
+      h('div', { class: 'colors' }, ...swatches), h('div', { class: 'types' }, ...picks), hint, go)));
   }
   if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
     const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);

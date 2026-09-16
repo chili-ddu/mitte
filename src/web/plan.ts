@@ -10,6 +10,7 @@ import { HOST } from '../core/hosts.js';
 import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
 import { classicMatchup, computeSynergies, describeSynergies, isClassicPair } from '../core/synergy.js';
+import { matchupNotes } from '../core/matchup.js';
 import { SKILL_BY_ID, SKILL_NAME, skillSlots, skillsOf } from '../core/skills.js';
 import { backBtn, h, sq, tell, ro } from './dom.js';
 import { app, render, save, sideToolsLand, VIEW_KO } from './main.js';
@@ -176,6 +177,7 @@ export function renderPlan() {
             return h('div', { class: 'etile', title: `${TYPE_KO[e.type]} · ${e.rank === 'tiro' ? '티로' : '베테라누스'} · ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? `\n기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` },
               ...miniGlad(e, { enemy: true, size: 40, meta: [star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null, spBy.length ? h('span', { class: 'badge grudge', title: `${spBy.map(g => g.name).join(', ')} 이(가) 살려 준 자. 재대결이면 공격 +10%, 그에게 지면 미시오 −15%` }, '원한') : null] })); }))),
         h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아'), h('span', { class: 'hint' }, ` (${team.length}/${c.size})`)), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}`, title: vet ? '대장 자리: 베테라누스만 들어갈 수 있습니다' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: 40 }) : [h('span', { class: 'hint' }, vet ? '베테라누스' : '빈 자리')])); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
+        (() => { const notes = matchupNotes(team, c.enemy); return notes.length ? h('div', { class: 'lmatch' }, ...notes.slice(0, 3).map(n => h('div', { class: `mnote ${n.good ? 'good' : 'bad'}` }, n.ko))) : null; })(), /* 장비가 만드는 상성: 이번 상대에게 실제로 걸리는 것만 한 줄씩 (상성표는 없다) */
         h('div', { class: 'lsyn' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : classicPart ? h('span', { class: 'syn classic maybe' }, `전통 짝 ${team.length}/${c.size}`) : null), // 항상 한 줄 자리를 잡아 둔다 (시너지가 생겨도 카드 높이가 안 흔들리게, '시너지 없음' 문구 없음)
         h('div', { class: 'meta lcost' }, rentLine), // 대여료 줄도 항상 자리 유지
         )));

@@ -42,7 +42,7 @@ export interface Gladiator {
   crowns?: number;      // 화관(주최자 만족 승리) 수
   draws?: number;       // 무승부(스탄테스 미시) 수
   tiroUpset?: boolean;  // 티로일 때 승수 10 이상 베테라누스를 1대1로 꺾음
-  scaeva?: boolean;     // 왼손잡이 (타고남): 상대 방패의 첫 타격 감소 절반
+  scaeva?: boolean;     // 왼손잡이 (타고남, 10%): 반대쪽에서 들어오니 상대가 방패로 막기 어렵다 — 막을 확률 절반. 상대도 왼손잡이면 서로 익숙해 효과 없음
   rudisRefused?: number; // 루디스를 거절한 횟수 (플람마)
   typesWon?: GType[];   // 승리를 거둔 유형들 (유형 전환 별칭)
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
@@ -98,6 +98,9 @@ export interface BattleEvent {
   charge?: boolean;       // 달려들며 공격(돌진)
   crit?: boolean;         // 치명타
   open?: boolean;         // 빈틈 강타 (헛디딘 상대를 침)
+  leg?: boolean;          // 다리를 노려 걸음을 묶음
+  parried?: boolean;      // 무기로 받아넘김
+  netMiss?: boolean;      // 그물을 던졌으나 빗나감 (그물을 잃는다)
   downed?: boolean;
   skill?: string;         // 발동한 기술 id (kind 'skill', 또는 공격에 실린 기술)
 }

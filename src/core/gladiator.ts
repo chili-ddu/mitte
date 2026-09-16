@@ -75,13 +75,13 @@ export function label(g: Gladiator): string {
 }
 
 // 전력 점수: 계약 난이도(상대가 나보다 강한가)를 재는 대략치. 능력치 + 서열 + 기술 수. 전투 규칙 자체는 아니다
-// 전력(전투력): 거울 대결 600판으로 잰 가중치 — 공 1 = 4, 방 1 = 4.5, HP 1 = 0.38, 속도 1 = 2.2. 기술은 잰 값(SKILL_WORTH). 계급·승수는 전투에 영향이 없어 넣지 않는다. 피로는 무료 1점을 넘긴 만큼 공·방 −1 → −8.5/점
+// 전력(전투력): 거울 대결로 잰 가중치 — 공 1 = 4.5, 방 1 = 3, HP 1 = 0.44, 속도 1 = 1.35. 2026-09-17 재측정: 거울 대결로 잰 승률 이득이 HP+10 11.5%p · 공+1 11.8%p · 방+1 8.1%p · 속+1 3.6%p 였다 — 방패가 첫 타만 막던 시절에 잰 옛 값(방 4.5·속 2.2)은 방어와 속도를 과대평가하고 있었다. 비율은 측정값 그대로 두되 전체를 1.12배 해서 평균 전력을 옛 저울(135)에 맞춘다 — 등급 상한 160/200 과 값 기준선이 절대 수치를 쓰기 때문. 기술은 잰 값(SKILL_WORTH). 계급·승수는 전투에 영향이 없어 넣지 않는다. 피로는 무료 1점을 넘긴 만큼 공·방 −1 → −8.5/점
 // 이번 철의 몸 상태: 값과 말. |f| 가 tell 을 넘어야 드러난다 (미지근한 날은 아무 말도 하지 않는다)
 export const formMod = (g: Gladiator) => { const f = g.form ?? 0; return { atk: Math.round(f * CONFIG.form.atk), def: Math.round(f * CONFIG.form.def) }; };
 export const formLabel = (g: Gladiator): '가벼움' | '무거움' | null => { const f = g.form ?? 0; return f >= CONFIG.form.tell ? '가벼움' : f <= -CONFIG.form.tell ? '무거움' : null; };
 export const formTip = (g: Gladiator) => { const m = formMod(g), l = formLabel(g); return `이번 철 몸 상태: ${l === '가벼움' ? '가볍다' : l === '무거움' ? '무겁다' : '보통'} — 공 ${m.atk >= 0 ? '+' : ''}${m.atk} · 방 ${m.def >= 0 ? '+' : ''}${m.def}. 철마다 다시 정해진다`; };
 export function powerOf(g: Gladiator): number {
   const b = g.base; const skills = (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
-  return b.hp * 0.38 + b.atk * 4 + b.def * 4.5 + b.spd * 2.2 + skills - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5;
+  return b.hp * 0.44 + b.atk * 4.5 + b.def * 3 + b.spd * 1.35 + skills + (CONFIG.typePower[g.type] ?? 0) - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5; // 유형 보정: 같은 전력이면 실제로 호각이도록
 }
 export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);

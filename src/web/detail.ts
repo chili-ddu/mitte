@@ -3,6 +3,7 @@ import { S, myInk, myLight } from './state.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
 import { buy, canBuy, cellOf, cellQuality, heal, healCostOf, inBed, leavePalus, mentoredBy, moveToCell, occupantOf, palusOf, priceOf, recordVsMe, release, renewContract, renewCost, rivalOf, rivalStar, rosterCap, sell, skillTrainable, trainGain, upgrade, upgradeCost } from '../core/game.js';
+import { equipHandsKo } from '../core/equipment.js';
 import { SKILL_BY_ID, SKILL_NAME, declineSkill, isPrimusPalus, learnSkill, masteryBonus, procChance, skillSlots, skillsOf, type SkillId } from '../core/skills.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { sfx } from './sound.js';
@@ -58,7 +59,7 @@ export function skillOfferRows(g: Gladiator, after: () => void = render, opts: {
     return row; });
 }
 function epithetBadges(g: Gladiator, withSkills = true): Node[] {
-  const sc = g.scaeva ? [h('span', { class: 'badge scaeva', title: '왼손잡이(스카이바): 타고난 특성. 상대 방패의 첫 타격 감소를 절반으로 만든다 (비문에 따로 표기될 만큼 귀했다)' }, '왼손잡이')] : [];
+  const sc = g.scaeva ? [h('span', { class: 'badge scaeva', title: '왼손잡이(스카이바): 타고난 특성(10명에 1명). 반대쪽에서 들어오니 상대가 방패로 막을 확률이 절반이 된다. 상대도 왼손잡이면 서로 익숙해 효과가 없다' }, '왼손잡이')] : [];
   return [...sc, ...(withSkills ? skillBadges(g) : []), ...(g.epithets ?? []).map(id => { const e = EPITHET_BY_ID[id as EpithetId]; return e ? h('span', { class: 'badge epithet', title: `${e.latin} · ${e.cond} → ${e.effect}${e.attested ? ' (실제 기록)' : ''}` }, `'${e.name}'`) : null; }).filter((n): n is HTMLElement => !!n)];
 }
 export function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boolean; other?: boolean; dis?: boolean; onclick?: () => void; tag?: Node | null } = {}) {
@@ -198,7 +199,7 @@ export function detailPage(): Node {
   const figure = portrait(g, 116, false, undefined, 170); figure.classList.add('big'); /* 초상 크기는 여기(인라인)가 정한다 — 폭 116(오른쪽에 기술 칩 3개가 든다), 높이 170(인물은 높이 기준으로 크게) */ if (!again) for (const e of portraits) if (e.c === figure) { e.enter = performance.now(); } // 큰 초상: 왼쪽에서 발소리를 내며 걸어 들어온다
   const status = d.kind === 'market' ? (g.rank === 'tiro' ? '티로' : '베테라누스') : g.status === 'doctor' ? '독토르' : g.status === 'rudiarius' ? '자유민' : g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스';
   const dskills = h('div', { class: 'gskills dskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0'))); // 편성 타일처럼 초상 오른쪽에 기술 칩과 빈 자리
-  const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g, false)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
+  const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, h('div', {}, equipHandsKo(g.type, g.scaeva)), `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g, false)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
   S.gladSel = g.id; S.marketSel = d.kind === 'market' ? g.id : S.marketSel;
   const { mid, side } = detailRight(g, d.kind);
   const page = h('div', { class: `detailpage${again || S.detailSwipe ? ' still' : ''}` }, left, h('div', { class: 'dright' }, mid), h('div', { class: 'dright side' }, side),

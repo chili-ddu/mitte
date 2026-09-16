@@ -12,7 +12,7 @@ test('새 게임은 시드대로 재현된다 (골든)', () => {
   assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.371);
   assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.578, -0.467]);
   assert.equal(st.contracts.length, 4);
-  assert.equal(score(st), 28165);
+  assert.equal(score(st), 28340); // 2026-09-17 전력 가중치 재측정으로 점수(검투사 값 포함)가 조금 올랐다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 

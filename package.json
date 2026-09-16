@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "deploy": "bash scripts/deploy.sh",
     "curve": "tsx src/cli/curve.ts",
-    "test": "node --import tsx --test src/core/*.test.ts"
+    "test": "node --import tsx --test src/core/*.test.ts",
+    "matrix": "tsx src/cli/matrix.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
