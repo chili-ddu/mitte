@@ -206,7 +206,7 @@ export function renderBattle() {
     ...r.team.map(miniSq), h('span', { class: 'vs-mini' }, 'vs'), ...r.contract.enemy.map(miniSq)); // 접힌 뒤엔 유형 아이콘 vs 유형 아이콘 줄. 누르면 편성이 내려온다
   const foldLineup = () => { lineup.classList.add('folded'); lineupTab.classList.add('show'); };
   const wrap = h('div', { class: 'panel battle' }, // 헤더 아래 장면 영역을 채운다 (헤더는 그대로). 편성(VS) 블록은 경기장 위에 겹쳐 띄웠다가 잠시 뒤 위로 접힌다
-    h('div', { class: 'stage' }, canvas, h('div', { class: 'btitle' }, `${r.contract.venue} — ${HOST_KO[r.contract.host]}`), lineup, lineupTab,
+    h('div', { class: 'stage' }, canvas, lineup, lineupTab,
       legendShown ? null : h('div', { class: 'legend' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')),
       h('div', { class: 'actions' }, skip)));
   app.append(headerEl(), wrap); app.classList.add('land', 'battle'); window.scrollTo(0, 0); // 전투도 같은 가로 무대 안: 위 헤더는 그대로, 아래는 경기장이 채운다 (하단 바 없음)

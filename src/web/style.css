@@ -31,7 +31,6 @@ input, textarea { user-select:text; -webkit-user-select:text; }
 #app.land.battle > .panel.battle { grid-area:scene; margin:0; min-height:0; position:relative; overflow:hidden; border-radius:6px; padding:0; }
 #app.land.battle > .panel.battle .stage { position:absolute; inset:0; }
 #app.land.battle > .panel.battle .stage canvas { display:block; width:100%; height:100%; }
-#app.land.battle > .panel.battle .btitle { position:absolute; left:10px; top:6px; z-index:2; font-size:12px; font-weight:700; color:var(--ink); background:rgba(243,234,208,.75); padding:1px 8px; border-radius:4px; pointer-events:none; }
 #app.land.battle > .panel.battle .overlay-lineup { top:30px; }
 /* 결과·정산·종료: 헤더 · 스크롤되는 본문 · 아래 바 */
 #app.land.page { grid-template-rows:34px 1fr 44px; grid-template-areas:"head" "scene" "bar"; }
