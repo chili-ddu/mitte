@@ -6,13 +6,13 @@ import { type GType, type Gladiator, type HostKind } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
 import { ARENA } from '../core/battle.js';
 import { setCrowd, sfx, startCrowd, stopCrowd } from './sound.js';
-import { fansOf } from '../core/gladiator.js';
+import { fansOf, formLabel } from '../core/gladiator.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
-import { recordVsMe, refuseRudis, rivalOf } from '../core/game.js';
+import { recordVsMe, refuseRudis, rivalOf, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
-import { ask, h, sq } from './dom.js';
+import { ask, h, sq, eun, ga } from './dom.js';
 import { DEBUG, app } from './main.js';
 import { TYPE_COLOR, glyphSvg, portrait } from './portrait.js';
 import { headerEl } from './header.js';
@@ -230,6 +230,7 @@ export function renderBattle() {
   const boundUntil: Record<number, number> = {};
   const clips: Record<number, { clip: ClipName; start: number }> = Object.fromEntries(units.map(u => [u.g.id, { clip: 'guard', start: -9 }]));
   const play = (id: number, clip: ClipName, at: number) => { clips[id] = { clip, start: at }; };
+  const hitDelayOf = (combo?: boolean) => combo ? 0.22 : 0.26; // 공격은 예비동작을 눈으로 읽은 뒤 꽂히게 한다
   let flash: { id: number; t: number; text: string; color: string }[] = [];
   let nets: { from: number; to: number; start: number; dur: number }[] = [];
   const netAway: Record<number, boolean> = {};
@@ -237,6 +238,8 @@ export function renderBattle() {
   const phaseOf: Record<number, number> = {};
   const leapUntil: Record<number, number> = {};
   const jolt: Record<number, { amp: number; until: number }> = {};
+  const recoil: Record<number, { start: number; dur: number; dir: 1 | -1; dist: number }> = {};
+  let shakeStart = -1, shakeUntil = -1, shakeAmp = 0;
   let slowUntil = -1;
   let zoomAt: { x: number; y: number } | null = null; let zoomStart = -1;
   type FxKind = 'slash' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
@@ -277,12 +280,12 @@ export function renderBattle() {
   const speedOf: Record<number, number> = {}; const prevPos: Record<number, { x: number; y: number }> = {};
 
   const frames = r.frames; let fi = 0;
-  function posAt(ct: number): Record<number, { x: number; y: number; hp: number }> {
+  function posAt(ct: number): Record<number, { x: number; y: number; hp: number; sta: number }> {
     while (fi < frames.length - 2 && frames[fi + 1].t <= ct) fi++;
     const a = frames[fi], b = frames[Math.min(fi + 1, frames.length - 1)];
     const k = b.t > a.t ? Math.max(0, Math.min(1, (ct - a.t) / (b.t - a.t))) : 0;
-    const out: Record<number, { x: number; y: number; hp: number }> = {};
-    a.u.forEach((ua, idx) => { const ub = b.u[idx]; out[ua[0]] = { x: sx(ua[1] + (ub[1] - ua[1]) * k), y: sy(ua[2] + (ub[2] - ua[2]) * k), hp: ua[3] }; });
+    const out: Record<number, { x: number; y: number; hp: number; sta: number }> = {};
+    a.u.forEach((ua, idx) => { const ub = b.u[idx]; out[ua[0]] = { x: sx(ua[1] + (ub[1] - ua[1]) * k), y: sy(ua[2] + (ub[2] - ua[2]) * k), hp: ua[3], sta: ua[4] ?? 100 }; });
     return out;
   }
 
@@ -297,7 +300,7 @@ export function renderBattle() {
       const pp = posAt(ct);
       zoomAt = { x: (pp[e.actor].x + pp[e.target!].x) / 2, y: (pp[e.actor].y + pp[e.target!].y) / 2 - 10 };
       zoomStart = ct; armedEi = k;
-      const hitDelay = (e.combo ? 0.12 : 0.2) + (e.net ? 0.55 : 0);
+      const hitDelay = hitDelayOf(e.combo) + (e.net ? 0.55 : 0);
       const isLast = !r.events.slice(k + 1).some(x => x.kind === 'attack' && x.downed); // 마지막으로 쓰러지는 타격인가
       holdUntil = e.t + hitDelay + (isLast ? 0.95 : 0.35); // 마지막만 눕는 장면까지, 중간은 짧게
       slowUntil = holdUntil;
@@ -336,7 +339,7 @@ export function renderBattle() {
       if (e.skill === 'riposte') flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); shout('우와아!', p0.x); }
-      const hitDelay = e.combo ? 0.12 : 0.2;
+      const hitDelay = hitDelayOf(e.combo);
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
         play(aid, 'net_throw', ct); netAway[aid] = true;
@@ -357,6 +360,8 @@ export function renderBattle() {
         const amp = e.downed ? 7 : e.crit ? 9 : heavy ? 5 : 3; // 치명타는 흔들림 최대
         jolt[tid] = { amp, until: ct + (e.crit ? 0.32 : 0.22) }; jolt[aid] = { amp: amp * 0.6, until: ct + 0.16 };
         const pt = posAt(ct)[tid]; const pa = posAt(ct)[aid];
+        recoil[tid] = { start: ct, dur: e.downed ? 0.34 : heavy ? 0.28 : 0.22, dir: (pa.x <= pt.x ? 1 : -1) as 1 | -1, dist: e.downed ? 32 : e.crit ? 26 : heavy ? 22 : 14 };
+        { const amp2 = e.downed ? 5.5 : e.crit ? 4.5 : heavy ? 3.2 : 1.8, shaking = ct < shakeUntil; slowUntil = Math.max(slowUntil, ct + (e.downed ? 0.16 : e.crit ? 0.12 : heavy ? 0.095 : 0.07)); shakeStart = ct; shakeUntil = Math.max(shakeUntil, ct + (e.downed ? 0.24 : e.crit ? 0.18 : heavy ? 0.13 : 0.08)); shakeAmp = shaking ? Math.max(shakeAmp, amp2) : amp2; }
         fx.push({ kind: 'slash', x: pt.x, y: pt.y - 6, t: 0.28, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
@@ -411,8 +416,10 @@ export function renderBattle() {
     const cam = camera(ct, lastDtReal);
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#e6d6ad'; ctx.fillRect(0, 0, W, H);
+    const shakeK = ct < shakeUntil ? (shakeUntil - ct) / Math.max(0.001, shakeUntil - shakeStart) : 0;
+    const shakeX = shakeK > 0 ? Math.sin(ct * 120 + frameNo) * shakeAmp * shakeK : 0, shakeY = shakeK > 0 ? Math.cos(ct * 97 + frameNo) * shakeAmp * 0.55 * shakeK : 0;
     ctx.save();
-    ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.cx, -cam.cy);
+    ctx.translate(W / 2 + shakeX, H / 2 + shakeY); ctx.scale(cam.z, cam.z); ctx.translate(-cam.cx, -cam.cy);
     const view = { x0: cam.cx - W / (2 * cam.z), y0: cam.cy - H / (2 * cam.z), x1: cam.cx + W / (2 * cam.z), y1: cam.cy + H / (2 * cam.z) };
     if (tilt < 1) drawArenaWorld(ctx, density, tilt, view, 'lite'); // 인트로: 그 순간의 기울기로 직접 그림 (간략 관중)
     else if (frenzy) { const ph = Math.floor(ct * 7) % 2; ctx.drawImage(ph ? arenaCacheUp : arenaCache, -AOX, ph ? -AOY - 5 : -AOY); } // 열광: 두 판 번갈아 + 들썩
@@ -447,6 +454,8 @@ export function renderBattle() {
     const order = [...units].sort((a, b) => (hp[a.g.id] > 0 ? 1 : 0) - (hp[b.g.id] > 0 ? 1 : 0) || pos[a.g.id].y - pos[b.g.id].y);
     for (const u of order) {
       const id = u.g.id; const p = pos[id]; const isAlive = hp[id] > 0;
+      const rc = recoil[id], rk = rc ? Math.max(0, Math.min(1, (ct - rc.start) / rc.dur)) : 1;
+      const recoilDx = rc && rk < 1 ? rc.dir * Math.sin(rk * Math.PI) * rc.dist * (1 - rk * 0.15) : 0;
       const pv = prevPos[id]; let sp = 0;
       let mdir: 0 | 1 | -1 = 0; // 이동 방향
       if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) { mdir = p.x > pv.x ? 1 : -1; face[id] = mdir; } }
@@ -469,18 +478,22 @@ export function renderBattle() {
       ctx.globalAlpha = (isAlive || (isDeathClip(a.clip) && busy) || inJudge) ? exitAlpha : 0.55;
       const jz = jolt[id] && ct < jolt[id].until ? jolt[id] : null;
       const jx = jz ? Math.sin(ct * 90 + id) * jz.amp * (jz.until - ct) / 0.22 : 0, jy = jz ? Math.cos(ct * 70 + id) * jz.amp * 0.5 * (jz.until - ct) / 0.22 : 0;
+      const winded = isAlive && ((p as { sta?: number }).sta ?? 100) < CONFIG.stamina.windedAt; // 숨이 찬 동안: 어깨를 들썩이며 몸이 조금 내려앉는다
+      const breath = winded ? 1.4 + Math.sin(ct * 5.5 + id) * 1.6 : 0;
       if (a.clip.startsWith('combo') && busy && el > 120 && el < 300) { // 연속 공격: 2타의 잔상 (60ms 전 자세를 흐리게 겹쳐 그린다)
         const gs = clipSkeleton(a.clip, el - 60); ctx.save(); ctx.globalAlpha *= 0.32;
-        drawStickman(ctx, u.g.type, { x: p.x + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); ctx.restore(); }
-      drawStickman(ctx, u.g.type, { x: p.x + jx + lapDx + exitDx, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: isBound && !busy, noNet: !!netAway[id], team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) });
+        drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); ctx.restore(); }
+      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath, scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) });
+      if (winded && !busy) { const bx = p.x + recoilDx + lapDx + exitDx + face[id] * 18, by = p.y - 33 + breath, drift = (ct * 10 + id) % 1; ctx.save(); ctx.globalAlpha = exitAlpha * (0.34 + Math.sin(ct * 5.5 + id) * 0.12); ctx.strokeStyle = '#6e7f9b'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; for (let k = 0; k < 2; k++) { const d = (k * 5 + drift * 3) * face[id]; ctx.beginPath(); ctx.arc(bx + d, by - k * 5, 3 + k * 1.5, face[id] > 0 ? -0.9 : Math.PI - 0.9, face[id] > 0 ? 0.9 : Math.PI + 0.9); ctx.stroke(); } ctx.restore(); } // 숨참: 막대 없이도 지친 검투사를 읽게 하는 얇은 숨결
       if (exitAlpha <= 0) { ctx.globalAlpha = 1; continue; }
       ctx.globalAlpha = exitAlpha; // 퇴장(미시오 생존·승자 퇴장) 중에는 이름표·체력바도 사람과 함께 옮겨 가며 사라진다
-      ctx.fillStyle = TYPE_COLOR[u.g.type]; ctx.beginPath(); ctx.arc(p.x - 22 + lapDx + exitDx, p.y + 40, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = TYPE_COLOR[u.g.type]; ctx.beginPath(); ctx.arc(p.x + recoilDx - 22 + lapDx + exitDx, p.y + 40, 3.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = u.side === 'A' ? '#2c4f9b' : ENEMY; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(u.side === 'A' ? u.g.name : u.g.name.replace('(적)', ''), p.x + 3 + lapDx + exitDx, p.y + 44);
+      ctx.fillText(u.side === 'A' ? u.g.name : u.g.name.replace('(적)', ''), p.x + recoilDx + 3 + lapDx + exitDx, p.y + 44);
       const ratio = Math.max(0, hp[id]) / r.initialHp[id];
-      ctx.fillStyle = '#7a6a4e'; ctx.fillRect(p.x - 17 + lapDx + exitDx, p.y - 56, 34, 4);
-      ctx.fillStyle = ratio > 0.5 ? '#3b7a2c' : ratio > 0.25 ? '#c58a1a' : '#9b2c1c'; ctx.fillRect(p.x - 17 + lapDx + exitDx, p.y - 56, 34 * ratio, 4);
+      ctx.fillStyle = '#7a6a4e'; ctx.fillRect(p.x + recoilDx - 17 + lapDx + exitDx, p.y - 56, 34, 4);
+      ctx.fillStyle = ratio > 0.5 ? '#3b7a2c' : ratio > 0.25 ? '#c58a1a' : '#9b2c1c'; ctx.fillRect(p.x + recoilDx - 17 + lapDx + exitDx, p.y - 56, 34 * ratio, 4);
+      { const sta = (p as { sta?: number }).sta ?? 100; if (isAlive && sta < CONFIG.stamina.windedAt) { const bx = p.x + recoilDx - 17 + lapDx + exitDx, k = sta / CONFIG.stamina.windedAt; ctx.globalAlpha = 0.75; ctx.fillStyle = '#8a7a56'; ctx.fillRect(bx, p.y - 50, 34, 1.5); ctx.fillStyle = '#6e7f9b'; ctx.fillRect(bx, p.y - 50, 34 * k, 1.5); ctx.globalAlpha = 1; } } /* 숨: 지쳤을 때만 체력 막대 밑에 가늘게 (자리만 잡아 둔 표시) */
       ctx.globalAlpha = 1;
     }
     if (palm) { // 종려가지: 주최자석에서 승자에게 포물선으로
@@ -560,10 +573,11 @@ export function renderBattle() {
   const woundOf = (id: number) => !!(r.fates.find(f => f.g.id === id)?.wound || r.enemyFates.find(f => f.g.id === id)?.wound); // 상처로 죽는가 (판정 없이)
   const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
+  const TEMPO = 1.18; // 평상시 재생은 조금 당겨 이동 답답함을 줄이고, 타격 순간만 히트스톱으로 눌러 준다
   let ct = 0, lastReal = performance.now(), done = false, doneAt = 0, lastDtReal = 0.016, frameNo = 0;
   const anim = () => {
     const now = performance.now(); const realRaw = (now - lastReal) / 1000; const real = Math.min(0.05, realRaw); lastReal = now; lastDtReal = real;
-    let dt = real;
+    let dt = real * TEMPO;
     if (intro < INTRO_HOLD + INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
     else if (ct < slowUntil) dt = real * 0.3;
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
@@ -624,6 +638,19 @@ export function renderBattle() {
   const toResult = () => { stopCrowd(); S.phase = 'result'; renderResult(); };
   skip.onclick = () => { if (intro < INTRO_HOLD + INTRO_ZOOM) { intro = INTRO_HOLD + INTRO_ZOOM; return; } toResult(); };
 }
+// 이 경기가 갈린 자리 한 줄. 새 규칙이 아니라 이벤트를 읽어 고른다 — 우연(헛디딤·빈틈·치명타·몸 상태)이 왜 승패가 됐는지 보이게
+function turningPoint(r: FightReport): string | null {
+  const mine = new Set(r.team.map(g => g.id)), last = [...r.events].reverse().find(e => e.kind === 'attack' && e.downed);
+  if (last?.open) { const n = nameOf(r, last.target!); return `${n}${ga(n)} 지쳐 헛디딘 틈이 마지막을 갈랐다.`; }
+  if (last?.crit) return `${nameOf(r, last.actor)}의 깨끗한 일격이 갑주 틈을 찔렀다.`;
+  const stumbles = r.events.filter(e => e.kind === 'stumble');
+  if (stumbles.length) { const ours = stumbles.filter(e => mine.has(e.actor)).length; return ours > stumbles.length - ours ? '먼저 숨이 찬 쪽은 우리였다.' : '상대가 먼저 숨이 찼다.'; }
+  const light = r.team.filter(g => formLabel(g) === '가벼움'), heavy = r.team.filter(g => formLabel(g) === '무거움');
+  const first = r.winner === 'A' ? [light, heavy] : [heavy, light]; // 이겼으면 가벼운 쪽을, 졌으면 무거운 쪽을 먼저 말한다
+  for (const list of first) if (list.length) { const g = list[0]; return `${g.name}${eun(g.name)} 오늘 몸이 ${formLabel(g) === '가벼움' ? '가벼웠다' : '무거웠다'}.`; }
+  return null;
+}
+const nameOf = (r: FightReport, id: number) => [...r.team, ...r.contract.enemy].find(g => g.id === id)?.name.replace('(적)', '') ?? '누군가';
 function renderResult() {
   const r = S.report!;
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
@@ -656,6 +683,7 @@ function renderResult() {
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
   app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
     h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, won ? '승리' : r.winner === 'draw' ? '무승부 (스탄테스 미시)' : '패배', h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.venue} · ${HOST_KO[r.contract.host]} · ${r.duration.toFixed(1)}초${rivalOf(S.st.rivals, r.contract.rivalId) ? ` · ${rivalOf(S.st.rivals, r.contract.rivalId)!.name} (${recordVsMe(rivalOf(S.st.rivals, r.contract.rivalId)!)})` : ''}`), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:8px' }, '전통 짝 대결') : null),
+    (() => { const tp = turningPoint(r); return tp ? h('div', { class: 'hint turning' }, tp) : null; })(), /* 경기가 갈린 자리 (자리만 잡아 둔 표시) */
     h('div', { class: 'rlayout' }, // 왼쪽: 검투사(우리·상대 위아래), 오른쪽: 수지·호감도·전투 기록
       h('div', { class: 'rleft' }, h('h3', {}, '우리 파밀리아'), ...myCards, h('h3', {}, '상대 파밀리아'), ...enemyCards),
       h('div', { class: 'rright' },

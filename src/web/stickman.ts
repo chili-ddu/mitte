@@ -111,13 +111,13 @@ export function lerpSkeleton(a: Skeleton, b: Skeleton, k: number): Skeleton {
 // 클립: 키프레임(자세, 그 자세까지 걸리는 시간 ms). 마지막 자세에서 멈춘다
 export type ClipName = 'yield' | 'plead' | 'attack' | 'stab' | 'stab_secutor' | 'net_trident' | 'net_throw' | 'hit' | 'block' | 'die' | 'die_forward' | 'die_back' | 'die_side' | 'guard' | 'idle' | 'bound' | 'combo_slash' | 'combo_up' | 'combo_sweep' | 'victory' | 'salute' | 'bow' | 'lap' | 'plea' | 'rise' | 'slump';
 const CLIPS: Record<ClipName, { pose: Pose; dur: number }[]> = {
-  attack: [{ pose: 'guard', dur: 0 }, { pose: 'windup', dur: 140 }, { pose: 'attack', dur: 70 }, { pose: 'swing', dur: 70 }, { pose: 'recover', dur: 130 }, { pose: 'guard', dur: 150 }], // 시카 내려찍기
-  stab:         [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 110 }, { pose: 'stab', dur: 60 }, { pose: 'stab_ready', dur: 120 }, { pose: 'guard', dur: 120 }], // 글라디우스
-  stab_secutor: [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 90 }, { pose: 'stab', dur: 50 }, { pose: 'stab_deep', dur: 60 }, { pose: 'stab_ready', dur: 130 }, { pose: 'guard', dur: 120 }], // 추격자: 한 발 더
+  attack: [{ pose: 'guard', dur: 0 }, { pose: 'windup', dur: 165 }, { pose: 'attack', dur: 80 }, { pose: 'swing', dur: 90 }, { pose: 'recover', dur: 120 }, { pose: 'guard', dur: 130 }], // 시카 내려찍기: 준비를 읽히고 타격 자세를 잠깐 남긴다
+  stab:         [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 155 }, { pose: 'stab', dur: 80 }, { pose: 'stab', dur: 55 }, { pose: 'stab_ready', dur: 95 }, { pose: 'guard', dur: 110 }], // 글라디우스: 찌른 순간을 한 박자 붙든다
+  stab_secutor: [{ pose: 'guard', dur: 0 }, { pose: 'stab_ready', dur: 125 }, { pose: 'stab', dur: 70 }, { pose: 'stab_deep', dur: 70 }, { pose: 'stab_deep', dur: 45 }, { pose: 'stab_ready', dur: 105 }, { pose: 'guard', dur: 110 }], // 추격자: 한 발 더 밟은 자세가 보이게
   net_trident:  [{ pose: 'guard', dur: 0 }, { pose: 'net_ready', dur: 130 }, { pose: 'net_throw', dur: 90 }, { pose: 'trident_ready', dur: 110 }, { pose: 'trident_thrust', dur: 70 }, { pose: 'recover', dur: 120 }, { pose: 'guard', dur: 140 }], // (구) 합본
-  combo_slash:  [{ pose: 'stab', dur: 0 }, { pose: 'slash_ready', dur: 130 }, { pose: 'slash', dur: 90 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
-  combo_up:     [{ pose: 'swing', dur: 0 }, { pose: 'up_ready', dur: 130 }, { pose: 'up_swing', dur: 95 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
-  combo_sweep:  [{ pose: 'stab', dur: 0 }, { pose: 'sweep_ready', dur: 130 }, { pose: 'sweep', dur: 95 }, { pose: 'recover', dur: 110 }, { pose: 'guard', dur: 120 }],
+  combo_slash:  [{ pose: 'stab', dur: 0 }, { pose: 'slash_ready', dur: 145 }, { pose: 'slash', dur: 75 }, { pose: 'slash', dur: 45 }, { pose: 'recover', dur: 95 }, { pose: 'guard', dur: 110 }],
+  combo_up:     [{ pose: 'swing', dur: 0 }, { pose: 'up_ready', dur: 145 }, { pose: 'up_swing', dur: 75 }, { pose: 'up_swing', dur: 45 }, { pose: 'recover', dur: 95 }, { pose: 'guard', dur: 110 }],
+  combo_sweep:  [{ pose: 'stab', dur: 0 }, { pose: 'sweep_ready', dur: 145 }, { pose: 'sweep', dur: 75 }, { pose: 'sweep', dur: 45 }, { pose: 'recover', dur: 95 }, { pose: 'guard', dur: 110 }],
   salute:       [{ pose: 'guard', dur: 0 }, { pose: 'salute', dur: 400 }, { pose: 'salute', dur: 1600 }, { pose: 'guard', dur: 500 }, { pose: 'salute', dur: 300 }, { pose: 'salute', dur: 800 }],
   bow:          [{ pose: 'guard', dur: 0 }, { pose: 'bow', dur: 500 }, { pose: 'bow', dur: 1800 }, { pose: 'guard', dur: 600 }, { pose: 'victory', dur: 400 }, { pose: 'victory', dur: 600 }],
   lap:          [{ pose: 'guard', dur: 0 }, { pose: 'victory', dur: 250 }, { pose: 'victory', dur: 3500 }], // 이동은 화면 쪽에서 (달리며 팔 든 자세는 runSkeleton 로 대체)
