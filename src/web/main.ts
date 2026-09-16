@@ -1,3 +1,4 @@
+import { S } from './state.js';
 import { facilityUpkeep, bedPatient, inBed, putInBed, doSkillTrain, skillTrainable, newGame, available, canFulfill, buy, canBuy, sell, heal, train, fight, fightExpense, refuseAll, isImportant, difficultyOf, upkeepOf, doctorFor, trainGain, mentoredBy, hireDoctor, backToArena, release, rosterCap, healCostOf, trainCap, injurySeasons, upgrade, upgradeCost, cellQuality, gymBonus, swapCells, moveToCell, occupantOf, cellOf, holdEvents, EVENT_KO, EVENT_KEYS, doShow, doRecover, ACTION_KO, palusTrainee, palusOf, putAtPalus, leavePalus, palusTrainees, ORIGIN_KO, renewCost, renewContract, refuseRudis, retrain, rivalOf, rivalStar, recordVsMe, priceOf, mortality, canRetire, retire, successorOptions, succeed, type Action, type SeasonEvents, type Facility, endSeason, validTeam, score, seasonName, SEASON_KO, serialize, deserialize, type GameState, type FightReport } from '../core/game.js';
 import { label, sellPrice, rentFee, fansOf, powerOf, TYPE_KO, LINEAGE_KO } from '../core/gladiator.js';
 import { CLAUSES, clausesOf, acceptedOf, setClause } from '../core/clauses.js';
@@ -59,57 +60,57 @@ const SAVE_KEY = 'lanista-save';
 const DEBUG = /[?&]debug/.test(location.search); // 테스트용 버튼(건너뛰기·결과 보기) 표시
 if (DEBUG && /[?&]proc/.test(location.search)) setForceProc(true); // ?debug&proc: 기술이 조건만 맞으면 반드시 발동 (연출 확인용)
 function loadSave(): GameState | null { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? deserialize(JSON.parse(raw)) : null; } catch { return null; } }
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(st))); } catch { /* 저장 불가 환경 */ } }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(S.st))); } catch { /* 저장 불가 환경 */ } }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
 const saved = loadSave();
-let st: GameState = saved ?? newGame(Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000));
-let resumed = !!saved;
-let showIntro = !saved && localStorage.getItem('lanista-intro') !== '1';
-let coachOff = localStorage.getItem('lanista-coach') === '1'; // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
+S.st = saved ?? newGame(Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000));
+S.resumed = !!saved;
+S.showIntro = !saved && localStorage.getItem('lanista-intro') !== '1';
+S.coachOff = localStorage.getItem('lanista-coach') === '1'; // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
 // 첫 시즌 안내: 지금 상태에서 다음에 할 일을 한 줄로. 화면 위쪽에 손가락 표시와 함께
 function coach(): Node | null {
-  if (coachOff || st.season > 1) return null;
-  const assigned = Object.values(assign).reduce((a, ids) => a + ids.length, 0);
+  if (S.coachOff || S.st.season > 1) return null;
+  const assigned = Object.values(S.assign).reduce((a, ids) => a + ids.length, 0);
   let text = '', arrow: 'tabs' | 'plan' | 'go' | 'none' = 'none';
-  if (phase === 'manage' && cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
-  else if (phase === 'manage' && view === 'market') { text = st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = st.roster.length < 3 ? 'none' : 'tabs'; }
-  else if (phase === 'manage') { if (st.roster.length < 3 && st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '아래 \'편성\' 을 눌러 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
-  else if (phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '아래 \'전투\' 를 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
-  else if (phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
+  if (S.phase === 'manage' && S.cellsOpen) text = '방을 누르면 검투사를 옮기고 숙소 질을 올릴 수 있습니다. 집 버튼으로 돌아갑니다.';
+  else if (S.phase === 'manage' && S.view === 'market') { text = S.st.roster.length < 3 ? '판매대의 검투사를 누르고 구매하세요. 계약 규모에 맞춰 최소 3명이 편합니다.' : '충분합니다. 위 팻말에서 정문으로 돌아가 편성으로 가세요.'; arrow = S.st.roster.length < 3 ? 'none' : 'tabs'; }
+  else if (S.phase === 'manage') { if (S.st.roster.length < 3 && S.st.market.length) { text = '검투사 2명으로 시작합니다. 위 팻말의 시장에서 한 명 더 사 두면 계약을 더 받을 수 있습니다.'; arrow = 'tabs'; } else { text = '아래 \'편성\' 을 눌러 계약에 검투사를 배정합니다. 검투사는 시즌당 한 번만 출전합니다.'; arrow = 'plan'; } }
+  else if (S.phase === 'plan') { if (!assigned) { text = '계약 카드를 고른 뒤 아래 검투사를 눌러 배정합니다. 주최자 배지를 길게 누르면 상금·미시오 조건이 보입니다. 배정 안 된 검투사는 훈련·시범을 고르세요.'; } else { text = '아래 \'전투\' 를 누르면 경기가 시작됩니다. 지더라도 관중이 미테!를 외치면 삽니다. 판정 때 화면을 두드려 보세요.'; arrow = 'go'; } }
+  else if (S.phase === 'summary') text = '대여료는 승패와 무관하게 받습니다. 다음 시즌엔 왼쪽 아래 집 버튼(켈라)과 의무실·훈련소의 시설도 살펴보세요.';
   if (!text) return null;
-  return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
+  return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { S.coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
 } // 첫 실행: 제목 화면 (관중 함성과 함께)
-let phase: 'manage' | 'plan' | 'battle' | 'result' | 'summary' | 'over' = 'manage';
+S.phase = 'manage';
 // 편성: 계약별 배정, 미배정 검투사의 훈련 선택
-let assign: Record<number, number[]> = {};            // contractId → gladiator ids
-let trainPlan: Record<number, Action> = (() => { try { return JSON.parse(localStorage.getItem('lanista-plan') ?? '{}'); } catch { return {}; } })(); // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
-const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringify(trainPlan)); } catch {} };
-const setPlan = (g: Gladiator, a: Action) => { trainPlan[g.id] = a; savePlan(); };
-const planOf = (g: Gladiator): Action => trainPlan[g.id] ?? (g.injured ? 'recover' : 'rest'); // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
-const rollTraining = (g: Gladiator): 'atk' | 'def' | 'skill' => { const pool: ('atk' | 'def' | 'skill')[] = ['atk', 'def']; if (skillTrainable(st, g)) pool.push('skill'); return pool[Math.floor(st.rng.next() * pool.length)]; }; // 팔루스에 선 검투사가 단련할 것: 공·방, 기술을 배울 조건이 되면 기술도 후보
-let planSel: number | null = null;                    // 편성 중 선택된 계약 id
-let queue: { c: Contract; team: Gladiator[] }[] = [];
-let skipped: Contract[] = []; // 앞 경기 부상·사망으로 무산된 계약 // 시즌 진행 중 남은 경기
-let marketSel: number | null = null;                  // 시장에서 선택한 검투사 id
-type View = 'medic' | 'yard' | 'ludus' | 'market' | 'grave'; // 관리 단계의 장소: 의무실 · 훈련소 · 정문(루두스 문 앞) · 시장. 좁은 화면이라 루두스를 세 장면으로 나눈다
+S.assign = {};            // contractId → gladiator ids
+S.trainPlan = (() => { try { return JSON.parse(localStorage.getItem('lanista-plan') ?? '{}'); } catch { return {}; } })(); // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
+const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringify(S.trainPlan)); } catch {} };
+const setPlan = (g: Gladiator, a: Action) => { S.trainPlan[g.id] = a; savePlan(); };
+const planOf = (g: Gladiator): Action => S.trainPlan[g.id] ?? (g.injured ? 'recover' : 'rest'); // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
+const rollTraining = (g: Gladiator): 'atk' | 'def' | 'skill' => { const pool: ('atk' | 'def' | 'skill')[] = ['atk', 'def']; if (skillTrainable(S.st, g)) pool.push('skill'); return pool[Math.floor(S.st.rng.next() * pool.length)]; }; // 팔루스에 선 검투사가 단련할 것: 공·방, 기술을 배울 조건이 되면 기술도 후보
+S.planSel = null;                    // 편성 중 선택된 계약 id
+S.queue = [];
+S.skipped = []; // 앞 경기 부상·사망으로 무산된 계약 // 시즌 진행 중 남은 경기
+S.marketSel = null;                  // 시장에서 선택한 검투사 id
+export type View = 'medic' | 'yard' | 'ludus' | 'market' | 'grave'; // 관리 단계의 장소: 의무실 · 훈련소 · 정문(루두스 문 앞) · 시장. 좁은 화면이라 루두스를 세 장면으로 나눈다
 const VIEW_KO: Record<View, string> = { medic: '의무실', yard: '훈련소', ludus: '포룸', market: '시장', grave: '묘지' }; // ludus = 포룸(광장): 정문 밖 광장에서 계약·지원자·소식
-let view: View = 'ludus';
-let travel: { to: View; from: View; fromX: number; start: number } | null = null; // 이동 전환 중
-let seasonReports: FightReport[] = [];
-let seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: 'atk' | 'def' }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null = null;
-let report: FightReport | null = null;
-let notice = '';
-let sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null = null; // news·market·medic·yard·applicants: 대시보드를 대신하는 서랍 // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
-let gladSel: number | null = null; // 검투사 시트에 보이는 검투사 id
-let detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
-let cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
-let cellSel = 0; // 켈라에서 고른 칸
-let cellSide: 'glad' | 'empty' | null = null; // 가로 배치: 켈라가 열려 있을 때 오른쪽 칸에 무엇을 보일지 (검투사 시트 / 빈 방 / 안내)
-let cellPop: { cx: number; cy: number; fresh: boolean } | null = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
-let cellsOpen = false, cellsP = 0;
-let bedPick: number | null = null; // 빈 침상을 눌러 켈라에서 부상자를 고르는 중 (침상 번호)
-let palusMode = false; // 팔루스 배정 모드: 훈련소에서 기둥을 누르면 켈라가 열리고, 방을 누르면 빈 팔루스에 세우고 다시 누르면 내려온다 (자리는 고르지 않는다)
-let offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
+S.view = 'ludus';
+S.travel = null; // 이동 전환 중
+S.seasonReports = [];
+S.seasonSummary = null;
+S.report = null;
+S.notice = '';
+S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신하는 서랍 // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
+S.gladSel = null; // 검투사 시트에 보이는 검투사 id
+S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
+S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
+S.cellSel = 0; // 켈라에서 고른 칸
+S.cellSide = null; // 가로 배치: 켈라가 열려 있을 때 오른쪽 칸에 무엇을 보일지 (검투사 시트 / 빈 방 / 안내)
+S.cellPop = null; // fresh: 처음 열릴 때만 펼침 애니메이션 // 켈라 팝오버: 누른 방의 화면 좌표(중심)에서 펼쳐진다
+S.cellsOpen = false; S.cellsP = 0;
+S.bedPick = null; // 빈 침상을 눌러 켈라에서 부상자를 고르는 중 (침상 번호)
+S.palusMode = false; // 팔루스 배정 모드: 훈련소에서 기둥을 누르면 켈라가 열리고, 방을 누르면 빈 팔루스에 세우고 다시 누르면 내려온다 (자리는 고르지 않는다)
+S.offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
 const hintSpan = (t: string) => h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, t);
 // 확인 창: 브라우저 confirm/alert 대신 게임 안 모달 (폰에서도 같은 모양, 화면 재구성과 무관하게 body 에 붙는다)
 function ask(msg: string, opts: { ok?: string; cancel?: boolean; title?: string } = {}): Promise<boolean> {
@@ -126,17 +127,17 @@ const tell = (msg: string, title?: string) => ask(msg, { cancel: false, title })
 const helpBtn = (title: string, body: string) => { const b = h('button', { class: 'qmark', title: '설명', onclick: (ev: Event) => { ev.stopPropagation(); void tell(body, title); } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>'; return b; }; // 인라인 SVG (Lucide circle-help 형태), 파일 요청 없음
 // 커스텀 드롭다운: 네이티브 select 는 펼친 목록을 꾸밀 수 없어서 버튼 + 목록으로 만든다. 열림 상태는 key 로 기억 (render 가 다시 그려도 유지)
-let ddOpen: string | null = null;
-document.addEventListener('pointerdown', (ev) => { if (ddOpen && !(ev.target as Element).closest?.('.dd')) { ddOpen = null; document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open')); } }, { capture: true });
+S.ddOpen = null;
+document.addEventListener('pointerdown', (ev) => { if (S.ddOpen && !(ev.target as Element).closest?.('.dd')) { S.ddOpen = null; document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open')); } }, { capture: true });
 function dropdown(key: string, options: { value: string; label: string }[], value: string, onPick: (v: string) => void, placeholder = ''): Node {
   const cur = options.find(o => o.value === value);
-  const wrap = h('div', { class: `dd${ddOpen === key ? ' open' : ''}` });
-  const btn = h('button', { class: 'ddbtn', onclick: (ev: Event) => { ev.stopPropagation(); ddOpen = ddOpen === key ? null : key; wrap.classList.toggle('open', ddOpen === key); } }, h('span', { class: 'ddarrow' }), cur ? cur.label : placeholder); // 화살표는 글자 앞
-  const list = h('div', { class: 'ddlist' }, ...options.map(o => h('div', { class: `ddopt${o.value === value ? ' on' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); ddOpen = null; onPick(o.value); } }, o.label)));
+  const wrap = h('div', { class: `dd${S.ddOpen === key ? ' open' : ''}` });
+  const btn = h('button', { class: 'ddbtn', onclick: (ev: Event) => { ev.stopPropagation(); S.ddOpen = S.ddOpen === key ? null : key; wrap.classList.toggle('open', S.ddOpen === key); } }, h('span', { class: 'ddarrow' }), cur ? cur.label : placeholder); // 화살표는 글자 앞
+  const list = h('div', { class: 'ddlist' }, ...options.map(o => h('div', { class: `ddopt${o.value === value ? ' on' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); S.ddOpen = null; onPick(o.value); } }, o.label)));
   wrap.append(btn, list); return wrap;
 }
 // 헤더의 설정(톱니바퀴) 버튼: 메뉴 시트 (인라인 SVG, Lucide settings 형태)
-function gearBtn(): Node { const b = h('button', { class: `gear${sheet === 'menu' ? ' on' : ''}`, title: '메뉴', onclick: () => { sheet = sheet === 'menu' ? null : 'menu'; render(); } });
+function gearBtn(): Node { const b = h('button', { class: `gear${S.sheet === 'menu' ? ' on' : ''}`, title: '메뉴', onclick: () => { S.sheet = S.sheet === 'menu' ? null : 'menu'; render(); } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
   return b; }
 // 계절 그림 (로마 사계절 도상: 봄 꽃가지 · 여름 밀 이삭 · 가을 포도송이 · 겨울 헐벗은 가지). 낙서풍 선 그림, 헤더의 계절 글자를 대신한다
@@ -160,7 +161,7 @@ function foldPanel(key: string, title: string, hint: string, ...kids: (Node | nu
   d.addEventListener('toggle', () => localStorage.setItem(`lanista-open-${key}`, d.open ? '1' : '0'));
   return d;
 }
-let eventPlan: SeasonEvents = { cena: false, pompa: false, votum: false, edicta: false, guests: false }; // 편성 화면에서 고른 시즌 행사 // 대시보드 맨 위에 한 번 보여줄 알림
+S.eventPlan = { cena: false, pompa: false, votum: false, edicta: false, guests: false }; // 편성 화면에서 고른 시즌 행사 // 대시보드 맨 위에 한 번 보여줄 알림
 
 const h = (tag: string, attrs: Record<string, any> = {}, ...kids: (Node | string | null | undefined)[]) => {
   const el = document.createElement(tag);
@@ -169,28 +170,28 @@ const h = (tag: string, attrs: Record<string, any> = {}, ...kids: (Node | string
   return el;
 };
 // ── 말풍선(툴팁): data-tip 이 있는 요소를 폰에서 길게 누르거나(450ms), 버튼이 아닌 요소는 탭하면, PC 에서는 마우스를 올리면 보인다
-let tipEl: HTMLElement | null = null; let tipFor: Element | null = null; let tipTimer = 0; let tipSuppressClick = false;
+S.tipEl = null; S.tipFor = null; S.tipTimer = 0; S.tipSuppressClick = false;
 function showTip(target: Element) {
   const text = target.getAttribute('data-tip'); if (!text) return;
-  hideTip(); tipFor = target; const el = h('div', { class: 'tip' }, ...text.split('\n').map(l => h('div', {}, l))); document.body.append(el); tipEl = el;
+  hideTip(); S.tipFor = target; const el = h('div', { class: 'tip' }, ...text.split('\n').map(l => h('div', {}, l))); document.body.append(el); S.tipEl = el;
   const r = target.getBoundingClientRect(); el.style.maxWidth = Math.min(280, innerWidth - 16) + 'px'; const w = el.offsetWidth;
   const left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)); el.style.left = left + 'px';
   const hd = document.querySelector('#app.land > header')?.getBoundingClientRect(); const above = r.top - el.offsetHeight - 8 > (hd ? hd.bottom : 0) + 4; el.style.top = (above ? r.top - el.offsetHeight - 8 : r.bottom + 8) + 'px'; el.classList.toggle('below', !above); // 위에 자리가 있어도 헤더를 가리면 아래로 (헤더 밑 토글 줄)
   el.style.setProperty('--ax', (r.left + r.width / 2 - left) + 'px');
 }
-function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } tipFor = null; }
+function hideTip() { if (S.tipEl) { S.tipEl.remove(); S.tipEl = null; } S.tipFor = null; }
 const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
 const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile');
 const isChip = (el: Element) => el.matches('.badge, .eff, .tile, .tierchip, .host, .rank, .stars') && !el.closest('button');
-document.addEventListener('pointerdown', (ev) => { hideTip(); clearTimeout(tipTimer); const t = tipTarget(ev); if (!t) return;
+document.addEventListener('pointerdown', (ev) => { hideTip(); clearTimeout(S.tipTimer); const t = tipTarget(ev); if (!t) return;
   if (ev.pointerType === 'mouse') return; // 마우스는 호버로
-  tipTimer = window.setTimeout(() => { showTip(t); tipSuppressClick = true; }, 450); }, { capture: true });
-document.addEventListener('pointerup', () => clearTimeout(tipTimer), { capture: true });
-document.addEventListener('pointercancel', () => clearTimeout(tipTimer), { capture: true });
-document.addEventListener('click', (ev) => { if (tipSuppressClick) { tipSuppressClick = false; ev.stopPropagation(); ev.preventDefault(); return; } // 길게 눌러 말풍선을 봤으면 그 클릭은 동작하지 않는다
+  S.tipTimer = window.setTimeout(() => { showTip(t); S.tipSuppressClick = true; }, 450); }, { capture: true });
+document.addEventListener('pointerup', () => clearTimeout(S.tipTimer), { capture: true });
+document.addEventListener('pointercancel', () => clearTimeout(S.tipTimer), { capture: true });
+document.addEventListener('click', (ev) => { if (S.tipSuppressClick) { S.tipSuppressClick = false; ev.stopPropagation(); ev.preventDefault(); return; } // 길게 눌러 말풍선을 봤으면 그 클릭은 동작하지 않는다
   const t = tipTarget(ev); if (t && (!isAction(t) || (isChip(t) && !t.closest('.card.contract.detail')))) { showTip(t); ev.stopPropagation(); } }, { capture: true }); // 칩(배지·효과 칩·타일)은 카드 안에 있어도 탭하면 말풍선 — 단 계약 광고 카드에서는 탭이 카드를 여는 게 우선 (설명은 길게 누르기·호버)
 // 마우스: 같은 대상 안에서 자식(아이콘·배지) 사이를 오가도 말풍선을 다시 만들지 않고, 대상 밖으로 나갈 때만 지운다 (깜박임 방지)
-document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t && t !== tipFor) showTip(t); });
+document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t && t !== S.tipFor) showTip(t); });
 document.addEventListener('mouseout', (ev) => { const t = tipTarget(ev); if (!t) return; const to = (ev as MouseEvent).relatedTarget as Element | null; if (to && t.contains(to)) return; hideTip(); });
 addEventListener('scroll', hideTip, { capture: true });
 const sq = (t: GType) => h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, glyphSvg(t));
@@ -228,9 +229,9 @@ function drawPortrait(e: { c: HTMLCanvasElement; g: Gladiator; pose: 'idle' | 's
     ctx.strokeStyle = '#f3ead0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx - 4.5, by - 3); ctx.lineTo(bx + 4.5, by + 3); ctx.moveTo(bx - 4.5, by + 3); ctx.lineTo(bx + 4.5, by - 3); ctx.stroke();
   }
 }
-let portraitLoop = false;
+S.portraitLoop = false;
 function startPortraitLoop() {
-  if (portraitLoop) return; portraitLoop = true;
+  if (S.portraitLoop) return; S.portraitLoop = true;
   const tick = () => { const t = performance.now() / 1000; for (const e of portraits) { if (!e.c.isConnected) { portraits.delete(e); continue; } drawPortrait(e, t); } for (const e of talkScenes) { if (!e.c.isConnected) { talkScenes.delete(e); continue; } drawTalkScene(e, t); } requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
 }
@@ -241,16 +242,16 @@ function originBadge(g: Gladiator): Node | null {
   if (!g.origin || g.origin === 'slave') return null;
   const O = CONFIG.origins;
   const tip = g.origin === 'captive' ? `전쟁 포로: 값이 싸고 강하지만 관중이 냉담해 미시오 ${Math.round(O.captive.missio * 100)}%` : g.origin === 'damnatus' ? `형벌 죄수: 매우 싸고 약함. 사망 배상 절반, ${O.damnatus.freeAfter}시즌(3년) 뒤 형기 만료로 자유` : `자유민 계약자: 계약금만 내고 데려오며 급료(대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%)를 받음. ${O.auctoratus.term}시즌 계약`;
-  const left = g.origin === 'auctoratus' && g.contractUntil != null ? ` ${Math.max(0, g.contractUntil - st.season + 1)}시즌` : g.origin === 'damnatus' && g.boughtSeason != null && (g.status ?? 'slave') === 'slave' ? ` ${Math.max(0, O.damnatus.freeAfter - (st.season - g.boughtSeason + 1))}시즌` : '';
+  const left = g.origin === 'auctoratus' && g.contractUntil != null ? ` ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌` : g.origin === 'damnatus' && g.boughtSeason != null && (g.status ?? 'slave') === 'slave' ? ` ${Math.max(0, O.damnatus.freeAfter - (S.st.season - g.boughtSeason + 1))}시즌` : '';
   return h('span', { class: `badge origin ${g.origin}`, title: tip }, ORIGIN_SHORT[g.origin] + left);
 }
 // 계약 상대 설명: 파밀리아 이름 + 이름(유형·전적). 원한·복수 관계 표시
 function enemyLine(c: Contract): Node {
-  const rv = rivalOf(st.rivals, c.rivalId);
+  const rv = rivalOf(S.st.rivals, c.rivalId);
   const parts: (Node | string)[] = [h('b', {}, rv ? rv.name : '타지 라니스타의 검투사'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)}) `) : '', ': '];
   const star = rv ? rivalStar(rv) : undefined;
   c.enemy.forEach((e, i) => { parts.push(i ? ', ' : '', sq(e.type), ' ', `${e.name.replace('(적)', '')} (${e.rank === 'tiro' ? '티로' : '베테'} ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? ` · 기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''})`); if (star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5)) parts.push(' ', h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판'));
-    const spBy = st.roster.filter(g => (g.spared ?? []).includes(e.id)), beat = st.roster.filter(g => (g.beatenBy ?? []).includes(e.id));
+    const spBy = S.st.roster.filter(g => (g.spared ?? []).includes(e.id)), beat = S.st.roster.filter(g => (g.beatenBy ?? []).includes(e.id));
     if (spBy.length) parts.push(' ', h('span', { class: 'badge grudge', title: `${spBy.map(g => g.name).join(', ')} 이(가) 살려 준 자. 재대결이면 공격 +10%, 그에게 지면 미시오 −15% (우르비쿠스의 경고)` }, `원한 ← ${spBy.map(g => g.name).join(', ')}`));
     if (beat.length) parts.push(' ', h('span', { class: 'badge revenge', title: `${beat.map(g => g.name).join(', ')} 을(를) 쓰러뜨린 자. 꺾으면 복수 (명예 +8, '복수자')` }, `복수 기회 → ${beat.map(g => g.name).join(', ')}`)); });
   return h('div', { class: 'meta enemyline' }, ...parts);
@@ -285,7 +286,7 @@ function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boole
   return h('div', { class: `card${opts.sel ? ' sel' : ''}${opts.other ? ' other' : ''}${opts.dis ? ' dis' : ''}`, onclick: opts.onclick },
     portrait(g, 56),
     h('div', { class: 'grow' },
-      h('div', {}, h('span', { class: `rank ${g.rank}`, title: g.rank === 'tiro' ? `티로: 신참. ${CONFIG.promoteWins}승을 채우면 베테라누스` : '베테라누스: 승리를 쌓은 경험자. 큰 경기의 필수 요건' }, g.rank === 'tiro' ? '티로' : '베테'), g.status === 'rudiarius' ? h('span', { class: 'badge free', title: '루디스를 받은 자유민. 계약으로 출전하며 출전마다 급료를 받는다. 팔 수 없다' }, '자유민') : g.status === 'doctor' ? h('span', { class: 'badge doc', title: '교관. 출전하지 않고 같은 유형 훈련을 돕는다' }, '독토르') : null, g.status !== 'doctor' && mentoredBy(st, g) ? h('span', { class: 'badge mentor', title: '독토르에게 유형 기술을 전수받음' }, '기술 전수') : null, originBadge(g), ' ', h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), ' ', ...epithetBadges(g), h('span', { class: 'meta' }, `${TYPE_KO[g.type]} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세`), opts.tag ?? null),
+      h('div', {}, h('span', { class: `rank ${g.rank}`, title: g.rank === 'tiro' ? `티로: 신참. ${CONFIG.promoteWins}승을 채우면 베테라누스` : '베테라누스: 승리를 쌓은 경험자. 큰 경기의 필수 요건' }, g.rank === 'tiro' ? '티로' : '베테'), g.status === 'rudiarius' ? h('span', { class: 'badge free', title: '루디스를 받은 자유민. 계약으로 출전하며 출전마다 급료를 받는다. 팔 수 없다' }, '자유민') : g.status === 'doctor' ? h('span', { class: 'badge doc', title: '교관. 출전하지 않고 같은 유형 훈련을 돕는다' }, '독토르') : null, g.status !== 'doctor' && mentoredBy(S.st, g) ? h('span', { class: 'badge mentor', title: '독토르에게 유형 기술을 전수받음' }, '기술 전수') : null, originBadge(g), ' ', h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), ' ', ...epithetBadges(g), h('span', { class: 'meta' }, `${TYPE_KO[g.type]} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세`), opts.tag ?? null),
       h('div', { class: 'meta' }, `HP ${g.base.hp}  공 ${g.base.atk}  방 ${g.base.def}  |  ${g.wins}승/${g.fights}전  미시오 ${g.missios}  명예 ${g.honor ?? 0}  팬 ${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}${g.injured ? '  ⚠ 부상' : ''}${g.fought ? '  ✓ 출전 완료' : ''}${(g.fatigue ?? 0) > 0 ? `  피로 ${g.fatigue} (공·방 −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty})` : ''}${g.trained ? '  훈련함' : ''}`)),
     ...extra);
 }
@@ -295,7 +296,7 @@ const headerBox = h('header', {}) as HTMLElement; // 한 번 만들고 내용만
 // 호감도: 숫자 대신 월계관 단계 (사용자 결정). 잎이 찬 쌍 = 단계. 문턱은 규칙의 문턱 그대로 — 25 등급 2 계약 · 50 승리 값 체감·파밀리아 강화 · 60 등급 3 계약·명성 유지비 · 80 정점(망각 최대). 숫자는 툴팁에
 const FAME_STAGES: [number, string][] = [[0, '무명'], [25, '벽에 이름'], [50, '거리의 화제'], [60, '이름을 날림'], [80, '캄파니아의 자랑']]; // 낙서 계열: 폼페이 벽에 이름이 적히기 시작해 온 지방의 자랑이 되기까지
 function fameMeter(): Node {
-  const f = st.fame; let s = 0; for (let i = 0; i < FAME_STAGES.length; i++) if (f >= FAME_STAGES[i][0]) s = i;
+  const f = S.st.fame; let s = 0; for (let i = 0; i < FAME_STAGES.length; i++) if (f >= FAME_STAGES[i][0]) s = i;
   const next = FAME_STAGES[s + 1]; const gold = s === FAME_STAGES.length - 1;
   const leaves: string[] = []; // 아래 매듭에서 양쪽으로 올라가는 잎 4쌍 (위는 열린 관). 찬 쌍 = 단계
   for (let i = 0; i < 4; i++) for (const side of [-1, 1]) { const a = (270 + side * (i + 1) * 38) * Math.PI / 180; const x = 12 + 8 * Math.cos(a), y = 12 - 8 * Math.sin(a); const rot = -(a * 180 / Math.PI) - 90 * side;
@@ -305,8 +306,8 @@ function fameMeter(): Node {
 }
 function headerEl(): Node {
   headerBox.replaceChildren(
-    h('div', { class: 'hrow' }, h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), fameMeter(), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
-    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { style: 'flex:1' }),
+    h('div', { class: 'hrow' }, h('span', { class: 'stat', title: S.st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[S.st.lanista.type!]} 훈련 +1)` : S.st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, S.st.lanista.name, h('span', {}, ` ${S.st.lanista.age}세`)), fameMeter(), h('span', { style: 'flex:1' }), h('span', { class: 'stat season' }, `${Math.floor((S.st.season - 1) / 4) + 1}년차`, seasonIcon(S.st.season))),
+    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${S.st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(S.st).toLocaleString()}`)), h('span', { style: 'flex:1' }),
       newsBtn(), gearBtn()));
   return headerBox;
 }
@@ -316,7 +317,7 @@ function fitDash() {
   const top = body.getBoundingClientRect().top; const barH = bar ? bar.getBoundingClientRect().height : 58;
   body.style.height = `${Math.max(140, Math.floor(innerHeight - top - barH - 8))}px`; // 8 = 바 위 여백. 페이지는 스크롤되지 않고 대시보드 안에서만 스크롤
 }
-window.addEventListener('resize', () => { if (phase === 'manage') fitDash(); });
+window.addEventListener('resize', () => { if (S.phase === 'manage') fitDash(); });
 function render() {
   save();
   // 장면 패널이 닫힐 때(토글 해제·다른 토글·켈라 열기·상세로 이동): 켈라처럼 아래로 내려가며 사라지게, 옛 패널 노드를 잠시 남겨 둔다
@@ -324,60 +325,60 @@ function render() {
   const stillClosing = [...app.querySelectorAll('.scenepanel.closing')] as HTMLElement[];
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
   app.append(headerEl()); requestAnimationFrame(() => { document.documentElement.style.setProperty('--head-h', `${headerBox.offsetHeight}px`); const tl = app.querySelector<HTMLElement>('.sidetools.inland'); document.documentElement.style.setProperty('--top-h', `${tl && tl.offsetHeight ? tl.offsetTop + tl.offsetHeight : headerBox.offsetTop + headerBox.offsetHeight}px`); }); // 헤더(두 줄)와 그 아래 토글 줄의 바닥 높이. 시트·상세는 이 아래에서 시작한다
-  const curKey = cellsOpen ? 'cells' : sheet; const stillOpen = !!oldPanel && oldKey === curKey; // 같은 시트가 열린 채 다시 그리는 것이면 내려오는 모션을 되풀이하지 않는다 (팔루스·침상 누르면 켈라가 두 번 내려오던 것)
-  if (oldPanel && phase === 'manage' && oldKey !== curKey) { /* 켈라도 시트의 하나(key-cells) */ oldPanel.classList.add('closing'); stillClosing.push(oldPanel); window.setTimeout(() => oldPanel.remove(), 380); }
+  const curKey = S.cellsOpen ? 'cells' : S.sheet; const stillOpen = !!oldPanel && oldKey === curKey; // 같은 시트가 열린 채 다시 그리는 것이면 내려오는 모션을 되풀이하지 않는다 (팔루스·침상 누르면 켈라가 두 번 내려오던 것)
+  if (oldPanel && S.phase === 'manage' && oldKey !== curKey) { /* 켈라도 시트의 하나(key-cells) */ oldPanel.classList.add('closing'); stillClosing.push(oldPanel); window.setTimeout(() => oldPanel.remove(), 380); }
   for (const n of stillClosing) app.append(n);
   const SCENE_KEYS = ['facilities', 'doctors', 'rivals', 'news', 'market', 'applicants', 'chronicle'] as const; type SceneKey = typeof SCENE_KEYS[number];
-  if (sheet && phase === 'manage' && (SCENE_KEYS as readonly string[]).includes(sheet)) { // 준비 화면: 모달 대신 장면 안에서 켈라처럼 올라오는 패널. 왼쪽 토글로 오간다
-    const key = sheet as SceneKey; const body = renderSheetBody(); const nodes = body.filter((n): n is Node => !!n);
+  if (S.sheet && S.phase === 'manage' && (SCENE_KEYS as readonly string[]).includes(S.sheet)) { // 준비 화면: 모달 대신 장면 안에서 켈라처럼 올라오는 패널. 왼쪽 토글로 오간다
+    const key = S.sheet as SceneKey; const body = renderSheetBody(); const nodes = body.filter((n): n is Node => !!n);
     let h2: Element | null = null; for (const n of [...nodes].reverse()) { if (n instanceof HTMLElement) { h2 = n.tagName === 'H2' ? n : n.querySelector('h2'); if (h2) break; } }
-    app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { sheet = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
-  } else if (sheet) app.append(renderSheet());
-  if (phase === 'manage' && !showIntro && !st.pendingSuccession) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다 (배우기/넘기기 중 하나로 끝낸다)
-    const learners = st.roster.filter(g => (g.skillOffers ?? []).length);
+    app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.sheet = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
+  } else if (S.sheet) app.append(renderSheet());
+  if (S.phase === 'manage' && !S.showIntro && !S.st.pendingSuccession) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다 (배우기/넘기기 중 하나로 끝낸다)
+    const learners = S.st.roster.filter(g => (g.skillOffers ?? []).length);
     if (learners.length) { // 한 명씩 보여주고 ◀ ▶ 로 넘긴다
-      offerPage = Math.max(0, Math.min(offerPage, learners.length - 1)); const g = learners[offerPage];
+      S.offerPage = Math.max(0, Math.min(S.offerPage, learners.length - 1)); const g = learners[S.offerPage];
       app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
         h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 배운 기술 중 버릴 것을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
         h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)),
           h('div', { class: 'meta' }, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음'])), ...skillOfferRows(g, render, { noDecline: true }))),
         h('div', { class: 'actions pager' },
-          h('button', { disabled: offerPage <= 0, onclick: () => { offerPage--; render(); } }, '◀'),
-          h('span', { class: 'meta' }, `${offerPage + 1} / ${learners.length}`),
-          h('button', { disabled: offerPage >= learners.length - 1, onclick: () => { offerPage++; render(); } }, '▶'),
+          h('button', { disabled: S.offerPage <= 0, onclick: () => { S.offerPage--; render(); } }, '◀'),
+          h('span', { class: 'meta' }, `${S.offerPage + 1} / ${learners.length}`),
+          h('button', { disabled: S.offerPage >= learners.length - 1, onclick: () => { S.offerPage++; render(); } }, '▶'),
           h('span', { style: 'flex:1' }),
           h('button', { onclick: () => { for (const id of [...(g.skillOffers ?? [])]) declineSkill(g, id as SkillId); render(); } }, '넘기기'))))); // 넘기기는 페이징 줄 오른쪽: 이 검투사의 제안을 모두 넘긴다. 여기서 끝낸다 (켈라에서 다시 정하지 않는다)
     }
   }
-  if (showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
+  if (S.showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
     h('div', { class: 'title' }, '미테!'), h('div', { class: 'sub' }, '라니스타의 길'),
     h('p', {}, '검투사는 지고도 살 수 있다.'), h('p', {}, '관중이 미테!를 외치게 하라.'),
     h('p', { class: 'hint' }, '검투사를 사들이고, 시설을 키우고, 계약에 맞춰 내보내라. 명예와 호감도가 높을수록 관중은 살려 달라 외친다.'),
-    h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
-  if (cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
+    h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); S.showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
+  if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
     const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);
-    const left = Math.max(6, Math.min((document.getElementById('stage')?.clientWidth ?? STAGE_W) - W - 6, cellPop.cx - W / 2)), top = Math.max(40, Math.min(stageH - H - 6, cellPop.cy - 30));
-    app.append(h('div', { class: 'popscrim', onclick: () => { cellPop = null; render(); } }),
-      h('div', { class: `cellpop${cellPop.fresh ? ' fresh' : ''}`, style: `left:${left}px;top:${top}px;width:${W}px;max-height:${H}px;transform-origin:${cellPop.cx - left}px ${cellPop.cy - top}px` },
-        h('button', { class: 'xclose', title: '닫기', onclick: () => { cellPop = null; render(); } }, '✕'), gladSel != null && st.roster.some(g => g.id === gladSel) ? gladSheet() : cellPanel(cellSel)));
-    cellPop.fresh = false;
+    const left = Math.max(6, Math.min((document.getElementById('stage')?.clientWidth ?? STAGE_W) - W - 6, S.cellPop.cx - W / 2)), top = Math.max(40, Math.min(stageH - H - 6, S.cellPop.cy - 30));
+    app.append(h('div', { class: 'popscrim', onclick: () => { S.cellPop = null; render(); } }),
+      h('div', { class: `cellpop${S.cellPop.fresh ? ' fresh' : ''}`, style: `left:${left}px;top:${top}px;width:${W}px;max-height:${H}px;transform-origin:${S.cellPop.cx - left}px ${S.cellPop.cy - top}px` },
+        h('button', { class: 'xclose', title: '닫기', onclick: () => { S.cellPop = null; render(); } }, '✕'), S.gladSel != null && S.st.roster.some(g => g.id === S.gladSel) ? gladSheet() : cellPanel(S.cellSel)));
+    S.cellPop.fresh = false;
   }
-  if (resumed) { resumed = false; notice = '저장된 게임을 이어합니다.'; }
-  if (phase === 'over') { app.append(renderOver()); app.classList.add('land', 'page'); return; }
+  if (S.resumed) { S.resumed = false; S.notice = '저장된 게임을 이어합니다.'; }
+  if (S.phase === 'over') { app.append(renderOver()); app.classList.add('land', 'page'); return; }
   // 단계 표시
   const steps = [['manage', '1 관리 · 시장과 루두스'], ['plan', '2 편성 · 계약과 배치'], ['battle', '3 시즌 진행 · 경기 관람']] as const;
   void steps; // 단계 표시줄은 숨김
-  if (phase === 'plan') { app.append(renderPlan()); return; }
-  if (phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
-  if (st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
-  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: cellsOpen, onclick: () => { cellsOpen = !cellsOpen; cellPop = null; cellSide = null; if (cellsOpen) sheet = null; else { bedPick = null; palusMode = false; } render(); } }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }])); app.append(town);
-    if (cellsOpen && cellsCanvas) { const inj = st.roster.filter(g => g.injured).length, docs = st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
-      const title = bedPick != null ? `침상 ${bedPick + 1}에 눕힐 부상자의 방을 누르세요` : palusMode ? `팔루스 배정 ${palusTrainees(st).length}/${st.ludus.palus} — 방을 누르면 세우고, 다시 누르면 내려옵니다` : `켈라 ${st.roster.length}/${st.ludus.cells.length} · 출전 가능 ${available(st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
-      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, bedPick == null && !palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { cellsOpen = false; bedPick = null; palusMode = false; cellPop = null; cellSide = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
+  if (S.phase === 'plan') { app.append(renderPlan()); return; }
+  if (S.phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
+  if (S.st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
+  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; } render(); } }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }])); app.append(town);
+    if (S.cellsOpen && S.cellsCanvas) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
+      const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자의 방을 누르세요` : S.palusMode ? `팔루스 배정 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 방을 누르면 세우고, 다시 누르면 내려옵니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
+      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, S.cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
-  const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
-  if (detail) { if (!detail.solo) app.append(detailPage()); if (detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
+  const noticeEl = S.notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, S.notice)) : null; S.notice = '';
+  if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
   if (noticeEl) app.append(h('div', { class: 'toast' }, noticeEl.textContent ?? '')); // 토스트: 배경 없이 굵은 글자, 위 가운데에 나타나 위로 떠오르며 사라진다. 정보는 서랍과 장면 클릭으로
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
@@ -403,7 +404,7 @@ function tabbar(stages: StageItem[], tools: ToolItem[] = []): Node {
   return barBox;
 }
 function toolButtons(tools: ToolItem[]): HTMLElement[] {
-  return tools.map(t => { const on = t.key ? sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; sheet = sheet === k ? null : k; cellsOpen = false; bedPick = null; palusMode = false; cellPop = null; cellSide = null; render(); } : t.onclick }); // 토글은 서로 배타적: 패널을 열면 켈라는 내려가고 침상·팔루스 배정 모드도 풀린다
+  return tools.map(t => { const on = t.key ? S.sheet === t.key : !!t.on; const b = h('button', { class: `tool${on ? ' on' : ''}`, title: t.title, 'aria-label': t.title, onclick: t.key ? () => { const k = t.key!; S.sheet = S.sheet === k ? null : k; S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } : t.onclick }); // 토글은 서로 배타적: 패널을 열면 켈라는 내려가고 침상·팔루스 배정 모드도 풀린다
     b.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TOOL_SVG[t.icon]}</svg>`;
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
 }
@@ -413,37 +414,37 @@ function sideTools(tools: ToolItem[]): Node { return h('div', { class: 'sidetool
 function sideToolsLand(tools: ToolItem[]): Node { return h('div', { class: 'sidetools inland' }, ...toolButtons(tools).map((b, i) => { b.insertBefore(h('span', { class: 'lbl' }, tools[i].title), b.querySelector('.nbadge')); return b; })); } // 처마 밑에 매달린 서판: 아이콘 + 이름 (+ 수)
 // 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성', 편성에서는 '준비' 와 '전투'). 화살표 없이
 function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
-  const toManage = () => { sheet = null; phase = 'manage'; render(); };
-  const toPlan = () => { phase = 'plan'; sheet = null; planSel = null; render(); }; // 계약(경기장)을 먼저 고르면 검투사 목록이 나온다
+  const toManage = () => { S.sheet = null; S.phase = 'manage'; render(); };
+  const toPlan = () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); }; // 계약(경기장)을 먼저 고르면 검투사 목록이 나온다
   if (cur === 'manage') return [{ label: '편성', primary: true, onclick: toPlan }];
   return [{ label: next?.label ?? '전투', primary: true, onclick: next?.onclick }]; // '준비'는 계약 벽 왼쪽 위의 낙서 뒤로가기로
 }
 // 시트 닫기: 아래로 내려가는 동작 뒤에 지운다 (켈라가 내려가듯)
 function closeSheet() {
-  const ov = document.querySelector('.overlay.sheet'); if (!ov) { sheet = null; render(); return; }
-  ov.classList.add('closing'); window.setTimeout(() => { sheet = null; render(); }, 300);
+  const ov = document.querySelector('.overlay.sheet'); if (!ov) { S.sheet = null; render(); return; }
+  ov.classList.add('closing'); window.setTimeout(() => { S.sheet = null; render(); }, 300);
 }
 function renderSheetBody(): (Node | null)[] {
-  return sheet === 'help' ? [h('h2', {}, '시너지 · 규칙'), renderHelp()]
-    : sheet === 'glad' ? [gladSheet()]
-    : sheet === 'facilities' ? [facilitiesPanel()]
-    : sheet === 'doctors' ? [doctorsPanel()]
-    : sheet === 'chronicle' ? [chroniclePanel()]
-    : sheet === 'rivals' ? [rivalsPanel()]
-    : sheet === 'events' ? [eventsPanel()]
-    : sheet === 'news' ? [h('div', { class: 'panel' }, h('h2', {}, '소식', hintSpan(`${seasonName(st.season)} · ${st.money.toLocaleString()} HS`)), ...renderDash('ludus', true).slice(1))]
-    : sheet === 'market' ? [h('div', { class: 'panel' }, h('h2', {}, '노예 시장'), ...renderDash('market').slice(1))]
-    : sheet === 'medic' ? [h('div', { class: 'panel' }, h('h2', {}, '의무실'), ...renderDash('medic').slice(1))]
-    : sheet === 'yard' ? [h('div', { class: 'panel' }, h('h2', {}, '훈련소'), ...renderDash('yard').slice(1))]
-    : sheet === 'applicants' ? [applicantsPanel() ?? h('div', { class: 'panel' }, h('h2', {}, '문 앞의 지원자'), h('div', { class: 'hint' }, '지금은 지원자가 없습니다.'))]
-    : sheet === 'cell' ? [cellPanel(cellSel)]
+  return S.sheet === 'help' ? [h('h2', {}, '시너지 · 규칙'), renderHelp()]
+    : S.sheet === 'glad' ? [gladSheet()]
+    : S.sheet === 'facilities' ? [facilitiesPanel()]
+    : S.sheet === 'doctors' ? [doctorsPanel()]
+    : S.sheet === 'chronicle' ? [chroniclePanel()]
+    : S.sheet === 'rivals' ? [rivalsPanel()]
+    : S.sheet === 'events' ? [eventsPanel()]
+    : S.sheet === 'news' ? [h('div', { class: 'panel' }, h('h2', {}, '소식', hintSpan(`${seasonName(S.st.season)} · ${S.st.money.toLocaleString()} HS`)), ...renderDash('ludus', true).slice(1))]
+    : S.sheet === 'market' ? [h('div', { class: 'panel' }, h('h2', {}, '노예 시장'), ...renderDash('market').slice(1))]
+    : S.sheet === 'medic' ? [h('div', { class: 'panel' }, h('h2', {}, '의무실'), ...renderDash('medic').slice(1))]
+    : S.sheet === 'yard' ? [h('div', { class: 'panel' }, h('h2', {}, '훈련소'), ...renderDash('yard').slice(1))]
+    : S.sheet === 'applicants' ? [applicantsPanel() ?? h('div', { class: 'panel' }, h('h2', {}, '문 앞의 지원자'), h('div', { class: 'hint' }, '지금은 지원자가 없습니다.'))]
+    : S.sheet === 'cell' ? [cellPanel(S.cellSel)]
     : [menuPanel()];
 }
 function renderSheet(): Node {
-  if (sheet === 'menu') { // 메뉴는 헤더의 톱니바퀴 아래로 내려온다 (아래서 올라오는 시트가 아니라)
+  if (S.sheet === 'menu') { // 메뉴는 헤더의 톱니바퀴 아래로 내려온다 (아래서 올라오는 시트가 아니라)
     const g = document.querySelector('header .gear')?.getBoundingClientRect(), sr = document.getElementById('stage')?.getBoundingClientRect(); const sk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1; // 메뉴는 무대(#stage, 배율 sk) 안에 붙으므로 화면 px 를 무대 좌표로 바꿔야 한다 — 안 그러면 배율만큼 어긋난다
     const top = g && sr ? (g.bottom - sr.top) / sk + 6 : 56, right = g && sr ? Math.max(8, (sr.right - g.right) / sk) : 8;
-    return h('div', { class: 'overlay clear', onclick: (ev: Event) => { if (ev.target === ev.currentTarget) { sheet = null; render(); } } },
+    return h('div', { class: 'overlay clear', onclick: (ev: Event) => { if (ev.target === ev.currentTarget) { S.sheet = null; render(); } } },
       h('div', { class: 'dropmenu', style: `top:${top}px;right:${right}px` }, menuPanel()));
   }
   const body = renderSheetBody();
@@ -457,21 +458,21 @@ function renderSheet(): Node {
 }
 // 켈라 시트: 칸의 거주자와 숙소 질, 이 칸에 넣을 검투사 고르기
 function cellPanel(k: number): Node {
-  const q = st.ludus.cells[k] ?? 0, g = occupantOf(st, k), cost = upgradeCost(st, 'cell', k);
-  const row = (x: Gladiator, cur: boolean) => h('div', { class: `drow${cur ? ' sel' : ''}`, onclick: cur ? undefined : () => { moveToCell(st, x, k); cellPop = null; gladSel = x.id; cellSide = 'glad'; render(); } }, // 옮기면 팝오버를 닫는다
+  const q = S.st.ludus.cells[k] ?? 0, g = occupantOf(S.st, k), cost = upgradeCost(S.st, 'cell', k);
+  const row = (x: Gladiator, cur: boolean) => h('div', { class: `drow${cur ? ' sel' : ''}`, onclick: cur ? undefined : () => { moveToCell(S.st, x, k); S.cellPop = null; S.gladSel = x.id; S.cellSide = 'glad'; render(); } }, // 옮기면 팝오버를 닫는다
     portrait(x, 34), ' ', h('span', { class: 'nm' }, x.name), h('span', { class: 'meta' }, ` ${TYPE_KO[x.type]} · ${x.rank === 'tiro' ? '티로' : '베테'}${x.injured ? ' · 부상' : ''}`), h('span', { style: 'flex:1' }), cur ? h('span', { class: 'hint' }, '이 칸') : h('span', { class: 'hint' }, `${cellOfIdx(x) + 1}번 →`));
   return h('div', { class: 'panel' }, h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라', '검투사가 자는 작은 방입니다. 검투사를 고르면 이 칸으로 오고, 이미 누가 있으면 서로 자리를 바꿉니다.\n숙소 질 ★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌. 질은 칸에 붙어 있어 검투사를 옮기면 그 칸의 질을 받습니다.')),
-    h('div', { class: 'frow' }, h('div', { class: 'grow' }, h('b', {}, g ? g.name : '빈 칸'), h('div', { class: 'meta' }, g ? `${TYPE_KO[g.type]} · 명예 ${g.honor ?? 0} · 피로 ${g.fatigue ?? 0}` : '검투사를 고르면 이 칸에 들어옵니다')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음')),
-    h('div', { class: 'dlist' }, ...st.roster.map(x => row(x, x === g))));
+    h('div', { class: 'frow' }, h('div', { class: 'grow' }, h('b', {}, g ? g.name : '빈 칸'), h('div', { class: 'meta' }, g ? `${TYPE_KO[g.type]} · 명예 ${g.honor ?? 0} · 피로 ${g.fatigue ?? 0}` : '검투사를 고르면 이 칸에 들어옵니다')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(S.st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음')),
+    h('div', { class: 'dlist' }, ...S.st.roster.map(x => row(x, x === g))));
 }
-const cellOfIdx = (g: Gladiator) => cellOf(st, g);
+const cellOfIdx = (g: Gladiator) => cellOf(S.st, g);
 // 켈라 화면: 회랑 뒤 작은 방들. 칸마다 문·질(등잔 수)·거주자(앉은 모습). 누르면 시트
 const TOWN_H = 414, CELLS_TOP = 0, CELLS_MIN_H = CELLS_TOP + 40 + 5 * 100 + 4 * 6; // 마을 장면 높이 · 켈라 장면의 위 여백(처마 토글이 덮는 만큼, 월드 단위) · 켈라 장면 최소 높이 (3×5 방, 방 높이 100 + 여백)
-let cellsH = CELLS_MIN_H; // 켈라 장면 높이: 무대 바닥까지 채운다 (renderTown 의 draw 가 매 프레임 잰다). 방은 그만큼 세로로 늘어난다
-let townH = TOWN_H; const CH = () => townH; // 마을 캔버스의 현재 논리 높이: 평소 TOWN_H, 켈라가 열리는 만큼 cellsH 까지 자란다 (renderTown 의 draw 가 매 프레임 정한다). 세로 무대에서 닫힌 마을 아래 빈 흙길이 화면 절반을 먹던 문제의 답
+S.cellsH = CELLS_MIN_H; // 켈라 장면 높이: 무대 바닥까지 채운다 (renderTown 의 draw 가 매 프레임 잰다). 방은 그만큼 세로로 늘어난다
+S.townH = TOWN_H; const CH = () => S.townH; // 마을 캔버스의 현재 논리 높이: 평소 TOWN_H, 켈라가 열리는 만큼 cellsH 까지 자란다 (renderTown 의 draw 가 매 프레임 정한다). 세로 무대에서 닫힌 마을 아래 빈 흙길이 화면 절반을 먹던 문제의 답 답
 function cellRects(_n: number): { x: number; y: number; w: number; h: number }[] {
   const n = CONFIG.ludus.cells.max, cols = 3, rows = Math.ceil(n / cols), gap = 6, margin = 12; // 방 자리는 최대 15칸을 미리 잡아 둔다 (5줄 × 3칸, 세로 무대)
-  const w = (VW - margin * 2 - (cols - 1) * gap) / cols, hh = (cellsH - CELLS_TOP - 24 - (rows - 1) * gap) / rows;
+  const w = (S.VW - margin * 2 - (cols - 1) * gap) / cols, hh = (S.cellsH - CELLS_TOP - 24 - (rows - 1) * gap) / rows;
   return Array.from({ length: n }, (_, i) => ({ x: margin + (i % cols) * (w + gap), y: CELLS_TOP + 12 + Math.floor(i / cols) * (hh + gap), w, h: hh })); // 처마 아래, 왼쪽 위부터 줄 단위로 채운다
 }
 // 켈라 장식으로 상태를 보여준다 (폼페이 낙서·비문·유물에서 따온 기호):
@@ -493,7 +494,7 @@ function drawCellDecor(ctx: CanvasRenderingContext2D, r: { x: number; y: number;
     // 벽의 글자는 방 크기와 무관하게 읽히는 크기로 (방이 좁아도 5px 글씨는 안 된다): 이름 11px, 유형·명예 9px, 부상은 셋째 줄
     ctx.fillStyle = scratch; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(g.name, r.w * 0.5 + 4, 15);
     ctx.font = '9px sans-serif'; ctx.fillText(`${TYPE_KO[g.type]} · 명예 ${g.honor ?? 0}`, r.w * 0.5 + 4, 27); if (g.injured) { ctx.fillStyle = '#e0a58a'; ctx.fillText(`부상 ${g.injured}시즌`, r.w * 0.5 + 4, 38); } ctx.textAlign = 'left'; // 유형·명예(·부상)도 벽에
-    { const q = st.ludus.cells[cellOf(st, g) ?? 0] ?? 0; if (q) { ctx.fillStyle = '#e8c96a'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; for (let i = 0; i < q; i++) ctx.fillText('★', 6, r.h - 9 - i * 11); } } // 켈라 등급 (왼쪽 아래)
+    { const q = S.st.ludus.cells[cellOf(S.st, g) ?? 0] ?? 0; if (q) { ctx.fillStyle = '#e8c96a'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; for (let i = 0; i < q; i++) ctx.fillText('★', 6, r.h - 9 - i * 11); } } // 켈라 등급 (왼쪽 아래)
     // 월계관 (이름 오른쪽 위 벽): 명예 20 이상, 40 이상이면 금빛
     if ((g.honor ?? 0) >= 20) { const cx = r.w - 46 * sc, cy = 14 * sc, rr = 8 * sc; ctx.strokeStyle = (g.honor ?? 0) >= 40 ? '#d4a52a' : leaf; ctx.lineWidth = 1.6 * sc; ctx.beginPath(); ctx.arc(cx, cy, rr, Math.PI * 0.85, Math.PI * 2.15); ctx.stroke();
       for (let a = Math.PI * 0.9; a < Math.PI * 2.1; a += 0.42) { const lx = cx + Math.cos(a) * rr, ly = cy + Math.sin(a) * rr; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + Math.cos(a - 1.2) * 4 * sc, ly + Math.sin(a - 1.2) * 4 * sc); ctx.stroke(); } }
@@ -535,43 +536,43 @@ function cellActivity(g: Gladiator, t: number): { sk: Skeleton; facing?: 1 | -1 
   }
 }
 function drawCellsScene(ctx: CanvasRenderingContext2D, t: number) {
-  const VH = cellsH; const n = CONFIG.ludus.cells.max; const built = st.ludus.cells.length; const rects = cellRects(n);
-  ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 0, VW, VH); // 회벽
+  const VH = S.cellsH; const n = CONFIG.ludus.cells.max; const built = S.st.ludus.cells.length; const rects = cellRects(n);
+  ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 0, S.VW, VH); // 회벽
   // (회랑 처마 띠는 뺐다 — 바로 위에 서판 처마가 있다, 2026-09-16)
   rects.forEach((r, k) => {
     if (k >= built) { ctx.fillStyle = '#b8a67a'; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.strokeStyle = '#a58f60'; ctx.lineWidth = 1; for (let yy = r.y + 8; yy < r.y + r.h; yy += 12) { ctx.beginPath(); ctx.moveTo(r.x, yy); ctx.lineTo(r.x + r.w, yy); ctx.stroke(); for (let xx = r.x + ((yy / 12) % 2) * 14; xx < r.x + r.w; xx += 28) { ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + 12); ctx.stroke(); } } return; } // 아직 짓지 않은 칸: 벽돌로 막힌 자리 (누르면 시설 강화)
-    const q = st.ludus.cells[k] ?? 0, g = occupantOf(st, k);
+    const q = S.st.ludus.cells[k] ?? 0, g = occupantOf(S.st, k);
     ctx.fillStyle = g ? '#5a4224' : '#8f7a4e'; ctx.fillRect(r.x, r.y, r.w, r.h); // 방 안 (빈 칸은 막힌 벽처럼 밝게)
     ctx.fillStyle = '#3a2412'; ctx.fillRect(r.x, r.y, r.w, 4); ctx.fillRect(r.x, r.y, 4, r.h); ctx.fillRect(r.x + r.w - 4, r.y, 4, r.h); // 문틀
     ctx.fillStyle = q >= 2 ? '#7a5a1c' : '#5a4224'; ctx.fillRect(r.x + 4, r.y + r.h - 6, r.w - 8, 6); // 바닥
     if (q >= 1) { ctx.fillStyle = '#e8c96a'; ctx.fillRect(r.x + 8, r.y + r.h - 14, r.w * 0.45, 5); } // 짚자리 → 매트
     if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(r.x + r.w - 20, r.y + 10, 12, 16); } // 벽걸이 천
     for (let i = 0; i < q; i++) { const lx = r.x + r.w - 10 - i * 9, ly = r.y + 8; ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(lx, ly + 3 + Math.sin(t * 9 + i + k) * 0.4, 2.2, 3.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8a6a44'; ctx.fillRect(lx - 3, ly + 6, 6, 2); } // 등잔 = 질
-    if (cellDrag && cellDrag.over === k && k !== cellDrag.k0) { ctx.strokeStyle = '#e8c96a'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4); } // 놓을 방 강조
-    if (g && cellDrag && cellDrag.id === g.id && cellDrag.moved) { drawCellDecor(ctx, r, g, t, 'wall'); drawCellDecor(ctx, r, g, t, 'front'); return; } // 끌려 나간 방은 비어 있다 (장식만 남음)
+    if (S.cellDrag && S.cellDrag.over === k && k !== S.cellDrag.k0) { ctx.strokeStyle = '#e8c96a'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4); } // 놓을 방 강조
+    if (g && S.cellDrag && S.cellDrag.id === g.id && S.cellDrag.moved) { drawCellDecor(ctx, r, g, t, 'wall'); drawCellDecor(ctx, r, g, t, 'front'); return; } // 끌려 나간 방은 비어 있다 (장식만 남음)
     if (g) { drawCellDecor(ctx, r, g, t, 'wall'); const fat = g.injured ? 2 : (g.fatigue ?? 0); // 피로는 자세로: 0 버릇대로 · 1 축 늘어져 앉음 · 2 꾸벅임(부상도) · 3 벽에 기대 잠
       const sk = fat >= 3 ? cellSleep(t + k) : fat === 2 ? cellDoze(t + k) : fat === 1 ? cellSlump(t + k) : cellActivity(g, t + k); const fx = sk.facing ?? 1;
       drawStickman(ctx, g.type, { x: r.x + r.w * 0.42, y: r.y + r.h - 7, scale: Math.min(0.95, r.h / 92, r.w / 96), skeleton: sk.sk, t: t + k, team: g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b', bare: true, facing: fx, accessories: accessoriesOf(g) });
       drawCellDecor(ctx, r, g, t, 'front'); }
-    if (bedPick != null || palusMode) { const ok = !!g && (bedPick != null ? g.injured > 0 : g.alive && g.injured <= 0 && g.status !== 'doctor'); if (!ok) { ctx.fillStyle = 'rgba(203,182,127,.74)'; ctx.fillRect(r.x, r.y, r.w, r.h); } else if (palusMode && g && palusOf(st, g) >= 0) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(r.x + 4, r.y + r.h - 22, r.w - 8, 16); ctx.fillStyle = '#f3ead0'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`팔루스 ${palusOf(st, g) + 1}`, r.x + r.w / 2, r.y + r.h - 10); } /* 방 아래쪽 띠 (이름을 가리지 않게) */ } // 배정 모드: 고를 수 없는 방은 흐리게 — 침상은 부상자만, 팔루스는 건강하고 아직 안 선 검투사만
+    if (S.bedPick != null || S.palusMode) { const ok = !!g && (S.bedPick != null ? g.injured > 0 : g.alive && g.injured <= 0 && g.status !== 'doctor'); if (!ok) { ctx.fillStyle = 'rgba(203,182,127,.74)'; ctx.fillRect(r.x, r.y, r.w, r.h); } else if (S.palusMode && g && palusOf(S.st, g) >= 0) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(r.x + 4, r.y + r.h - 22, r.w - 8, 16); ctx.fillStyle = '#f3ead0'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`팔루스 ${palusOf(S.st, g) + 1}`, r.x + r.w / 2, r.y + r.h - 10); } /* 방 아래쪽 띠 (이름을 가리지 않게) */ } // 배정 모드: 고를 수 없는 방은 흐리게 — 침상은 부상자만, 팔루스는 건강하고 아직 안 선 검투사만
   });
-  if (cellDrag && cellDrag.moved) { const g = st.roster.find(x => x.id === cellDrag!.id); if (g) { ctx.save(); ctx.globalAlpha = 0.9; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6; drawStickman(ctx, g.type, { x: cellDrag.px, y: cellDrag.py + 26, scale: 1.0, pose: 'idle', t, team: g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b', bare: true, facing: 1, accessories: accessoriesOf(g) }); ctx.restore();
-    ctx.save(); ctx.font = 'bold 11px sans-serif'; const nw = ctx.measureText(g.name).width, bx = cellDrag.px - (nw + 22) / 2, by = cellDrag.py - 84; ctx.fillStyle = 'rgba(243,234,208,.95)'; ctx.beginPath(); ctx.roundRect(bx - 5, by - 12, nw + 32, 20, 5); ctx.fill(); ctx.fillStyle = TYPE_COLOR[g.type]; ctx.fillRect(bx, by - 9, 14, 14); drawGlyph(ctx, g.type, bx + 7, by - 2, 11); ctx.fillStyle = '#3a2412'; ctx.textAlign = 'left'; ctx.fillText(g.name, bx + 18, by + 3); ctx.restore(); } } // 끌고 가는 검투사 (그림자) + 머리 위 무기 아이콘·이름표
+  if (S.cellDrag && S.cellDrag.moved) { const g = S.st.roster.find(x => x.id === S.cellDrag!.id); if (g) { ctx.save(); ctx.globalAlpha = 0.9; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6; drawStickman(ctx, g.type, { x: S.cellDrag.px, y: S.cellDrag.py + 26, scale: 1.0, pose: 'idle', t, team: g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b', bare: true, facing: 1, accessories: accessoriesOf(g) }); ctx.restore();
+    ctx.save(); ctx.font = 'bold 11px sans-serif'; const nw = ctx.measureText(g.name).width, bx = S.cellDrag.px - (nw + 22) / 2, by = S.cellDrag.py - 84; ctx.fillStyle = 'rgba(243,234,208,.95)'; ctx.beginPath(); ctx.roundRect(bx - 5, by - 12, nw + 32, 20, 5); ctx.fill(); ctx.fillStyle = TYPE_COLOR[g.type]; ctx.fillRect(bx, by - 9, 14, 14); drawGlyph(ctx, g.type, bx + 7, by - 2, 11); ctx.fillStyle = '#3a2412'; ctx.textAlign = 'left'; ctx.fillText(g.name, bx + 18, by + 3); ctx.restore(); } } // 끌고 가는 검투사 (그림자) + 머리 위 무기 아이콘·이름표
 }
 // 독토르 시트: 고용한 교관(유형·기준 능력치·기술 전수·제자와 보너스)과 고용할 수 있는 자유민
 function doctorsPanel(): Node {
-  const docs = st.roster.filter(g => g.status === 'doctor'), free = st.roster.filter(g => g.status === 'rudiarius');
-  const docCard = (d: Gladiator) => { const pupils = st.roster.filter(g => g !== d && g.type === d.type && g.status !== 'doctor');
+  const docs = S.st.roster.filter(g => g.status === 'doctor'), free = S.st.roster.filter(g => g.status === 'rudiarius');
+  const docCard = (d: Gladiator) => { const pupils = S.st.roster.filter(g => g !== d && g.type === d.type && g.status !== 'doctor');
     return h('div', { class: 'card' }, portrait(d, 56),
       h('div', { class: 'grow' },
         h('div', {}, h('span', { class: 'badge doc' }, '독토르'), h('b', {}, d.name), h('span', { class: 'meta' }, ` ${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · ${d.wins}승/${d.fights}전`), d.wins >= CONFIG.doctorSkillWins ? h('span', { class: 'badge mentor', style: 'margin-left:6px' }, '기술 전수') : null),
         h('div', { class: 'meta' }, `기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌 · 가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
-        h('div', { class: 'meta' }, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(st, g, 'atk') - 1 - gymBonus(st)}·방 +${trainGain(st, g, 'def') - 1 - gymBonus(st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)),
-      h('button', { onclick: () => { backToArena(st, d); render(); } }, '다시 출전'),
-      h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(st, d); render(); } }); } }, '내보내기')); };
+        h('div', { class: 'meta' }, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(S.st, g, 'atk') - 1 - gymBonus(S.st)}·방 +${trainGain(S.st, g, 'def') - 1 - gymBonus(S.st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)),
+      h('button', { onclick: () => { backToArena(S.st, d); render(); } }, '다시 출전'),
+      h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(S.st, d); render(); } }); } }, '내보내기')); };
   const freeCard = (g: Gladiator) => h('div', { class: 'card' }, portrait(g, 56),
-    h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'badge free' }, '자유민'), h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전`)), h('div', { class: 'meta' }, `공 ${g.base.atk} · 방 ${g.base.def}${doctorFor(st, g.type) ? ` · ${TYPE_KO[g.type]} 독토르 이미 있음` : ''}`)),
-    h('button', { class: 'primary', title: `${g.name} 에게 독토르 자리를 제안한다. 시즌 급료 ${CONFIG.doctorSalary} HS`, onclick: () => { hireDoctor(st, g); notice = `${g.name} 이(가) 독토르 제안을 받아들였다`; render(); } }, `독토르 제안 ${CONFIG.doctorSalary}/시즌`));
+    h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'badge free' }, '자유민'), h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전`)), h('div', { class: 'meta' }, `공 ${g.base.atk} · 방 ${g.base.def}${doctorFor(S.st, g.type) ? ` · ${TYPE_KO[g.type]} 독토르 이미 있음` : ''}`)),
+    h('button', { class: 'primary', title: `${g.name} 에게 독토르 자리를 제안한다. 시즌 급료 ${CONFIG.doctorSalary} HS`, onclick: () => { hireDoctor(S.st, g); S.notice = `${g.name} 이(가) 독토르 제안을 받아들였다`; render(); } }, `독토르 제안 ${CONFIG.doctorSalary}/시즌`));
   return h('div', { class: 'panel' }, h('h2', {}, '독토르', helpBtn('독토르', `루디스를 받은 자유민을 교관으로 고용합니다. 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS. 같은 유형 훈련에서 독토르의 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2. ${CONFIG.doctorSkillWins}승 이상이면 유형 기술을 전수합니다. 비문의 doctor secutorum·myrmillonum 처럼 무장별로 한 명씩 두는 것이 자연스럽습니다. 독토르는 라니스타의 후계자 후보가 됩니다.`)),
     ...docs.map(docCard), docs.length ? null : h('div', { class: 'hint', style: 'margin-bottom:8px' }, '고용한 독토르가 없습니다.'),
     free.length ? h('h3', { class: 'sub' }, '고용할 수 있는 자유민') : null, ...free.map(freeCard),
@@ -582,55 +583,55 @@ function doctorsPanel(): Node {
 const ROUTINE = /( 매각 \d| 훈련\(| 기술 훈련 | 시범 \(| 요양$| 재계약 \d| 대여 \d| 번 칸 \d|: (켈라|숙소|침상|의술|약재|조리장|팔루스|훈련 시설|증축|공개 만찬|행렬|네메시스 봉헌|벽화 광고|귀족 손님)[^:]* \d+$)/;
 const isSpecialEvent = (l: string) => !ROUTINE.test(l);
 function chroniclePanel(): Node {
-  const hall = [...(st.hall ?? [])].reverse(), dead = [...st.graveyard].reverse(), log = [...st.history].reverse().filter(isSpecialEvent); // 특별한 일은 전부 (최근이 위)
+  const hall = [...(S.st.hall ?? [])].reverse(), dead = [...S.st.graveyard].reverse(), log = [...S.st.history].reverse().filter(isSpecialEvent); // 특별한 일은 전부 (최근이 위)
   const sec = (title: string, hint: string, kids: (Node | null)[]) => h('div', { class: 'chsec' }, h('h3', { class: 'sub' }, title, hintSpan(hint)), ...(kids.length ? kids : [h('div', { class: 'hint' }, '아직 없음')]));
-  const lanistas = [...(st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, st.lanista.name), h('span', { class: 'meta' }, ` ${st.lanista.age}세 · ${st.lanista.since}번째 시즌부터 · ${st.lanista.trait === 'doctor' ? '전직 독토르' : st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
+  const lanistas = [...(S.st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, S.st.lanista.name), h('span', { class: 'meta' }, ` ${S.st.lanista.age}세 · ${S.st.lanista.since}번째 시즌부터 · ${S.st.lanista.trait === 'doctor' ? '전직 독토르' : S.st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
   return h('div', { class: 'panel' }, h('h2', {}, '연대기', helpBtn('연대기', '루두스의 역사입니다. 역대 라니스타는 은퇴·사망으로 물려준 순서, 명예의 전당은 루디스(나무 검)로 자유를 얻은 검투사, 묘비는 경기장에서 죽은 검투사입니다. 폼페이 낙서와 묘비처럼 이름·전적·별칭이 남습니다.')),
-    sec('역대 라니스타', `${(st.lineageLog?.length ?? 0) + 1}대`, lanistas),
+    sec('역대 라니스타', `${(S.st.lineageLog?.length ?? 0) + 1}대`, lanistas),
     sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; }), ...(e.skills ?? []).map(id => h('span', { class: 'badge skill', style: 'margin-left:4px' }, SKILL_NAME(id)))))),
     sec('묘비', `${dead.length}명`, dead.map(g => h('div', { class: 'drow' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전${g.age ? ` · ${g.age}세` : ''} — 관중은 침묵했다`)))),
     sec('연혁', `특별한 일 ${log.length}건`, log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
 }
 function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
-    canRetire(st) && !st.pendingSuccession && phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${st.lanista.name} (${st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { sheet = null; retire(st); render(); } }); } }, `은퇴 (${st.lanista.age}세, 후계자에게 넘김)`) : null,
+    canRetire(S.st) && !S.st.pendingSuccession && S.phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${S.st.lanista.name} (${S.st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { S.sheet = null; retire(S.st); render(); } }); } }, `은퇴 (${S.st.lanista.age}세, 후계자에게 넘김)`) : null,
     h('label', { class: 'toggle' }, h('span', { class: 'grow' }, '효과음'), h('input', { type: 'checkbox', checked: soundEnabled() ? 'checked' : undefined, onchange: (e: Event) => { setSoundEnabled((e.target as HTMLInputElement).checked); if (soundEnabled()) { unlockAudio(); sfx.coin(); } render(); } }), h('span', { class: 'knob' })), // 켜짐/꺼짐이 한눈에 보이는 스위치
-    h('button', { onclick: () => { sheet = 'help'; render(); } }, '시너지 · 규칙'),
+    h('button', { onclick: () => { S.sheet = 'help'; render(); } }, '시너지 · 규칙'),
     h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
-      const blob = new Blob([JSON.stringify(serialize(st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${st.lanista.name.split(' ').pop()}-${st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
+      const blob = new Blob([JSON.stringify(serialize(S.st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${S.st.lanista.name.split(' ').pop()}-${S.st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
     h('button', { onclick: () => { const inp = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
-      inp.onchange = () => { const f = inp.files?.[0]; if (!f) return; f.text().then(txt => { try { const next = deserialize(JSON.parse(txt)); void ask(`${next.lanista.name} ${next.season}번째 시즌 저장을 불러옵니다. 지금 게임은 덮어씁니다.`, { ok: '불러오기' }).then(ok => { if (!ok) return; st = next; phase = 'manage'; sheet = null; assign = {}; trainPlan = {}; townCanvas = null; view = 'ludus'; cellsOpen = false; notice = '저장 파일을 불러왔습니다.'; render(); }); } catch { void tell('저장 파일을 읽을 수 없습니다.'); } }); };
+      inp.onchange = () => { const f = inp.files?.[0]; if (!f) return; f.text().then(txt => { try { const next = deserialize(JSON.parse(txt)); void ask(`${next.lanista.name} ${next.season}번째 시즌 저장을 불러옵니다. 지금 게임은 덮어씁니다.`, { ok: '불러오기' }).then(ok => { if (!ok) return; S.st = next; S.phase = 'manage'; S.sheet = null; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; S.cellsOpen = false; S.notice = '저장 파일을 불러왔습니다.'; render(); }); } catch { void tell('저장 파일을 읽을 수 없습니다.'); } }); };
       inp.click(); } }, '저장 파일 불러오기'),
-    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); st = newGame(Math.floor(Math.random() * 100000)); phase = 'manage'; sheet = null; assign = {}; trainPlan = {}; townCanvas = null; view = 'ludus'; render(); }); } }, '새 게임')));
+    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); S.st = newGame(Math.floor(Math.random() * 100000)); S.phase = 'manage'; S.sheet = null; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); }); } }, '새 게임')));
 }
   // 문 앞의 지원자 (자유민 아욱토라티): 계약금으로 데려온다
 function applicantsPanel(): Node | null {
-  if (!st.applicants.length) return null;
-    const full = st.roster.length >= rosterCap(st);
+  if (!S.st.applicants.length) return null;
+    const full = S.st.roster.length >= rosterCap(S.st);
     return (h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '문 앞의 지원자', helpBtn('자유민 지원자 (아욱토라티)', `자유민 검투사가 스스로 계약을 청합니다. 계약금만 내면 되고, 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%를 급료로 받으며 ${CONFIG.origins.auctoratus.term}시즌 계약입니다. 자유민이라 팔 수 없고 사망 배상도 없습니다. 이번 시즌이 지나면 떠납니다.`)),
-      h('div', { class: 'cardgrid' }, ...st.applicants.map(g => gladCard(g, [
-        h('button', { class: 'primary', disabled: st.money < g.buyPrice || full, title: full ? '켈라이 가득 찼습니다' : '', onclick: () => { if (buy(st, g)) { sfx.coin(); render(); } } }, `계약 ${g.buyPrice.toLocaleString()}`)])))));
+      h('div', { class: 'cardgrid' }, ...S.st.applicants.map(g => gladCard(g, [
+        h('button', { class: 'primary', disabled: S.st.money < g.buyPrice || full, title: full ? '켈라이 가득 찼습니다' : '', onclick: () => { if (buy(S.st, g)) { sfx.coin(); render(); } } }, `계약 ${g.buyPrice.toLocaleString()}`)])))));
 }
   // 루두스 시설: 세 건물 × 세부 항목. 모든 항목이 유한 단계 (장기 지출처)
 // 시설 행 (이름 · 단계 · 효과 · 강화 버튼). 시설 시트와 의무실·훈련소 대시보드가 같이 쓴다
-const canPayFac = (cost: number) => st.money - cost >= upkeepOf(st); // 다음 시즌 유지비는 남겨 둔다
-function facBtn(f: Facility, idx = 0): Node { const cost = upgradeCost(st, f, idx); return cost != null ? h('button', { disabled: !canPayFac(cost), title: !canPayFac(cost) && st.money >= cost ? `유지비 ${upkeepOf(st).toLocaleString()} HS 를 남기려면 자금이 더 필요합니다` : '', onclick: () => { if (upgrade(st, f, idx)) { sfx.coin(); render(); } } }, `${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '최대'); }
+const canPayFac = (cost: number) => S.st.money - cost >= upkeepOf(S.st); // 다음 시즌 유지비는 남겨 둔다
+function facBtn(f: Facility, idx = 0): Node { const cost = upgradeCost(S.st, f, idx); return cost != null ? h('button', { disabled: !canPayFac(cost), title: !canPayFac(cost) && S.st.money >= cost ? `유지비 ${upkeepOf(S.st).toLocaleString()} HS 를 남기려면 자금이 더 필요합니다` : '', onclick: () => { if (upgrade(S.st, f, idx)) { sfx.coin(); render(); } } }, `${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '최대'); }
 function facRow(name: string, level: string, effect: string, f: Facility): Node { return h('div', { class: 'frow' }, h('div', { class: 'grow' }, h('b', {}, name), ' ', h('span', { class: 'meta' }, level), h('div', { class: 'meta' }, effect)), facBtn(f)); }
 function facRows(group: 'cells' | 'medic' | 'yard'): Node[] {
   const medDesc = (lv: number) => { const M = CONFIG.ludus.medicine; const hc = M.healCostByLevel[Math.min(lv, M.healCostByLevel.length - 1)], ic = M.injuryChanceByLevel[Math.min(lv, M.injuryChanceByLevel.length - 1)]; return `부상 ${lv >= M.injuryAt ? 1 : 2}시즌 · 치료 ${hc} · 부상 ${Math.round(ic * 100)}%${lv >= M.fatigueRestAt ? ' · 피로 +1' : ''}`; }; // 의술 단계별 효과 한 줄
-  const L = CONFIG.ludus, u = st.ludus;
-  const nx = (f: Facility, cur: string, next: string) => upgradeCost(st, f) == null ? `${cur} · 최대` : `${cur} → ${next}`; // 지금 값 → 다음 단계 값 (최대치는 보이지 않는다)
+  const L = CONFIG.ludus, u = S.st.ludus;
+  const nx = (f: Facility, cur: string, next: string) => upgradeCost(S.st, f) == null ? `${cur} · 최대` : `${cur} → ${next}`; // 지금 값 → 다음 단계 값 (최대치는 보이지 않는다)
   if (group === 'cells') return [facRow('켈라 증축', `${u.cells.length}칸`, nx('cells', `${u.cells.length}칸`, `${u.cells.length + L.cells.per}칸`), 'cells'), facRow('조리장', `${u.kitchen}단계`, nx('kitchen', `출전 HP +${u.kitchen * L.kitchen.hpPerLevel}`, `+${(u.kitchen + 1) * L.kitchen.hpPerLevel}`), 'kitchen')];
   if (group === 'medic') return [
-    facRow('침상', `${u.beds}개`, `${nx('beds', `동시 회복 ${u.beds}명`, `${u.beds + 1}명`)} · 부상 ${st.roster.filter(g => g.injured > 0).length}명`, 'beds'),
+    facRow('침상', `${u.beds}개`, `${nx('beds', `동시 회복 ${u.beds}명`, `${u.beds + 1}명`)} · 부상 ${S.st.roster.filter(g => g.injured > 0).length}명`, 'beds'),
     facRow('의술', `${u.medicine}단계`, nx('medicine', medDesc(u.medicine), medDesc(u.medicine + 1)), 'medicine'),
     facRow('약재', `${u.herbs}단계`, nx('herbs', `피로 면제 ${Math.round(u.herbs * L.herbs.skipFatiguePer * 100)}%`, `${Math.round((u.herbs + 1) * L.herbs.skipFatiguePer * 100)}%`), 'herbs')];
-  return [facRow('팔루스', `${u.palus}개`, `${nx('palus', `훈련 자리 ${u.palus}`, `${u.palus + 1}`)} · 세운 검투사 ${palusTrainees(st).length}`, 'palus'), facRow('훈련 시설', `${u.gym}단계`, nx('gym', `훈련 폭 +${gymBonus(st)}`, `+${L.gym.bonusAt.filter(a => u.gym + 1 >= a).length}`), 'gym')];
+  return [facRow('팔루스', `${u.palus}개`, `${nx('palus', `훈련 자리 ${u.palus}`, `${u.palus + 1}`)} · 세운 검투사 ${palusTrainees(S.st).length}`, 'palus'), facRow('훈련 시설', `${u.gym}단계`, nx('gym', `훈련 폭 +${gymBonus(S.st)}`, `+${L.gym.bonusAt.filter(a => u.gym + 1 >= a).length}`), 'gym')];
 }
 function facilitiesPanel(): Node {
-    const u = st.ludus;
+    const u = S.st.ludus;
     // 방(숙소 질) 강화는 켈라의 각 방 시트에서. 여기서는 증축·조리장·의무실·훈련장만
-    return h('div', { class: 'panel' }, h('h2', {}, '루두스 시설', hintSpan(`켈라 ${u.cells.length} · 침상 ${u.beds} · 팔루스 ${u.palus} · 시설 유지비 ${facilityUpkeep(st).toLocaleString()}/시즌`), helpBtn('루두스 시설', '모든 시설은 단계가 정해져 있습니다.\n켈라: 칸 수 = 검투사 상한. 칸마다 숙소 질 ★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌.\n조리장: 출전 HP +5/단계.\n의무실: 침상(모자라면 부상 +1시즌), 의술(2단계 부상 1시즌, 4단계 치료 250), 약재(피로 면제 20%/단계).\n훈련장: 팔루스 = 시즌당 훈련 인원, 훈련 시설 3·5단계에서 훈련 폭 +1.\n강화 버튼은 다음 시즌 유지비를 남길 수 있을 때만 켜집니다.')),
+    return h('div', { class: 'panel' }, h('h2', {}, '루두스 시설', hintSpan(`켈라 ${u.cells.length} · 침상 ${u.beds} · 팔루스 ${u.palus} · 시설 유지비 ${facilityUpkeep(S.st).toLocaleString()}/시즌`), helpBtn('루두스 시설', '모든 시설은 단계가 정해져 있습니다.\n켈라: 칸 수 = 검투사 상한. 칸마다 숙소 질 ★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌.\n조리장: 출전 HP +5/단계.\n의무실: 침상(모자라면 부상 +1시즌), 의술(2단계 부상 1시즌, 4단계 치료 250), 약재(피로 면제 20%/단계).\n훈련장: 팔루스 = 시즌당 훈련 인원, 훈련 시설 3·5단계에서 훈련 폭 +1.\n강화 버튼은 다음 시즌 유지비를 남길 수 있을 때만 켜집니다.')),
       h('div', { class: 'fgrid' },
         h('div', { class: 'fcol' }, h('h3', {}, '켈라 · 조리장'),
           ...facRows('cells')),
@@ -641,8 +642,8 @@ function facilitiesPanel(): Node {
 }
   // 상대 파밀리아 패널: 간판 검투사, 나와의 전적, 명단 요약
 function rivalsPanel(): Node {
-    return h('div', { class: 'panel' }, h('h2', {}, '상대 파밀리아', hintSpan(`${st.rivals.length}곳 · 이번 시즌 계약 상대 ${new Set(st.contracts.map(c => c.rivalId).filter(Boolean)).size}곳`)),
-      h('div', { class: 'rivals' }, ...st.rivals.map(rv => { const star = rivalStar(rv); const inContracts = st.contracts.filter(c => c.rivalId === rv.id).length;
+    return h('div', { class: 'panel' }, h('h2', {}, '상대 파밀리아', hintSpan(`${S.st.rivals.length}곳 · 이번 시즌 계약 상대 ${new Set(S.st.contracts.map(c => c.rivalId).filter(Boolean)).size}곳`)),
+      h('div', { class: 'rivals' }, ...S.st.rivals.map(rv => { const star = rivalStar(rv); const inContracts = S.st.contracts.filter(c => c.rivalId === rv.id).length;
         return h('div', { class: 'rivalcard' }, star ? portrait(star, 56, true) : h('div', { class: 'portrait', style: 'width:56px;height:56px' }),
           h('div', { class: 'grow' }, h('div', {}, h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}`, style: 'margin-left:6px', title: rivalDef(rv)?.desc ?? '' }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), inContracts ? h('span', { class: 'badge revenge', style: 'margin-left:6px' }, `이번 시즌 계약 ${inContracts}`) : null),
             h('div', { class: 'meta' }, star && ((star.honor ?? 0) >= 20 || star.wins >= 3) ? `간판: ${star.name} (${TYPE_KO[star.type]} ${star.rank === 'tiro' ? '티로' : '베테'}, ${star.wins}승/${star.fights}전, 명예 ${star.honor ?? 0}${(star.skills ?? []).length ? `, 기술 ${(star.skills ?? []).map(SKILL_NAME).join('·')}` : ''})` : '아직 이름난 검투사가 없음'),
@@ -652,18 +653,18 @@ function rivalsPanel(): Node {
 // 검투사 카드의 행동 버튼(치료·매각·독토르·재훈련·재계약·내보내기·기술 제안). 켈라 방 시트가 쓴다
 function gladActions(g: Gladiator): (Node | null)[] {
   return [
-      g.injured ? h('button', { disabled: st.money < healCostOf(st), onclick: () => openConfirm(g, 'heal') }, `치료 ${healCostOf(st)}`) : null,
+      g.injured ? h('button', { disabled: S.st.money < healCostOf(S.st), onclick: () => openConfirm(g, 'heal') }, `치료 ${healCostOf(S.st)}`) : null,
       (g.status ?? 'slave') === 'slave' ? h('button', { onclick: () => openConfirm(g, 'sell') }, `매각 ${sellPrice(g).toLocaleString()}`) : null,
-      g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1 ? h('button', { class: 'primary', disabled: st.money < renewCost(g), title: `계약 ${CONFIG.origins.auctoratus.term}시즌 연장`, onclick: () => { renewContract(st, g); render(); } }, `재계약 ${renewCost(g).toLocaleString()}`) : null,
+      g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - S.st.season <= 1 ? h('button', { class: 'primary', disabled: S.st.money < renewCost(g), title: `계약 ${CONFIG.origins.auctoratus.term}시즌 연장`, onclick: () => { renewContract(S.st, g); render(); } }, `재계약 ${renewCost(g).toLocaleString()}`) : null,
       g.status && g.status !== 'slave' ? h('button', { onclick: () => openConfirm(g, 'release') }, '내보내기') : null,
     ];
 }
 // 켈라 방 시트: 방을 누르면 그 검투사의 카드 + 행동 버튼 + 이 방 강화 + 다른 방으로 옮기기 (검투사 목록 시트와 켈라 팝오버를 하나로 합쳤다)
 // 검투사 상세 페이지: 왼쪽에 검투사가 크게 서 있고(불러낸 느낌), 오른쪽에 정보와 행동. 내 검투사(켈라)와 시장 노예가 같은 틀을 쓴다
-let shownDetail: string | null = null; // 지금 떠 있는 상세 페이지 (kind:id)
-function closeDetail() { const el = document.querySelector('.detailpage'); shownDetail = null; if (!el) { detail = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { detail = null; render(); }, 280); }
-function openConfirm(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal') { if (!detail) detail = { kind: what === 'buy' ? 'market' : 'roster', id: g.id, solo: true }; detail.confirm = what; render(); }
-function closeConfirm() { const el = document.querySelector('.detailpage.confirm'); const done = () => { if (detail?.solo) detail = null; else if (detail) delete detail.confirm; render(); }; if (!el || !detail) { done(); return; } el.classList.add('closing'); window.setTimeout(done, 280); }
+S.shownDetail = null; // 지금 떠 있는 상세 페이지 (kind:id)
+function closeDetail() { const el = document.querySelector('.detailpage'); S.shownDetail = null; if (!el) { S.detail = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.detail = null; render(); }, 280); }
+function openConfirm(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal') { if (!S.detail) S.detail = { kind: what === 'buy' ? 'market' : 'roster', id: g.id, solo: true }; S.detail.confirm = what; render(); }
+function closeConfirm() { const el = document.querySelector('.detailpage.confirm'); const done = () => { if (S.detail?.solo) S.detail = null; else if (S.detail) delete S.detail.confirm; render(); }; if (!el || !S.detail) { done(); return; } el.classList.add('closing'); window.setTimeout(done, 280); }
 // 매각·내보내기·구매 확인: 검투사와 라니스타가 마주 서서 주고받는 대화 장면. 말풍선이 차례로 뜨고, 아래에 '· ' 효과 줄과 확인 버튼
 const talkScenes = new Set<{ c: HTMLCanvasElement; g: Gladiator; start: number; what: 'sell' | 'release' | 'buy' | 'heal'; healed?: number }>();
 function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: number; what: 'sell' | 'release' | 'buy' | 'heal'; healed?: number }, t: number) {
@@ -700,12 +701,12 @@ function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: number; w
     hands: (c, f) => { c.fillStyle = '#d9c69a'; c.fillRect(f.hx - 7, f.hy - 12, 9, 12); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(f.hx - 7, f.hy - 12, 9, 12); } });
 }
 function talkLines(g: Gladiator, what: 'sell' | 'release' | 'buy' | 'heal'): { who: 'l' | 'g'; text: string }[] {
-  const L = st.lanista.name.split(' ')[0]; void L;
+  const L = S.st.lanista.name.split(' ')[0]; void L;
   if (what === 'heal') return [{ who: 'l', text: g.injured >= 2 ? '상처가 깊소. 약초를 바르고 붕대를 갈면 며칠이오.' : '뼈는 붙었소. 약초만 바르면 내일이라도 서겠소.' }, { who: 'g', text: g.wins >= 3 ? '고맙습니다. 다음 모래는 제가 밟겠습니다.' : '…아직 싸울 수 있습니다, 도미네.' }, { who: 'l', text: '값은 라니스타 몫이오. 손을 봅시다.' }]; // 의사 ↔ 검투사
   if (what === 'sell') { const p = sellPrice(g).toLocaleString();
     return [{ who: 'l', text: `상인이 값을 불렀다. ${p} HS.` }, { who: 'g', text: g.injured ? '이 몸으로도 사 간답니까, 도미네.' : g.wins >= 3 ? `${g.wins}승을 올린 저를… 파시는 겁니까.` : '…팔려 가는 겁니까, 도미네.' }, { who: 'l', text: '루두스도 먹고살아야지. 잘 가라.' }]; }
   if (what === 'release') return [{ who: 'l', text: g.status === 'doctor' ? '수고했다. 이제 제자들은 내가 맡지.' : '계약은 여기까지다. 목검은 두고 가라.' }, { who: 'g', text: g.status === 'doctor' ? '제자들을 잘 부탁드립니다, 도미네.' : '고맙습니다. 이 이름은 이 루두스가 만든 것입니다.' }, { who: 'l', text: '가서 네 이름으로 살아라.' }];
-  const p = priceOf(st, g).toLocaleString();
+  const p = priceOf(S.st, g).toLocaleString();
   return [{ who: 'l', text: '이름이 뭐냐.' }, { who: 'g', text: g.origin === 'captive' ? `${g.name}. …포로입니다. 검을 쥐게 해 주십시오.` : g.origin === 'damnatus' ? `${g.name}입니다. 죄수지만 살아남을 줄은 압니다.` : `${g.name}입니다. 상인이 그렇게 불렀습니다.` }, { who: 'l', text: `${p} HS. 켈라에 자리를 마련하겠다.` }];
 }
 // 금화 줄: 동전 아이콘 + 굵은 금액 + 지불/획득 (+ 작은 주석)
@@ -714,23 +715,23 @@ function moneyRow(m: { amount: number; verb: string; note?: string }): Node {
   return h('div', { class: `moneyrow ${m.verb === '지불' ? 'pay' : 'gain'}` }, ic, h('b', {}, `${m.amount.toLocaleString()} HS`), h('span', { class: 'verb' }, m.verb), m.note ? h('span', { class: 'note' }, m.note) : null);
 }
 function confirmPage(): Node {
-  const d = detail!; const g = (d.kind === 'roster' ? st.roster : st.market).find(x => x.id === d.id); if (!g) { delete d.confirm; return h('div'); }
+  const d = S.detail!; const g = (d.kind === 'roster' ? S.st.roster : S.st.market).find(x => x.id === d.id); if (!g) { delete d.confirm; return h('div'); }
   const what = d.confirm!; const O = CONFIG.origins;
   const lines: string[] = []; let okLabel = '', disabled = false, why = ''; let money: { amount: number; verb: string; note?: string } | null = null; // 왼쪽 금화 줄: 얼마 지불 / 얼마 획득
   if (what === 'sell') {
     const p = sellPrice(g); okLabel = '매각'; money = { amount: p, verb: '획득' };
-    lines.push(`· 켈라 ${cellOf(st, g) + 1}번이 비고 유지비가 줄어든다`, '· 전적·기술·별칭은 함께 떠난다. 되사올 수 없다');
+    lines.push(`· 켈라 ${cellOf(S.st, g) + 1}번이 비고 유지비가 줄어든다`, '· 전적·기술·별칭은 함께 떠난다. 되사올 수 없다');
     if (assignedTo(g.id) != null) lines.push('· 이번 시즌 편성에서 빠진다');
   } else if (what === 'release') {
     okLabel = '내보내기'; money = { amount: 0, verb: '획득', note: '자유민이라 값을 받지 못한다' };
     lines.push(g.status === 'doctor' ? '· 독토르 급료가 사라지고 같은 유형 훈련 보너스도 끝난다' : '· 급료와 켈라 유지비가 사라진다', '· 다시 부를 수 없다');
   } else if (what === 'heal') {
-    const cost = healCostOf(st); okLabel = '치료'; money = { amount: cost, verb: '지불' }; disabled = st.money < cost; why = st.money < cost ? `자금 ${(cost - st.money).toLocaleString()} HS 부족` : '';
-    lines.push(`· 부상 ${g.injured}시즌이 지금 낫는다`, '· 이번 시즌 바로 출전할 수 있다', inBed(st, g) ? '· 침상이 비어 다른 부상자를 눕힐 수 있다' : '· 두면 침상에 누워야 시즌마다 1씩 낫는다 (요양은 2)');
+    const cost = healCostOf(S.st); okLabel = '치료'; money = { amount: cost, verb: '지불' }; disabled = S.st.money < cost; why = S.st.money < cost ? `자금 ${(cost - S.st.money).toLocaleString()} HS 부족` : '';
+    lines.push(`· 부상 ${g.injured}시즌이 지금 낫는다`, '· 이번 시즌 바로 출전할 수 있다', inBed(S.st, g) ? '· 침상이 비어 다른 부상자를 눕힐 수 있다' : '· 두면 침상에 누워야 시즌마다 1씩 낫는다 (요양은 2)');
   } else {
-    const price = priceOf(st, g); const full = st.roster.length >= rosterCap(st); okLabel = '구매'; money = { amount: price, verb: '지불', note: price < g.buyPrice ? `해방노예 할인, 정가 ${g.buyPrice.toLocaleString()}` : undefined };
-    disabled = st.money < price || full; why = st.money < price ? `자금 ${(price - st.money).toLocaleString()} HS 부족` : full ? `켈라 ${st.roster.length}/${rosterCap(st)} 가득 참` : '';
-    lines.push(`· 켈라 ${st.roster.length}/${rosterCap(st)} → ${st.roster.length + 1}/${rosterCap(st)}, 유지비 늘어남`);
+    const price = priceOf(S.st, g); const full = S.st.roster.length >= rosterCap(S.st); okLabel = '구매'; money = { amount: price, verb: '지불', note: price < g.buyPrice ? `해방노예 할인, 정가 ${g.buyPrice.toLocaleString()}` : undefined };
+    disabled = S.st.money < price || full; why = S.st.money < price ? `자금 ${(price - S.st.money).toLocaleString()} HS 부족` : full ? `켈라 ${S.st.roster.length}/${rosterCap(S.st)} 가득 참` : '';
+    lines.push(`· 켈라 ${S.st.roster.length}/${rosterCap(S.st)} → ${S.st.roster.length + 1}/${rosterCap(S.st)}, 유지비 늘어남`);
     if (g.origin === 'captive') lines.push(`· 전쟁 포로: 관중이 냉담해 미시오 ${Math.round(O.captive.missio * 100)}%`);
     if (g.origin === 'damnatus') lines.push(`· 형벌 죄수: 사망 배상 절반, ${O.damnatus.freeAfter}시즌 뒤 형기 만료로 자유민`);
   }
@@ -739,16 +740,16 @@ function confirmPage(): Node {
   let stamped = false;
   const doIt = () => {
     if (stamped) return; stamped = true;
-    if (what === 'buy' && !canBuy(st, g)) return;
+    if (what === 'buy' && !canBuy(S.st, g)) return;
     const page = document.querySelector('.detailpage.confirm');
     if (page) page.append(h('div', { class: 'stamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
     if (what === 'heal') for (const sc of talkScenes) if (sc.g === g) sc.healed = performance.now() + 250; // 도장 뒤 일어선다
     window.setTimeout(() => {
-      if (what === 'heal') { if (!heal(st, g)) return; sfx.coin(); notice = `${g.name} 이(가) 자리에서 일어났다`; }
-      else if (what === 'sell') { sell(st, g); sfx.coin(); notice = `${g.name} 매각`; }
-      else if (what === 'release') { release(st, g); notice = `${g.name} 이(가) 루두스를 떠났다`; }
-      else { if (!buy(st, g)) return; sfx.coin(); marketSel = null; notice = `${g.name} 을(를) 들였다`; }
-      detail = null; shownDetail = null; render();
+      if (what === 'heal') { if (!heal(S.st, g)) return; sfx.coin(); S.notice = `${g.name} 이(가) 자리에서 일어났다`; }
+      else if (what === 'sell') { sell(S.st, g); sfx.coin(); S.notice = `${g.name} 매각`; }
+      else if (what === 'release') { release(S.st, g); S.notice = `${g.name} 이(가) 루두스를 떠났다`; }
+      else { if (!buy(S.st, g)) return; sfx.coin(); S.marketSel = null; S.notice = `${g.name} 을(를) 들였다`; }
+      S.detail = null; S.shownDetail = null; render();
     }, what === 'heal' ? 1400 : 900);
   };
   // 장면 캔버스 (무대 폭) + 말풍선 (검투사 위 왼쪽, 라니스타 위 오른쪽), 차례로 1.2초 간격
@@ -777,14 +778,14 @@ function backBtn(onclick: () => void, title: string): Node {
   return b;
 }
 function detailPage(): Node {
-  const d = detail!; const g = d.kind === 'roster' ? st.roster.find(x => x.id === d.id) : st.market.find(x => x.id === d.id);
-  if (!g) { detail = null; return h('div'); }
-  const again = shownDetail === `${d.kind}:${d.id}`; shownDetail = `${d.kind}:${d.id}`; // 같은 검투사가 이미 떠 있으면(확인 페이지를 열고 닫을 때의 재렌더) 슬라이드·걸어 들어오기를 반복하지 않는다
+  const d = S.detail!; const g = d.kind === 'roster' ? S.st.roster.find(x => x.id === d.id) : S.st.market.find(x => x.id === d.id);
+  if (!g) { S.detail = null; return h('div'); }
+  const again = S.shownDetail === `${d.kind}:${d.id}`; S.shownDetail = `${d.kind}:${d.id}`; // 같은 검투사가 이미 떠 있으면(확인 페이지를 열고 닫을 때의 재렌더) 슬라이드·걸어 들어오기를 반복하지 않는다
   const figure = portrait(g, 116, false, undefined, 170); figure.classList.add('big'); /* 초상 크기는 여기(인라인)가 정한다 — 폭 116(오른쪽에 기술 칩 3개가 든다), 높이 170(인물은 높이 기준으로 크게) */ if (!again) for (const e of portraits) if (e.c === figure) { e.enter = performance.now(); } // 큰 초상: 왼쪽에서 발소리를 내며 걸어 들어온다
   const status = d.kind === 'market' ? (g.rank === 'tiro' ? '티로' : '베테라누스') : g.status === 'doctor' ? '독토르' : g.status === 'rudiarius' ? '자유민' : g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스';
   const dskills = h('div', { class: 'gskills dskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0'))); // 편성 타일처럼 초상 오른쪽에 기술 칩과 빈 자리
   const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g, false)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
-  gladSel = g.id; marketSel = d.kind === 'market' ? g.id : marketSel;
+  S.gladSel = g.id; S.marketSel = d.kind === 'market' ? g.id : S.marketSel;
   const { mid, side } = detailRight(g, d.kind);
   return h('div', { class: `detailpage${again ? ' still' : ''}` }, left, h('div', { class: 'dright' }, mid), h('div', { class: 'dright side' }, side),
     backBtn(closeDetail, d.kind === 'market' ? '판매대로 돌아가기' : '켈라로 돌아가기'));
@@ -812,10 +813,10 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
   const recordRow = h('div', { class: 'tiles' }, tile('전적', `${g.wins}승 ${g.fights - g.wins}패`, '', '승/패. 승리를 쌓으면 베테라누스, 루디스, 별칭'), tile('미시오', String(g.missios), '', '져서 쓰러졌지만 관중이 살려 준 횟수'), tile('명예', String(g.honor ?? 0), '', '검투사의 명예. 미시오 확률과 별칭·루디스에 영향'), tile('팬', `${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}`, '', `관중의 팬. ${FANS_STAR} 이상이면 ★ 인기 검투사`));
   const statusBits: string[] = [];
   if (g.injured) statusBits.push(`부상 ${g.injured}시즌 남음`);
-  if (g.status === 'rudiarius' && g.contractUntil != null) statusBits.push(`자유민 계약 ${Math.max(0, g.contractUntil - st.season + 1)}시즌 남음 · 급료 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%`);
+  if (g.status === 'rudiarius' && g.contractUntil != null) statusBits.push(`자유민 계약 ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌 남음 · 급료 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%`);
   if (g.status === 'doctor') statusBits.push(`독토르로 ${TYPE_KO[g.type]} 훈련을 가르친다 · 급료 ${CONFIG.doctorSalary}/시즌`);
   if (g.fought) statusBits.push('이번 시즌 출전 완료');
-  if (kind === 'roster' && g.origin === 'damnatus' && g.boughtSeason != null) statusBits.push(`형기 ${Math.max(0, CONFIG.origins.damnatus.freeAfter - (st.season - g.boughtSeason + 1))}시즌 뒤 자유`);
+  if (kind === 'roster' && g.origin === 'damnatus' && g.boughtSeason != null) statusBits.push(`형기 ${Math.max(0, CONFIG.origins.damnatus.freeAfter - (S.st.season - g.boughtSeason + 1))}시즌 뒤 자유`);
   const slots = skillSlots(g);
   // 가운데 열: 전적 → 능력치 → 기술 → 상태 → 시즌 행동 (시장: 출신)
   const mid: (Node | null)[] = [
@@ -826,30 +827,30 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
   ];
   const side: (Node | null)[] = [];
   if (kind === 'market') {
-    const price = priceOf(st, g); const full = st.roster.length >= rosterCap(st); const O = CONFIG.origins;
+    const price = priceOf(S.st, g); const full = S.st.roster.length >= rosterCap(S.st); const O = CONFIG.origins;
     const originDesc = g.origin === 'captive' ? `전쟁 포로: 값 ${Math.round((1 - O.captive.price) * 100)}% 저렴, 공격 +${O.captive.atk}·HP +${O.captive.hp}. 관중이 이방인에게 냉담해 미시오 ${Math.round(O.captive.missio * 100)}%.` : g.origin === 'damnatus' ? `형벌 죄수: 값 ${Math.round((1 - O.damnatus.price) * 100)}% 저렴, 능력치 ${O.damnatus.stat}. 사망 배상 절반. ${O.damnatus.freeAfter}시즌 뒤 형기 만료로 자유민이 됨.` : '노예 상인이 데려온 검투사. 값은 능력치대로.';
     mid.push(dsec('origin', '출신', h('div', { class: 'line' }, originDesc)));
-    side.push(dsec('act', '계약', h('div', { class: 'statrow col' }, h('button', { class: 'primary', disabled: st.money < price || full, title: full ? '켈라가 가득 찼습니다' : '', onclick: () => openConfirm(g, 'buy') }, `구매 ${price.toLocaleString()} HS${price < g.buyPrice ? ' (할인)' : ''}`), st.money < price ? h('span', { class: 'hint', style: 'color:var(--red)' }, `자금 ${(price - st.money).toLocaleString()} HS 부족`) : full ? h('span', { class: 'hint' }, `켈라 ${st.roster.length}/${rosterCap(st)} 가득 참`) : null)));
+    side.push(dsec('act', '계약', h('div', { class: 'statrow col' }, h('button', { class: 'primary', disabled: S.st.money < price || full, title: full ? '켈라가 가득 찼습니다' : '', onclick: () => openConfirm(g, 'buy') }, `구매 ${price.toLocaleString()} HS${price < g.buyPrice ? ' (할인)' : ''}`), S.st.money < price ? h('span', { class: 'hint', style: 'color:var(--red)' }, `자금 ${(price - S.st.money).toLocaleString()} HS 부족`) : full ? h('span', { class: 'hint' }, `켈라 ${S.st.roster.length}/${rosterCap(S.st)} 가득 참`) : null)));
   } else {
-    const k = cellOf(st, g); const q = st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(st, 'cell', k) : null;
+    const k = cellOf(S.st, g); const q = S.st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(S.st, 'cell', k) : null;
     // (시즌 행동 칸은 뺐다 — 훈련은 팔루스 배치, 나머지는 자동. 치료는 아래 '행동'에)
     // 오른쪽 열: 켈라 → 행동 (치료·매각·재계약·내보내기)
     const CELL_FX = ['맨바닥', '피로 회복 −2', '피로 덜 쌓임(★마다 −15%)', '명예 +1/시즌']; // 숙소 질 0~3 효과 (★마다 유지비 +100)
     side.push(dsec('room', `켈라 ${k + 1}번`, h('div', { class: 'statrow col' }, h('span', { class: 'stars' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)),
-      h('div', { class: 'line' }, h('span', { class: 'k' }, '지금 '), CELL_FX[q]), q < CELL_FX.length - 1 ? h('div', { class: 'line' }, h('span', { class: 'k' }, '손보면 '), CELL_FX[q + 1]) : null, cost != null ? h('button', { disabled: !canPayFac(cost), title: '짚·침상·벽화를 들여 숙소를 낫게 한다', onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음'))));
+      h('div', { class: 'line' }, h('span', { class: 'k' }, '지금 '), CELL_FX[q]), q < CELL_FX.length - 1 ? h('div', { class: 'line' }, h('span', { class: 'k' }, '손보면 '), CELL_FX[q + 1]) : null, cost != null ? h('button', { disabled: !canPayFac(cost), title: '짚·침상·벽화를 들여 숙소를 낫게 한다', onclick: () => { if (upgrade(S.st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음'))));
     const acts = gladActions(g).filter((n): n is Node => !!n); if (acts.length) side.push(dsec('act', '행동', h('div', { class: 'statrow col' }, ...acts)));
   }
   return { mid: h('div', { class: 'dmid' }, ...mid.filter((n): n is Node => !!n)), side: h('div', { class: 'dside' }, ...side.filter((n): n is Node => !!n)) };
 }
 function gladSheet(): Node {
-  const g = st.roster.find(x => x.id === gladSel); if (!g) return h('div', { class: 'panel' }, h('h2', {}, '검투사'), h('div', { class: 'hint' }, '루두스를 떠났습니다.'));
-  const k = cellOf(st, g); const q = st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(st, 'cell', k) : null;
-  const cellRow = (j: number) => { const o = occupantOf(st, j), qj = st.ludus.cells[j] ?? 0; return h('div', { class: `drow${j === k ? ' sel' : ''}`, onclick: j === k ? undefined : () => { moveToCell(st, g, j); render(); } },
+  const g = S.st.roster.find(x => x.id === S.gladSel); if (!g) return h('div', { class: 'panel' }, h('h2', {}, '검투사'), h('div', { class: 'hint' }, '루두스를 떠났습니다.'));
+  const k = cellOf(S.st, g); const q = S.st.ludus.cells[k] ?? 0, cost = k >= 0 ? upgradeCost(S.st, 'cell', k) : null;
+  const cellRow = (j: number) => { const o = occupantOf(S.st, j), qj = S.st.ludus.cells[j] ?? 0; return h('div', { class: `drow${j === k ? ' sel' : ''}`, onclick: j === k ? undefined : () => { moveToCell(S.st, g, j); render(); } },
     h('span', { class: 'nm' }, `${j + 1}번`), h('span', { class: 'stars', style: 'margin-left:6px' }, '★'.repeat(qj) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - qj)), o ? h('b', { style: 'margin-left:6px' }, o.name) : h('span', { class: 'meta' }, ' 빈 방'), h('span', { style: 'flex:1' }), j === k ? null : h('span', { class: 'hint' }, '옮기기 →')); }; // 방 줄: 번호 · ★ · 거주자 이름(굵게) — 누르면 그 방으로(사람이 있으면 자리를 바꾼다)
   return h('div', { class: 'panel' },
     h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라와 검투사', '검투사가 자는 작은 방입니다. 방 장식이 상태입니다: 벽의 획수 = 승수(5승 묶음), 종려가지 = 5승마다, 월계관 = 명예 20 이상(40 이상 금빛), 하트 낙서 = 팬 스타, 목검 = 배운 기술 수, 오른쪽 벽 걸이 = 그 유형의 투구·방패·무기, 벽의 나무 검 = 자유민(루디스), 지팡이 = 독토르, 붕대·목발 = 부상. 피로는 자세로: 1 축 처져 앉음, 2 꾸벅임(z z), 3 벽에 기대 잠. 왼쪽 아래 ★ = 켈라 등급.\n\n숙소 질 ★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌. 여기서 치료·매각·재훈련·재계약을 하고, 방을 강화하거나 다른 방으로 옮깁니다.')),
     gladCard(g, gladActions(g), { dis: !!g.injured }),
-    h('div', { class: 'frow', style: 'margin-top:8px' }, h('div', { class: 'grow' }, h('b', {}, '이 방 강화'), h('div', { class: 'meta' }, '★1 피로 회복 −2 · ★2 피로 덜 쌓임 · ★3 명예 +1/시즌 (★마다 유지비 +100)')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음')),
+    h('div', { class: 'frow', style: 'margin-top:8px' }, h('div', { class: 'grow' }, h('b', {}, '이 방 강화'), h('div', { class: 'meta' }, '★1 피로 회복 −2 · ★2 피로 덜 쌓임 · ★3 명예 +1/시즌 (★마다 유지비 +100)')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(S.st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음')),
     h('div', { class: 'two' }, // 왼쪽 시즌 행동 · 오른쪽 방 옮기기
       h('div', {}, h('h3', { class: 'sub' }, '시즌 행동', g.status === 'doctor' ? h('span', { class: 'hint', style: 'margin-left:6px' }, '독토르') : assignedTo(g.id) != null ? h('span', { class: 'hint', style: 'margin-left:6px' }, '출전 예정') : null),
         g.status !== 'doctor' ? h('div', { class: 'segcol' }, ...actionSeg(g)) : h('div', { class: 'hint' }, '가르치는 중')),
@@ -858,11 +859,11 @@ function gladSheet(): Node {
 
 // ── 후계: 은퇴한 라니스타의 뒤를 이을 사람을 고른다
 function renderSuccession(): Node {
-  const opts = successorOptions(st);
+  const opts = successorOptions(S.st);
   return h('div', { class: 'overlay' }, h('div', { class: 'modal' },
-    h('h2', {}, `${st.lanista.name} ${st.lanista.dead ? '사망' : '은퇴'}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${st.lanista.age}세 · 후계자를 정하십시오`)),
+    h('h2', {}, `${S.st.lanista.name} ${S.st.lanista.dead ? '사망' : '은퇴'}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${S.st.lanista.age}세 · 후계자를 정하십시오`)),
     h('div', { class: 'hint', style: 'margin-bottom:8px' }, `자금·검투사·시설은 그대로 잇고, 호감도는 ${Math.round(CONFIG.lanista.fameKeep * 100)}%에 후계자의 명예 일부가 더해집니다. 독토르가 이으면 검투사 명단에서 빠집니다.`),
-    ...opts.map(o => h('div', { class: 'card', onclick: () => { succeed(st, o); notice = `${st.lanista.name} 이(가) 루두스를 이어받았습니다.`; render(); } },
+    ...opts.map(o => h('div', { class: 'card', onclick: () => { succeed(S.st, o); S.notice = `${S.st.lanista.name} 이(가) 루두스를 이어받았습니다.`; render(); } },
       o.from ? portrait(o.from, 56) : h('div', { class: 'portrait', style: 'width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:22px' }, '⚖'),
       h('div', { class: 'grow' }, h('div', {}, h('b', {}, o.label), o.from ? h('span', { class: 'meta' }, ` ${o.from.age ?? '?'}세`) : null), h('div', { class: 'meta' }, o.desc), o.from ? h('div', { class: 'meta' }, `명예 ${o.from.honor ?? 0} → 호감도 계승 +${Math.round((o.from.honor ?? 0) * CONFIG.lanista.fameFromHonor)}`) : null),
       h('button', { class: 'primary' }, '승계')))));
@@ -901,7 +902,7 @@ function renderHelp(): Node {
     sec('미시오 (패자의 목숨)',
       row('기본', `${Math.round(M.base * 100)}% + 호감도×${M.perFame * 100}% + 승수×${M.perWin * 100}% (최대 ${M.maxWins}승).`),
       row('주최자', `성격에 따라 상금·대여료·미시오·루디스가 다르다 (아래 '주최자' 절). 등급 1 경기 +${Math.round(M.tierBonus[1] * 100)}%, 등급 2 +${Math.round(M.tierBonus[2] * 100)}% (지방 주최자는 사망 배상을 꺼려 살려 주는 편).`),
-      row('결과', `살아남으면 ${Math.round(M.injuryChance * 100)}% 확률로 부상 (${injurySeasons(st)}시즌 출전 불가, 치료 ${healCostOf(st)} HS). 실패하면 사망하고 주최자가 배상 (구매가×${CONFIG.deathComp.priceMult} + 승수×${CONFIG.deathComp.perWin}).`)),
+      row('결과', `살아남으면 ${Math.round(M.injuryChance * 100)}% 확률로 부상 (${injurySeasons(S.st)}시즌 출전 불가, 치료 ${healCostOf(S.st)} HS). 실패하면 사망하고 주최자가 배상 (구매가×${CONFIG.deathComp.priceMult} + 승수×${CONFIG.deathComp.perWin}).`)),
     sec('주최자 (에디토르)',
       ...(Object.keys(HOST) as (keyof typeof HOST)[]).map(k => { const H = HOST[k]; return row(H.ko, `${H.desc} 상금 ×${H.prize}, 대여료 ×${H.rent}, 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}%, 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? `, 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? `, 출전자 명예 +${H.honorAll}` : ''}.`); }),
       row('팬', `명예 + 승수×2 + 별칭×5. ${FANS_STAR} 이상이면 스타: 관중이 이름을 외치고 관중석이 더 차며, 선거 후보의 경기에서 이기면 호감도 +1 (폼페이 낙서의 팬심).`),
@@ -933,27 +934,27 @@ function renderHelp(): Node {
 }
 
 // ── 대시보드: 현재 장소에서 선택해야 하는 일들
-function renderDash(v: View = view, forNews = false): Node[] {
+function renderDash(v: View = S.view, forNews = false): Node[] {
   const view = v; // 서랍에서 다른 장소의 내용을 그릴 때 쓴다. forNews: 소식 배지·소식 시트용 — 켈라가 열려 있어도 켈라 항목이 아니라 마을 소식을 센다
   const item = (cls: string, text: string, extra?: Node | null) => h('div', { class: `ditem ${cls}` }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, text), extra ?? null);
   if (view === 'market') {
-    const g = st.market.find(x => x.id === marketSel);
-    const out: Node[] = [h('h3', {}, '노예 시장', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `매물 ${st.market.length}명 · 보유 ${st.money.toLocaleString()} HS`))];
-    if (!st.market.length) return [...out, item('idle', '이번 시즌 매물이 없습니다.')];
-    const full = st.roster.length >= rosterCap(st);
-    if (full) out.push(item('warn', `켈라이 가득 찼습니다 (${st.roster.length}/${rosterCap(st)}). 루두스에서 켈라을 증축하거나 검투사를 매각해야 살 수 있습니다.`));
+    const g = S.st.market.find(x => x.id === S.marketSel);
+    const out: Node[] = [h('h3', {}, '노예 시장', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `매물 ${S.st.market.length}명 · 보유 ${S.st.money.toLocaleString()} HS`))];
+    if (!S.st.market.length) return [...out, item('idle', '이번 시즌 매물이 없습니다.')];
+    const full = S.st.roster.length >= rosterCap(S.st);
+    if (full) out.push(item('warn', `켈라이 가득 찼습니다 (${S.st.roster.length}/${rosterCap(S.st)}). 루두스에서 켈라을 증축하거나 검투사를 매각해야 살 수 있습니다.`));
     if (g && g.origin && g.origin !== 'slave') out.push(item('idle', `${ORIGIN_KO[g.origin]}: ` + (g.origin === 'captive' ? `값 ${Math.round((1 - CONFIG.origins.captive.price) * 100)}% 저렴, 공격 +${CONFIG.origins.captive.atk}·HP +${CONFIG.origins.captive.hp}. 관중이 이방인에게 냉담해 미시오 ${Math.round(CONFIG.origins.captive.missio * 100)}%.` : g.origin === 'damnatus' ? `값 ${Math.round((1 - CONFIG.origins.damnatus.price) * 100)}% 저렴, 능력치 ${CONFIG.origins.damnatus.stat}. 사망 배상 절반. ${CONFIG.origins.damnatus.freeAfter}시즌 뒤 형기 만료로 자유민이 됨.` : `계약금 ${g.buyPrice.toLocaleString()} HS 로 ${CONFIG.origins.auctoratus.term}시즌 계약. 자유민이라 매각·배상 없음, 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}% 급료. 만료 전 재계약(계약금의 절반) 가능.`)));
     if (g) { // 고른 매물의 자세한 정보 (목록은 없다: 위 판매대의 검투사를 눌러 고른다)
-      const price = priceOf(st, g);
-      out.push(gladCard(g, [h('button', { class: 'primary', disabled: st.money < price || full, onclick: () => { if (buy(st, g)) { sfx.coin(); marketSel = null; detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
+      const price = priceOf(S.st, g);
+      out.push(gladCard(g, [h('button', { class: 'primary', disabled: S.st.money < price || full, onclick: () => { if (buy(S.st, g)) { sfx.coin(); S.marketSel = null; S.detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
       out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 속도 ${g.base.spd} · 사거리 ${g.base.range}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
-      if (st.money < price) out.push(item('warn', `자금이 ${(price - st.money).toLocaleString()} HS 부족합니다.`));
-      const idx = st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${st.market.length} — 판매대의 다른 검투사를 누르면 바꿔 본다`));
+      if (S.st.money < price) out.push(item('warn', `자금이 ${(price - S.st.money).toLocaleString()} HS 부족합니다.`));
+      const idx = S.st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${S.st.market.length} — 판매대의 다른 검투사를 누르면 바꿔 본다`));
     } else out.push(h('div', { class: 'card ghost' }, h('span', { class: 'hint' }, '판매대의 검투사를 누르면 자세히 보입니다')));
     return out.filter(Boolean);
   }
-  if (cellsOpen && !forNews) { // 켈라 화면: 칸별 숙소 질 강화 + 증축·조리장
-    const out: Node[] = [h('h3', {}, '켈라', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${st.roster.length} / ${st.ludus.cells.length}칸`), helpBtn('켈라', '켈라 수 = 검투사 상한. 칸마다 숙소 질을 올릴 수 있고(★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌), 질은 칸에 붙어 있습니다. 위 그림의 방을 누르면 거주자를 바꿀 수 있습니다.'))];
+  if (S.cellsOpen && !forNews) { // 켈라 화면: 칸별 숙소 질 강화 + 증축·조리장
+    const out: Node[] = [h('h3', {}, '켈라', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${S.st.roster.length} / ${S.st.ludus.cells.length}칸`), helpBtn('켈라', '켈라 수 = 검투사 상한. 칸마다 숙소 질을 올릴 수 있고(★1 휴식 피로 −2, ★2 유지비 −25%, ★3 명예 +1/시즌), 질은 칸에 붙어 있습니다. 위 그림의 방을 누르면 거주자를 바꿀 수 있습니다.'))];
     out.push(item('idle', '위 그림의 방을 누르면 거주자와 숙소 질을 정합니다.'));
     out.push(h('div', { class: 'dlist' }, ...facRows('cells')));
     return out;
@@ -963,48 +964,48 @@ function renderDash(v: View = view, forNews = false): Node[] {
     return [c];
   }
   if (view === 'medic') { // 의무실: 부상자 치료·요양, 침상·의술·약재
-    const injured = st.roster.filter(g => g.injured);
-    const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${st.ludus.beds} · 부상 ${injured.length}명 · 치료 ${healCostOf(st)} HS`), helpBtn('의무실', `부상자는 ${injurySeasons(st)}시즌 동안 출전하지 못합니다. 치료(${healCostOf(st)} HS)하면 바로 복귀하고, 편성에서 요양을 고르면 무료로 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술은 단계마다: 1 치료비 400 · 2 부상 1시즌 · 3 치료비 250 · 4 쓰러진 뒤 부상 확률 40% · 5 30%와 시즌 끝 피로 회복 +1. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
+    const injured = S.st.roster.filter(g => g.injured);
+    const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${S.st.ludus.beds} · 부상 ${injured.length}명 · 치료 ${healCostOf(S.st)} HS`), helpBtn('의무실', `부상자는 ${injurySeasons(S.st)}시즌 동안 출전하지 못합니다. 치료(${healCostOf(S.st)} HS)하면 바로 복귀하고, 편성에서 요양을 고르면 무료로 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술은 단계마다: 1 치료비 400 · 2 부상 1시즌 · 3 치료비 250 · 4 쓰러진 뒤 부상 확률 40% · 5 30%와 시즌 끝 피로 회복 +1. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
     if (!injured.length) out.push(item('idle', '부상자 없음'));
     // 부상자 개별 표시는 디스플레이의 침상(십자 팻말·치료 금액·이름·무기 아이콘)에서. 대시보드에는 두지 않는다
-    { const noBed = injured.filter(g => !inBed(st, g)).length; if (noBed) out.push(item('warn', `침상에 눕지 않은 부상자 ${noBed}명은 이번 시즌 낫지 못합니다. 빈 침상을 눌러 눕히세요.`)); }
+    { const noBed = injured.filter(g => !inBed(S.st, g)).length; if (noBed) out.push(item('warn', `침상에 눕지 않은 부상자 ${noBed}명은 이번 시즌 낫지 못합니다. 빈 침상을 눌러 눕히세요.`)); }
     out.push(h('div', { class: 'dlist' }, ...facRows('medic')));
     return out;
   }
   if (view === 'yard') { // 훈련소: 팔루스·훈련 시설·독토르. 검투사 개인 정보는 켈라, 행동 선택도 켈라
-    const docs = st.roster.filter(g => g.status === 'doctor');
-    const out: Node[] = [h('h3', {}, '훈련소', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `검투사 ${st.roster.length}명 · 출전 가능 ${available(st).length} · 팔루스 ${st.ludus.palus}`))];
-    if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 사들이세요.'));
+    const docs = S.st.roster.filter(g => g.status === 'doctor');
+    const out: Node[] = [h('h3', {}, '훈련소', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `검투사 ${S.st.roster.length}명 · 출전 가능 ${available(S.st).length} · 팔루스 ${S.st.ludus.palus}`))];
+    if (!S.st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 사들이세요.'));
     // 검투사 개인 정보는 켈라에서 본다 (여기서는 훈련 시설과 독토르만)
     if (docs.length) out.push(item('idle', `독토르 ${docs.map(g => `${g.name}(${TYPE_KO[g.type]})`).join(', ')} — 같은 유형 훈련 +1~2.`));
-    out.push(item('idle', `팔루스 ${trainCap(st)}개 · 세운 검투사 ${palusTrainees(st).length}명 · 훈련 폭 +${1 + gymBonus(st)}`, helpBtn('훈련', `훈련은 훈련장의 팔루스(기둥)에 검투사를 세워서 합니다. 빈 기둥을 누르면 켈라에서 세울 검투사를 고르고, 선 검투사를 누르면 공격·방어·기술 중 무엇을 단련할지 정합니다. 시즌이 끝날 때 훈련하며 팔루스 수가 곧 훈련 인원입니다. 훈련비는 따로 없고 팔루스 유지비(${CONFIG.upkeepFacility.palus}/개)에 듭니다. 출전 검투사도 세울 수 있지만 피로가 쌓일 수 있습니다. 세우지 않은 검투사는 피로가 있으면 쉬고, 없으면 시범(명예 +1)을 합니다. 부상자는 요양합니다.`)));
+    out.push(item('idle', `팔루스 ${trainCap(S.st)}개 · 세운 검투사 ${palusTrainees(S.st).length}명 · 훈련 폭 +${1 + gymBonus(S.st)}`, helpBtn('훈련', `훈련은 훈련장의 팔루스(기둥)에 검투사를 세워서 합니다. 빈 기둥을 누르면 켈라에서 세울 검투사를 고르고, 선 검투사를 누르면 공격·방어·기술 중 무엇을 단련할지 정합니다. 시즌이 끝날 때 훈련하며 팔루스 수가 곧 훈련 인원입니다. 훈련비는 따로 없고 팔루스 유지비(${CONFIG.upkeepFacility.palus}/개)에 듭니다. 출전 검투사도 세울 수 있지만 피로가 쌓일 수 있습니다. 세우지 않은 검투사는 피로가 있으면 쉬고, 없으면 시범(명예 +1)을 합니다. 부상자는 요양합니다.`)));
     out.push(h('div', { class: 'dlist' }, ...facRows('yard')));
     return out;
   }
   // 정문(루두스 문 앞): 계약·지원자·상대 등 결정할 일 목록
-  const out: Node[] = [h('h3', {}, '정문', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${seasonName(st.season)} · ${st.money.toLocaleString()} HS`))];
-  const injured = st.roster.filter(g => g.injured); const avail = available(st);
-  const upkeep = upkeepOf(st);
-  if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
-  for (const rv of st.rivals.filter(r => r.since === st.season && st.season > 1)) out.push(item('todo', `${rv.name} 이(가) 이 지방에 나타났다 — ${rivalDef(rv)?.desc ?? ''}. 앞으로 계약 상대로 만난다.`)); // 호감도가 올라 큰 루두스가 온 시즌
-  { const p = mortality(st.lanista.age + 1); const docs = st.roster.filter(g => g.status === 'doctor').length;
-    if (st.lanista.age >= 46) out.push(item(p >= 0.045 ? 'warn' : 'idle', `${st.lanista.name} ${st.lanista.age}세 — 해마다 ${Math.round(p * 100)}%의 확률로 세상을 떠날 수 있습니다. 후계 후보: 독토르 ${docs}명${docs ? '' : ' (없으면 부하 해방노예가 잇습니다)'}. 헤더의 '은퇴'로 미리 물려줄 수 있습니다.`)); }
-  if (st.applicants.length) out.push(item('todo', `루두스 문루 아래에 자유민 지원자 ${st.applicants.length}명: ${st.applicants.map(g => `${g.name}(${TYPE_KO[g.type]}·${g.rank === 'tiro' ? '티로' : '베테'}, 계약금 ${g.buyPrice.toLocaleString()})`).join(', ')} — 훈련소에서 지원자를 누르면 계약.`));
-  { const expiring = st.roster.filter(g => g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - st.season <= 1); if (expiring.length) out.push(item('warn', `계약 만료 임박: ${expiring.map(g => `${g.name} (${Math.max(0, g.contractUntil! - st.season + 1)}시즌)`).join(', ')} — 재계약(계약금의 절반)하지 않으면 떠납니다.`)); }
-  { const free = st.roster.filter(g => g.status === 'rudiarius'); const docs = st.roster.filter(g => g.status === 'doctor');
+  const out: Node[] = [h('h3', {}, '정문', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${seasonName(S.st.season)} · ${S.st.money.toLocaleString()} HS`))];
+  const injured = S.st.roster.filter(g => g.injured); const avail = available(S.st);
+  const upkeep = upkeepOf(S.st);
+  if (!S.st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
+  for (const rv of S.st.rivals.filter(r => r.since === S.st.season && S.st.season > 1)) out.push(item('todo', `${rv.name} 이(가) 이 지방에 나타났다 — ${rivalDef(rv)?.desc ?? ''}. 앞으로 계약 상대로 만난다.`)); // 호감도가 올라 큰 루두스가 온 시즌
+  { const p = mortality(S.st.lanista.age + 1); const docs = S.st.roster.filter(g => g.status === 'doctor').length;
+    if (S.st.lanista.age >= 46) out.push(item(p >= 0.045 ? 'warn' : 'idle', `${S.st.lanista.name} ${S.st.lanista.age}세 — 해마다 ${Math.round(p * 100)}%의 확률로 세상을 떠날 수 있습니다. 후계 후보: 독토르 ${docs}명${docs ? '' : ' (없으면 부하 해방노예가 잇습니다)'}. 헤더의 '은퇴'로 미리 물려줄 수 있습니다.`)); }
+  if (S.st.applicants.length) out.push(item('todo', `루두스 문루 아래에 자유민 지원자 ${S.st.applicants.length}명: ${S.st.applicants.map(g => `${g.name}(${TYPE_KO[g.type]}·${g.rank === 'tiro' ? '티로' : '베테'}, 계약금 ${g.buyPrice.toLocaleString()})`).join(', ')} — 훈련소에서 지원자를 누르면 계약.`));
+  { const expiring = S.st.roster.filter(g => g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - S.st.season <= 1); if (expiring.length) out.push(item('warn', `계약 만료 임박: ${expiring.map(g => `${g.name} (${Math.max(0, g.contractUntil! - S.st.season + 1)}시즌)`).join(', ')} — 재계약(계약금의 절반)하지 않으면 떠납니다.`)); }
+  { const free = S.st.roster.filter(g => g.status === 'rudiarius'); const docs = S.st.roster.filter(g => g.status === 'doctor');
     if (free.length) out.push(item('todo', `자유민(루디아리우스) ${free.length}명: ${free.map(g => g.name).join(', ')} — 급료(대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%)를 받고 계속 출전하거나, 독토르로 고용(${CONFIG.doctorSalary} HS/시즌, 같은 유형 훈련 강화).`));
     if (docs.length) out.push(item('idle', `독토르 ${docs.length}명: ${docs.map(g => `${g.name}(${TYPE_KO[g.type]} 공 ${g.base.atk}·방 ${g.base.def}${g.wins >= CONFIG.doctorSkillWins ? ' · 기술 전수' : ''})`).join(', ')} — 능력치가 앞서는 만큼 같은 유형 훈련 +1~2.`)); }
-  if (injured.length) out.push(item('warn', `부상 검투사 ${injured.length}명: ${injured.map(g => g.name).join(', ')} — 치료(${healCostOf(st)} HS)하면 이번 시즌 출전 가능.`));
+  if (injured.length) out.push(item('warn', `부상 검투사 ${injured.length}명: ${injured.map(g => g.name).join(', ')} — 치료(${healCostOf(S.st)} HS)하면 이번 시즌 출전 가능.`));
   // 계약·상대 이야기는 편성 화면에 있으므로 정문에서는 다루지 않는다 (편성에서 관리로 되돌아올 수 있음)
-  if (st.roster.length >= rosterCap(st)) out.push(item('idle', `켈라 ${st.roster.length}/${rosterCap(st)} 가득 참 (증축 ${upgradeCost(st, 'cells')?.toLocaleString() ?? '최대'} HS)`));
-  if (st.money < upkeep) out.push(item('warn', `자금이 시즌 유지비 ${upkeep.toLocaleString()} HS 보다 적습니다`));
+  if (S.st.roster.length >= rosterCap(S.st)) out.push(item('idle', `켈라 ${S.st.roster.length}/${rosterCap(S.st)} 가득 참 (증축 ${upgradeCost(S.st, 'cells')?.toLocaleString() ?? '최대'} HS)`));
+  if (S.st.money < upkeep) out.push(item('warn', `자금이 시즌 유지비 ${upkeep.toLocaleString()} HS 보다 적습니다`));
   else out.push(item('idle', `시즌 유지비 ${upkeep.toLocaleString()} HS`));
-  if (st.market.length) out.push(item('idle', `시장 매물 ${st.market.length}명 (${Math.min(...st.market.map(m => m.buyPrice)).toLocaleString()} HS 부터)`));
+  if (S.st.market.length) out.push(item('idle', `시장 매물 ${S.st.market.length}명 (${Math.min(...S.st.market.map(m => m.buyPrice)).toLocaleString()} HS 부터)`));
   return out; // 지원자 카드는 '지원자' 서랍(장면의 지원자를 누르면)
 }
 // 소식 배지: 정문 항목 중 할 일·경고 수
 const newsCount = () => renderDash('ludus', true).filter(n => n instanceof HTMLElement && /\b(todo|warn)\b/.test(n.className)).length;
-function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { sheet = sheet === 'news' ? null : 'news'; cellsOpen = false; bedPick = null; palusMode = false; cellPop = null; cellSide = null; render(); } }); // 소식도 다른 시트·켈라와 배타적
+function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${S.sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { S.sheet = S.sheet === 'news' ? null : 'news'; S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }); // 소식도 다른 시트·켈라와 배타적
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>'; if (n) b.append(h('span', { class: 'nbadge' }, String(n))); return b; } // 두루마리(소식)
 
 // ── 타운: 훈련장(0~1076) + 길(1076~1420) + 시장(1420~1940)을 한 장면으로. 카메라가 라니스타를 따라 옆으로 이동
@@ -1012,32 +1013,32 @@ const GY = 348; // 마을 공통 땅선. 258 → 348: 위에 하늘 90 유닛을
 const MEDIC = { W: 420, H: 230 }; // 의무실: 훈련장 왼쪽의 독립 건물 (침상 최대 4, 의사 탁자, 약재 선반)
 const TOWN = { padL: 420, padR: 420, gapW: 60, roadW: 380, forumX0: 40, forumW: 300, /* 포룸 300 + 시장까지 40: 세로 무대에 맞춰 포룸(440)과 길(520)을 줄였다 — 공고벽 200 + 제단이면 충분 */ get medicX() { return this.padL; }, get forumX() { return this.yardX + YARD.W + this.forumX0; }, wallW: 130, tailW: 290, get yardX() { return this.medicX + MEDIC.W + this.gapW; }, get marketX() { return this.yardX + YARD.W + this.roadW; }, get wallX() { return this.marketX + MARKET.W; }, get graveX() { return this.wallX + this.wallW; }, get W() { return this.graveX + this.tailW + this.padR; }, H: TOWN_H }; // 들판(padL) → 의무실 → 훈련소 → 포룸 → 시장 → 성벽(문) → 성문 밖 묘지 → 길(padR). 양 끝 여백 덕에 어느 장소든 화면 가운데에 온다
 const lanista = { x: 0, target: 0, walking: false, v: 0, vmax: 340 }; // 실제 위치는 캔버스를 만들 때 restX(view) 로 잡는다
-let camX = 0, camV = 0, camPan = 0;
-let zoomIn: { start: number; dur: number; wx: number; wy: number; k: number; done: () => void; fired?: boolean } | null = null; // 장면 줌인 연출 (포룸 공고벽 → 편성). wx/wy: 월드 초점, k: 최종 배율 // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
+S.camX = 0; S.camV = 0; S.camPan = 0;
+S.zoomIn = null; // 장면 줌인 연출 (포룸 공고벽 → 편성). wx/wy: 월드 초점, k: 최종 배율 // camPan: 좁은 화면에서 손가락으로 끌어 본 만큼의 오프셋 (이동하면 0)
 // VIEW_W(보이는 폭, 월드 단위)는 위쪽 선언. 440: 라니스타 주변만 보이고 이웃 장소는 걸어가서 본다
-let VW = VIEW_W;
+S.VW = VIEW_W;
 const restX = (v: View) => v === 'grave' ? TOWN.graveX + TOWN.tailW - 70 : v === 'market' ? TOWN.marketX + 44 : v === 'medic' ? TOWN.medicX + 250 : v === 'yard' ? TOWN.yardX + 84 : TOWN.forumX + FORUM.wallW + 40;   // 포룸: 공고벽 오른쪽 끝에 서서 벽을 본다 // 라니스타가 서는 자리 (의무실 앞 · 대련장과 팔루스 사이 · 정문 앞 · 시장 앞)
-const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - VW, x));
+const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - S.VW, x));
 // 카메라 기준 위치: 시장은 건물이 화면 가운데 조금 오른쪽. 루두스는 폭이 충분하면 훈련장 전체, 좁으면 라니스타 주변(화면 60% 지점)
 const placeCenter = (v: View) => v === 'grave' ? TOWN.graveX + TOWN.tailW / 2 - 30 : v === 'market' ? TOWN.marketX + MARKET.W / 2 : v === 'medic' ? TOWN.medicX + MEDIC.W / 2 : v === 'yard' ? TOWN.yardX + 250 : TOWN.forumX + 50; // 장소의 가운데 (월드 x). 훈련소는 안뜰(무기고·연습장·팔루스)만, 정문(문루 470~600)은 포룸 화면에 속한다: 포룸 카메라를 왼쪽으로 당겨 문루 + 그 앞 지원자 + 공고벽이 한 화면에
-const camFor = (v: View) => clampCam(placeCenter(v) - VW / 2); // 이동한 장소를 화면 가운데에, 양옆은 이웃 장소가 자연스럽게 이어진다
-let townCanvas: HTMLCanvasElement | null = null; let cellsCanvas: HTMLCanvasElement | null = null; // cellsCanvas: 켈라 전용 덮개 캔버스 (마을 위, 처마 밑에서 무대 바닥까지). 마을 캔버스는 켈라를 열어도 크기가 변하지 않는다 // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
+const camFor = (v: View) => clampCam(placeCenter(v) - S.VW / 2); // 이동한 장소를 화면 가운데에, 양옆은 이웃 장소가 자연스럽게 이어진다
+S.townCanvas = null; S.cellsCanvas = null; // cellsCanvas: 켈라 전용 덮개 캔버스 (마을 위, 처마 밑에서 무대 바닥까지). 마을 캔버스는 켈라를 열어도 크기가 변하지 않는다 // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
 function renderTown() {
-  if (townCanvas && cellsCanvas) return h('div', { class: 'panel yardwrap' }, townCanvas, roadBoard());
-  const c = h('canvas', { class: 'yard' }) as HTMLCanvasElement; townCanvas = c;
-  const oc = h('canvas', { class: 'cellsoverlay' }) as HTMLCanvasElement; cellsCanvas = oc; const octx = oc.getContext('2d')!; // 켈라 덮개
+  if (S.townCanvas && S.cellsCanvas) return h('div', { class: 'panel yardwrap' }, S.townCanvas, roadBoard());
+  const c = h('canvas', { class: 'yard' }) as HTMLCanvasElement; S.townCanvas = c;
+  const oc = h('canvas', { class: 'cellsoverlay' }) as HTMLCanvasElement; S.cellsCanvas = oc; const octx = oc.getContext('2d')!; // 켈라 덮개
   let zoom = 1, lastCw = 0, lastH = 0; c.style.height = CH() + 'px';
   const ctx = c.getContext('2d')!; ctx.scale(devicePixelRatio, devicePixelRatio);
   // 화면 폭에 맞춘다: 좁은 화면은 줌 0.8 까지만 줄이고 보이는 폭(VW)을 좁혀 라니스타 주변만 보여 준다 (찌그러짐 없음)
   const fit = () => {
     const cw = c.clientWidth, VH = CH(); if (!cw || (cw === lastCw && VH === lastH)) return; lastCw = cw; lastH = VH;
-    zoom = cw / VIEW_W; VW = VIEW_W; // 보이는 폭을 폰 기준(404 유닛)으로 고정하고 화면 폭에 맞춰 확대 — PC 에서도 같은 장면이 보인다
+    zoom = cw / VIEW_W; S.VW = VIEW_W; // 보이는 폭을 폰 기준(404 유닛)으로 고정하고 화면 폭에 맞춰 확대 — PC 에서도 같은 장면이 보인다
     document.documentElement.style.setProperty('--yard-h', `${Math.round(VH * zoom)}px`);
     c.width = Math.round(cw * devicePixelRatio); c.height = Math.round(VH * zoom * devicePixelRatio); c.style.height = VH * zoom + 'px';
     ctx.setTransform(devicePixelRatio * zoom, 0, 0, devicePixelRatio * zoom, 0, 0);
-    if (!lanista.walking) { camPan = 0; camX = camFor(view); camV = 0; }
+    if (!lanista.walking) { S.camPan = 0; S.camX = camFor(S.view); S.camV = 0; }
   };
-  if (!lanista.walking) { lanista.x = restX(view); lanista.target = lanista.x; camX = camFor(view); }
+  if (!lanista.walking) { lanista.x = restX(S.view); lanista.target = lanista.x; S.camX = camFor(S.view); }
   let last = performance.now();
   const draw = () => {
     if (!c.isConnected) { requestAnimationFrame(draw); return; } // 잠시 떨어져 있어도 루프 유지
@@ -1049,18 +1050,18 @@ function renderTown() {
       const ACC = lanista.vmax * 0.45;
       lanista.v = Math.min(lanista.vmax, lanista.v + ACC * dt);
       const step = lanista.v * dt;
-      if (dist <= Math.max(step, 1.5)) { lanista.x = lanista.target; lanista.walking = false; lanista.v = 0; travel = null; render(); requestAnimationFrame(draw); return; }
+      if (dist <= Math.max(step, 1.5)) { lanista.x = lanista.target; lanista.walking = false; lanista.v = 0; S.travel = null; render(); requestAnimationFrame(draw); return; }
       lanista.x += Math.sign(d) * step;
     }
     // 카메라: 걷는 동안 라니스타를 따라가고(화면 40% 지점), 정지하면 장면 위치로
     // 카메라: 스프링 추종 (속도를 가져 출발·정지가 매끄럽다). 걷는 동안 진행 방향 앞쪽을 조금 더 보여줌
     // 카메라 목표: 출발 화면 위치 → 도착 화면 위치를 걸음 진행률로 잇는다 (도착 순간 목표가 튀지 않음)
-    let camTarget = camFor(view) + camPan;
-    { const k = 30, c2 = 2 * Math.sqrt(k); const a = (camTarget - camX) * k - camV * c2; camV += a * dt; camX += camV * dt; }
-    ctx.clearRect(0, 0, VW, CH());
+    let camTarget = camFor(S.view) + S.camPan;
+    { const k = 30, c2 = 2 * Math.sqrt(k); const a = (camTarget - S.camX) * k - S.camV * c2; S.camV += a * dt; S.camX += S.camV * dt; }
+    ctx.clearRect(0, 0, S.VW, CH());
     ctx.save();
-    if (zoomIn) { const e = Math.min(1, (performance.now() - zoomIn.start) / zoomIn.dur), ease = 1 - Math.pow(1 - e, 3); const z = 1 + (zoomIn.k - 1) * ease; const sx = zoomIn.wx - camX, sy = zoomIn.wy; ctx.translate(sx, sy); ctx.scale(z, z); ctx.translate(-sx, -sy); if (e >= 1 && !zoomIn.fired) { zoomIn.fired = true; const d = zoomIn.done; zoomIn = null; d(); } } // 초점(공고벽)을 향해 부드럽게 당긴다
-    ctx.translate(-camX, 0);
+    if (S.zoomIn) { const e = Math.min(1, (performance.now() - S.zoomIn.start) / S.zoomIn.dur), ease = 1 - Math.pow(1 - e, 3); const z = 1 + (S.zoomIn.k - 1) * ease; const sx = S.zoomIn.wx - S.camX, sy = S.zoomIn.wy; ctx.translate(sx, sy); ctx.scale(z, z); ctx.translate(-sx, -sy); if (e >= 1 && !S.zoomIn.fired) { S.zoomIn.fired = true; const d = S.zoomIn.done; S.zoomIn = null; d(); } } // 초점(공고벽)을 향해 부드럽게 당긴다
+    ctx.translate(-S.camX, 0);
     // ── 배경 층 (마을 전체에 이어짐)
     { const sky = ctx.createLinearGradient(0, 0, 0, GY - 120); sky.addColorStop(0, '#f1e7c9'); sky.addColorStop(1, '#e6d6ad'); ctx.fillStyle = sky; ctx.fillRect(0, 0, TOWN.W, CH()); } // 하늘: 위가 조금 밝은 회칠빛 (파랑은 낙서풍 팔레트와 어긋난다)
     // 거리 집 정면 (길 구간 + 시장 뒤까지): 지붕·창·문
@@ -1088,72 +1089,72 @@ function renderTown() {
     ctx.save(); ctx.translate(TOWN.yardX, GY - 210); drawYardScene(ctx, t); ctx.restore();          // 훈련장 (발 = 210 → GY)
     ctx.save(); ctx.translate(TOWN.medicX, GY - 210); drawMedicScene(ctx, t); ctx.restore();                 // 의무실 (독립 건물)
     ctx.save(); ctx.translate(TOWN.forumX, GY); drawForumScene(ctx, t); ctx.restore(); // 포룸(광장): 공고벽·제단·심부름꾼 (발 = GY)
-    st.applicants.forEach((g, i) => { const x = TOWN.yardX + YARD.W - 58 - i * 26; drawStickman(ctx, g.type, { x, y: GY, scale: 0.9, skeleton: NPC_POSES.watch, t: t + i, ink: INK, bare: true, garment: 'tunic', garmentColor: '#b9c2a8', facing: -1 }); }); // 자유민 지원자: 루두스 문루 아래에 서서 훈련소 안을 본다 (계약을 청하러 찾아옴)
+    S.st.applicants.forEach((g, i) => { const x = TOWN.yardX + YARD.W - 58 - i * 26; drawStickman(ctx, g.type, { x, y: GY, scale: 0.9, skeleton: NPC_POSES.watch, t: t + i, ink: INK, bare: true, garment: 'tunic', garmentColor: '#b9c2a8', facing: -1 }); }); // 자유민 지원자: 루두스 문루 아래에 서서 훈련소 안을 본다 (계약을 청하러 찾아옴)
     ctx.save(); ctx.translate(TOWN.marketX + MK.ox, GY - MARKET.H * MK.sc); ctx.scale(MK.sc, MK.sc); drawMarketScene(ctx, t); ctx.restore(); // 시장: 조금 작게, 판매대 밑면이 땅(GY)에 닿게 뒤로 물려 길 뒤에 선다
     ctx.save(); ctx.translate(TOWN.wallX, GY); drawCityWall(ctx); ctx.restore();                  // 성벽과 성문 (시장과 묘지 사이)
     ctx.save(); ctx.translate(TOWN.graveX, GY); drawGraveScene(ctx, t); ctx.restore();
     { const span = TOWN.roadW + MARKET.W - 80; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.wallX - 40 - ((t * 30 + 300) % span); // 거리 행인: 장면 앞(길 위)을 오간다. 성문 안쪽(길·시장)만
       drawCivilian(ctx, p1, GY + 4, 0.9, 'walk', t, 11, 1); drawCivilian(ctx, p2, GY + 4, 0.9, 'walk', t, 5, -1); } // 묘지 (성문 밖 길가 묘역, 발 = GY) // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
     // 라니스타: 토가 입은 인물 (걷기 또는 서서 구경)
-    { const facing: 1 | -1 = lanista.walking ? (lanista.target > lanista.x ? 1 : -1) : (view === 'market' || view === 'medic' || view === 'yard' ? 1 : -1); // 의무실: 의사(오른쪽)를 본다 · 포룸: 공고벽(왼쪽) · 훈련소: 왼쪽 끝에 서서 연습장·팔루스(오른쪽)를 본다 — 전엔 팔루스 첫 기둥 앞(268)에 서서 훈련하는 검투사와 겹쳤다 · 묘지: 묘비(왼쪽) // 묘지에서는 오른쪽 끝에 서서 왼쪽 묘비들을 본다 // 시장에서는 판매대 왼쪽 앞에 서서 오른쪽(매물)을 본다
+    { const facing: 1 | -1 = lanista.walking ? (lanista.target > lanista.x ? 1 : -1) : (S.view === 'market' || S.view === 'medic' || S.view === 'yard' ? 1 : -1); // 의무실: 의사(오른쪽)를 본다 · 포룸: 공고벽(왼쪽) · 훈련소: 왼쪽 끝에 서서 연습장·팔루스(오른쪽)를 본다 — 전엔 팔루스 첫 기둥 앞(268)에 서서 훈련하는 검투사와 겹쳤다 · 묘지: 묘비(왼쪽) // 묘지에서는 오른쪽 끝에 서서 왼쪽 묘비들을 본다 // 시장에서는 판매대 왼쪽 앞에 서서 오른쪽(매물)을 본다
       drawLanista(ctx, lanista.x, GY, facing, t * Math.max(0.4, lanista.walking ? lanista.v / 300 : 1), lanista.walking);
     }
     ctx.restore();
     // 켈라 화면: 시트(key-cells) 본문의 캔버스에 그린다. 마을 캔버스는 그대로
-    cellsP = cellsOpen ? 1 : 0; // 열림/닫힘 모션은 시트 CSS(panelup/paneldown)가 맡는다
-    if (cellsOpen && oc.isConnected) { const ow = oc.clientWidth, oh = oc.clientHeight; if (ow && oh) { const z = ow / VIEW_W; cellsH = Math.max(CELLS_MIN_H, Math.floor(oh / z)); const bw = Math.round(ow * devicePixelRatio), bh = Math.round(oh * devicePixelRatio); if (oc.width !== bw || oc.height !== bh) { oc.width = bw; oc.height = bh; }
-      octx.setTransform(devicePixelRatio * z, 0, 0, devicePixelRatio * z, 0, 0); octx.clearRect(0, 0, VIEW_W, cellsH); drawCellsScene(octx, t); } }
+    S.cellsP = S.cellsOpen ? 1 : 0; // 열림/닫힘 모션은 시트 CSS(panelup/paneldown)가 맡는다
+    if (S.cellsOpen && oc.isConnected) { const ow = oc.clientWidth, oh = oc.clientHeight; if (ow && oh) { const z = ow / VIEW_W; S.cellsH = Math.max(CELLS_MIN_H, Math.floor(oh / z)); const bw = Math.round(ow * devicePixelRatio), bh = Math.round(oh * devicePixelRatio); if (oc.width !== bw || oc.height !== bh) { oc.width = bw; oc.height = bh; }
+      octx.setTransform(devicePixelRatio * z, 0, 0, devicePixelRatio * z, 0, 0); octx.clearRect(0, 0, VIEW_W, S.cellsH); drawCellsScene(octx, t); } }
     requestAnimationFrame(draw);
   };
   requestAnimationFrame(draw);
   // 스와이프: 왼쪽으로 밀면 다음 장소, 오른쪽으로 밀면 이전 장소 (의무실 → 훈련소 → 정문 → 시장). 스와이프했으면 클릭으로 치지 않는다
   const ORDER: View[] = ['medic', 'yard', 'ludus', 'market', 'grave'];
   let drag: { x0: number; t0: number } | null = null; let dragged = false;
-  const cellAt = (ev: PointerEvent | MouseEvent) => { const r = oc.getBoundingClientRect(); const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); return { lx, ly, k: k < st.ludus.cells.length ? k : -1 }; }; // 증축 전 칸은 대상이 아니다
+  const cellAt = (ev: PointerEvent | MouseEvent) => { const r = oc.getBoundingClientRect(); const lx = (ev.clientX - r.left) * (S.VW / r.width), ly = (ev.clientY - r.top) * (S.cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); return { lx, ly, k: k < S.st.ludus.cells.length ? k : -1 }; }; // 증축 전 칸은 대상이 아니다
   c.onpointerdown = (ev) => { drag = { x0: ev.clientX, t0: performance.now() }; };
-  oc.onpointerdown = (ev) => { if (!(cellsOpen && cellsP > 0.9)) return; const { lx, ly, k } = cellAt(ev); const occ = k >= 0 ? occupantOf(st, k) : null; if (occ) { cellDrag = { id: occ.id, k0: k, px: lx, py: ly, over: k, moved: false }; oc.setPointerCapture(ev.pointerId); } }; // 켈라: 사람이 있는 방에서 누르면 끌기 시작
-  oc.onpointermove = (ev) => { if (!cellDrag) return; const { lx, ly, k } = cellAt(ev); if (Math.hypot(lx - cellDrag.px, ly - cellDrag.py) > 6) cellDrag.moved = true; cellDrag.px = lx; cellDrag.py = ly; cellDrag.over = k >= 0 ? k : null; };
-  oc.onpointerup = () => { if (cellDrag) { const d = cellDrag; cellDrag = null; drag = null; if (d.moved) { dragged = true; const g = st.roster.find(x => x.id === d.id); if (g && d.over != null && d.over !== d.k0) { moveToCell(st, g, d.over); sfx.coin(); render(); } } } }; // 끌어서 놓으면 자리 바꿈 (놓은 방에 사람이 있으면 서로 교환). 안 움직였으면 클릭으로 처리
+  oc.onpointerdown = (ev) => { if (!(S.cellsOpen && S.cellsP > 0.9)) return; const { lx, ly, k } = cellAt(ev); const occ = k >= 0 ? occupantOf(S.st, k) : null; if (occ) { S.cellDrag = { id: occ.id, k0: k, px: lx, py: ly, over: k, moved: false }; oc.setPointerCapture(ev.pointerId); } }; // 켈라: 사람이 있는 방에서 누르면 끌기 시작
+  oc.onpointermove = (ev) => { if (!S.cellDrag) return; const { lx, ly, k } = cellAt(ev); if (Math.hypot(lx - S.cellDrag.px, ly - S.cellDrag.py) > 6) S.cellDrag.moved = true; S.cellDrag.px = lx; S.cellDrag.py = ly; S.cellDrag.over = k >= 0 ? k : null; };
+  oc.onpointerup = () => { if (S.cellDrag) { const d = S.cellDrag; S.cellDrag = null; drag = null; if (d.moved) { dragged = true; const g = S.st.roster.find(x => x.id === d.id); if (g && d.over != null && d.over !== d.k0) { moveToCell(S.st, g, d.over); sfx.coin(); render(); } } } }; // 끌어서 놓으면 자리 바꿈 (놓은 방에 사람이 있으면 서로 교환). 안 움직였으면 클릭으로 처리
   c.onpointerup = (ev) => { if (!drag) return;
-    if (cellsOpen) { drag = null; return; } const dx = ev.clientX - drag.x0, el = performance.now() - drag.t0; drag = null; dragged = Math.abs(dx) > 40 && el < 700;
-    if (dragged) { const i = ORDER.indexOf(view); const to = ORDER[Math.max(0, Math.min(ORDER.length - 1, i + (dx < 0 ? 1 : -1)))]; if (to !== view) startTravel(to); } };
-  c.onpointercancel = () => { drag = null; }; oc.onpointercancel = () => { cellDrag = null; };
+    if (S.cellsOpen) { drag = null; return; } const dx = ev.clientX - drag.x0, el = performance.now() - drag.t0; drag = null; dragged = Math.abs(dx) > 40 && el < 700;
+    if (dragged) { const i = ORDER.indexOf(S.view); const to = ORDER[Math.max(0, Math.min(ORDER.length - 1, i + (dx < 0 ? 1 : -1)))]; if (to !== S.view) startTravel(to); } };
+  c.onpointercancel = () => { drag = null; }; oc.onpointercancel = () => { S.cellDrag = null; };
   oc.onclick = (ev) => { // 켈라 덮개: 방 클릭 (배정 모드·상세)
-    if (dragged) { dragged = false; return; } if (cellsP <= 0.9) return;
+    if (dragged) { dragged = false; return; } if (S.cellsP <= 0.9) return;
     const r = oc.getBoundingClientRect();
-    { const lx = (ev.clientX - r.left) * (VW / r.width), ly = (ev.clientY - r.top) * (cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= st.ludus.cells.length) { sheet = 'facilities'; cellsOpen = false; render(); return; } if (k >= 0 && palusMode) { const occ = occupantOf(st, k); if (!occ) notice = '빈 방이다'; else if (palusOf(st, occ) >= 0) { leavePalus(st, occ); notice = `${occ.name} 이(가) 팔루스에서 내려왔다`; save(); }
-        else { const free = Array.from({ length: st.ludus.palus }, (_, i) => i).find(i => !palusTrainee(st, i)); if (free == null) notice = `팔루스 ${st.ludus.palus}개가 모두 찼다`; else if (putAtPalus(st, occ, free)) { notice = `${occ.name} 을(를) 팔루스 ${free + 1}에 세웠다`; save(); } else notice = occ.injured > 0 ? '부상자는 훈련할 수 없다' : occ.status === 'doctor' ? '독토르는 가르치는 중이다' : '세울 수 없다'; }
+    { const lx = (ev.clientX - r.left) * (S.VW / r.width), ly = (ev.clientY - r.top) * (S.cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= S.st.ludus.cells.length) { S.sheet = 'facilities'; S.cellsOpen = false; render(); return; } if (k >= 0 && S.palusMode) { const occ = occupantOf(S.st, k); if (!occ) S.notice = '빈 방이다'; else if (palusOf(S.st, occ) >= 0) { leavePalus(S.st, occ); S.notice = `${occ.name} 이(가) 팔루스에서 내려왔다`; save(); }
+        else { const free = Array.from({ length: S.st.ludus.palus }, (_, i) => i).find(i => !palusTrainee(S.st, i)); if (free == null) S.notice = `팔루스 ${S.st.ludus.palus}개가 모두 찼다`; else if (putAtPalus(S.st, occ, free)) { S.notice = `${occ.name} 을(를) 팔루스 ${free + 1}에 세웠다`; save(); } else S.notice = occ.injured > 0 ? '부상자는 훈련할 수 없다' : occ.status === 'doctor' ? '독토르는 가르치는 중이다' : '세울 수 없다'; }
         render(); return; } // 팔루스 배정 모드: 한 번 누르면 빈 자리에 세우고, 다시 누르면 내려온다. 켈라는 열린 채 (서판으로 닫는다)
-            if (k >= 0 && bedPick != null) { const occ = occupantOf(st, k); if (occ && occ.injured > 0) { putInBed(st, occ, bedPick); notice = `${occ.name} 을(를) 침상 ${bedPick + 1}에 눕혔다`; bedPick = null; cellsOpen = false; } else notice = '부상자만 침상에 눕힐 수 있다'; render(); return; } // 침상 배정 모드
-      if (k >= 0) { const occ = occupantOf(st, k); cellSel = k; const q = cellRects(st.ludus.cells.length)[k]; const ar = app.getBoundingClientRect(), sk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1; const cx = (r.left - ar.left) / sk + (q.x + q.w / 2) * (r.width / sk / VW), cy = (r.top - ar.top) / sk + (q.y + q.h / 2) * (r.height / sk / cellsH); if (occ) { gladSel = occ.id; detail = { kind: 'roster', id: occ.id }; cellPop = null; render(); return; } void cx; void cy; } return; } // 사람이 있는 방 → 검투사를 불러 상세 페이지(오른쪽에서). 빈 방은 아무것도 없음 (구매하면 자동 배정, 자리는 끌어서 바꾼다)
+            if (k >= 0 && S.bedPick != null) { const occ = occupantOf(S.st, k); if (occ && occ.injured > 0) { putInBed(S.st, occ, S.bedPick); S.notice = `${occ.name} 을(를) 침상 ${S.bedPick + 1}에 눕혔다`; S.bedPick = null; S.cellsOpen = false; } else S.notice = '부상자만 침상에 눕힐 수 있다'; render(); return; } // 침상 배정 모드
+      if (k >= 0) { const occ = occupantOf(S.st, k); S.cellSel = k; const q = cellRects(S.st.ludus.cells.length)[k]; const ar = app.getBoundingClientRect(), sk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1; const cx = (r.left - ar.left) / sk + (q.x + q.w / 2) * (r.width / sk / S.VW), cy = (r.top - ar.top) / sk + (q.y + q.h / 2) * (r.height / sk / S.cellsH); if (occ) { S.gladSel = occ.id; S.detail = { kind: 'roster', id: occ.id }; S.cellPop = null; render(); return; } void cx; void cy; } return; } // 사람이 있는 방 → 검투사를 불러 상세 페이지(오른쪽에서). 빈 방은 아무것도 없음 (구매하면 자동 배정, 자리는 끌어서 바꾼다)
   };
   c.onclick = (ev) => { // 켈라 화면이면 방 클릭, 아니면 시장 매물 클릭 (카메라 보정)
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
-    if (view === 'grave') { sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기 서랍
-    if (view === 'medic') { // 침상 위 부상자를 누르면 치료 (확인 후). 침상이 모자라 탁자 옆에 앉은 부상자도 같다
-      const lx = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.medicX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
-      const beds = Math.max(1, Math.min(4, st.ludus.beds)); const H = MEDIC.H;
+    if (S.view === 'grave') { S.sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기 서랍
+    if (S.view === 'medic') { // 침상 위 부상자를 누르면 치료 (확인 후). 침상이 모자라 탁자 옆에 앉은 부상자도 같다
+      const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.medicX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
+      const beds = Math.max(1, Math.min(4, S.st.ludus.beds)); const H = MEDIC.H;
       for (let i = 0; i < beds; i++) { const bx = 16 + i * 80; if (!(lx >= bx - 4 && lx <= bx + 88 && ly >= H - 90 && ly <= H - 4)) continue;
-        const g = bedPatient(st, i);
+        const g = bedPatient(S.st, i);
         if (g) { openConfirm(g, 'heal'); return; } // 누운 부상자 → 치료 장면
-        if (!st.roster.some(x => x.injured > 0 && !inBed(st, x))) { notice = '눕힐 부상자가 없다'; render(); return; }
-        bedPick = i; cellsOpen = true; cellPop = null; cellSide = null; sheet = null; render(); return; } // 빈 침상 → 켈라에서 부상자 고르기
+        if (!S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { S.notice = '눕힐 부상자가 없다'; render(); return; }
+        S.bedPick = i; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } // 빈 침상 → 켈라에서 부상자 고르기
       return; } // 시설 강화는 왼쪽 망치 토글에서
-    if (view === 'yard') { // 문루 아래 지원자를 누르면 계약 패널, 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
-      const lx = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.yardX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
-      { const posts = palusPosts(st.ludus.palus), H = YARD.H; const first = posts[0] - 56, last = posts[posts.length - 1] + 12; // 팔루스 줄 전체 (기둥들과 그 왼쪽에 선 사람들)
-        if (lx >= first && lx <= last && ly >= H - 104 && ly <= H - 8) { if (!st.roster.some(x => x.alive && x.injured <= 0 && x.status !== 'doctor')) { notice = '세울 검투사가 없다'; render(); return; } palusMode = true; bedPick = null; cellsOpen = true; cellPop = null; cellSide = null; sheet = null; render(); return; } } // 팔루스 줄을 누르면 켈라가 열려 배정 모드 (방을 누르면 세우고, 다시 누르면 내려온다)
-      if (Math.abs(lx - YARD.W / 2) <= 30 && ly >= 30 && ly <= 86) void tell(`복수와 운명의 여신 네메시스의 감실입니다. 검투사들은 경기 전에 여기서 기도하고 봉헌했습니다(원형경기장 곁의 네메세움 비문 근거).\n이번 시즌 봉헌: ${st.events?.votum ? '함 (미시오 +3%)' : '안 함'}. 편성 화면의 시즌 행사에서 ${CONFIG.events.votum.cost} HS 로 봉헌하면 그 시즌 미시오 확률이 +${Math.round(CONFIG.events.votum.missio * 100)}% 오릅니다.`, '네메시스 사당');
+    if (S.view === 'yard') { // 문루 아래 지원자를 누르면 계약 패널, 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
+      const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.yardX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
+      { const posts = palusPosts(S.st.ludus.palus), H = YARD.H; const first = posts[0] - 56, last = posts[posts.length - 1] + 12; // 팔루스 줄 전체 (기둥들과 그 왼쪽에 선 사람들)
+        if (lx >= first && lx <= last && ly >= H - 104 && ly <= H - 8) { if (!S.st.roster.some(x => x.alive && x.injured <= 0 && x.status !== 'doctor')) { S.notice = '세울 검투사가 없다'; render(); return; } S.palusMode = true; S.bedPick = null; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } } // 팔루스 줄을 누르면 켈라가 열려 배정 모드 (방을 누르면 세우고, 다시 누르면 내려온다)
+      if (Math.abs(lx - YARD.W / 2) <= 30 && ly >= 30 && ly <= 86) void tell(`복수와 운명의 여신 네메시스의 감실입니다. 검투사들은 경기 전에 여기서 기도하고 봉헌했습니다(원형경기장 곁의 네메세움 비문 근거).\n이번 시즌 봉헌: ${S.st.events?.votum ? '함 (미시오 +3%)' : '안 함'}. 편성 화면의 시즌 행사에서 ${CONFIG.events.votum.cost} HS 로 봉헌하면 그 시즌 미시오 확률이 +${Math.round(CONFIG.events.votum.missio * 100)}% 오릅니다.`, '네메시스 사당');
       return; }
-    if (view === 'ludus') { const lx = (ev.clientX - r.left) * (VW / r.width) + camX - TOWN.forumX, ly = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 기준 좌표 (발 = 0)
-      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if (st.applicants.length && yx >= YARD.W - 58 - st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) { sheet = 'applicants'; cellsOpen = false; render(); return; } } // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
-      if (lx >= 0 && lx <= FORUM.wallW + 20 && ly >= -186 && ly <= 8) { if (zoomIn) return; zoomIn = { start: performance.now(), dur: 560, wx: TOWN.forumX + FORUM.wallW / 2, wy: GY + FORUM.posterY0 + FORUM.posterGapY / 2 + FORUM.posterH / 2, k: Math.min(1.8, VW / FORUM.wallW), done: () => { phase = 'plan'; sheet = null; planSel = null; render(); } }; return; } // 공고벽·심부름꾼 → 줌인 연출 뒤 편성
+    if (S.view === 'ludus') { const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, ly = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 기준 좌표 (발 = 0)
+      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if (S.st.applicants.length && yx >= YARD.W - 58 - S.st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) { S.sheet = 'applicants'; S.cellsOpen = false; render(); return; } } // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
+      if (lx >= 0 && lx <= FORUM.wallW + 20 && ly >= -186 && ly <= 8) { if (S.zoomIn) return; S.zoomIn = { start: performance.now(), dur: 560, wx: TOWN.forumX + FORUM.wallW / 2, wy: GY + FORUM.posterY0 + FORUM.posterGapY / 2 + FORUM.posterH / 2, k: Math.min(1.8, S.VW / FORUM.wallW), done: () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); } }; return; } // 공고벽·심부름꾼 → 줌인 연출 뒤 편성
       return; } // 소식은 헤더의 두루마리 아이콘에서
-    if (view !== 'market') return; const x = ((ev.clientX - r.left) * (VW / r.width) + camX - TOWN.marketX - MK.ox) / MK.sc; // 시장 장면 좌표 (축소·가운데 정렬 반영)
-    const items = st.market; let best: Gladiator | null = null, bd = items.length > 1 ? (marketSlotX(items.length, 1) - marketSlotX(items.length, 0)) / 2 : 80;
+    if (S.view !== 'market') return; const x = ((ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.marketX - MK.ox) / MK.sc; // 시장 장면 좌표 (축소·가운데 정렬 반영)
+    const items = S.st.market; let best: Gladiator | null = null, bd = items.length > 1 ? (marketSlotX(items.length, 1) - marketSlotX(items.length, 0)) / 2 : 80;
     items.forEach((g, i) => { const d = Math.abs(x - marketSlotX(items.length, i)); if (d < bd) { bd = d; best = g; } });
-    marketSel = best ? (best as Gladiator).id : null; if (marketSel != null) { detail = { kind: 'market', id: marketSel }; sheet = null; } render(); // 판매대의 검투사를 누르면 상세 페이지 (오른쪽에서)
+    S.marketSel = best ? (best as Gladiator).id : null; if (S.marketSel != null) { S.detail = { kind: 'market', id: S.marketSel }; S.sheet = null; } render(); // 판매대의 검투사를 누르면 상세 페이지 (오른쪽에서)
   };
   return h('div', { class: 'panel yardwrap' }, c, roadBoard());
 }
@@ -1164,28 +1165,28 @@ const roman = (n: number): string => { let r = ''; for (const [v, k] of [[1000, 
 // 마을 아래 길가: 여정표 + 알붐. 방향을 가리키는 나무 팻말은 로마 것이 아니라서 뺐다
 // 여정표(이티네라리움): 로마인은 지도 대신 역참을 순서대로 적은 목록으로 길을 알았다(안토니누스 여정표·비카렐로 은잔). 이 마을은 한 줄 길이라 목록이 곧 지도. 역참 사이 숫자는 파수스(걸음)
 function itinerary(): Node {
-  const order: View[] = ['medic', 'yard', 'ludus', 'market', 'grave']; const cur = order.indexOf(view);
+  const order: View[] = ['medic', 'yard', 'ludus', 'market', 'grave']; const cur = order.indexOf(S.view);
   const passus = (a: View, b: View) => roman(Math.max(1, Math.round(Math.abs(placeCenter(b) - placeCenter(a)) / 4))); // 월드 4유닛 ≈ 1파수스 (분위기용 수치)
   return h('div', { class: 'itin' }, ...order.flatMap((v, i) => {
-    const stn = h('button', { class: `stn${i === cur ? ' here' : ''}`, onclick: () => { if (v !== view) startTravel(v); }, title: i === cur ? '지금 여기' : `${VIEW_KO[v]}로` }, h('span', { class: 'la' }, VIEW_LA[v]), h('span', { class: 'ko' }, VIEW_KO[v]));
+    const stn = h('button', { class: `stn${i === cur ? ' here' : ''}`, onclick: () => { if (v !== S.view) startTravel(v); }, title: i === cur ? '지금 여기' : `${VIEW_KO[v]}로` }, h('span', { class: 'la' }, VIEW_LA[v]), h('span', { class: 'ko' }, VIEW_KO[v]));
     return i < order.length - 1 ? [stn, h('span', { class: 'leg' }, h('span', { class: 'p' }, passus(v, order[i + 1])))] : [stn];
   }));
 }
 // 알붐(회칠한 게시벽)과 디핀티(붉은 글씨 공고): 포룸의 공고는 회칠 벽에 붉은 글씨로 썼다(폼페이 에딕타 무네룸). 이번 시즌 상황을 세계 안 물건으로 보여 준다. 줄을 누르면 그 장소로
 function album(): Node {
   const lines: { la: string; n: number; ko: string; to?: View; warn?: boolean }[] = [];
-  const cs = st.contracts, ok = cs.filter(c => canFulfill(st, c)).length;
+  const cs = S.st.contracts, ok = cs.filter(c => canFulfill(S.st, c)).length;
   lines.push({ la: 'MVNERA', n: cs.length, ko: cs.length ? `계약 ${cs.length}건${ok < cs.length ? ` · 치를 수 있는 것 ${ok}` : ''}` : '이번 시즌 계약 없음', to: 'ludus' });
-  lines.push({ la: 'VENALES', n: st.market.length, ko: st.market.length ? `시장 매물 ${st.market.length}명` : '시장 매물 없음', to: 'market' });
-  if (st.applicants.length) lines.push({ la: 'AVCTORATI', n: st.applicants.length, ko: `문 앞 자유민 지원자 ${st.applicants.length}명`, to: 'ludus' }); // 정문(문루) 앞에 서 있다 — 정문은 포룸 화면
-  const inj = st.roster.filter(g => g.alive && g.injured > 0).length;
-  lines.push({ la: 'SAVCII', n: inj, ko: inj ? `부상 ${inj}명 · 치료 ${healCostOf(st).toLocaleString()} HS` : '부상자 없음', to: 'medic' });
-  const tr = palusTrainees(st).length, cap = trainCap(st); lines.push({ la: 'PALVS', n: tr, ko: tr ? `팔루스 ${tr}/${cap} 훈련 중` : `팔루스 ${cap}개 비어 있다`, to: 'yard' }); // 세운 만큼만 훈련한다 (초과 없음)
-  return h('div', { class: 'album' }, ...lines.map(l => h(l.to ? 'button' : 'div', { class: `dip${l.n ? '' : ' dim'}${l.warn ? ' warn' : ''}`, ...(l.to ? { onclick: () => { if (l.to !== view) startTravel(l.to!); } } : {}) },
+  lines.push({ la: 'VENALES', n: S.st.market.length, ko: S.st.market.length ? `시장 매물 ${S.st.market.length}명` : '시장 매물 없음', to: 'market' });
+  if (S.st.applicants.length) lines.push({ la: 'AVCTORATI', n: S.st.applicants.length, ko: `문 앞 자유민 지원자 ${S.st.applicants.length}명`, to: 'ludus' }); // 정문(문루) 앞에 서 있다 — 정문은 포룸 화면
+  const inj = S.st.roster.filter(g => g.alive && g.injured > 0).length;
+  lines.push({ la: 'SAVCII', n: inj, ko: inj ? `부상 ${inj}명 · 치료 ${healCostOf(S.st).toLocaleString()} HS` : '부상자 없음', to: 'medic' });
+  const tr = palusTrainees(S.st).length, cap = trainCap(S.st); lines.push({ la: 'PALVS', n: tr, ko: tr ? `팔루스 ${tr}/${cap} 훈련 중` : `팔루스 ${cap}개 비어 있다`, to: 'yard' }); // 세운 만큼만 훈련한다 (초과 없음)
+  return h('div', { class: 'album' }, ...lines.map(l => h(l.to ? 'button' : 'div', { class: `dip${l.n ? '' : ' dim'}${l.warn ? ' warn' : ''}`, ...(l.to ? { onclick: () => { if (l.to !== S.view) startTravel(l.to!); } } : {}) },
     h('span', { class: 'la' }, `${l.la} · ${roman(l.n)}`), h('span', { class: 'ko' }, l.ko)))); // 아래 남는 벽은 빈 회칠 그대로 (사용자: 소식은 넣지 않는다)
 }
 function roadBoard(): Node {
-  const covered = cellsOpen || (phase === 'manage' && !!sheet && ['facilities', 'doctors', 'rivals', 'news', 'market', 'applicants', 'chronicle'].includes(sheet)); // 켈라나 장면 패널이 덮으면 숨긴다
+  const covered = S.cellsOpen || (S.phase === 'manage' && !!S.sheet && ['facilities', 'doctors', 'rivals', 'news', 'market', 'applicants', 'chronicle'].includes(S.sheet)); // 켈라나 장면 패널이 덮으면 숨긴다
   return h('div', { class: `roadboard${covered ? ' hidden' : ''}` }, itinerary(), album());
 }
 // 라니스타: 크림색 토가(자주색 띠·주름), 짧은 머리·수염, 서판을 든 손. 발이 (x,y)
@@ -1202,21 +1203,21 @@ function lanistaPose(v: View, t: number): Skeleton {
 }
 function drawLanista(ctx: CanvasRenderingContext2D, x: number, y: number, facing: 1 | -1, t: number, walking: boolean) {
   // 기본 리그 + 토가(자주색 클라부스) + 서판. 걸을 때도 앞손은 서판을 든 채. 서 있을 땐 장소마다 다른 행동
-  const sk: Skeleton = walking ? { ...walkSkeleton(t * 9, 0.8), frontArm: [55, 50] } : lanistaPose(view, t);
+  const sk: Skeleton = walking ? { ...walkSkeleton(t * 9, 0.8), frontArm: [55, 50] } : lanistaPose(S.view, t);
   drawStickman(ctx, 'murmillo', { x, y, scale: 1.0, facing, skeleton: sk, t, ink: INK, bare: true, garment: 'toga', garmentColor: '#f3ead0', beard: true, /* 클라부스 없음: 라니스타는 인파미스 신분 (고증) */
     hands: (c, f) => { c.fillStyle = '#d9c69a'; c.fillRect(f.hx - 2, f.hy - 12, 9, 12); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(f.hx - 2, f.hy - 12, 9, 12); c.beginPath(); c.moveTo(f.hx, f.hy - 8); c.lineTo(f.hx + 5, f.hy - 8); c.moveTo(f.hx, f.hy - 4); c.lineTo(f.hx + 5, f.hy - 4); c.stroke(); } });
 }
 // 장소 이동: 화면(카메라·대시보드)이 먼저 새 장소로 옮겨가고, 라니스타는 화면 밖 가장자리에서 걸어 들어와 제자리에 선다
 function startTravel(to: View) {
-  if (to === view && !lanista.walking) return;
-  camPan = 0; sheet = null; marketSel = null;
-  const from = view; view = to; camV = 0;
-  travel = { to, from, fromX: lanista.x, start: performance.now() };
+  if (to === S.view && !lanista.walking) return;
+  S.camPan = 0; S.sheet = null; S.marketSel = null;
+  const from = S.view; S.view = to; S.camV = 0;
+  S.travel = { to, from, fromX: lanista.x, start: performance.now() };
   lanista.target = restX(to);
   // 지금 화면에 보이면 순간이동 없이 끝까지 걷는다 (먼 길은 걸음을 빠르게 해 2초 안팎). 이미 화면 밖이면 새 장소 가장자리에서 등장
-  const onScreen = lanista.x >= camX - 10 && lanista.x <= camX + VW + 10;
+  const onScreen = lanista.x >= S.camX - 10 && lanista.x <= S.camX + S.VW + 10;
   const cam = camFor(to);
-  if (!onScreen) lanista.x = lanista.x < lanista.target ? cam - 30 : cam + VW + 30;
+  if (!onScreen) lanista.x = lanista.x < lanista.target ? cam - 30 : cam + S.VW + 30;
   lanista.vmax = Math.max(340, Math.abs(lanista.target - lanista.x) / 2.2);
   lanista.walking = true; lanista.v = Math.max(lanista.v, 90);
   render();
@@ -1314,7 +1315,7 @@ function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: numbe
     ctx.globalAlpha = 1; ctx.fillStyle = OCHRE; ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.ellipse(cx, cy, 3.5, 1.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; ctx.fillRect(cx - 1.5, cy - 4.5, 3, 1.2);
     if (c.tier === 3) { ctx.strokeStyle = OCHRE; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 3; k++) { ctx.moveTo(cx - 8 + k * 6, cy - 6); ctx.quadraticCurveTo(cx - 5 + k * 6, cy - 9, cx - 2 + k * 6, cy - 6); } ctx.stroke(); } }
   // 배정 수
-  const team = (assign[c.id] ?? []); ctx.fillStyle = SOOT; ctx.font = 'bold 6.5px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(`${team.length}/${c.size}`, px + pw - 4, py + 12);
+  const team = (S.assign[c.id] ?? []); ctx.fillStyle = SOOT; ctx.font = 'bold 6.5px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(`${team.length}/${c.size}`, px + pw - 4, py + 12);
   // 경기장 이름 (붉은 글씨, 두 줄까지) → 규모·주최 줄 → 지렁이 글씨 → 왼쪽 아래 상금 (계약 카드와 같은 배치)
   ctx.textAlign = 'left'; const l2 = ''; { const y = py + 26, len = pw - 12 - ((c.id * 7) % 12); ctx.strokeStyle = OCHRE; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.globalAlpha = 0.9; // 경기장 이름: 굵은 붉은 지렁이 글씨 한 줄 (글자는 이 크기에서 넘치거나 뭉개진다)
     ctx.beginPath(); ctx.moveTo(px + 5, y); for (let x = 2; x <= len; x += 2) ctx.lineTo(px + 5 + x, y + Math.sin((x + c.id) * 1.2) * 1.4); ctx.stroke(); ctx.globalAlpha = 1; }
@@ -1328,7 +1329,7 @@ function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: numbe
     ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px + 8, by - 2.5, 2.6, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(px + 11, by - 1, 2.6, Math.PI * 1.1, Math.PI * 0.4); ctx.stroke();
     ctx.fillStyle = SOOT; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`${(hostPrize(c) * (c.bet ? 2 : 1)).toLocaleString()}`, px + 16, by); ctx.font = '5px sans-serif'; ctx.fillStyle = 'rgba(58,36,18,.6)'; const nw = ctx.measureText(`${(hostPrize(c) * (c.bet ? 2 : 1)).toLocaleString()}`).width; ctx.font = '5px sans-serif'; ctx.fillText('HS', px + 16 + nw * 1.6 + 2, by); }
   // 배정 완료 낙서 체크 (계약 카드의 체크와 같은 자리: 경기장 그림 위)
-  if (team.length >= c.size && !validTeam(st, c, team.map(id => st.roster.find(g => g.id === id)!).filter(Boolean))) { ctx.strokeStyle = SOOT; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(px + 25, py + 9); ctx.lineTo(px + 31, py + 16); ctx.lineTo(px + 45, py + 3); ctx.stroke(); ctx.globalAlpha = 1; }
+  if (team.length >= c.size && !validTeam(S.st, c, team.map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean))) { ctx.strokeStyle = SOOT; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(px + 25, py + 9); ctx.lineTo(px + 31, py + 16); ctx.lineTo(px + 45, py + 3); ctx.stroke(); ctx.globalAlpha = 1; }
   ctx.restore();
 }
 function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
@@ -1341,12 +1342,12 @@ function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = '#e2d3ab'; ctx.fillRect(0, -178, FORUM.wallW, 164); ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.5; ctx.fillRect(0, -32, FORUM.wallW, 8); ctx.globalAlpha = 1;
   ctx.fillStyle = ink; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('MVNERA', 8, -20); // 벽 아래 붉은 띠 옆 (위쪽은 처마에 가린다) // 벽 머리에 긁어 쓴 글자
   // 공고문: 계약마다 하나. 등급이 높을수록 크고 붉은 글자 줄이 많다. 배정이 끝난 계약엔 낙서 체크
-  for (let i = st.contracts.length; i < 4; i++) { const { x: px, y: py } = FORUM.posterAt(i); ctx.strokeStyle = 'rgba(155,44,28,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.strokeRect(px + 0.5, py + 0.5, FORUM.posterW, FORUM.posterH); ctx.setLineDash([]); } // 빈 자리: 옛 공고를 긁어낸 자국
-  st.contracts.forEach((c, i) => { const { x: px, y: py } = FORUM.posterAt(i); drawMiniContract(ctx, c, px, py, FORUM.posterW, FORUM.posterH); }); // 2×2
+  for (let i = S.st.contracts.length; i < 4; i++) { const { x: px, y: py } = FORUM.posterAt(i); ctx.strokeStyle = 'rgba(155,44,28,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.strokeRect(px + 0.5, py + 0.5, FORUM.posterW, FORUM.posterH); ctx.setLineDash([]); } // 빈 자리: 옛 공고를 긁어낸 자국
+  S.st.contracts.forEach((c, i) => { const { x: px, y: py } = FORUM.posterAt(i); drawMiniContract(ctx, c, px, py, FORUM.posterW, FORUM.posterH); }); // 2×2
   // 제단(가운데): 돌 제단 + 불
   { const ax = FORUM.wallW + 50; ctx.fillStyle = '#b39c6a'; ctx.fillRect(ax - 12, -26, 24, 26); ctx.fillStyle = '#a58f60'; ctx.fillRect(ax - 15, -30, 30, 5); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(ax, -34 + Math.sin(t * 9) * 0.8, 3, 5, 0, 0, Math.PI * 2); ctx.fill(); }
   // 구경꾼: 벽을 따라 걷다가 공고 앞에 멈춰 구경하고(팔짱·손가락질·발돋움) 다시 걸어간다. 세 사람이 서로 다른 주기·경로로
-  { const n = Math.max(1, st.contracts.length); const posterX = (i: number) => FORUM.posterAt(i % n).x + FORUM.posterW / 2;
+  { const n = Math.max(1, S.st.contracts.length); const posterX = (i: number) => FORUM.posterAt(i % n).x + FORUM.posterW / 2;
     const walkers: { period: number; off: number; a: number; b: number; pose: 'watch' | 'point' | 'tiptoe'; face: 1 | -1; scale: number; seed: number }[] = [
       { period: 26, off: 0, a: 0, b: 2, pose: 'watch', face: 1, scale: 0.85, seed: 20 }, { period: 31, off: 11, a: 1, b: 3, pose: 'point', face: -1, scale: 0.8, seed: 21 }, { period: 23, off: 19, a: 3, b: 1, pose: 'tiptoe', face: 1, scale: 0.9, seed: 22 }];
     for (const w of walkers) { const u = ((t + w.off) % w.period) / w.period; const L = -40, R = FORUM.wallW + 60; const pa = posterX(w.a) + 14, pb = posterX(w.b) - 14; const dir: 1 | -1 = pa <= pb ? 1 : -1; // 왼쪽에서 들어와 두 공고를 들르고 오른쪽으로 나간다 (b 가 앞이면 되돌아간다)
@@ -1357,7 +1358,7 @@ function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
 }
 function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
   const W = MARKET.W, H = MARKET.H;
-  const items = st.market;
+  const items = S.st.market;
   const slotX = (i: number) => marketSlotX(items.length, i);
   const ink = INK;
     ctx.clearRect(0, 0, W, H);
@@ -1379,7 +1380,7 @@ function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
       hands: (c, f) => { c.fillStyle = '#e8d9b5'; c.fillRect(f.hx - 2, f.hy - 12, 9, 13); c.strokeStyle = ink; c.lineWidth = 1; c.strokeRect(f.hx - 2, f.hy - 12, 9, 13); } });
     if (!items.length) return; // 매물 없음: 빈 카타스타만 (안내는 대시보드에)
     // 사슬: 목 고리 사이를 늘어진 곡선(카테너리 느낌)으로, 작은 고리들이 곡선을 따라 이어짐. 살짝 흔들림
-    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === marketSel; const sc0 = sel ? 1.05 : 0.95; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
+    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === S.marketSel; const sc0 = sel ? 1.05 : 0.95; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
     ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
     for (let i = 0; i < items.length; i++) {
       const a = neckOf(items[i], i);
@@ -1401,7 +1402,7 @@ function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
     if (items.length) { const a = neckOf(items[0], 0); const hx = 42, hy = H - 68 - 36; const sag = Math.abs(a.x - hx) * 0.3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo((a.x + hx) / 2, Math.max(a.y, hy) + sag, hx, hy); ctx.stroke(); }
     // 매물
     items.forEach((g, i) => {
-      const sel = g.id === marketSel, dim = marketSel != null && !sel;
+      const sel = g.id === S.marketSel, dim = S.marketSel != null && !sel;
       const x = slotX(i), y = H - 68 + (sel ? 8 : 0);
       ctx.globalAlpha = dim ? 0.45 : 1;
       const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
@@ -1445,12 +1446,12 @@ const WN = 18, WSEG = 4.2;
 // 의사(메디쿠스): 환자가 있으면 선반(집)과 침상 사이를 오가며 치료. 좌표는 훈련장 기준
 const medic = { x: 330, mode: 'home' as 'home' | 'go' | 'tend' | 'back', act: 'grind' as 'grind' | 'shelf' | 'tend' | 'lean' | 'cup', until: 0, target: 330, bed: 0, last: -1, seed: 1 };
 const whipState = { p: [] as { x: number; y: number; px: number; py: number }[], last: -1, crackT: -9, crackX: 0 };
-type StickPose = 'stand' | 'point' | 'stir' | 'tend' | 'whip' | 'walk' | 'grind' | 'shelf' | 'lean' | 'cup';
-let stickFn: ((x: number, y: number, sc: number, pose: StickPose, t: number, seed: number, facing?: 1 | -1) => void) | null = null; // 훈련장이 매 프레임 넘겨 주는 보조 인물 그리기
+export type StickPose = 'stand' | 'point' | 'stir' | 'tend' | 'whip' | 'walk' | 'grind' | 'shelf' | 'lean' | 'cup';
+S.stickFn = null; // 훈련장이 매 프레임 넘겨 주는 보조 인물 그리기
 // 의무실 장면 (0,0) 기준, 발 = H-20. 침상은 시설 수(최대 4)만큼, 부상자가 그 위에 눕고 넘치면 벽가에 앉는다. 의사는 탁자와 침상을 오간다
 function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = MEDIC.W, H = MEDIC.H; const stick = stickFn; if (!stick) return;
-  const beds0 = Math.max(1, Math.min(4, st.ludus.beds)); const occupied = Array.from({ length: beds0 }, (_, i) => bedPatient(st, i)); const occIdx = occupied.map((g, i) => g ? i : -1).filter(i => i >= 0); // 침상마다 누운 부상자 (없으면 빈 침상)
+  const W = MEDIC.W, H = MEDIC.H; const stick = S.stickFn; if (!stick) return;
+  const beds0 = Math.max(1, Math.min(4, S.st.ludus.beds)); const occupied = Array.from({ length: beds0 }, (_, i) => bedPatient(S.st, i)); const occIdx = occupied.map((g, i) => g ? i : -1).filter(i => i >= 0); // 침상마다 누운 부상자 (없으면 빈 침상)
   // 건물: 기와 지붕선, 회벽, 붉은 띠(하단 장식), 바닥 돌
   ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 30, W, H - 50);
   ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, 22, W + 16, 10);
@@ -1461,7 +1462,7 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   // 창 (빛)
   for (const wx of [70, 210]) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(wx, 46, 30, 26); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.strokeRect(wx, 46, 30, 26); ctx.beginPath(); ctx.moveTo(wx + 15, 46); ctx.lineTo(wx + 15, 72); ctx.stroke(); }
   // 침상 (시설 수만큼, 최대 4): 폭 74, 다리
-  const beds = Math.max(1, Math.min(4, st.ludus.beds)); const bedX = Array.from({ length: beds }, (_, i) => 16 + i * 80);
+  const beds = Math.max(1, Math.min(4, S.st.ludus.beds)); const bedX = Array.from({ length: beds }, (_, i) => 16 + i * 80);
   ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath();
   for (const bx of bedX) { ctx.moveTo(bx, H - 40); ctx.lineTo(bx + 74, H - 40); ctx.moveTo(bx + 4, H - 40); ctx.lineTo(bx + 4, H - 24); ctx.moveTo(bx + 70, H - 40); ctx.lineTo(bx + 70, H - 24); }
   ctx.stroke();
@@ -1470,9 +1471,9 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   const TX = 350;
   ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(TX - 6, H - 46); ctx.lineTo(TX + 38, H - 46); ctx.moveTo(TX - 2, H - 46); ctx.lineTo(TX - 2, H - 24); ctx.moveTo(TX + 34, H - 46); ctx.lineTo(TX + 34, H - 24); ctx.stroke();
   ctx.fillStyle = '#8f7a4e'; ctx.beginPath(); ctx.moveTo(TX + 6, H - 46); ctx.lineTo(TX + 26, H - 46); ctx.lineTo(TX + 23, H - 55); ctx.lineTo(TX + 9, H - 55); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#8a6a44'; ctx.fillRect(TX - 10, 118, 58, 3); for (let k = 0; k < 2 + Math.min(3, st.ludus.medicine); k++) { ctx.fillStyle = ['#b9a26f', '#9b2c1c', '#b9a26f', '#5a4224', '#3b7a2c'][k % 5]; ctx.fillRect(TX - 6 + k * 11, 108, 7, 10); }
-  for (let k = 0; k < st.ludus.herbs; k++) { const hx = 300 - k * 22; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, 38); ctx.lineTo(hx, 52); ctx.stroke(); ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.moveTo(hx, 50); ctx.lineTo(hx - 6, 68); ctx.lineTo(hx + 6, 68); ctx.closePath(); ctx.fill(); }
-  if (st.ludus.medicine >= 3) stick(W - 18, H - 22, 0.9, 'tend', t, 9, -1); // 의술 3단계: 조수
+  ctx.fillStyle = '#8a6a44'; ctx.fillRect(TX - 10, 118, 58, 3); for (let k = 0; k < 2 + Math.min(3, S.st.ludus.medicine); k++) { ctx.fillStyle = ['#b9a26f', '#9b2c1c', '#b9a26f', '#5a4224', '#3b7a2c'][k % 5]; ctx.fillRect(TX - 6 + k * 11, 108, 7, 10); }
+  for (let k = 0; k < S.st.ludus.herbs; k++) { const hx = 300 - k * 22; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, 38); ctx.lineTo(hx, 52); ctx.stroke(); ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.moveTo(hx, 50); ctx.lineTo(hx - 6, 68); ctx.lineTo(hx + 6, 68); ctx.closePath(); ctx.fill(); }
+  if (S.st.ludus.medicine >= 3) stick(W - 18, H - 22, 0.9, 'tend', t, 9, -1); // 의술 3단계: 조수
   { // 의사: 탁자 앞에서 약을 빻거나 선반에서 약병을 꺼내고, 환자가 있으면 붕대 뭉치를 들고 침상으로 가 붕대·살피기·물 먹이기 중 하나를 한 뒤 돌아온다
     const dt = medic.last < 0 ? 0 : Math.min(0.05, t - medic.last); medic.last = t;
     const HOME = TX - 20; const bedSide = (k: number) => bedX[occIdx[k % Math.max(1, occIdx.length)] ?? 0] + 62;
@@ -1494,14 +1495,14 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   }
   // 부상자: 침상에 눕고(머리 왼쪽), 침상이 모자라면 오른쪽 벽가에 앉는다
   // 부상 표시: 남은 시즌 수만큼 구급 십자 (침상 위 작은 팻말). 누르면 치료
-  const cost = `${healCostOf(st).toLocaleString()}`; ctx.font = 'bold 10px sans-serif'; const costW = ctx.measureText(cost).width;
+  const cost = `${healCostOf(S.st).toLocaleString()}`; ctx.font = 'bold 10px sans-serif'; const costW = ctx.measureText(cost).width;
   const crosses = (cx: number, cy: number, n: number, k: number) => { const w = n * 17 + 10 + costW + 6; ctx.fillStyle = '#f3ead0'; ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - 10, w, 20, 4); ctx.fill(); ctx.stroke(); // 십자(남은 시즌) + 치료 금액
     for (let j = 0; j < n; j++) { const x = cx - w / 2 + 12 + j * 17, bob = Math.sin(t * 2 + k + j) * 0.6; ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 6.5, cy - 2 + bob, 13, 4); ctx.fillRect(x - 2, cy - 6.5 + bob, 4, 13); }
     ctx.fillStyle = '#3a2412'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(cost, cx - w / 2 + 12 + n * 17, cy + 3.5); ctx.textAlign = 'center'; };
   const nameTag = (g: Gladiator, cx: number, cy: number) => { ctx.font = 'bold 10px sans-serif'; const nw = ctx.measureText(g.name).width; const x0 = cx - (nw + 18) / 2; ctx.fillStyle = TYPE_COLOR[g.type]; ctx.fillRect(x0, cy - 12, 14, 14); drawGlyph(ctx, g.type, x0 + 7, cy - 5, 11); ctx.fillStyle = '#3a2412'; ctx.textAlign = 'left'; ctx.fillText(g.name, x0 + 18, cy - 1); ctx.textAlign = 'center'; }; // 무기(유형) 아이콘 + 이름
   occupied.forEach((g, i) => { const bx = bedX[i];
     if (!g) { // 빈 침상: 누르면 켈라에서 부상자를 고른다 (부상자가 있을 때만 표시)
-      if (st.roster.some(x => x.injured > 0 && !inBed(st, x))) { const bob = Math.sin(t * 2 + i) * 1.2; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(bx + 37 - 7, H - 62 + bob); ctx.lineTo(bx + 37 + 7, H - 62 + bob); ctx.moveTo(bx + 37, H - 69 + bob); ctx.lineTo(bx + 37, H - 55 + bob); ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(58,36,18,.7)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('부상자 눕히기', bx + 37, H - 6); }
+      if (S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { const bob = Math.sin(t * 2 + i) * 1.2; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(bx + 37 - 7, H - 62 + bob); ctx.lineTo(bx + 37 + 7, H - 62 + bob); ctx.moveTo(bx + 37, H - 69 + bob); ctx.lineTo(bx + 37, H - 55 + bob); ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(58,36,18,.7)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('부상자 눕히기', bx + 37, H - 6); }
       return; }
     const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
     ctx.save(); ctx.beginPath(); ctx.rect(bx - 4, 0, 92, H); ctx.clip();
@@ -1519,7 +1520,7 @@ function drawCityWall(ctx: CanvasRenderingContext2D) {
 }
 // 묘지: 성문 밖 길가 묘역 (폼페이 누케리아 문 밖처럼). 묘비(스텔라)는 죽은 검투사 수만큼(최대 8), 사이프러스 두 그루, 담. 누르면 연대기
 function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = TOWN.tailW; const dead = st.graveyard;
+  const W = TOWN.tailW; const dead = S.st.graveyard;
   ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -96, W, 8); ctx.fillStyle = '#c9b283'; ctx.fillRect(0, -88, W, 74); // 담 (낮은 벽)
   ctx.strokeStyle = '#b39c6a'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x, -88); ctx.lineTo(x, -14); ctx.stroke(); }
   for (const cx of [26, W - 30]) { // 사이프러스
@@ -1538,7 +1539,7 @@ function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
 // 훈련장 장면을 (0,0) 기준으로 그린다. 타운 캔버스가 카메라 오프셋을 적용해 호출
 function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
   const W = YARD.W, H = YARD.H;
-  const roster = st.roster;
+  const roster = S.st.roster;
   const ink = INK;
   // ── 채찍 물리 (베를레 사슬): 손잡이 쪽 고리가 끝으로 달려가며 빨라지고 팁이 땅을 친다.
   // 손(0번 점)만 궤적을 따라 움직이고 나머지 마디는 관성·중력·길이 제약으로 따라온다. 좌표는 인물 기준(발=0,0, 앞=+x)
@@ -1576,7 +1577,7 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     }
     // 스냅 감지: 팁 속도가 크고 땅 근처면 "딱!"
     const tip = whipState.p[WN - 1]; const sp = Math.hypot(tip.x - tip.px, tip.y - tip.py) / Math.max(h2, 1e-3);
-    if (ph > 1.65 && ph < 2.2 && sp > 600 && tip.y > -10 && t - whipState.crackT > 1.5) { whipState.crackT = t; whipState.crackX = tip.x; if (document.visibilityState === 'visible' && view === 'ludus' && !travel) sfx.whip(); }
+    if (ph > 1.65 && ph < 2.2 && sp > 600 && tip.y > -10 && t - whipState.crackT > 1.5) { whipState.crackT = t; whipState.crackX = tip.x; if (document.visibilityState === 'visible' && S.view === 'ludus' && !S.travel) sfx.whip(); }
     return hand;
   };
   const drawWhip = (t: number, facing: number, sc: number) => {
@@ -1618,14 +1619,14 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     ctx.fillStyle = '#a58f60'; ctx.fillRect(0, 0, W, 26);            // 2층 벽
     ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 12; x < W; x += 24) { ctx.moveTo(x, 8); ctx.lineTo(x, 24); } ctx.stroke(); // 2층 난간
     ctx.fillStyle = '#8f7a4e'; ctx.fillRect(0, 26, W, 4);
-    const cellCap = rosterCap(st); let cellK = 0;
+    const cellCap = rosterCap(S.st); let cellK = 0;
     for (let x = 34; x < W; x += 68) {                                // 1층 아치 + 열주
       ctx.fillStyle = '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 18, 78); ctx.lineTo(x - 18, 48); ctx.arc(x, 48, 18, Math.PI, 0); ctx.lineTo(x + 18, 78); ctx.closePath(); ctx.fill();
       const isDoor = x === 34; // 맨 왼쪽 아치 = 의무실로 통하는 통로 (의무실은 담 너머 독립 건물). 바닥에 문을 따로 세우지 않고 회랑 벽에 낸다
       const isCell = !isDoor && Math.abs(x - W / 2) > 40 && cellK < cellCap; if (isCell) cellK++; // 켈라은 상한 수만큼 열려 있고, 나머지는 막힌 벽
       if (isDoor) { ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(x - 12, 78); ctx.lineTo(x - 12, 56); ctx.arc(x, 56, 12, Math.PI, 0); ctx.lineTo(x + 12, 78); ctx.closePath(); ctx.fill(); // 열린 통로
         ctx.strokeStyle = '#3b7a2c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, 34); ctx.stroke(); ctx.beginPath(); ctx.arc(x, 37, 3.5, 0.3, Math.PI * 1.7); ctx.stroke(); } // 문 위 작은 표지: 지팡이에 감긴 뱀(아스클레피오스)
-      else if (isCell) { const q = st.ludus.cells[cellK - 1] ?? 0; ctx.fillStyle = q >= 2 ? '#5a3a1c' : '#3a2412'; ctx.fillRect(x - 7, 56, 14, 22); ctx.fillStyle = q >= 1 ? '#e8c96a' : '#5a4224'; ctx.fillRect(x - 5, 60, 10, 2); ctx.fillRect(x - 5, 64, 10, 2); if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 9, 52, 18, 3); } } // 켈라 문: 질 1 창에 불빛, 2 나무문, 3 붉은 차양
+      else if (isCell) { const q = S.st.ludus.cells[cellK - 1] ?? 0; ctx.fillStyle = q >= 2 ? '#5a3a1c' : '#3a2412'; ctx.fillRect(x - 7, 56, 14, 22); ctx.fillStyle = q >= 1 ? '#e8c96a' : '#5a4224'; ctx.fillRect(x - 5, 60, 10, 2); ctx.fillRect(x - 5, 64, 10, 2); if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 9, 52, 18, 3); } } // 켈라 문: 질 1 창에 불빛, 2 나무문, 3 붉은 차양
       else { ctx.fillStyle = '#8f7a4e'; ctx.fillRect(x - 10, 52, 20, 26); } // 막힌 아치 (증축 전)
       ctx.fillStyle = '#d9c69a'; ctx.fillRect(x + 26, 32, 8, 46);     // 기둥
     }
@@ -1634,8 +1635,8 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     { const sx = W / 2; ctx.fillStyle = '#9b2c1c'; ctx.fillRect(sx - 22, 40, 44, 38); ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx - 18, 44, 36, 34);
       ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, 76); ctx.lineTo(sx, 58); ctx.moveTo(sx - 7, 66); ctx.lineTo(sx + 7, 66); ctx.stroke(); ctx.beginPath(); ctx.arc(sx, 53, 4, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = '#3b7a2c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, 46, 16, 0.2, Math.PI - 0.2); ctx.stroke();
-      if (st.events?.votum) { for (const dx of [-14, 14]) { ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx + dx - 2, 68, 4, 8); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(sx + dx, 65 + Math.sin(t * 9 + dx) * 0.6, 2, 3.5, 0, 0, Math.PI * 2); ctx.fill(); } } } // 봉헌: 촛불 둘
-    stickFn = stick; // 의무실 장면이 같은 보조 인물 리그를 쓴다
+      if (S.st.events?.votum) { for (const dx of [-14, 14]) { ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx + dx - 2, 68, 4, 8); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(sx + dx, 65 + Math.sin(t * 9 + dx) * 0.6, 2, 3.5, 0, 0, Math.PI * 2); ctx.fill(); } } } // 봉헌: 촛불 둘
+    S.stickFn = stick; // 의무실 장면이 같은 보조 인물 리그를 쓴다
     // 작은 타원 연습장 + 관람석: 루두스 마그누스의 미니 원형경기장
     ctx.strokeStyle = '#c4ad76'; ctx.lineWidth = 2; ctx.beginPath(); ctx.beginPath(); ctx.ellipse(160, 142, 118, 30, 0, 0, Math.PI * 2); ctx.fillStyle = '#e4d3a4'; ctx.fill(); ctx.stroke();
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 7) { const px = 160 + Math.cos(a) * 118, py = 142 + Math.sin(a) * 30; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 9); ctx.stroke(); } // 낮은 말뚝 울타리 // 원형 대련장: 왼쪽 위(회랑 바로 아래)에 두어 앞쪽 땅은 통로로 비운다
@@ -1648,7 +1649,7 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     // 보리죽 솥 (오른쪽 뒤 구석) + 요리사 + 김 — 팔루스보다 먼저 그려 뒤에 놓인다
     // (급식소는 뺐다 — 세로 무대에서 팔루스 자리를 넓게 쓰기 위해, 2026-09-16)
     // 훈련 기둥(팔루스) 둘 + 목검 거치
-    const postN = st.ludus.palus; const posts = palusPosts(postN); // 팔루스 수 = 시설. 빈 기둥을 누르면 세울 검투사를 고른다
+    const postN = S.st.ludus.palus; const posts = palusPosts(postN); // 팔루스 수 = 시설. 빈 기둥을 누르면 세울 검투사를 고른다
     for (const px of posts) { ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px, H - 22); ctx.lineTo(px, H - 98); ctx.stroke(); ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px - 4, H - 52); ctx.lineTo(px + 4, H - 56); ctx.moveTo(px - 4, H - 74); ctx.lineTo(px + 4, H - 78); ctx.stroke(); } // 기둥은 사람 키보다 조금 낮게 (급식소와 덜 겹치게 작게)
     // 무기고 거치대 (가운데 뒤): 방패·창·목검
     { ctx.save(); ctx.translate(0, -26); const ax = 120; ctx.strokeStyle = '#6b4a22'; /* 무기고: 연습장 뒤 회랑 벽에. 세로 무대 카메라(140~580)에 들어오게 오른쪽으로 옮김 */ ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(ax, 92); ctx.lineTo(ax + 120, 92); ctx.moveTo(ax + 4, 92); ctx.lineTo(ax + 4, 128); ctx.moveTo(ax + 116, 92); ctx.lineTo(ax + 116, 128); ctx.stroke();
@@ -1657,9 +1658,9 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       ctx.restore(); }
     // 검투사 배치: 팔루스에 세운 검투사는 그 기둥에서 각목(목검) 훈련(공격 클립 반복, 사람마다 위상 다르게). 세우지 않은 건강한 검투사는 짝이 맞는 만큼 연습장에서 대련(최대 2조)
     const teamColor = (g: Gladiator) => g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
-    for (let k2 = 0; k2 < postN; k2++) { const g = palusTrainee(st, k2); if (!g) continue; const px = posts[k2]; const clip = attackClipFor(g.type); const len = clipLength(clip) + 700; const el = ((t * 1000) + k2 * 400) % len;
+    for (let k2 = 0; k2 < postN; k2++) { const g = palusTrainee(S.st, k2); if (!g) continue; const px = posts[k2]; const clip = attackClipFor(g.type); const len = clipLength(clip) + 700; const el = ((t * 1000) + k2 * 400) % len;
       drawStickman(ctx, g.type, { x: px - 44, y: H - 20, scale: 0.9, skeleton: clipSkeleton(clip, el), t, team: teamColor(g), accessories: accessoriesOf(g) }); }
-    const idle = roster.filter(g => g.alive && !g.injured && g.status !== 'doctor' && palusOf(st, g) < 0); const sparN = Math.min(4, idle.length) - (Math.min(4, idle.length) % 2);
+    const idle = roster.filter(g => g.alive && !g.injured && g.status !== 'doctor' && palusOf(S.st, g) < 0); const sparN = Math.min(4, idle.length) - (Math.min(4, idle.length) % 2);
     idle.slice(0, sparN).forEach((g, i) => { // 대련: 연습장 타원 안에서 마주보고 한쪽은 공격, 한쪽은 막기(교대)
       const pair = Math.floor(i / 2), side = i % 2;
       const cx = 118 + pair * 84, gap = 24; const period = 2200; const ph = ((t * 1000) + pair * 700) % period; const attackerSide = ph < period / 2 ? 0 : 1; const el = ph % (period / 2);
@@ -1701,31 +1702,31 @@ function arenaIcon(tier: number) {
   stroke(wobbly([[28, 12], [36, 12]], false, 0.5), OCHRE, 2.6, 0.9); // 주최자석 붉은 띠
   return svg;
 }
-function assignedTo(gid: number): number | null { for (const cid in assign) if (assign[cid].includes(gid)) return +cid; return null; }
+function assignedTo(gid: number): number | null { for (const cid in S.assign) if (S.assign[cid].includes(gid)) return +cid; return null; }
 
 // 시즌 행동 선택. 훈련은 훈련소의 팔루스에 세워서 한다 — 팔루스에 선 검투사는 여기서 공/방/기술 중 무엇을 단련할지 고르고 내려올 수도 있다. 나머지는 휴식·시범, 부상자는 요양·치료. 시즌이 끝날 때 실행
 function actionSeg(g: Gladiator): (Node | null)[] {
-  const at = assignedTo(g.id), tp = planOf(g), slot = palusOf(st, g);
+  const at = assignedTo(g.id), tp = planOf(g), slot = palusOf(S.st, g);
   if (g.status === 'doctor') return [];
   if (g.injured) return [h('span', { class: 'seg' }, h('span', { class: 'hint' }, `요양 중 (부상 ${g.injured}→${Math.max(0, g.injured - 1 - CONFIG.actions.recover.extra)}시즌)`),
-    h('button', { disabled: st.money < healCostOf(st), onclick: (ev: Event) => { ev.stopPropagation(); openConfirm(g, 'heal'); } }, `치료 ${healCostOf(st)}`))]; // 부상자는 자동 요양, 치료만 고른다
+    h('button', { disabled: S.st.money < healCostOf(S.st), onclick: (ev: Event) => { ev.stopPropagation(); openConfirm(g, 'heal'); } }, `치료 ${healCostOf(S.st)}`))]; // 부상자는 자동 요양, 치료만 고른다
   if (slot >= 0) { // 팔루스에 서 있다: 무엇을 단련할지는 시즌 끝에 무작위 (공·방, 조건이 되면 기술)
-    const str = skillTrainable(st, g); const fatigueTip = at != null ? ` · 출전 뒤 훈련: 피로가 쌓일 확률 ${Math.round(Math.max(0, CONFIG.fatigue.trainAfterFight - cellQuality(st, g) * CONFIG.fatigue.perCellStar) * 100)}%` : '';
+    const str = skillTrainable(S.st, g); const fatigueTip = at != null ? ` · 출전 뒤 훈련: 피로가 쌓일 확률 ${Math.round(Math.max(0, CONFIG.fatigue.trainAfterFight - cellQuality(S.st, g) * CONFIG.fatigue.perCellStar) * 100)}%` : '';
     return [h('span', { class: 'seg' },
-      h('span', { class: 'hint', title: `시즌 끝에 공격(+${trainGain(st, g, 'atk')})·방어(+${trainGain(st, g, 'def')})${str ? `·기술(${str.pool.map(SKILL_NAME).join('·')} 중 하나, ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}%)` : ''} 중 하나를 무작위로 단련${fatigueTip}` }, `팔루스 ${slot + 1} — 공·방${str ? '·기술' : ''} 중 무작위`),
-      h('button', { title: `팔루스 ${slot + 1}에서 내려온다 (이번 시즌 훈련 없음)`, onclick: (ev: Event) => { ev.stopPropagation(); leavePalus(st, g); save(); render(); } }, '내려오기'))];
+      h('span', { class: 'hint', title: `시즌 끝에 공격(+${trainGain(S.st, g, 'atk')})·방어(+${trainGain(S.st, g, 'def')})${str ? `·기술(${str.pool.map(SKILL_NAME).join('·')} 중 하나, ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}%)` : ''} 중 하나를 무작위로 단련${fatigueTip}` }, `팔루스 ${slot + 1} — 공·방${str ? '·기술' : ''} 중 무작위`),
+      h('button', { title: `팔루스 ${slot + 1}에서 내려온다 (이번 시즌 훈련 없음)`, onclick: (ev: Event) => { ev.stopPropagation(); leavePalus(S.st, g); save(); render(); } }, '내려오기'))];
   }
-  const f = g.fatigue ?? 0; return [h('span', { class: 'hint' }, at != null ? '출전만' : f > 0 ? `휴식 (피로 ${f} → −${cellQuality(st, g) >= 1 ? 2 : 1}${st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? '−1' : ''})` : `시범 (명예 +${CONFIG.actions.show.honor}) — 훈련은 훈련소의 팔루스에 세워서`)]; // 고르지 않는다: 팔루스에 안 섰으면 피로가 있으면 쉬고, 없으면 시범
+  const f = g.fatigue ?? 0; return [h('span', { class: 'hint' }, at != null ? '출전만' : f > 0 ? `휴식 (피로 ${f} → −${cellQuality(S.st, g) >= 1 ? 2 : 1}${S.st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? '−1' : ''})` : `시범 (명예 +${CONFIG.actions.show.honor}) — 훈련은 훈련소의 팔루스에 세워서`)]; // 고르지 않는다: 팔루스에 안 섰으면 피로가 있으면 쉬고, 없으면 시범
 }
 // 승리 예측: 실제 전투 규칙으로 40번 돌려 본 결과 (편성이 바뀔 때만 다시 계산). 상대 원한 보정·조리장 HP·독토르 전수까지 fight() 와 같게
 const oddsCache = new Map<string, { win: number; draw: number }>();
 function winOdds(c: Contract, team: Gladiator[]): { win: number; draw: number } {
-  const key = `${c.id}:${team.map(g => `${g.id}/${g.base.atk}/${g.base.def}/${g.fatigue ?? 0}/${(g.skills ?? []).join('.')}`).join(',')}:${st.ludus.kitchen}`;
+  const key = `${c.id}:${team.map(g => `${g.id}/${g.base.atk}/${g.base.def}/${g.fatigue ?? 0}/${(g.skills ?? []).join('.')}`).join(',')}:${S.st.ludus.kitchen}`;
   const hit = oddsCache.get(key); if (hit) return hit;
   const N = 40; let win = 0, draw = 0; const rng = new Rng(c.id * 7919 + team.reduce((a, g) => a + g.id * 31, 17));
   const boosted = new Set<number>(); for (const g of team) for (const e of c.enemy) if ((g.spared ?? []).includes(e.id)) boosted.add(e.id);
-  const mentored = new Set(team.filter(g => mentoredBy(st, g)).map(g => g.id));
-  for (let i = 0; i < N; i++) { const r = battle(rng, team, c.enemy, { mentored, hpBonusA: st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk }); if (r.winner === 'A') win++; else if (r.winner === 'draw') draw++; }
+  const mentored = new Set(team.filter(g => mentoredBy(S.st, g)).map(g => g.id));
+  for (let i = 0; i < N; i++) { const r = battle(rng, team, c.enemy, { mentored, hpBonusA: S.st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk }); if (r.winner === 'A') win++; else if (r.winner === 'draw') draw++; }
   const out = { win: win / N, draw: draw / N }; oddsCache.set(key, out); return out;
 }
 // 전력 비교는 숫자 대신 말로: 압도적 우위 · 우위 · 호각 · 열세 · 크게 열세 (라니스타의 감이지 계산표가 아니다)
@@ -1734,23 +1735,23 @@ const oddsSpan = (o: { win: number; draw: number }) => { const p = o.win; const 
 const powerRatio = (mine: Gladiator[], enemy: Gladiator[]) => { if (!mine.length || !enemy.length) return null; const a = mine.reduce((x, g) => x + powerOf(g), 0) / mine.length, b = enemy.reduce((x, g) => x + powerOf(g), 0) / enemy.length; return b > 0 ? a / b : null; };
 const ratioSpan = (r: number | null, partial = false) => { if (r == null) return h('span', { class: 'odds none' }, '전력 —'); const [cls, word] = r >= 1.25 ? ['good', '압도적 우위'] : r >= 1.08 ? ['good', '우위'] : r >= 0.92 ? ['even', '호각'] : r >= 0.75 ? ['bad', '열세'] : ['bad', '크게 열세']; return h('span', { class: `odds ${cls}`, title: `전력 식으로 비교: 내 ${partial ? '배정한 검투사' : '팀'} 평균 전력이 상대의 ${Math.round(r * 100)}%${partial ? ' (자리를 다 채우면 확정)' : ''}` }, word); };
 function difficultyBySim(c: Contract): { win: number; label: 'weak' | 'even' | 'strong' } | null {
-  const pool = available(st).sort((a, b) => powerOf(b) - powerOf(a)); if (pool.length < c.size) return null;
+  const pool = available(S.st).sort((a, b) => powerOf(b) - powerOf(a)); if (pool.length < c.size) return null;
   const vets = pool.filter(g => g.rank === 'veteranus'); if (vets.length < c.needVeterans) return null;
   const team: Gladiator[] = [...vets.slice(0, c.needVeterans)]; for (const g of pool) { if (team.length >= c.size) break; if (!team.includes(g)) team.push(g); }
   const r = powerRatio(team, c.enemy) ?? 1; return { win: r, label: r >= 1.08 ? 'weak' : r >= 0.92 ? 'even' : 'strong' }; // win 자리에 전력 비율
 }
-let pageSlide: 'fwd' | 'back' | null = null; // 편성 페이지 전환 방향: 계약 → 검투사(오른쪽에서), 검투사 → 계약(왼쪽에서)
-let shownPlan: number | null = null; // 지금 떠 있는 편성 페이지의 계약 id (재렌더 때 다시 밀려 들어오지 않게)
-let lineupView: 'record' | 'stats' = 'stats'; // 편성 왼쪽 타일 아래 줄: 능력치(기본) / 전적 (스위치)
-const teamOf = (c: Contract) => (assign[c.id] ?? []).map(id => st.roster.find(g => g.id === id)!).filter(Boolean); // 계약에 배정된 검투사들
-let tabletQueue: number[] | null = null, tabletIdx = 0; // 결투 낙서를 누르면 준비된 계약마다 밀랍 서판이 차례로 나온다 (도장으로 서명) → 마지막 뒤 시즌 시작 확인
-function closePlanConfirm() { const el = document.querySelector('.planpage.tablet'); shownTablet = false; if (!el) { tabletQueue = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { tabletQueue = null; render(); }, 280); }
-function closePlanPage() { const el = document.querySelector('.planpage'); shownPlan = null; if (!el) { planSel = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { planSel = null; render(); }, 280); }
+S.pageSlide = null; // 편성 페이지 전환 방향: 계약 → 검투사(오른쪽에서), 검투사 → 계약(왼쪽에서)
+S.shownPlan = null; // 지금 떠 있는 편성 페이지의 계약 id (재렌더 때 다시 밀려 들어오지 않게)
+S.lineupView = 'stats'; // 편성 왼쪽 타일 아래 줄: 능력치(기본) / 전적 (스위치)
+const teamOf = (c: Contract) => (S.assign[c.id] ?? []).map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean); // 계약에 배정된 검투사들
+S.tabletQueue = null; S.tabletIdx = 0; // 결투 낙서를 누르면 준비된 계약마다 밀랍 서판이 차례로 나온다 (도장으로 서명) → 마지막 뒤 시즌 시작 확인
+function closePlanConfirm() { const el = document.querySelector('.planpage.tablet'); S.shownTablet = false; if (!el) { S.tabletQueue = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.tabletQueue = null; render(); }, 280); }
+function closePlanPage() { const el = document.querySelector('.planpage'); S.shownPlan = null; if (!el) { S.planSel = null; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.planSel = null; render(); }, 280); }
 // 계약서(밀랍 서판): 라니스타 ↔ 주최자의 대여 계약. 나무 틀 안 검은 밀랍에 조건을 적고, 도장(SIGNATVM)을 찍어 서명한다 (가이우스 3.146: 무사 귀환 시 대여료, 사망·불구 시 배상)
-let shownTablet = false; // 서판 페이지가 떠 있는지 (특약 체크로 재렌더될 때 다시 밀려 들어오지 않게)
+S.shownTablet = false; // 서판 페이지가 떠 있는지 (특약 체크로 재렌더될 때 다시 밀려 들어오지 않게)
 // 계약서 페이지: 준비된 계약(최대 4)의 밀랍 서판을 한 페이지에 나란히. 특약(스폰시오)은 체크박스, 도장 한 번(SIGNATVM)으로 모두 서명 → 시즌 시작 확인
 function tabletsPage(cs: Contract[]): Node {
-  const again = shownTablet; shownTablet = true;
+  const again = S.shownTablet; S.shownTablet = true;
   const stampText = 'SIGNATVM'; let stamped = false;
   const tablet = (c: Contract) => { const H = HOST[c.host]; const team = teamOf(c); const rent = Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * H.rent); const exp = fightExpense(team, c.tier);
     const row = (k: string, v: Node | string) => h('div', { class: 'trow' }, h('span', { class: 'tk' }, k), h('span', { class: 'tv' }, v));
@@ -1762,15 +1763,15 @@ function tabletsPage(cs: Contract[]): Node {
       row('특약', h('div', { class: 'tclauses' }, ...[0, 1].map(i => { const id = clausesOf(c)[i]; if (!id) return h('div', { class: 'tcheck none' }, h('span', { class: 'dash' }, '—')); const d = CLAUSES[id]; const on = acceptedOf(c).includes(id); // 특약은 항상 두 줄 자리를 잡는다 (서판 모양이 같도록). 없는 줄은 —
         return h('label', { class: `tcheck${on ? ' on' : ''}`, title: d.desc }, h('input', { type: 'checkbox', checked: on ? 'checked' : undefined, onchange: (e: Event) => { setClause(c, id, (e.target as HTMLInputElement).checked); render(); } }), h('span', {}, h('b', {}, d.ko), h('span', { class: 'meta' }, ` ${d.effect(c, hostPrize(c))}`))); }))),
       row('배상', '사망·불구 시 라니스타에게 몸값을 치른다'),
-      h('div', { class: 'tfoot' }, `${st.lanista.name} · ${seasonName(st.season)}`))); };
+      h('div', { class: 'tfoot' }, `${S.st.lanista.name} · ${seasonName(S.st.season)}`))); };
   const sign = () => { if (stamped) return; stamped = true; const wraps = [...document.querySelectorAll('.planpage.tablet .tabletwrap')];
     wraps.forEach((w, i) => window.setTimeout(() => { w.append(h('div', { class: 'stamp small' }, h('span', {}, stampText))); sfx.down(); }, i * 160)); window.setTimeout(() => sfx.drum(1), 40); // 서판마다 차례로 쾅
-    window.setTimeout(() => { notice = cs.length > 1 ? `계약서 ${cs.length}장에 서명했다` : `${cs[0].venue} 계약서에 서명했다`; shownTablet = false; tabletQueue = null; seasonConfirm = true; render(); }, 900 + wraps.length * 160); };
+    window.setTimeout(() => { S.notice = cs.length > 1 ? `계약서 ${cs.length}장에 서명했다` : `${cs[0].venue} 계약서에 서명했다`; S.shownTablet = false; S.tabletQueue = null; S.seasonConfirm = true; render(); }, 900 + wraps.length * 160); };
   const btn = h('button', { class: 'sealbtn', title: '도장을 찍어 계약을 맺습니다', onclick: sign }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, cs.length > 1 ? `${cs.length}장 서명` : '서명'));
   return h('div', { class: `planpage tablet n${cs.length}${again ? ' still' : ''}` }, h('div', { class: 'tablets' }, ...cs.map(tablet)), h('div', { class: 'cbtns tbtns' }, btn), backBtn(closePlanConfirm, '계약 벽으로 돌아가기'));
 }
 const honorBadge = (g: Gladiator) => { const b = h('span', { class: 'honor', title: `명예 ${g.honor ?? 0}: 쓰러졌을 때 관중이 살려 줄 확률과 루디스에 영향` }); b.innerHTML = `<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>`; b.append(String(g.honor ?? 0)); return b; }; // 초상 왼쪽 아래 명예 배지
-const tileMeta = (g: Gladiator) => lineupView === 'record' ? `${g.wins}승/${g.fights}전` : `HP${g.base.hp}·ATK${g.base.atk}·DEF${g.base.def}`; // 편성 왼쪽 타일 아래 줄 (HP부터, 약자)
+const tileMeta = (g: Gladiator) => S.lineupView === 'record' ? `${g.wins}승/${g.fights}전` : `HP${g.base.hp}·ATK${g.base.atk}·DEF${g.base.def}`; // 편성 왼쪽 타일 아래 줄 (HP부터, 약자)
 // 낙서 그림 버튼: 결투(두 검투사) / 셈판(동전 더미). 위에 붉은 라틴어를 덧쓴다. 계약 벽의 PVGNABVNT 와 같은 만듦새
 const DUEL_SVG = `<svg viewBox="0 0 96 52" width="92" height="50" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#3a2412" stroke-width="2.2" opacity=".85">
@@ -1796,11 +1797,11 @@ function graffitiBtn(kind: 'duel' | 'coins', word: string, title: string, onclic
   b.prepend(h('span', { class: 'tword' }, word)); if (badge) b.append(h('span', { class: 'nbadge' }, String(badge))); return b;
 }
 function renderPlan() {
-  pageSlide = null; const lineupTop = h('div', { class: 'lineuptop' }); // 가로 배치: 왼쪽 계약 목록, 오른쪽 위 고른 계약의 편성 카드 + 아래 검투사 목록
+  S.pageSlide = null; const lineupTop = h('div', { class: 'lineuptop' }); // 가로 배치: 왼쪽 계약 목록, 오른쪽 위 고른 계약의 편성 카드 + 아래 검투사 목록
   // 계약 카드 (배정 칸 3개)
-  const cpanel = h('div', { class: 'panel contracts' }, backBtn(() => { sheet = null; phase = 'manage'; render(); }, '포룸으로 돌아가기')); // 계약 벽: 왼쪽 위 낙서 뒤로가기 + 계약 4칸 (시즌당 최대 4건)
-  for (const c of st.contracts) {
-    const team = teamOf(c); const err = team.length ? validTeam(st, c, team) : `${c.size}명이 필요합니다`;
+  const cpanel = h('div', { class: 'panel contracts' }, backBtn(() => { S.sheet = null; S.phase = 'manage'; render(); }, '포룸으로 돌아가기')); // 계약 벽: 왼쪽 위 낙서 뒤로가기 + 계약 4칸 (시즌당 최대 4건)
+  for (const c of S.st.contracts) {
+    const team = teamOf(c); const err = team.length ? validTeam(S.st, c, team) : `${c.size}명이 필요합니다`;
     const tired = team.filter(g => (g.fatigue ?? 0) > 0);
     const previewFull = c.enemyPreview.length === c.size; const classicNow = team.length === c.size && previewFull && classicMatchup(team.map(g => g.type), c.enemyPreview); // 상대가 전부 공개됐을 때만 확정
     const classicMaybe = team.length === c.size && !previewFull && c.enemyPreview.length > 0 && c.enemyPreview.every(t => team.some(g => classicMatchup([g.type], [t])));
@@ -1822,65 +1823,65 @@ function renderPlan() {
         H.honorAll ? chip(I.award, `명예 +${H.honorAll}`, 'up', '출전자 전원 명예') : null,
         H.bet ? chip(I.dice, c.bet ? '내기 받음' : '내기 가능', 'flat', '스폰시오: 이기면 상금 두 배, 지면 상금만큼 물어냄') : null,
         c.needVeterans ? chip(I.shield, `베테 ${c.needVeterans}명`, 'flat', '베테라누스가 이만큼 있어야 치를 수 있다') : null].filter((n): n is HTMLElement => !!n);
-      cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${planSel === c.id ? ' sel' : ''}`, onclick: () => { planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), c.powerCap != null ? h('span', { class: 'badge cap', title: `이 등급 경기장의 상대는 전력 ${c.powerCap} 이하로만 나온다 (내 편은 제한 없음)` }, `상대 ≤${c.powerCap}`) : null, scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
+      cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), c.powerCap != null ? h('span', { class: 'badge cap', title: `이 등급 경기장의 상대는 전력 ${c.powerCap} 이하로만 나온다 (내 편은 제한 없음)` }, `상대 ≤${c.powerCap}`) : null, scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
         h('div', { class: 'grow' },
           h('div', { class: 'ctitle' }, h('b', {}, c.venue)), // 이름 한 줄
           h('div', { class: 'cmeta' }, h('span', { class: `eff count${err ? '' : ' ok'}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c)), // 인원 칩('3대0', 조금 크게) · 주최자 한 줄
           h('div', { class: 'effrow' }, ...effChips),
-          isImportant(c) && err && st.fame >= CONFIG.fameDelta.refuseFrom && canFulfill(st, c, new Set(st.contracts.filter(x => x !== c && teamOf(x).length === x.size && !validTeam(st, x, teamOf(x))).flatMap(x => assign[x.id] ?? []))) ? h('div', { class: 'cpen', title: '큰 경기(등급 2·3)는 검투사를 보내지 않으면 주최자가 실망해 호감도가 깎입니다. 배정을 마치면 사라집니다' }, h('span', { class: 'pdot' }), `불참 시 호감도 ${CONFIG.fameDelta.refuse}`) : null, // 벌점 칩: 큰 경기인데 아직 편성이 안 됐을 때만
+          isImportant(c) && err && S.st.fame >= CONFIG.fameDelta.refuseFrom && canFulfill(S.st, c, new Set(S.st.contracts.filter(x => x !== c && teamOf(x).length === x.size && !validTeam(S.st, x, teamOf(x))).flatMap(x => S.assign[x.id] ?? []))) ? h('div', { class: 'cpen', title: '큰 경기(등급 2·3)는 검투사를 보내지 않으면 주최자가 실망해 호감도가 깎입니다. 배정을 마치면 사라집니다' }, h('span', { class: 'pdot' }), `불참 시 호감도 ${CONFIG.fameDelta.refuse}`) : null, // 벌점 칩: 큰 경기인데 아직 편성이 안 됐을 때만
           (() => { const pr = h('div', { class: `cprize${H.prize > 1 ? ' up' : H.prize < 1 ? ' down' : ''}`, title: `승리 상금${H.prize !== 1 ? ` (주최자 ×${H.prize})` : ''}${c.bet ? ' · 스폰시오로 두 배' : ''}` }); pr.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I.coins}</svg>`; pr.append(h('b', {}, `${(hostPrize(c) * (c.bet ? 2 : 1)).toLocaleString()}`), h('span', { class: 'unit' }, 'HS')); return pr; })()))); // 상금: 왼쪽 아래에 금화 + 큰 숫자 (제일 중요한 정보)
-      if (planSel !== c.id) continue;
+      if (S.planSel !== c.id) continue;
     }
     // 왼쪽 편성 카드: 줄마다 하나씩. 제목 / 규모·주최 / 전력 / 상대(파밀리아 줄 + 검투사 한 줄씩) / 자리(베테라누스 몫은 금색 표시) / 시너지 / 비용 / 피로
     // 자리 배치: 베테라누스가 왼쪽 대장 자리 — [배정된 베테][베테 몫 빈 자리][티로][빈 자리]
     const vetsIn = team.filter(g => g.rank === 'veteranus'), tirosIn = team.filter(g => g.rank !== 'veteranus'), vetsLeft = Math.max(0, c.needVeterans - vetsIn.length);
     const slotList: ({ g: Gladiator } | { vet: true } | { empty: true })[] = [...vetsIn.map(g => ({ g })), ...Array.from({ length: vetsLeft }, () => ({ vet: true as const })), ...tirosIn.map(g => ({ g })), ...Array.from({ length: Math.max(0, c.size - team.length - vetsLeft) }, () => ({ empty: true as const }))];
-    const rv = rivalOf(st.rivals, c.rivalId);
+    const rv = rivalOf(S.st.rivals, c.rivalId);
     const rentLine = team.length ? `대여료 ${Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * HOST[c.host].rent).toLocaleString()} · 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '';
     lineupTop.append(h('div', { class: `card contract sel lineup` },
       h('div', { class: 'grow' },
         h('div', { class: 'ltitle' }, h('span', { class: 'tierchip' }, `등급 ${c.tier}`), h('b', {}, c.venue)), /* 등급은 계약 카드와 같은 칩 */
-        h('div', { class: 'lmeta' }, h('span', { class: `eff count${team.length === c.size ? ' ok' : ''}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c), h('button', { class: 'lview', title: `누르면 ${lineupView === 'record' ? '능력치' : '전적'}로 바뀝니다`, onclick: (ev: Event) => { ev.stopPropagation(); lineupView = lineupView === 'record' ? 'stats' : 'record'; render(); } }, lineupView === 'record' ? '전적' : '능력치', h('span', { class: 'sw' }, '⇄')), h('span', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size))), // 전력은 규모·주최 줄 오른쪽 끝에, 전력 식으로 (자리를 채우는 중에도 평균으로)
+        h('div', { class: 'lmeta' }, h('span', { class: `eff count${team.length === c.size ? ' ok' : ''}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c), h('button', { class: 'lview', title: `누르면 ${S.lineupView === 'record' ? '능력치' : '전적'}로 바뀝니다`, onclick: (ev: Event) => { ev.stopPropagation(); S.lineupView = S.lineupView === 'record' ? 'stats' : 'record'; render(); } }, S.lineupView === 'record' ? '전적' : '능력치', h('span', { class: 'sw' }, '⇄')), h('span', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size))), // 전력은 규모·주최 줄 오른쪽 끝에, 전력 식으로 (자리를 채우는 중에도 평균으로)
         h('div', { class: 'lenemy' }, h('div', { class: 'lfam' }, h('b', {}, rv ? rv.name : '타지 라니스타의 검투사'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)})`) : ''), // 버튼 하나로 전적 ⇄ 능력치 스위칭 (양쪽 타일에 같이 적용)
-          h('div', { class: 'etiles' }, ...c.enemy.map(e => { const spBy = st.roster.filter(g => (g.spared ?? []).includes(e.id)); const star = rv ? rivalStar(rv) : undefined; // 상대 검투사도 스틱맨 초상 타일로 (복수 표시는 우리 타일 쪽에)
+          h('div', { class: 'etiles' }, ...c.enemy.map(e => { const spBy = S.st.roster.filter(g => (g.spared ?? []).includes(e.id)); const star = rv ? rivalStar(rv) : undefined; // 상대 검투사도 스틱맨 초상 타일로 (복수 표시는 우리 타일 쪽에)
             return h('div', { class: 'etile', title: `${TYPE_KO[e.type]} · ${e.rank === 'tiro' ? '티로' : '베테라누스'} · ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? `\n기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` },
               h('div', { class: 'etop' }, h('div', { class: 'gport' }, portrait(e, 40, true), h('span', { class: `rank ${e.rank}` }, e.rank === 'tiro' ? '티로' : '베테'), honorBadge(e)), h('div', { class: 'eskills' }, ...skillsOf(e).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(e) - skillsOf(e).length) }, () => h('span', { class: 'badge empty' }, '\u00a0')))), // 우리 타일처럼 오른쪽에 기술
               h('div', { class: 'ename' }, sq(e.type), ' ', e.name.replace('(적)', '')),
               h('div', { class: 'emeta' }, tileMeta(e), star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null, spBy.length ? h('span', { class: 'badge grudge', title: `${spBy.map(g => g.name).join(', ')} 이(가) 살려 준 자. 재대결이면 공격 +10%, 그에게 지면 미시오 −15%` }, '원한') : null)); }))),
-        h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아'), h('span', { class: 'hint' }, ` (${team.length}/${c.size})`)), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}`, title: vet ? '대장 자리: 베테라누스만 들어갈 수 있습니다' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { assign[c.id] = assign[c.id].filter(x => x !== g.id); render(); } else { planSel = c.id; render(); } } }, ...(g ? [h('div', { class: 'etop' }, h('div', { class: 'gport' }, portrait(g, 40), h('span', { class: `rank ${g.rank}` }, g.rank === 'tiro' ? '티로' : '베테'), honorBadge(g)), h('div', { class: 'eskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty' }, '\u00a0')))), h('div', { class: 'ename' }, sq(g.type), ' ', g.name), h('div', { class: 'emeta' }, tileMeta(g))] : [h('span', { class: 'hint' }, vet ? '베테라누스' : '빈 자리')])); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
+        h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아'), h('span', { class: 'hint' }, ` (${team.length}/${c.size})`)), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}`, title: vet ? '대장 자리: 베테라누스만 들어갈 수 있습니다' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? [h('div', { class: 'etop' }, h('div', { class: 'gport' }, portrait(g, 40), h('span', { class: `rank ${g.rank}` }, g.rank === 'tiro' ? '티로' : '베테'), honorBadge(g)), h('div', { class: 'eskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty' }, '\u00a0')))), h('div', { class: 'ename' }, sq(g.type), ' ', g.name), h('div', { class: 'emeta' }, tileMeta(g))] : [h('span', { class: 'hint' }, vet ? '베테라누스' : '빈 자리')])); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
         h('div', { class: 'lsyn' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : classicPart ? h('span', { class: 'syn classic maybe' }, `전통 짝 ${team.length}/${c.size}`) : null), // 항상 한 줄 자리를 잡아 둔다 (시너지가 생겨도 카드 높이가 안 흔들리게, '시너지 없음' 문구 없음)
         h('div', { class: 'meta lcost' }, rentLine), // 대여료 줄도 항상 자리 유지
         )));
   }
-  for (let i = st.contracts.length; i < 4; i++) cpanel.append(h('div', { class: 'card contract empty' }, h('span', { class: 'hint' }, i === 0 && !st.contracts.length ? '이번 시즌 계약 없음' : '빈 칸'))); // 한 줄 4칸 고정: 남는 칸은 빈 칸으로
+  for (let i = S.st.contracts.length; i < 4; i++) cpanel.append(h('div', { class: 'card contract empty' }, h('span', { class: 'hint' }, i === 0 && !S.st.contracts.length ? '이번 시즌 계약 없음' : '빈 칸'))); // 한 줄 4칸 고정: 남는 칸은 빈 칸으로
   // (출전 가능 인원 부족·시장 안내는 뺐다: 계약 페이지는 계약만)
 
   // 시즌 예상 수지
-  const readyQ = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(st, c, t); });
+  const readyQ = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(S.st, c, t); });
   const rentSum = readyQ.reduce((a, c) => a + Math.round(teamOf(c).reduce((b, g) => b + rentFee(g, c.tier), 0) * HOST[c.host].rent), 0);
   const expSum = readyQ.reduce((a, c) => a + fightExpense(teamOf(c), c.tier), 0);
-  const trainN = palusTrainees(st).length; // 팔루스에 선 인원
-  const trainRoom = trainCap(st) - trainN; // 빈 팔루스
-  const upkeep = upkeepOf(st);
+  const trainN = palusTrainees(S.st).length; // 팔루스에 선 인원
+  const trainRoom = trainCap(S.st) - trainN; // 빈 팔루스
+  const upkeep = upkeepOf(S.st);
   const ready = readyQ.length;
-  const evCost = EVENT_KEYS.reduce((a, k) => a + (eventPlan[k] ? CONFIG.events[k].cost : 0), 0), evN = EVENT_KEYS.filter(k => eventPlan[k]).length;
+  const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? CONFIG.events[k].cost : 0), 0), evN = EVENT_KEYS.filter(k => S.eventPlan[k]).length;
   // 시즌 예상 줄은 뺐다 (계약 페이지는 계약만)
   const warnings = () => {
-    const healable = st.roster.filter(g => g.injured && st.money >= healCostOf(st)).length;
-    const usedIds = new Set(readyQ.flatMap(c => assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
-    const refusable = st.fame >= CONFIG.fameDelta.refuseFrom ? st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
-    const blocked = st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !!validTeam(st, c, t); }).map(c => `${c.venue}: ${validTeam(st, c, teamOf(c))}`);
+    const healable = S.st.roster.filter(g => g.injured && S.st.money >= healCostOf(S.st)).length;
+    const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
+    const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
+    const blocked = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !!validTeam(S.st, c, t); }).map(c => `${c.venue}: ${validTeam(S.st, c, teamOf(c))}`);
     // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
     const warn = [
       !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
       blocked.length ? `배정한 계약 ${blocked.length}건은 문이 열리지 않습니다.\n· 조건 미달 — 그 경기는 치르지 않은 것으로 칩니다.` : '',
       refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
-      healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
-      (() => { const F = CONFIG.fatigue; const risky = st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),
+      healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
+      (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),
     ].filter(Boolean);
     return warn;
   };
-  const goConfirm = () => { const ids = readyQ.map(c => c.id); if (ids.length) { tabletQueue = ids; tabletIdx = 0; } else seasonConfirm = true; render(); }; // 준비된 계약이 있으면 서판부터, 없으면 바로 시즌 시작 확인
+  const goConfirm = () => { const ids = readyQ.map(c => c.id); if (ids.length) { S.tabletQueue = ids; S.tabletIdx = 0; } else S.seasonConfirm = true; render(); }; // 준비된 계약이 있으면 서판부터, 없으면 바로 시즌 시작 확인
   // 벽 오른쪽 아래의 밀랍 서판: 집어 들면 시즌 시작 확인(계약서·행사·도장)으로. 준비된 계약 수를 붉은 표로
   const tabletBtn = h('button', { class: 'tabletbtn', title: ready ? `준비된 계약 ${ready}건\n경기로 넘어갑니다` : '경기로 넘어갑니다\n경기 없이 넘길 수도 있습니다', 'aria-label': '시즌 시작', onclick: goConfirm });
   // 폼페이 낙서풍 결투 그림: 왼쪽 큰 방패의 무르밀로가 찌르고, 오른쪽 작은 방패의 트라이크스가 받는다. 삐뚤한 겹선(검댕 + 붉은 덧선)
@@ -1891,7 +1892,7 @@ function renderPlan() {
   const bar = h('div'); // 편성 단계에는 하단 띠가 없다 (결투 낙서가 다음 단계)
   const tools = sideToolsLand([]); // 행사는 시즌 시작 확인 페이지에서 고른다
   // 검투사 목록: 배정/훈련
-  const selC0 = planSel != null ? st.contracts.find(x => x.id === planSel) : null;
+  const selC0 = S.planSel != null ? S.st.contracts.find(x => x.id === S.planSel) : null;
   const pleft = h('div', { class: 'pleft' }), pright = h('div', { class: 'pright' }); const rpanel = h('div', { class: 'panel roster' }, pleft, pright); // 편성 페이지: 왼쪽 공고·자리, 오른쪽 검투사 초상 격자
   if (selC0) pleft.append(lineupTop);
 
@@ -1903,23 +1904,23 @@ function renderPlan() {
   const recommend = (g: Gladiator): string | null => { if (!selC0 || teamSel.includes(g)) return null; const withG = [...teamSel, g];
     const gained = teamSel.length ? synCount(withG) - baseSyn : 0; if (gained > 0) { const before = new Set(describeSynergies(computeSynergies(teamSel))); return describeSynergies(computeSynergies(withG)).filter(t => !before.has(t)).join('·'); }
     if (selC0.enemyPreview.length === selC0.size) { const types = withG.map(x => x.type); if (withG.length === selC0.size ? classicMatchup(types, selC0.enemyPreview) : classicPartial(types, selC0.enemyPreview)) return '전통 짝'; } return null; }; // 1대1이나 첫 배정에서도, 아직 다 안 채웠어도 짝이 이어지면 알린다 (전에는 마지막 한 명을 넣을 때만 보였다)
-  for (const g of selC0 ? st.roster : []) {
-    const at = assignedTo(g.id); const c = at != null ? st.contracts.find(x => x.id === at) : null;
-    const selC = planSel != null ? st.contracts.find(x => x.id === planSel) : null;
+  for (const g of selC0 ? S.st.roster : []) {
+    const at = assignedTo(g.id); const c = at != null ? S.st.contracts.find(x => x.id === at) : null;
+    const selC = S.planSel != null ? S.st.contracts.find(x => x.id === S.planSel) : null;
     const isDoc = g.status === 'doctor';
     // 조건: 고른 계약의 남은 자리가 모두 베테라누스 몫이면 티로는 넣을 수 없다 (validTeam 의 베테라누스 조건을 미리 적용)
     const elsewhere0 = at != null && selC != null && at !== selC.id; // 다른 계약에 배정됨
-    const unfulfillable = !!selC && at == null && !canFulfill(st, selC); // 치를 수 없는 계약(베테라누스·인원 부족)이면 아무도 넣지 않는다
-    const vetBlock = (() => { if (!selC || (at != null && !elsewhere0) || g.rank === 'veteranus') return false; const team = (assign[selC.id] ?? []).map(id => st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const left = selC.size - team.length, vetsLeft = selC.needVeterans - team.filter(x => x.rank === 'veteranus').length;
-      const freeVets = st.roster.filter(v => v.rank === 'veteranus' && v.alive && !v.injured && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
+    const unfulfillable = !!selC && at == null && !canFulfill(S.st, selC); // 치를 수 없는 계약(베테라누스·인원 부족)이면 아무도 넣지 않는다
+    const vetBlock = (() => { if (!selC || (at != null && !elsewhere0) || g.rank === 'veteranus') return false; const team = (S.assign[selC.id] ?? []).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const left = selC.size - team.length, vetsLeft = selC.needVeterans - team.filter(x => x.rank === 'veteranus').length;
+      const freeVets = S.st.roster.filter(v => v.rank === 'veteranus' && v.alive && !v.injured && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
       return left > 0 && vetsLeft > 0 && (vetsLeft >= left || freeVets < vetsLeft); })(); // 다른 계약에 있는 티로도 이 계약의 베테 몫 자리에는 못 온다
-    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable;
+    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable;
     // 교체 뒤에도 베테라누스 조건을 채우는가 (마지막 자리의 베테라누스를 티로로 바꾸면 안 된다)
     // 교체 대상: 화면의 마지막 자리 = 마지막에 넣은 티로. 티로가 없으면 마지막 베테라누스. (베테를 왼쪽 대장 자리에 두므로 '마지막에 넣은 사람'이 아니라 자리 순서로)
-    const swapTarget = (() => { if (!selC) return null; const ids = assign[selC.id] ?? []; if (ids.length < selC.size) return null; const gl = ids.map(id => st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const tiros = gl.filter(x => x.rank !== 'veteranus'); return (tiros.length ? tiros[tiros.length - 1] : gl[gl.length - 1]) ?? null; })();
-    const swapKeepsVets = (() => { if (!selC) return false; const ids = assign[selC.id] ?? []; if (ids.length < selC.size) return true; if (!swapTarget) return false; const team = ids.filter(id => id !== swapTarget.id).map(id => st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const vets = team.filter(x => x.rank === 'veteranus').length + (g.rank === 'veteranus' ? 1 : 0); return vets >= selC.needVeterans; })();
-    const canSwap = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && swapKeepsVets; // 자리가 다 찼으면 마지막 자리(티로)와 교체
-    const swapVetBlock = !g.injured && !g.fought && !isDoc && at == null && selC != null && (assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && !swapKeepsVets;
+    const swapTarget = (() => { if (!selC) return null; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return null; const gl = ids.map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const tiros = gl.filter(x => x.rank !== 'veteranus'); return (tiros.length ? tiros[tiros.length - 1] : gl[gl.length - 1]) ?? null; })();
+    const swapKeepsVets = (() => { if (!selC) return false; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return true; if (!swapTarget) return false; const team = ids.filter(id => id !== swapTarget.id).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const vets = team.filter(x => x.rank === 'veteranus').length + (g.rank === 'veteranus' ? 1 : 0); return vets >= selC.needVeterans; })();
+    const canSwap = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && swapKeepsVets; // 자리가 다 찼으면 마지막 자리(티로)와 교체
+    const swapVetBlock = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && !swapKeepsVets;
     if (isDoc) { // 독토르만 한 줄로 접는다
       pright.append(h('div', { class: 'gtile dis' }, h('div', { class: 'gtop' }, h('div', { class: 'gport' }, portrait(g, 56)), h('div', { class: 'gskills' })), h('div', { class: 'gname' }, sq(g.type), ' ', g.name), h('div', { class: 'gmeta' }, h('span', { class: 'badge doc' }, '독토르'))));
       continue;
@@ -1928,37 +1929,37 @@ function renderPlan() {
     const rec = elsewhere ? recommend(g) : null;
     const fat = g.fatigue ?? 0;
     const tagNode = null; // 피로·부상은 표의 숫자로 (칩 없음)
-    const elseSwapBlock = elsewhere && !!selC && (assign[selC.id]?.length ?? 0) >= selC.size && !swapKeepsVets; // 다른 계약의 티로: 이 계약이 찼고 교체하면 베테 조건이 깨지면 못 온다
+    const elseSwapBlock = elsewhere && !!selC && (S.assign[selC.id]?.length ?? 0) >= selC.size && !swapKeepsVets; // 다른 계약의 티로: 이 계약이 찼고 교체하면 베테 조건이 깨지면 못 온다
     // 베테 조건으로 막힌 티로는 칩 없이 흐리게만 (왼쪽 금색 베테 자리가 이유를 말한다)
     const stateNode = elsewhere ? null : at != null ? h('span', { class: 'badge sel', title: '이 계약에 배정됨. 다시 누르면 뺀다' }, '출전') : g.injured ? null : g.fought ? h('span', { class: 'badge injured', title: '이번 시즌 이미 출전' }, '출전 완료') : swapVetBlock ? null : rec ? h('span', { class: 'badge rec' }, `추천 ${rec}`) : canSwap ? h('span', { class: 'hint', title: `누르면 ${swapTarget?.name ?? '마지막'} 과 교체` }, '교체') : canAssign && recommend(g) ? h('span', { class: 'badge rec', title: `함께 넣으면 ${recommend(g)}` }, `추천 ${recommend(g)}`) : unfulfillable ? h('span', { class: 'badge injured', title: '이 계약은 조건(베테라누스·인원)을 채울 수 없어 배정할 수 없습니다' }, '조건 미달') : null;
     const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || (!!selC && at == null && !!g.fought);
     const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; const revengeNode = revengeOn.length ? h('span', { class: 'badge revenge', title: `${revengeOn.map(e => e.name.replace('(적)', '')).join(', ')} 에게 진 적이 있다. 꺾으면 복수 (명예 +8, '복수자')` }, '복수') : null; // 복수 기회는 우리 검투사 타일에
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 속도 ${g.base.spd} 사거리 ${g.base.range}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}${skillsOf(g).length ? `\n기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
     pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${dis ? ' dis' : ''}`, title: tip,
-      onclick: () => { if (at != null && !elsewhere) { assign[at] = assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { assign[at!] = assign[at!].filter(x => x !== g.id); const list = (assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) assign[selC.id] = list.filter(x => x !== swapTarget.id); (assign[selC.id] ??= []).push(g.id); render(); } else if (canAssign && selC) { (assign[selC.id] ??= []).push(g.id); render(); } else if (canSwap && selC && swapTarget) { assign[selC.id] = assign[selC.id].filter(x => x !== swapTarget.id); assign[selC.id].push(g.id); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
+      onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
       h('div', { class: 'gtop' }, h('div', { class: 'gport' }, portrait(g, 56), h('span', { class: `rank ${g.rank}` }, g.rank === 'tiro' ? '티로' : '베테'), honorBadge(g)), h('div', { class: 'gskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0')))), // 왼쪽 초상(계급 칩 겹침) · 오른쪽 기술 칩 세로: 배운 것 + 배울 수 있는 빈 자리는 빈 칩
       h('div', { class: 'gname' }, sq(g.type), ' ', g.name),
       h('div', { class: 'ginfo2' }, // 왼쪽 능력치(약자) · 오른쪽 전적, 세로로
         h('div', { class: 'gcol' }, ...([['HP', g.base.hp], ['ATK', g.base.atk], ['DEF', g.base.def], ['SPD', g.base.spd]] as const).map(([k, v]) => h('div', {}, h('span', { class: 'k' }, k), h('b', {}, String(v))))),
         h('div', { class: 'gcol' }, h('div', {}, h('span', { class: 'k' }, '승'), h('b', {}, String(g.wins))), h('div', {}, h('span', { class: 'k' }, '패'), h('b', {}, String(g.fights - g.wins))), h('div', { class: fat >= 3 ? 'bad' : fat >= 2 ? 'warn' : '' }, h('span', { class: 'k' }, '피로'), h('b', {}, String(fat))), h('div', { class: g.injured ? 'bad' : '' }, h('span', { class: 'k' }, '부상'), h('b', {}, g.injured ? `${g.injured}시즌` : '0')))), // 오른쪽: 승·패·피로·부상 (칩 대신 숫자)
-      h('div', { class: 'gmeta' }, stateNode, revengeNode, tagNode), elsewhere ? h('div', { class: 'tstamp', title: `${st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
+      h('div', { class: 'gmeta' }, stateNode, revengeNode, tagNode), elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
   }
   { const c = coach(); if (c) pleft.append(c); }
   app.classList.add('land', 'plan'); const frag = document.createDocumentFragment(); frag.append(tools, cpanel, bar);
   if (selC0) { // 편성 페이지: 상세 페이지처럼 오른쪽에서 밀려 들어온다. 같은 계약이면(카드를 눌러 재렌더) 그 자리에
-    const again = shownPlan === selC0.id; shownPlan = selC0.id;
-    const teamNow = teamOf(selC0); const done = teamNow.length === selC0.size && !validTeam(st, selC0, teamNow);
+    const again = S.shownPlan === selC0.id; S.shownPlan = selC0.id;
+    const teamNow = teamOf(selC0); const done = teamNow.length === selC0.size && !validTeam(S.st, selC0, teamNow);
     frag.append(h('div', { class: `planpage${again ? ' still' : ''}` }, rpanel, backBtn(closePlanPage, '계약 벽으로 돌아가기'))); // 배정은 뒤로가기로 마친다 (서명은 결투 낙서를 누를 때 계약마다)
     void done;
   }
-  if (tabletQueue) { const cs = tabletQueue.map(id => st.contracts.find(x => x.id === id)).filter((c): c is Contract => !!c); if (cs.length) frag.append(tabletsPage(cs)); else tabletQueue = null; }
-  if (seasonConfirm) frag.append(seasonConfirmPage(warnings()));
+  if (S.tabletQueue) { const cs = S.tabletQueue.map(id => S.st.contracts.find(x => x.id === id)).filter((c): c is Contract => !!c); if (cs.length) frag.append(tabletsPage(cs)); else S.tabletQueue = null; }
+  if (S.seasonConfirm) frag.append(seasonConfirmPage(warnings()));
   return frag; // 가로: 토글 띠 · 계약 4칸 · 버튼 (+ 편성 페이지 · 시즌 시작 확인)
 }
 function eventRows(): Node[] {
   const E = CONFIG.events;
   // 행사 줄: 라틴 이름 굵게 + 설명 한 줄, 그 아래 효과 한 줄('· ')
-  const ev = (k: keyof SeasonEvents, desc: string, effect: string) => h('label', { class: `evrow${eventPlan[k] ? ' on' : ''}` }, h('input', { type: 'checkbox', checked: eventPlan[k] ? 'checked' : undefined, onchange: (e: Event) => { eventPlan[k] = (e.target as HTMLInputElement).checked; render(); } }), h('span', { class: 'grow' }, h('div', {}, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, desc)), h('div', { class: 'effect' }, `· ${effect}`)), h('span', {}, `${E[k].cost.toLocaleString()} HS`));
+  const ev = (k: keyof SeasonEvents, desc: string, effect: string) => h('label', { class: `evrow${S.eventPlan[k] ? ' on' : ''}` }, h('input', { type: 'checkbox', checked: S.eventPlan[k] ? 'checked' : undefined, onchange: (e: Event) => { S.eventPlan[k] = (e.target as HTMLInputElement).checked; render(); } }), h('span', { class: 'grow' }, h('div', {}, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, desc)), h('div', { class: 'effect' }, `· ${effect}`)), h('span', {}, `${E[k].cost.toLocaleString()} HS`));
   return [
     ev('cena', '경기 전날 시민 앞에서 여는 공개 만찬', `출전 검투사 명예 +${E.cena.honor} · 호감도 +${E.cena.fame}`),
     ev('pompa', '경기 당일 도시를 도는 행렬에 참여', `출전 검투사 명예 +${E.pompa.honor} · 호감도 +${E.pompa.fame}`),
@@ -1967,19 +1968,19 @@ function eventRows(): Node[] {
     ev('guests', '귀족을 루두스로 초대해 연습을 보이고 연회', `출전 가능 검투사 명예 +${E.guests.honor} · 호감도 +${E.guests.fame} · 다음 시즌 그 귀족의 선거 경기 계약이 오고, 이기면 사례금 +${E.guests.gift}`)];
 }
 function eventsPanel(): Node {
-  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (eventPlan[k] ? E[k].cost : 0), 0);
+  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? E[k].cost : 0), 0);
   return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. \'전투\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
     ...eventRows(), evCost ? h('div', { class: 'hint' }, `행사 비용 −${evCost.toLocaleString()} HS`) : null);
 }
 // 시즌 시작 확인 페이지: 왼쪽에 경고(문구 한 줄 + '· ' 효과 줄), 오른쪽에 시즌 행사 고르기, 아래 금화 줄과 도장(INCIPIT)
-let seasonConfirm = false, shownSeason = false;
-function closeSeasonConfirm() { const el = document.querySelector('.planpage.season'); shownSeason = false; if (!el) { seasonConfirm = false; render(); return; } el.classList.add('closing'); window.setTimeout(() => { seasonConfirm = false; render(); }, 280); }
+S.seasonConfirm = false; S.shownSeason = false;
+function closeSeasonConfirm() { const el = document.querySelector('.planpage.season'); S.shownSeason = false; if (!el) { S.seasonConfirm = false; render(); return; } el.classList.add('closing'); window.setTimeout(() => { S.seasonConfirm = false; render(); }, 280); }
 function seasonConfirmPage(warn: string[]): Node {
-  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (eventPlan[k] ? E[k].cost : 0), 0);
-  const again = shownSeason; shownSeason = true;
+  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? E[k].cost : 0), 0);
+  const again = S.shownSeason; S.shownSeason = true;
   let stamped = false; const stampText = 'INCIPIT'; // 시작하다 — 경기의 막이 오른다
   const start = () => { if (stamped) return; stamped = true; const page = document.querySelector('.planpage.season'); if (page) page.append(h('div', { class: 'stamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
-    window.setTimeout(() => { seasonConfirm = false; shownSeason = false; startSeason(); }, 900); };
+    window.setTimeout(() => { S.seasonConfirm = false; S.shownSeason = false; startSeason(); }, 900); };
   const left = h('div', { class: 'scol warn' }, h('h3', {}, '시즌 시작 전에'),
     ...(warn.length ? warn.map(w => { const [f, ...rest] = w.split('\n'); return h('div', { class: 'wblock' }, h('div', { class: 'flavor' }, f), ...rest.map(r => h('div', { class: 'effect' }, r))); }) : [h('div', { class: 'flavor' }, '준비가 끝났습니다. 검투사들이 문 앞에 서 있습니다.')]));
   const right = h('div', { class: 'scol events' }, h('h3', {}, '시즌 행사', h('span', { class: 'hint', style: 'margin-left:6px' }, '이 시즌에만 효과')), ...eventRows());
@@ -1991,110 +1992,110 @@ function seasonConfirmPage(warn: string[]): Node {
 
 // ── 3단계: 시즌 진행
 function startSeason() {
-  const moneyBefore = st.money; // 행사 결제 전 잔액 (정산 기준)
-  const held = holdEvents(st, eventPlan); eventPlan = { cena: false, pompa: false, votum: false, edicta: false, guests: false };
-  if (EVENT_KEYS.some(k => held[k])) notice = `행사: ${EVENT_KEYS.filter(k => held[k]).map(k => EVENT_KO[k]).join(', ')}`;
-  queue = st.contracts.map(c => ({ c, team: (assign[c.id] ?? []).map(id => st.roster.find(g => g.id === id)!).filter(Boolean) })).filter(q => q.team.length === q.c.size && !validTeam(st, q.c, q.team));
-  seasonReports = []; skipped = []; seasonSummary = { upkeep: 0, gift: 0, trained: [], acted: [], before: moneyBefore, fameBefore: st.fame, refused: 0, skipped: [], label: seasonName(st.season), events: { ...held } };
-  phase = 'battle'; save();
+  const moneyBefore = S.st.money; // 행사 결제 전 잔액 (정산 기준)
+  const held = holdEvents(S.st, S.eventPlan); S.eventPlan = { cena: false, pompa: false, votum: false, edicta: false, guests: false };
+  if (EVENT_KEYS.some(k => held[k])) S.notice = `행사: ${EVENT_KEYS.filter(k => held[k]).map(k => EVENT_KO[k]).join(', ')}`;
+  S.queue = S.st.contracts.map(c => ({ c, team: (S.assign[c.id] ?? []).map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean) })).filter(q => q.team.length === q.c.size && !validTeam(S.st, q.c, q.team));
+  S.seasonReports = []; S.skipped = []; S.seasonSummary = { upkeep: 0, gift: 0, trained: [], acted: [], before: moneyBefore, fameBefore: S.st.fame, refused: 0, skipped: [], label: seasonName(S.st.season), events: { ...held } };
+  S.phase = 'battle'; save();
   nextFight();
 }
 function nextFight() {
-  let q = queue.shift(); const lost: string[] = [];
-  while (q && validTeam(st, q.c, q.team)) { skipped.push(q.c); lost.push(`${q.c.venue} (${q.c.size}대${q.c.size}) — ${validTeam(st, q.c, q.team)}`); q = queue.shift(); } // 앞 경기의 부상·사망으로 팀이 깨진 계약은 건너뜀 (거절 벌점 없음: 아래 finishSeason 참고)
-  if (lost.length) { const next = q; void tell(`앞 경기의 부상·사망으로 다음 계약을 치를 수 없습니다.\n${lost.join('\n')}\n거절 벌점은 없습니다.`, '무산된 경기').then(() => { if (!next) { finishSeason(); return; } report = fight(st, next.c, next.team); seasonReports.push(report); renderBattle(); }); return; }
+  let q = S.queue.shift(); const lost: string[] = [];
+  while (q && validTeam(S.st, q.c, q.team)) { S.skipped.push(q.c); lost.push(`${q.c.venue} (${q.c.size}대${q.c.size}) — ${validTeam(S.st, q.c, q.team)}`); q = S.queue.shift(); } // 앞 경기의 부상·사망으로 팀이 깨진 계약은 건너뜀 (거절 벌점 없음: 아래 finishSeason 참고)
+  if (lost.length) { const next = q; void tell(`앞 경기의 부상·사망으로 다음 계약을 치를 수 없습니다.\n${lost.join('\n')}\n거절 벌점은 없습니다.`, '무산된 경기').then(() => { if (!next) { finishSeason(); return; } S.report = fight(S.st, next.c, next.team); S.seasonReports.push(S.report); renderBattle(); }); return; }
   if (!q) { finishSeason(); return; }
-  report = fight(st, q.c, q.team);
-  seasonReports.push(report);
+  S.report = fight(S.st, q.c, q.team);
+  S.seasonReports.push(S.report);
   renderBattle();
 }
 function finishSeason() {
-  const label = seasonName(st.season); const fameBefore0 = st.fame - seasonReports.reduce((a, r) => a + r.fameDelta, 0); // 경기 전 호감도
+  const label = seasonName(S.st.season); const fameBefore0 = S.st.fame - S.seasonReports.reduce((a, r) => a + r.fameDelta, 0); // 경기 전 호감도
   // 훈련 처리
   const trained: { g: Gladiator; stat: 'atk' | 'def' }[] = [];
   const acted: { g: Gladiator; act: Action; note: string }[] = [];
-  for (const g of st.roster) { if (g.status === 'doctor' || !g.alive) continue; const tp: Action = planOf(g);
-    if (palusOf(st, g) >= 0) { const k = rollTraining(g); // 팔루스에 선 검투사: 무엇을 단련할지 무작위. 자리 수만큼만 서 있으니 상한을 넘지 않는다. 출전했으면 피로가 쌓일 수 있다(train 안에서)
-      if (k === 'skill') { const r = doSkillTrain(st, g); if (r) acted.push({ g, act: 'skill', note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 돌아오면 배울지 정합니다' : '실패'}` }); else acted.push({ g, act: 'rest', note: '기술 훈련 못 함 (돈·조건)' }); }
-      else if (train(st, g, k)) trained.push({ g, stat: k }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' });
+  for (const g of S.st.roster) { if (g.status === 'doctor' || !g.alive) continue; const tp: Action = planOf(g);
+    if (palusOf(S.st, g) >= 0) { const k = rollTraining(g); // 팔루스에 선 검투사: 무엇을 단련할지 무작위. 자리 수만큼만 서 있으니 상한을 넘지 않는다. 출전했으면 피로가 쌓일 수 있다(train 안에서)
+      if (k === 'skill') { const r = doSkillTrain(S.st, g); if (r) acted.push({ g, act: 'skill', note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 돌아오면 배울지 정합니다' : '실패'}` }); else acted.push({ g, act: 'rest', note: '기술 훈련 못 함 (돈·조건)' }); }
+      else if (train(S.st, g, k)) trained.push({ g, stat: k }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' });
       continue; }
     if (assignedTo(g.id) != null || g.fought) continue; // 출전만 한 검투사는 따로 행동 없음
-    if (g.injured > 0) { if (doRecover(st, g)) acted.push({ g, act: 'recover', note: '회복 가속' }); } // 부상자는 자동 요양
+    if (g.injured > 0) { if (doRecover(S.st, g)) acted.push({ g, act: 'recover', note: '회복 가속' }); } // 부상자는 자동 요양
     else if ((g.fatigue ?? 0) > 0) { /* 피로가 있으면 휴식 (endSeason 이 피로를 내린다) */ }
-    else { const r = doShow(st, g); if (r) acted.push({ g, act: 'show', note: `명예 +${r.honor}` }); } } // 팔루스에 안 선 건강한 검투사는 자동 시범 (사용자: 시즌 행동을 고르지 않게)
-  const skippedNow = [...skipped];
-  if (skipped.length) st.contracts = st.contracts.filter(c => !skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
-  const refused = st.contracts.length ? refuseAll(st) : 0;
-  const eventsHeld = { ...(st.events ?? { cena: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
-  const { upkeep, gift } = endSeason(st);
-  seasonSummary = { upkeep, gift, trained, acted, before: seasonSummary?.before ?? st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
-  assign = {}; trainPlan = {}; savePlan(); planSel = null; // 시즌 행동은 시즌마다 다시 (기본 휴식). 팔루스에 선 검투사는 그대로 서 있다
-  phase = st.over ? 'over' : 'summary';
+    else { const r = doShow(S.st, g); if (r) acted.push({ g, act: 'show', note: `명예 +${r.honor}` }); } } // 팔루스에 안 선 건강한 검투사는 자동 시범 (사용자: 시즌 행동을 고르지 않게)
+  const skippedNow = [...S.skipped];
+  if (S.skipped.length) S.st.contracts = S.st.contracts.filter(c => !S.skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
+  const refused = S.st.contracts.length ? refuseAll(S.st) : 0;
+  const eventsHeld = { ...(S.st.events ?? { cena: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
+  const { upkeep, gift } = endSeason(S.st);
+  S.seasonSummary = { upkeep, gift, trained, acted, before: S.seasonSummary?.before ?? S.st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
+  S.assign = {}; S.trainPlan = {}; savePlan(); S.planSel = null; // 시즌 행동은 시즌마다 다시 (기본 휴식). 팔루스에 선 검투사는 그대로 서 있다
+  S.phase = S.st.over ? 'over' : 'summary';
   render();
 }
 function renderSummary() {
-  const sum = seasonSummary!;
-  const W = seasonReports.filter(r => r.winner === 'A').length, L = seasonReports.filter(r => r.winner === 'B').length, D = seasonReports.filter(r => r.winner === 'draw').length;
-  const salary = seasonReports.reduce((a, r) => a + r.salary, 0);
-  const betLoss = seasonReports.reduce((a, r) => a + (r.bet && !r.bet.won ? r.bet.amount : 0), 0);
-  const rent = seasonReports.reduce((a, r) => a + r.rent, 0), expense = seasonReports.reduce((a, r) => a + r.expense, 0), prize = seasonReports.reduce((a, r) => a + r.prize, 0), comp = seasonReports.reduce((a, r) => a + r.compensation, 0);
+  const sum = S.seasonSummary!;
+  const W = S.seasonReports.filter(r => r.winner === 'A').length, L = S.seasonReports.filter(r => r.winner === 'B').length, D = S.seasonReports.filter(r => r.winner === 'draw').length;
+  const salary = S.seasonReports.reduce((a, r) => a + r.salary, 0);
+  const betLoss = S.seasonReports.reduce((a, r) => a + (r.bet && !r.bet.won ? r.bet.amount : 0), 0);
+  const rent = S.seasonReports.reduce((a, r) => a + r.rent, 0), expense = S.seasonReports.reduce((a, r) => a + r.expense, 0), prize = S.seasonReports.reduce((a, r) => a + r.prize, 0), comp = S.seasonReports.reduce((a, r) => a + r.compensation, 0);
   const evHeld = EVENT_KEYS.filter(k => sum.events[k]); const evCost = evHeld.reduce((a, k) => a + CONFIG.events[k].cost, 0); const evFame = (sum.events.cena ? CONFIG.events.cena.fame : 0) + (sum.events.pompa ? CONFIG.events.pompa.fame : 0) + (sum.events.guests ? CONFIG.events.guests.fame : 0);
-  const net = st.money - sum.before;
-  const fameFights = seasonReports.reduce((a, r) => a + r.fameDelta, 0);
+  const net = S.st.money - sum.before;
+  const fameFights = S.seasonReports.reduce((a, r) => a + r.fameDelta, 0);
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${Math.abs(v).toLocaleString()}`));
   const badge = (cls: string, text: string) => h('span', { class: `badge ${cls}` }, text);
   const fateOf = (r: FightReport, g: Gladiator) => { const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const won = r.winner === 'A';
     return f?.fate === 'dead' ? badge('dead', f.wound ? '즉사' : '처형') : f?.fate === 'injured' ? badge('injured', '부상') : downed ? badge('missio', won ? '쓰러졌으나 무사' : '미테! 살았다') : badge('ok', '무사'); };
   // 경기 카드
-  const games = seasonReports.map(r => h('div', { class: `gamecard ${r.winner === 'A' ? 'win' : r.winner === 'B' ? 'lose' : 'draw'}` },
+  const games = S.seasonReports.map(r => h('div', { class: `gamecard ${r.winner === 'A' ? 'win' : r.winner === 'B' ? 'lose' : 'draw'}` },
     h('div', { class: 'ghead' }, arenaIcon(r.contract.tier), h('div', { class: 'grow' },
       h('div', {}, h('b', { class: r.winner === 'A' ? 'plus' : r.winner === 'B' ? 'minus' : '' }, r.winner === 'A' ? '승리' : r.winner === 'B' ? '패배' : '무승부'), ` · 등급 ${r.contract.tier} ${r.contract.venue} `, h('span', { class: 'size' }, `${r.contract.size}대${r.contract.size}`), ' · ', h('span', { class: 'meta' }, HOST_KO[r.contract.host]), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:6px' }, '전통 짝') : null),
       h('div', { class: 'meta' }, `대여 +${r.rent.toLocaleString()} · 경비 −${r.expense.toLocaleString()} · 상금 +${r.prize.toLocaleString()}${r.compensation ? ` · 배상 +${r.compensation.toLocaleString()}` : ''} · 호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`))),
     h('div', { class: 'grow2' }, ...r.team.map(g => h('div', { class: 'mini' }, portrait(g, 44), h('div', {}, h('div', { class: 'nm' }, g.name), h('div', {}, fateOf(r, g), r.promoted.includes(g) ? badge('promo', '★ 승급') : null)))))));
   // 로스터 변화
-  const dead = seasonReports.flatMap(r => r.fates.filter(f => f.fate === 'dead').map(f => f.g));
-  const injuredNow = st.roster.filter(g => g.injured > 0);
-  const tired = st.roster.filter(g => (g.fatigue ?? 0) >= 2);
-  const promoted = seasonReports.flatMap(r => r.promoted);
+  const dead = S.seasonReports.flatMap(r => r.fates.filter(f => f.fate === 'dead').map(f => f.g));
+  const injuredNow = S.st.roster.filter(g => g.injured > 0);
+  const tired = S.st.roster.filter(g => (g.fatigue ?? 0) >= 2);
+  const promoted = S.seasonReports.flatMap(r => r.promoted);
   const rosterItems: Node[] = [];
   if (promoted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `승급: ${promoted.map(g => g.name).join(', ')} → 베테라누스`)));
-  { const ne = seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
-  { const freed = seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
+  { const ne = S.seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
+  { const freed = S.seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
   if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => `${t.g.name} ${t.stat === 'atk' ? '공격' : '방어'} +1`).join(', ')}`)));
-  if (st.lastLeft?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `계약 만료로 떠남: ${st.lastLeft.join(', ')}`)));
-  if (st.lastOverwork?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `혹사 끝에 쓰러져 죽음: ${st.lastOverwork.join(', ')} — 피로가 쌓인 채 시즌을 넘겼다`)));
-  if (st.lastFreed?.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `형기 만료: ${st.lastFreed.join(', ')} — 자유민이 됐습니다 (독토르 고용 또는 급료 출전)`)));
+  if (S.st.lastLeft?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `계약 만료로 떠남: ${S.st.lastLeft.join(', ')}`)));
+  if (S.st.lastOverwork?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `혹사 끝에 쓰러져 죽음: ${S.st.lastOverwork.join(', ')} — 피로가 쌓인 채 시즌을 넘겼다`)));
+  if (S.st.lastFreed?.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `형기 만료: ${S.st.lastFreed.join(', ')} — 자유민이 됐습니다 (독토르 고용 또는 급료 출전)`)));
   if (sum.acted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `행동: ${sum.acted.map(a => `${a.g.name} ${ACTION_KO[a.act]} (${a.note})`).join(', ')}`)));
-  if (injuredNow.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `부상 회복 중: ${injuredNow.map(g => `${g.name} (${g.injured}시즌)`).join(', ')} — 치료 ${healCostOf(st)} HS 로 바로 복귀 가능`)));
+  if (injuredNow.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `부상 회복 중: ${injuredNow.map(g => `${g.name} (${g.injured}시즌)`).join(', ')} — 치료 ${healCostOf(S.st)} HS 로 바로 복귀 가능`)));
   if (tired.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `피로 누적: ${tired.map(g => `${g.name} (피로 ${g.fatigue})`).join(', ')} — 한 시즌 쉬게 할 것`)));
   if (dead.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `묘비에 새 이름: ${dead.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(', ')} — 관중은 침묵했다`)));
   if (evHeld.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `행사: ${evHeld.map(k => EVENT_KO[k]).join(', ')} — 출전 검투사 명예·호감도 상승`)));
   if (!rosterItems.length) rosterItems.push(h('div', { class: 'ditem idle' }, h('span', { class: 'dot' }), h('span', {}, '로스터 변화 없음')));
   // 다음 시즌 예고는 뺐다: 새 계약·매물·유지비는 다음 시즌에 들어가서 본다
   return h('div', {}, coach(),
-    h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, `${sum.label} 정산`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `경기 ${seasonReports.length}회 · ${W}승 ${L}패 ${D}무`)),
-      seasonReports.length ? h('div', { class: 'games' }, ...games) : h('div', { class: 'hint' }, '이번 시즌 경기 없음'),
+    h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, `${sum.label} 정산`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `경기 ${S.seasonReports.length}회 · ${W}승 ${L}패 ${D}무`)),
+      S.seasonReports.length ? h('div', { class: 'games' }, ...games) : h('div', { class: 'hint' }, '이번 시즌 경기 없음'),
       sum.skipped.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `무산된 계약 (앞 경기 부상·사망): ${sum.skipped.map(c => c.venue).join(', ')}`) : null),
     h('div', { class: 'cols' },
       h('div', { class: 'panel' }, h('div', { class: 'cols2' }, h('div', {}, h('h2', {}, '자금'),
         h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('대여료', rent), money('출전 경비', expense, -1), money('승리 상금', prize), betLoss ? money('내기 패배', betLoss, -1) : null, money('사망 배상금', comp), salary ? money('자유민 급료', salary, -1) : null, evCost ? money('시즌 행사', evCost, -1) : null, sum.gift ? money('귀족 사례금', sum.gift) : null, money('유지비·급료', sum.upkeep, -1),
           h('div', { class: 'mrow total' }, h('span', {}, '시즌 순수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
-          h('div', { class: 'mrow', style: 'grid-column:1 / -1' }, h('span', {}, '잔액'), h('span', {}, `${sum.before.toLocaleString()} → ${st.money.toLocaleString()} HS`))),
+          h('div', { class: 'mrow', style: 'grid-column:1 / -1' }, h('span', {}, '잔액'), h('span', {}, `${sum.before.toLocaleString()} → ${S.st.money.toLocaleString()} HS`))),
         ), h('div', {}, h('h2', {}, '호감도'),
-        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('경기', fameFights, fameFights >= 0 ? 1 : -1), money('거절', Math.abs(sum.refused), sum.refused < 0 ? -1 : 1), money('망각', 1, -1), money('출전 활동', seasonReports.length ? CONFIG.fameDelta.active : 0), evFame ? money('행사', evFame) : null,
-          h('div', { class: 'mrow total' }, h('span', {}, '호감도'), h('span', {}, `${sum.fameBefore} → ${st.fame}`)))))),
+        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('경기', fameFights, fameFights >= 0 ? 1 : -1), money('거절', Math.abs(sum.refused), sum.refused < 0 ? -1 : 1), money('망각', 1, -1), money('출전 활동', S.seasonReports.length ? CONFIG.fameDelta.active : 0), evFame ? money('행사', evFame) : null,
+          h('div', { class: 'mrow total' }, h('span', {}, '호감도'), h('span', {}, `${sum.fameBefore} → ${S.st.fame}`)))))),
       h('div', {}, h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '로스터'), ...rosterItems),
         null)),
-    tabbar([{ label: `다음 시즌 (${seasonName(st.season)})`, primary: true, onclick: () => { phase = 'manage'; view = 'ludus'; cellsOpen = false; camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; camX = camFor('ludus'); camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
+    tabbar([{ label: `다음 시즌 (${seasonName(S.st.season)})`, primary: true, onclick: () => { S.phase = 'manage'; S.view = 'ludus'; S.cellsOpen = false; S.camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; S.camX = camFor('ludus'); S.camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
 }
 
 function renderOver() {
   return h('div', { class: 'panel' }, h('h2', {}, '게임 종료'),
-    h('p', {}, `${st.reason}. 최종 점수 ${score(st).toLocaleString()} (자금 + 검투사 매각가 + 호감도×100)`),
-    h('div', { class: 'grave' }, st.graveyard.length ? '묘비: ' + st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ') : '사망자 없음'),
-    st.lineageLog?.length ? h('div', { class: 'grave' }, '역대 라니스타: ' + st.lineageLog.join(' → ') + ` → ${st.lanista.name}`) : null,
-    h('div', { class: 'log', style: 'margin-top:8px;max-height:300px' }, st.history.join('\n')),
-    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); st = newGame(Math.floor(Math.random() * 100000)); phase = 'manage'; assign = {}; trainPlan = {}; townCanvas = null; view = 'ludus'; render(); } }, '새 게임')));
+    h('p', {}, `${S.st.reason}. 최종 점수 ${score(S.st).toLocaleString()} (자금 + 검투사 매각가 + 호감도×100)`),
+    h('div', { class: 'grave' }, S.st.graveyard.length ? '묘비: ' + S.st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ') : '사망자 없음'),
+    S.st.lineageLog?.length ? h('div', { class: 'grave' }, '역대 라니스타: ' + S.st.lineageLog.join(' → ') + ` → ${S.st.lanista.name}`) : null,
+    h('div', { class: 'log', style: 'margin-top:8px;max-height:300px' }, S.st.history.join('\n')),
+    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.st = newGame(Math.floor(Math.random() * 100000)); S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임')));
 }
 
 // ---------- 전투 재생 ----------
@@ -2261,7 +2262,7 @@ function vsGraffiti(): Node {
   return el;
 }
 function renderBattle() {
-  const r = report!;
+  const r = S.report!;
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
   const canvas = h('canvas', { id: 'arena' }) as HTMLCanvasElement;
   const logEl = h('div', { class: 'log' });
@@ -2282,7 +2283,7 @@ function renderBattle() {
   app.append(headerEl(), wrap); app.classList.add('land', 'battle'); window.scrollTo(0, 0); // 전투도 같은 가로 무대 안: 위 헤더는 그대로, 아래는 경기장이 채운다 (하단 바 없음)
 // 경기장 높이 = 남는 높이 (스크롤 없이 바 바로 위까지)
   lineup.addEventListener('click', foldLineup); canvas.addEventListener('click', () => { if (!lineup.classList.contains('folded')) foldLineup(); }); // 편성이나 전투 화면을 누르면 접힌다. 접힌 뒤엔 아이콘 줄을 누르면 내려온다
-  window.setTimeout(() => { if (phase === 'battle') foldLineup(); }, 4500); // 소개 연출이 끝날 즈음 접힌다
+  window.setTimeout(() => { if (S.phase === 'battle') foldLineup(); }, 4500); // 소개 연출이 끝날 즈음 접힌다
   const W = canvas.clientWidth || 868, H = canvas.clientHeight || 354; const SK = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1) * devicePixelRatio; // 무대 배율 × DPR 만큼 실제 픽셀을 잡아 선명하게
   canvas.width = W * SK; canvas.height = H * SK;
   const ctx = canvas.getContext('2d')!; ctx.scale(SK, SK);
@@ -2319,7 +2320,7 @@ function renderBattle() {
   const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
   const fansAvg = [...r.team, ...r.contract.enemy].reduce((a, g) => a + fansOf(g), 0) / (r.team.length + r.contract.enemy.length);
-  const density = Math.min(1, 0.12 + st.fame / 100 * 0.55 + (r.contract.tier - 1) * 0.22 + fansAvg / 200); // 팬이 많으면 관중석이 찬다
+  const density = Math.min(1, 0.12 + S.st.fame / 100 * 0.55 + (r.contract.tier - 1) * 0.22 + fansAvg / 200); // 팬이 많으면 관중석이 찬다
   startCrowd(0.2 + density * 0.4); sfx.gate(); sfx.drum(2);
   { const star = [...r.team].filter(g => fansOf(g) >= FANS_STAR).sort((a, b) => fansOf(b) - fansOf(a))[0]; if (star) pending.push({ at: 0.5, fn: () => { shout(`${star.name}!  ${star.name}!`, 0); crowdCheer = 1; } }); } // 스타가 나오면 관중이 이름을 외친다
   // 경기장·관중을 한 번만 그려 캐시 (월드 좌표, 1px = 1 단위)
@@ -2392,7 +2393,7 @@ function renderBattle() {
       case 'charge_plus': at('trail', 0.45); break;                                               // 긴 먼지 자국
     }
   }
-  if (DEBUG) { const keyFx = (ev: KeyboardEvent) => { const k = '1234567890'.indexOf(ev.key); if (k < 0 || phase !== 'battle') return; const id = r.team[0].id; engaged[id] ??= r.contract.enemy[0].id; skillFx(id, SKILLS[k].id, ct); flash.push({ id, t: 1.3, text: SKILLS[k].name, color: '#c58a1a' }); }; window.addEventListener('keydown', keyFx); } // 테스트: ?debug 에서 숫자키 1~0 으로 기술 연출을 강제로 띄운다
+  if (DEBUG) { const keyFx = (ev: KeyboardEvent) => { const k = '1234567890'.indexOf(ev.key); if (k < 0 || S.phase !== 'battle') return; const id = r.team[0].id; engaged[id] ??= r.contract.enemy[0].id; skillFx(id, SKILLS[k].id, ct); flash.push({ id, t: 1.3, text: SKILLS[k].name, color: '#c58a1a' }); }; window.addEventListener('keydown', keyFx); } // 테스트: ?debug 에서 숫자키 1~0 으로 기술 연출을 강제로 띄운다
   function fireEvents(ct: number) {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
@@ -2685,16 +2686,16 @@ function renderBattle() {
     if ((frameNo++ & 7) === 0) setCrowd(judge && judge.stage === 1 && !done ? 0.04 : 0.2 + density * 0.4 + (crowdCheer > 0 ? 0.35 : 0) + (frenzy ? 0.5 : 0)); // 판정 중엔 관중이 숨을 죽인다
     draw(ct, Math.max(dt, real * 0.25));
     if (!done && ct >= END) { done = true; doneAt = performance.now(); skip.textContent = '결과 보기'; }
-    if (done && performance.now() - doneAt >= 1500 && phase === 'battle') { toResult(); return; } // 퇴장까지 다 보이면 1.5초 뒤 결과 화면으로 자동 전환 (done 이후엔 ct 가 멈추므로 실제 시간으로)
-    if (phase === 'battle') requestAnimationFrame(anim);
+    if (done && performance.now() - doneAt >= 1500 && S.phase === 'battle') { toResult(); return; } // 퇴장까지 다 보이면 1.5초 뒤 결과 화면으로 자동 전환 (done 이후엔 ct 가 멈추므로 실제 시간으로)
+    if (S.phase === 'battle') requestAnimationFrame(anim);
   };
   anim();
-  const toResult = () => { stopCrowd(); phase = 'result'; renderResult(); };
+  const toResult = () => { stopCrowd(); S.phase = 'result'; renderResult(); };
   skip.onclick = () => { if (intro < INTRO_HOLD + INTRO_ZOOM) { intro = INTRO_HOLD + INTRO_ZOOM; return; } toResult(); };
 }
 
 function renderResult() {
-  const r = report!;
+  const r = S.report!;
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
   const won = r.winner === 'A';
   const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
@@ -2708,7 +2709,7 @@ function renderResult() {
     else parts.push(h('span', { class: 'badge ok' }, '무사'));
     if (promoted) parts.push(h('span', { class: 'badge promo' }, '★ 베테라누스 승급'));
     if (r.rudis.includes(g)) { parts.push(h('span', { class: 'badge free' }, g.status === 'rudiarius' ? '루디스 — 자유민이 되다' : `루디스 거절 (${g.rudisRefused ?? 0}회째)`));
-      if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
+      if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
     for (const ne of r.newEpithets.filter(x => x.g === g)) parts.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `별칭 '${ne.e.name}' 획득`));
     return parts;
   };
@@ -2717,14 +2718,14 @@ function renderResult() {
   const myCards = r.team.map(g => { const f = r.fates.find(x => x.g.id === g.id); const dead = f?.fate === 'dead', down = r.downed.some(d => d.id === g.id) || f?.fate === 'injured'; return h('div', { class: `fatecard${dead ? ' dead' : ''}` }, portrait(g, 84, false, poseFor(g, dead, down, won, r.contract.enemy[0]?.type)), h('div', { class: 'grow' },
     h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name)),
     h('div', {}, ...fateBadge(g)))); });
-  const enemyCards = r.contract.enemy.map(g => { const ef = r.enemyFates.find(f => f.g.id === g.id); const rvName = rivalOf(st.rivals, r.contract.rivalId)?.name ?? '타지 라니스타의 검투사'; const edead = ef?.fate === 'dead';
+  const enemyCards = r.contract.enemy.map(g => { const ef = r.enemyFates.find(f => f.g.id === g.id); const rvName = rivalOf(S.st.rivals, r.contract.rivalId)?.name ?? '타지 라니스타의 검투사'; const edead = ef?.fate === 'dead';
     return h('div', { class: `fatecard enemy${ef ? ' down' : ''}${edead ? ' dead' : ''}` }, portrait(g, 84, true, poseFor(g, edead, !!ef, r.winner === 'B', r.team[0]?.type)), h('div', { class: 'grow' },
     h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${rvName}`)),
     h('div', {}, ef ? h('span', { class: `badge ${ef.fate === 'dead' ? 'dead' : ef.fate === 'injured' ? 'injured' : 'missio'}` }, ef.fate === 'dead' ? (ef.wound ? '즉사' : '처형') : ef.fate === 'injured' ? '미시오 · 부상' : '미시오 생존') : h('span', { class: 'badge ok' }, won ? '무사' : '승리'),
       r.revenges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge revenge' }, '복수 성공') : null, r.grudges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge grudge' }, '원한 재대결') : null))); });
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
   app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
-    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, won ? '승리' : r.winner === 'draw' ? '무승부 (스탄테스 미시)' : '패배', h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.venue} · ${HOST_KO[r.contract.host]} · ${r.duration.toFixed(1)}초${rivalOf(st.rivals, r.contract.rivalId) ? ` · ${rivalOf(st.rivals, r.contract.rivalId)!.name} (${recordVsMe(rivalOf(st.rivals, r.contract.rivalId)!)})` : ''}`), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:8px' }, '전통 짝 대결') : null),
+    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, won ? '승리' : r.winner === 'draw' ? '무승부 (스탄테스 미시)' : '패배', h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.venue} · ${HOST_KO[r.contract.host]} · ${r.duration.toFixed(1)}초${rivalOf(S.st.rivals, r.contract.rivalId) ? ` · ${rivalOf(S.st.rivals, r.contract.rivalId)!.name} (${recordVsMe(rivalOf(S.st.rivals, r.contract.rivalId)!)})` : ''}`), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:8px' }, '전통 짝 대결') : null),
     h('div', { class: 'rlayout' }, // 왼쪽: 검투사(우리·상대 위아래), 오른쪽: 수지·호감도·전투 기록
       h('div', { class: 'rleft' }, h('h3', {}, '우리 파밀리아'), ...myCards, h('h3', {}, '상대 파밀리아'), ...enemyCards),
       h('div', { class: 'rright' },
@@ -2734,7 +2735,7 @@ function renderResult() {
     h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))))),
   ));
   app.prepend(headerEl()); window.scrollTo(0, 0);
-  app.append(queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${queue.length}경기 남음)`, () => { phase = 'battle'; nextFight(); }, queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', () => { phase = 'battle'; nextFight(); })); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
+  app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, () => { S.phase = 'battle'; nextFight(); }, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', () => { S.phase = 'battle'; nextFight(); })); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
 }
 
 render();
