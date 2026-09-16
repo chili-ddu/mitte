@@ -288,3 +288,23 @@ S.seasonFrom = 'plan';
 S.seasonConfirm = false;
  S.shownSeason = false;
 render();
+
+// ── 새 배포 확인 (홈 화면에 저장해 두면 index.html 이 캐시되어 새 판이 와도 모른다)
+// 자바스크립트·CSS 는 이름에 해시가 박혀 새 이름이면 반드시 새로 받지만, 그 이름을 알려주는 index.html 이 낡으면 영영 모른다.
+// 그래서 서버의 index.html 을 캐시 무시로 읽어 지금 돌고 있는 번들 이름과 비교한다. 다르면 새로고침 (저장은 늘 되어 있으니 잃는 것이 없다).
+const BUNDLE_URL = new URL(import.meta.url).pathname; // 예: /mitte/assets/index-XXXX.js
+const BUNDLE = BUNDLE_URL.split('/').pop() ?? '';
+const BASE = BUNDLE_URL.replace(/assets\/[^/]*$/, ''); // 배포 기준 경로
+let lastCheck = 0;
+async function checkUpdate() {
+  if (!BUNDLE.startsWith('index-') || S.phase !== 'manage') return; // 개발 중이거나 경기 중이면 건너뛴다
+  if (Date.now() - lastCheck < 60_000) return; lastCheck = Date.now();
+  try {
+    const res = await fetch(`${BASE}index.html?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const m = (await res.text()).match(/assets\/index-[A-Za-z0-9_-]+\.js/);
+    if (m && !m[0].endsWith(BUNDLE) && !sessionStorage.getItem('reloaded')) { sessionStorage.setItem('reloaded', '1'); location.reload(); }
+  } catch { /* 오프라인이면 그냥 둔다 */ }
+}
+window.setTimeout(checkUpdate, 2000);                                   // 켤 때 한 번
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkUpdate(); }); // 홈 화면 앱으로 돌아올 때마다
