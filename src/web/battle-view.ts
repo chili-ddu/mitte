@@ -242,8 +242,14 @@ export function renderBattle() {
   let shakeStart = -1, shakeUntil = -1, shakeAmp = 0;
   let slowUntil = -1;
   let zoomAt: { x: number; y: number } | null = null; let zoomStart = -1;
-  type FxKind = 'slash' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
+  type FxKind = 'tell' | 'slash' | 'pierce' | 'cleave' | 'thrust' | 'dust' | 'ink' | 'ghost' | 'shock' | 'gslash' | 'dslash' | 'netline' | 'push' | 'ring' | 'halo' | 'cloth' | 'trail';
   const fx: { kind: FxKind; x: number; y: number; t: number; dir: number; seed: number; id?: number; to?: number; life?: number }[] = []; // id: 붙어 다닐 검투사 · to: 상대 · life: 총 시간
+  function impactProfile(type: GType) {
+    const main = loadoutFor(type).main;
+    if (main === 'sica') return { fx: 'cleave' as const, dist: 1.08, dur: 0.24, shake: 1.12, life: 0.3 }; // 찍어 꺾음
+    if (main === 'spear' || main === 'trident') return { fx: 'thrust' as const, dist: 1.45, dur: 0.32, shake: 0.9, life: 0.34 }; // 찔러 밀어냄
+    return { fx: 'pierce' as const, dist: 0.86, dur: 0.2, shake: 0.82, life: 0.24 }; // 짧고 깊은 찌름
+  }
   const shouts: { text: string; t: number; x: number }[] = [];
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
@@ -340,6 +346,7 @@ export function renderBattle() {
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); shout('우와아!', p0.x); }
       const hitDelay = hitDelayOf(e.combo);
+      { const p0 = posAt(ct)[aid], pt0 = posAt(ct)[tid], big = e.crit || e.downed || e.charge || e.counter; fx.push({ kind: 'tell', x: p0.x + face[aid] * 26, y: p0.y - 10, t: hitDelay, life: hitDelay, dir: face[aid], seed: aid * 17 + tid }); sfx.swing(big); if (e.crit && !e.downed) { zoomAt = { x: (p0.x + pt0.x) / 2, y: (p0.y + pt0.y) / 2 - 12 }; zoomStart = ct; holdUntil = Math.max(holdUntil, ct + hitDelay + 0.18); zoomOutDur = 0.35; } } // 공격 예고: 휘두름 소리와 붉은 궤적이 먼저 나오고, 치명타는 잠깐 당겨 본다
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
         play(aid, 'net_throw', ct); netAway[aid] = true;
@@ -360,8 +367,12 @@ export function renderBattle() {
         const amp = e.downed ? 7 : e.crit ? 9 : heavy ? 5 : 3; // 치명타는 흔들림 최대
         jolt[tid] = { amp, until: ct + (e.crit ? 0.32 : 0.22) }; jolt[aid] = { amp: amp * 0.6, until: ct + 0.16 };
         const pt = posAt(ct)[tid]; const pa = posAt(ct)[aid];
-        recoil[tid] = { start: ct, dur: e.downed ? 0.34 : heavy ? 0.28 : 0.22, dir: (pa.x <= pt.x ? 1 : -1) as 1 | -1, dist: e.downed ? 32 : e.crit ? 26 : heavy ? 22 : 14 };
-        { const amp2 = e.downed ? 5.5 : e.crit ? 4.5 : heavy ? 3.2 : 1.8, shaking = ct < shakeUntil; slowUntil = Math.max(slowUntil, ct + (e.downed ? 0.16 : e.crit ? 0.12 : heavy ? 0.095 : 0.07)); shakeStart = ct; shakeUntil = Math.max(shakeUntil, ct + (e.downed ? 0.24 : e.crit ? 0.18 : heavy ? 0.13 : 0.08)); shakeAmp = shaking ? Math.max(shakeAmp, amp2) : amp2; }
+        const imp = impactProfile(byId[aid].g.type), dir = (pa.x <= pt.x ? 1 : -1) as 1 | -1, baseDist = e.downed ? 32 : e.crit ? 26 : heavy ? 22 : 14;
+        recoil[tid] = { start: ct, dur: Math.max(imp.dur, e.downed ? 0.34 : heavy ? 0.28 : 0.22), dir, dist: baseDist * (e.blocked ? 0.45 : imp.dist) };
+        { const amp2 = (e.downed ? 5.5 : e.crit ? 4.5 : heavy ? 3.2 : 1.8) * (e.blocked ? 0.7 : imp.shake), shaking = ct < shakeUntil; slowUntil = Math.max(slowUntil, ct + (e.downed ? 0.16 : e.crit ? 0.12 : heavy ? 0.095 : 0.07)); shakeStart = ct; shakeUntil = Math.max(shakeUntil, ct + (e.downed ? 0.24 : e.crit ? 0.18 : heavy ? 0.13 : 0.08)); shakeAmp = shaking ? Math.max(shakeAmp, amp2) : amp2; }
+        if (!e.blocked) fx.push({ kind: imp.fx, x: pt.x, y: pt.y - 6, t: imp.life, life: imp.life, dir, seed: aid * 11 + tid });
+        else fx.push({ kind: 'shock', x: pt.x - dir * 10, y: pt.y - 8, t: 0.26, life: 0.26, dir, seed: aid * 11 + tid });
+        if (!e.blocked && imp.fx === 'thrust') fx.push({ kind: 'dust', x: pt.x + dir * 10, y: pt.y + 34, t: 0.42, dir, seed: tid + 9 }); // 창·삼지창은 밀린 발밑 먼지를 함께 낸다
         fx.push({ kind: 'slash', x: pt.x, y: pt.y - 6, t: 0.28, dir: pa.x <= pt.x ? 1 : -1, seed: aid * 7 + tid });
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
@@ -521,7 +532,11 @@ export function renderBattle() {
     for (let k = fx.length - 1; k >= 0; k--) {
       const f = fx[k]; f.t -= dt; if (f.t <= 0) { fx.splice(k, 1); continue; }
       ctx.save(); ctx.strokeStyle = '#3a2412'; ctx.fillStyle = '#3a2412'; ctx.lineCap = 'round';
-      if (f.kind === 'slash') { const k2 = 1 - f.t / 0.28; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 26 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); }
+      if (f.kind === 'tell') { const life = f.life ?? 0.2, k2 = 1 - f.t / life; ctx.strokeStyle = '#9b2c1c'; ctx.globalAlpha = 0.18 + k2 * 0.32; ctx.lineWidth = 1.8 + k2 * 1.2; ctx.beginPath(); ctx.arc(f.x - f.dir * 10, f.y, 18 + k2 * 8, -1.15 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.45 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); }
+      else if (f.kind === 'slash') { const k2 = 1 - f.t / 0.28; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 26 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); }
+      else if (f.kind === 'pierce') { const life = f.life ?? 0.24, k2 = 1 - f.t / life; ctx.strokeStyle = '#9b2c1c'; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3.4 - k2 * 2.2; ctx.beginPath(); ctx.moveTo(f.x - f.dir * (24 - k2 * 10), f.y + 3); ctx.lineTo(f.x + f.dir * (11 + k2 * 12), f.y - 3); ctx.stroke(); ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.5 * (1 - k2); ctx.beginPath(); ctx.arc(f.x + f.dir * 8, f.y - 2, 3 + k2 * 3, 0, Math.PI * 2); ctx.fill(); }
+      else if (f.kind === 'cleave') { const life = f.life ?? 0.3, k2 = 1 - f.t / life; ctx.strokeStyle = '#9b2c1c'; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 4.2 - k2 * 2.5; ctx.beginPath(); ctx.arc(f.x - f.dir * 6, f.y - 4, 22 + k2 * 14, -1.35 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.65 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); ctx.strokeStyle = '#3a2412'; ctx.globalAlpha = 0.45 * (1 - k2); ctx.beginPath(); ctx.moveTo(f.x - f.dir * 4, f.y - 22); ctx.lineTo(f.x + f.dir * (8 + k2 * 10), f.y + 18); ctx.stroke(); }
+      else if (f.kind === 'thrust') { const life = f.life ?? 0.34, k2 = 1 - f.t / life; ctx.strokeStyle = '#6b4a22'; ctx.globalAlpha = 0.78 * (1 - k2); ctx.lineWidth = 2.8 - k2 * 1.5; for (const o of [-4, 4]) { ctx.beginPath(); ctx.moveTo(f.x - f.dir * (34 + k2 * 8), f.y + o); ctx.lineTo(f.x + f.dir * (22 + k2 * 22), f.y + o * 0.4); ctx.stroke(); } ctx.strokeStyle = '#9b2c1c'; ctx.globalAlpha = 0.7 * (1 - k2); ctx.beginPath(); ctx.moveTo(f.x - f.dir * 8, f.y); ctx.lineTo(f.x + f.dir * (20 + k2 * 18), f.y - 2); ctx.stroke(); }
       else if (f.kind === 'dust') { const k2 = 1 - f.t / 0.5; ctx.globalAlpha = 0.6 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI + Math.PI; const rr = 8 + k2 * 22; ctx.beginPath(); ctx.arc(f.x - f.dir * 10 + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.4, 3 + k2 * 4, 0, Math.PI * 2); ctx.stroke(); } }
       else { const life = f.life ?? 0.5, k2 = 1 - f.t / life; const u = f.id != null ? byId[f.id] : null; const cur = f.id != null ? pos[f.id] : null; // 기술 연출
         if (f.kind === 'ghost' && u && cur) { ctx.globalAlpha = 0.35 * (1 - k2); drawStickman(ctx, u.g.type, { x: cur.x - f.dir * (10 + k2 * 26), y: cur.y + 30 * SC, scale: 1.15 * SC, facing: f.dir as 1 | -1, pose: 'guard', t: 0, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); }

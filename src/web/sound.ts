@@ -40,6 +40,7 @@ function tone(c: AudioContext, freq: number, dur: number, gain: number, type: Os
 
 export const sfx = {
   hit(heavy = false) { const c = ac(); if (!c) return; burst(c, { dur: heavy ? 0.18 : 0.11, freq: heavy ? 220 : 380, q: 0.8, gain: heavy ? 0.9 : 0.55, type: 'lowpass' }); tone(c, heavy ? 90 : 140, 0.12, 0.35, 'sine', 0, 50); }, // 살을 치는 둔탁한 소리 + 저음
+  swing(heavy = false) { const c = ac(); if (!c) return; burst(c, { dur: heavy ? 0.16 : 0.1, freq: heavy ? 1800 : 2600, q: 0.9, gain: heavy ? 0.42 : 0.28, attack: 0.002, pitchTo: heavy ? 520 : 900 }); }, // 휘두름: 맞기 전 먼저 나는 공기 가르는 소리
   crit() { const c = ac(); if (!c) return; burst(c, { dur: 0.22, freq: 300, q: 0.7, gain: 1.0, type: 'lowpass' }); tone(c, 70, 0.25, 0.5, 'sine', 0, 40); burst(c, { dur: 0.3, freq: 2400, q: 2, gain: 0.25 }); },
   block() { const c = ac(); if (!c) return; tone(c, 1900, 0.09, 0.25, 'square', 0, 900); tone(c, 640, 0.16, 0.3, 'triangle'); burst(c, { dur: 0.08, freq: 3000, q: 3, gain: 0.3 }); }, // 방패에 맞는 쨍한 소리
   net() { const c = ac(); if (!c) return; burst(c, { dur: 0.45, freq: 900, q: 0.6, gain: 0.35, pitchTo: 300, attack: 0.06 }); }, // 그물 휘익
