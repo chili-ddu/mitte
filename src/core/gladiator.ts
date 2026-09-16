@@ -63,7 +63,7 @@ export function rentFee(g: Gladiator, tier: number): number {
 }
 // 검투사의 값: (전력 − 85) × 85 + 베테라누스 1,200 + 명예 × 15, 50 단위, 최소 1,000
 export function ageMul(g: Gladiator): number { const P = CONFIG.statRoll.agePrice; return Math.max(P.min, 1 - Math.max(0, (g.age ?? 22) - P.from) * P.per); }
-export function valueOf(g: Gladiator): number { const pw = powerOf({ ...g, fatigue: 0 }); const O = CONFIG.origins; const origin = g.origin === 'captive' ? O.captive.price : g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' ? O.damnatus.price : 1; return Math.max(1000, Math.round(((pw - 85) * 85 + (g.rank === 'veteranus' ? 1200 : 0) + (g.honor ?? 0) * 15) * origin * TALENT_PRICE_MUL[talentOf(g)] * ageMul(g) / 50) * 50); } // 나이 24세 넘기면 해마다 −4% // 자질은 상인의 눈만큼(재능 +15%, 비범 +40%, 천부 +80%) // 값 = 전투력 + 계급 프리미엄(베테라누스는 대여료가 2.5배) + 명예(대여료 가산). 출신 할인(포로·죄수)은 값 자체에: 사고팔 때 같은 기준
+export function valueOf(g: Gladiator): number { const pw = powerOf({ ...g, fatigue: 0 }); const O = CONFIG.origins; const origin = g.origin === 'captive' ? O.captive.price : g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' ? O.damnatus.price : 1; return Math.max(1000, Math.round(((pw - 85) * 85 + (g.rank === 'veteranus' ? 1200 : 0) + (g.honor ?? 0) * 15) * origin * (g.talentKnown ? TALENT_PRICE_MUL[talentOf(g)] : 1) * ageMul(g) / 50) * 50); } // 자질은 밝혀진 뒤에만 값에 (시장에서는 상인도 모른다: 값으로 새지 않는다). 나이 24세 넘기면 해마다 −4% // 자질은 밝혀진 뒤(재능 +15%, 비범 +40%, 천부 +80%) // 값 = 전투력 + 계급 프리미엄(베테라누스는 대여료가 2.5배) + 명예(대여료 가산). 출신 할인(포로·죄수)은 값 자체에: 사고팔 때 같은 기준
 // 매각가: 지금 능력치·승수로 다시 매긴 값의 일부. 키워서 값이 오르면 구매가보다 비싸게 팔 수 있다
 export function sellPrice(g: Gladiator): number { return Math.round(valueOf(g) * CONFIG.sellBase); }
 export function maybePromote(g: Gladiator): boolean {

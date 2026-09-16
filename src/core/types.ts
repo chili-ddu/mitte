@@ -27,7 +27,7 @@ export interface Gladiator {
   contractUntil?: number; // 자유민 계약 만료 시즌 (auctoratus·재계약)
   age?: number;         // 나이. 봄마다 +1. 31세부터 속도, 33세부터 공·방이 서서히 줄어든다
   talent?: 0 | 1 | 2 | 3; // 자질: 평범·재능·비범·천부 (성장 가중치. 능력치 자체는 아님)
-  talentKnown?: boolean;  // 자질이 밝혀졌는가 (첫 훈련·첫 경기 뒤). 시장에서는 상인의 한 줄로만 짐작
+  talentKnown?: boolean;  // 자질이 밝혀졌는가 (첫 훈련·첫 경기 뒤). 시장에서는 알 수 없고 값에도 들어가지 않는다
   lastMissio?: boolean;   // 직전 경기에서 미시오로 살아남음 (다음 경기 승리 = 깨우침 계기)
   epithets?: string[];  // 별칭 id 목록 (core/epithets.ts)
   skills?: string[];      // 기술 id 목록 (core/skills.ts)

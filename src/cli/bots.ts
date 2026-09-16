@@ -1,6 +1,6 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable } from '../core/game.js';
+import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable, trainCap } from '../core/game.js';
 import { learnSkill, skillsOf } from '../core/skills.js';
 import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
@@ -54,7 +54,8 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced', team: 'strong' | 'syner
       { const c = upgradeCost(st, 'palus'); if (c != null && st.money > 25000 + c) upgrade(st, 'palus'); } // 여유 자금은 팔루스
       buyPolicy(st, buyMode, reserve);
       healAll(st);
-      if (st.money > 15000) for (const g of st.roster) { if (st.money < 15000) break; if (skillTrainable(st, g) && !g.trained) { const r = doSkillTrain(st, g); if (r?.ok) learnSkill(g, r.id, skillsOf(g)[0]); continue; } train(st, g, g.base.atk <= g.base.def + 6 ? 'atk' : 'def'); } // 여유 자금은 훈련에 (기술 훈련 우선)
+      { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 기술을 배울 조건이면 기술, 아니면 낮은 능력치
+        if (skillTrainable(st, g)) { const r = doSkillTrain(st, g); if (r?.ok) learnSkill(g, r.id, skillsOf(g)[0]); } else train(st, g, g.base.atk <= g.base.def ? 'atk' : 'def'); slots--; } }
       const cs = [...st.contracts].sort((a, b) => b.tier - a.tier);
       let fought = false;
       for (const c of cs) {

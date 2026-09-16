@@ -6,7 +6,7 @@ export const CONFIG = {
   startGladiators: 2, // 물려받은 티로 (초반에 경기 없는 시즌이 생기지 않도록)
   upkeepPerGladiator: 300,  // 베테라누스 유지비. 검투사는 싸고 시설·명성이 비싸다 (2026-09-15 재편)
   upkeepTiro: 200,          // 티로 유지비
-  upkeepFacility: { cell: 50, star: 100, kitchen: 150, bed: 100, medicine: 100, herbs: 150, palus: 100, gym: 150 }, // 시설 유지비: 증축 칸·숙소 ★·조리장 단계·침상(첫 침상 제외)·의술 단계·약재 단계·팔루스(기본 2 제외)·훈련 시설 단계
+  upkeepFacility: { cell: 30, star: 50, kitchen: 80, bed: 50, medicine: 60, herbs: 80, palus: 175, gym: 80 }, // 2026-09-16 절반 수준으로 (두 개만 올려도 유지비가 너무 뛰었다) // 시설 유지비: 증축 칸·숙소 ★·조리장 단계·침상(첫 침상 제외)·의술 단계·약재 단계·팔루스(기본 2개부터, 훈련 회당 요금 대신)·훈련 시설 단계
   upkeepSmallLudus: 0.75,   // 켈라 4칸 이하 작은 루두스는 검투사 유지비 −25% (초반 완화)
   upkeepFame: { from: 60, per: 40 },
   contractDiff: { ratio: { weak: 0.85, even: 1.1, strong: 1.4 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
@@ -27,7 +27,7 @@ export const CONFIG = {
   sellBase: 0.7,   // 매각가 = 지금 값 × 0.7 (키우면 구매가를 넘길 수 있다)
   sellPerWin: 0,   // (구) 승당 가산. 값에 포함되어 미사용
   healCost: 500,
-  trainCost: 1200,   // 훈련: 시즌당 1회, 공격 또는 방어 +1
+  trainCost: 0,   // 훈련 회당 요금 없음 (2026-09-16): 훈련의 대가는 팔루스 유지비·자리 수·출전 뒤 피로. 0 이 아니면 train()/doSkillTrain() 이 그만큼 뺀다
   rudis: { wins: 5, base: 0.45, perFame: 0.004 }, /* 주최자 보정은 core/hosts.ts */ // 루디스: 승리 시 승수가 wins 이상이면 주최자가 확률적으로 수여
   rudiariusShare: 0.4, // 자유민 검투사의 출전 급료 = 대여료의 40%
   doctorSalary: 800,   // 독토르 시즌 급료 (유지비 대신)
@@ -68,7 +68,7 @@ export const CONFIG = {
   retrainCost: 2000,   // 유형 전환(재훈련): 비용, 그 시즌은 출전 불가 // 기술 전수: 세쿠토르 연속 +4% / 무르밀로 방패 첫 타격 감소 60% / 트라엑스 방어 무시 40% / 레티아리우스 속박 1.6초
   promoteWins: 3,
   teamSize: 3,   // 최대 규모 (계약마다 size 1~3)
-  fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 4, overworkPer: 0.12, free: 1, cleanWinHp: 0.7, chanceHard: 0.8, chanceClean: 0.3, perCellStar: 0.15 }, // free: 페널티 없는 피로 점수(첫 1점 무료). 피로가 쌓일 확률: 힘든 경기 80%, 가벼운 경기(쓰러지지 않고 HP 70%↑ 이김) 30%, 숙소 ★마다 −15% // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
+  fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 4, overworkPer: 0.12, free: 1, cleanWinHp: 0.7, chanceHard: 0.8, chanceClean: 0.3, perCellStar: 0.15, trainAfterFight: 0.6 }, // trainAfterFight: 출전한 시즌에 훈련까지 하면 그 확률로 피로 +1 (숙소 ★마다 −15%) // free: 페널티 없는 피로 점수(첫 1점 무료). 피로가 쌓일 확률: 힘든 경기 80%, 가벼운 경기(쓰러지지 않고 HP 70%↑ 이김) 30%, 숙소 ★마다 −15% // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
