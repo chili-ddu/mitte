@@ -6,6 +6,7 @@ import { type GType, type Gladiator, type HostKind } from '../core/types.js';
 import { ARENA } from '../core/battle.js';
 import { setCrowd, sfx, startCrowd, stopCrowd } from './sound.js';
 import { fansOf, formLabel } from '../core/gladiator.js';
+import { MAIN_HAND, equipOf } from '../core/equipment.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
@@ -368,7 +369,7 @@ export function renderBattle() {
         const pt = posAt(ct)[tid]; const pa = posAt(ct)[aid];
         const imp = impactProfile(byId[aid].g.type), dir = (pa.x <= pt.x ? 1 : -1) as 1 | -1, baseDist = e.downed ? 32 : e.crit ? 26 : heavy ? 22 : 14;
         recoil[tid] = { start: ct, dur: Math.max(imp.dur, e.downed ? 0.34 : heavy ? 0.28 : 0.22), dir, dist: baseDist * (e.blocked ? 0.45 : imp.dist) };
-        { const amp2 = (e.downed ? 5.5 : e.crit ? 4.5 : heavy ? 3.2 : 1.8) * (e.blocked ? 0.7 : imp.shake), shaking = ct < shakeUntil; slowUntil = Math.max(slowUntil, ct + (e.downed ? 0.16 : e.crit ? 0.12 : heavy ? 0.095 : 0.07)); shakeStart = ct; shakeUntil = Math.max(shakeUntil, ct + (e.downed ? 0.24 : e.crit ? 0.18 : heavy ? 0.13 : 0.08)); shakeAmp = shaking ? Math.max(shakeAmp, amp2) : amp2; }
+        { const amp2 = (e.downed ? 5.5 : e.crit ? 4.5 : heavy ? 3.2 : 1.8) * (e.blocked ? 0.7 : imp.shake), shaking = ct < shakeUntil; if (e.downed || e.crit || e.open || e.net) slowUntil = Math.max(slowUntil, ct + (e.downed ? 0.3 : e.crit ? 0.16 : 0.14)); /* 눌림은 큰 순간에만 — 평타마다 멈칫하면 대비가 흐려진다 */ shakeStart = ct; shakeUntil = Math.max(shakeUntil, ct + (e.downed ? 0.24 : e.crit ? 0.18 : heavy ? 0.13 : 0.08)); shakeAmp = shaking ? Math.max(shakeAmp, amp2) : amp2; }
         if (!e.blocked) fx.push({ kind: imp.fx, x: pt.x, y: pt.y - 6, t: imp.life, life: imp.life, dir, seed: aid * 11 + tid });
         else fx.push({ kind: 'shock', x: pt.x - dir * 10, y: pt.y - 8, t: 0.26, life: 0.26, dir, seed: aid * 11 + tid });
         if (!e.blocked && imp.fx === 'thrust') fx.push({ kind: 'dust', x: pt.x + dir * 10, y: pt.y + 34, t: 0.42, dir, seed: tid + 9 }); // 창·삼지창은 밀린 발밑 먼지를 함께 낸다
@@ -587,13 +588,21 @@ export function renderBattle() {
   const woundOf = (id: number) => !!(r.fates.find(f => f.g.id === id)?.wound || r.enemyFates.find(f => f.g.id === id)?.wound); // 상처로 죽는가 (판정 없이)
   const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
-  const TEMPO = 1.18; // 평상시 재생은 조금 당겨 이동 답답함을 줄이고, 타격 순간만 히트스톱으로 눌러 준다
+  const TEMPO_FAR = 1.8, TEMPO_NEAR = 1.0, REACH_PAD = 8; // 재생 속도: 아무도 칠 수 없는 빈 구간(다가가고 물러나는 동안)은 당기고, 칼이 닿는 구간은 규칙 속도로. 빠르기가 아니라 대비가 박진감을 만든다 (경기의 3분의 1이 빈 구간)
+  const reachOf = (g: Gladiator) => (MAIN_HAND[equipOf(g.type).main].range >= 2 ? 95 : 48) + REACH_PAD;
+  const engagedAt = (ct2: number) => { // 지금 이 순간 누군가 칠 수 있는가 (경기장 좌표)
+    let i = 0; while (i < frames.length - 2 && frames[i + 1].t <= ct2) i++;
+    const f = frames[i];
+    for (const a of f.u) { const ua = byId[a[0]]; if (!ua || a[3] <= 0) continue;
+      for (const b of f.u) { const ub = byId[b[0]]; if (!ub || b[3] <= 0 || ub.side === ua.side) continue;
+        if (Math.hypot(a[1] - b[1], a[2] - b[2]) <= Math.max(reachOf(ua.g), reachOf(ub.g))) return true; } }
+    return false; };
   let ct = 0, lastReal = performance.now(), done = false, doneAt = 0, lastDtReal = 0.016, frameNo = 0;
   const anim = () => {
     const now = performance.now(); const realRaw = (now - lastReal) / 1000; const real = Math.min(0.05, realRaw); lastReal = now; lastDtReal = real;
-    let dt = real * TEMPO;
+    let dt = real * (engagedAt(ct) ? TEMPO_NEAR : TEMPO_FAR);
     if (intro < INTRO_HOLD + INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
-    else if (ct < slowUntil) dt = real * 0.3;
+    else if (ct < slowUntil) dt = real * 0.25;
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
     if (!done && hasJudge && !hasJudgeFailed && !judge && ct >= r.duration + 1.0) {
       const pos0 = posAt(ct);
