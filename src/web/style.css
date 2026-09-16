@@ -277,6 +277,12 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 
 /* 경기 결과 */
 .panel.result h3 { font-size:12px; margin:8px 0 4px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+.resultbrief { display:grid; gap:8px; margin-top:8px; }
+.scoreline { display:flex; align-items:baseline; gap:12px; padding:8px 10px; background:#fbf6e6; border:1px solid var(--sand2); border-radius:5px; font-size:13px; }
+.scoreline b { font-size:18px; margin-left:auto; }
+.flagline { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:24px; }
+.quickdetail { margin-top:8px; }
+.quickdetail summary { cursor:pointer; }
 .rcols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .rlayout { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
 .rlayout .rleft h3:first-child { margin-top:0; }
@@ -305,6 +311,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .gamecard { background:#fbf6e6; border:1px solid var(--sand2); border-left-width:5px; border-radius:6px; padding:8px 10px; }
 .gamecard.win { border-left-color:var(--ok); } .gamecard.lose { border-left-color:var(--red); } .gamecard.draw { border-left-color:var(--dim); }
 .gamecard .ghead { display:flex; gap:10px; align-items:center; margin-bottom:6px; }
+.gamecard .turnline { margin-top:3px; color:#7a3b1e; font-size:12px; font-weight:700; }
 .gamecard .grow2 { display:flex; gap:8px; flex-wrap:wrap; }
 .gamecard .mini { display:flex; gap:6px; align-items:center; font-size:12px; }
 .gamecard .mini .nm { font-weight:700; }

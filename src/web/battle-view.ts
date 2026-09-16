@@ -1,20 +1,19 @@
 // 전투 화면: 경기장 그림·재생·결과 (규칙은 core/battle.ts, 여기는 재생만)
 import { S } from './state.js';
-import { CEREMONIES, ENEMY, INK, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Pose, type Skeleton, walkSkeleton } from './stickman.js';
+import { CEREMONIES, ENEMY, INK, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Skeleton, walkSkeleton } from './stickman.js';
 import { SKILLS, SKILL_NAME, skillsOf } from '../core/skills.js';
 import { type GType, type Gladiator, type HostKind } from '../core/types.js';
-import { HOST_KO } from '../core/contracts.js';
 import { ARENA } from '../core/battle.js';
 import { setCrowd, sfx, startCrowd, stopCrowd } from './sound.js';
 import { fansOf, formLabel } from '../core/gladiator.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
-import { recordVsMe, refuseRudis, rivalOf, type FightReport } from '../core/game.js';
+import { refuseRudis, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { ask, h, sq, eun, ga } from './dom.js';
 import { DEBUG, app } from './main.js';
-import { TYPE_COLOR, glyphSvg, portrait } from './portrait.js';
+import { TYPE_COLOR, glyphSvg } from './portrait.js';
 import { headerEl } from './header.js';
 import { graffitiBtn, nextFight } from './plan.js';
 
@@ -671,41 +670,23 @@ function renderResult() {
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
   const won = r.winner === 'A';
   const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
-  const fateBadge = (g: Gladiator) => {
-    const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const promoted = r.promoted.includes(g);
-    const parts: Node[] = [];
-    if (f?.fate === 'dead') parts.push(h('span', { class: 'badge dead' }, '사망'));
-    else if (f?.fate === 'injured') parts.push(h('span', { class: 'badge injured' }, '부상'));
-    else if (downed && !won) parts.push(h('span', { class: 'badge missio' }, '미시오 생존'));
-    else if (downed) parts.push(h('span', { class: 'badge missio' }, '쓰러졌으나 무사'));
-    else parts.push(h('span', { class: 'badge ok' }, '무사'));
-    if (promoted) parts.push(h('span', { class: 'badge promo' }, '★ 베테라누스 승급'));
-    if (r.rudis.includes(g)) { parts.push(h('span', { class: 'badge free' }, g.status === 'rudiarius' ? '루디스 — 자유민이 되다' : `루디스 거절 (${g.rudisRefused ?? 0}회째)`));
-      if (g.status === 'rudiarius') parts.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '루디스 거절 (명예 +8)')); }
-    for (const ne of r.newEpithets.filter(x => x.g === g)) parts.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `별칭 '${ne.e.name}' 획득`));
-    return parts;
-  };
-  // 결과 자세: 사망 = 시신(쓰러진 클립의 끝 장면), 부상·미시오 = 쓰러진 뒤 무릎, 승자 = 팔 들어 환호, 무승부·기타 = 경례
-  const poseFor = (g: Gladiator, dead: boolean, down: boolean, winner: boolean, killer?: GType): { pose?: Pose; skeleton?: Skeleton } => dead ? { skeleton: clipSkeleton(deathClipFor(killer ?? 'murmillo'), clipLength(deathClipFor(killer ?? 'murmillo'))) } : down ? { pose: 'bow' } : winner ? { pose: 'victory_low' } : { pose: 'salute' }; // 환호는 팔을 너무 높이 들면 초상 위로 잘려 낮은 쪽
-  const myCards = r.team.map(g => { const f = r.fates.find(x => x.g.id === g.id); const dead = f?.fate === 'dead', down = r.downed.some(d => d.id === g.id) || f?.fate === 'injured'; return h('div', { class: `fatecard${dead ? ' dead' : ''}` }, portrait(g, 84, false, poseFor(g, dead, down, won, r.contract.enemy[0]?.type)), h('div', { class: 'grow' },
-    h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name)),
-    h('div', {}, ...fateBadge(g)))); });
-  const enemyCards = r.contract.enemy.map(g => { const ef = r.enemyFates.find(f => f.g.id === g.id); const rvName = rivalOf(S.st.rivals, r.contract.rivalId)?.name ?? '타지 라니스타의 검투사'; const edead = ef?.fate === 'dead';
-    return h('div', { class: `fatecard enemy${ef ? ' down' : ''}${edead ? ' dead' : ''}` }, portrait(g, 84, true, poseFor(g, edead, !!ef, r.winner === 'B', r.team[0]?.type)), h('div', { class: 'grow' },
-    h('div', {}, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${rvName}`)),
-    h('div', {}, ef ? h('span', { class: `badge ${ef.fate === 'dead' ? 'dead' : ef.fate === 'injured' ? 'injured' : 'missio'}` }, ef.fate === 'dead' ? (ef.wound ? '즉사' : '처형') : ef.fate === 'injured' ? '미시오 · 부상' : '미시오 생존') : h('span', { class: 'badge ok' }, won ? '무사' : '승리'),
-      r.revenges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge revenge' }, '복수 성공') : null, r.grudges.some(x => x.enemy.id === g.id) ? h('span', { class: 'badge grudge' }, '원한 재대결') : null))); });
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
+  const bad = r.fates.filter(f => f.fate === 'dead' || f.fate === 'injured');
+  const flags: Node[] = [];
+  for (const f of bad) flags.push(h('span', { class: `badge ${f.fate === 'dead' ? 'dead' : 'injured'}` }, `${f.g.name} ${f.fate === 'dead' ? '사망' : '부상'}`));
+  for (const g of r.rudis) { flags.push(h('span', { class: 'badge free' }, `${g.name} 루디스`)); if (g.status === 'rudiarius') flags.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '거절')); }
+  for (const g of r.promoted) flags.push(h('span', { class: 'badge promo' }, `${g.name} 승급`));
+  for (const ne of r.newEpithets) flags.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `${ne.g.name} '${ne.e.name}'`));
+  const title = won ? '승리' : r.winner === 'draw' ? '무승부' : '패배';
+  const tp = turningPoint(r);
   app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
-    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, won ? '승리' : r.winner === 'draw' ? '무승부 (스탄테스 미시)' : '패배', h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.venue} · ${HOST_KO[r.contract.host]} · ${r.duration.toFixed(1)}초${rivalOf(S.st.rivals, r.contract.rivalId) ? ` · ${rivalOf(S.st.rivals, r.contract.rivalId)!.name} (${recordVsMe(rivalOf(S.st.rivals, r.contract.rivalId)!)})` : ''}`), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:8px' }, '전통 짝 대결') : null),
-    (() => { const tp = turningPoint(r); return tp ? h('div', { class: 'hint turning' }, tp) : null; })(), /* 경기가 갈린 자리 (자리만 잡아 둔 표시) */
-    h('div', { class: 'rlayout' }, // 왼쪽: 검투사(우리·상대 위아래), 오른쪽: 수지·호감도·전투 기록
-      h('div', { class: 'rleft' }, h('h3', {}, '우리 파밀리아'), ...myCards, h('h3', {}, '상대 파밀리아'), ...enemyCards),
-      h('div', { class: 'rright' },
-    h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money(r.bet?.won ? '승리 상금 (내기 ×2)' : '승리 상금', r.prize), r.guestGift ? money('귀족 사례금', r.guestGift) : null, money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null, r.bet && !r.bet.won ? money('내기 패배', r.bet.amount, -1) : null,
-      h('div', { class: 'mrow total' }, h('span', {}, '이번 경기 수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
-      h('div', { class: 'mrow' }, h('span', {}, '호감도' + (r.classic && r.winner === 'A' ? ` (전통 짝 +${CONFIG.fameDelta.classicWin} 포함)` : '')), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`))),
-    h('details', {}, h('summary', { class: 'hint', style: 'cursor:pointer' }, `전투 기록 보기 (${r.duration.toFixed(1)}초)`), h('div', { class: 'log', style: 'margin-top:6px;max-height:220px' }, r.log.join('\n'))))),
+    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, title, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size} · ${r.duration.toFixed(1)}초${r.classic ? ' · 전통 짝' : ''}`)),
+    tp ? h('div', { class: 'hint turning' }, tp) : null,
+    h('div', { class: 'resultbrief' },
+      h('div', { class: 'scoreline' }, h('span', {}, '이번 경기'), h('b', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`)),
+      flags.length ? h('div', { class: 'flagline' }, ...flags) : h('div', { class: 'flagline' }, h('span', { class: 'badge ok' }, '우리 파밀리아 무사'))),
+    h('details', { class: 'quickdetail' }, h('summary', { class: 'hint' }, '이번 경기 수지 보기'), h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money(r.bet?.won ? '승리 상금 (내기 ×2)' : '승리 상금', r.prize), r.guestGift ? money('귀족 사례금', r.guestGift) : null, money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null, r.bet && !r.bet.won ? money('내기 패배', r.bet.amount, -1) : null,
+      h('div', { class: 'mrow total' }, h('span', {}, '수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)))),
   ));
   app.prepend(headerEl()); window.scrollTo(0, 0);
   app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, () => { S.phase = 'battle'; nextFight(); }, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', () => { S.phase = 'battle'; nextFight(); })); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)

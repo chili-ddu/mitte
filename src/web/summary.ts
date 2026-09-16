@@ -35,12 +35,16 @@ export function renderSummary() {
   const badge = (cls: string, text: string) => h('span', { class: `badge ${cls}` }, text);
   const fateOf = (r: FightReport, g: Gladiator) => { const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const won = r.winner === 'A';
     return f?.fate === 'dead' ? badge('dead', f.wound ? '즉사' : '처형') : f?.fate === 'injured' ? badge('injured', '부상') : downed ? badge('missio', won ? '쓰러졌으나 무사' : '미테! 살았다') : badge('ok', '무사'); };
+  const nameOf = (r: FightReport, id: number) => [...r.team, ...r.contract.enemy].find(g => g.id === id)?.name.replace('(적)', '') ?? '누군가';
+  const turnOf = (r: FightReport) => { const last = [...r.events].reverse().find(e => e.kind === 'attack' && e.downed); if (last?.open) return `${nameOf(r, last.target!)}의 빈틈이 승부를 갈랐다.`; if (last?.crit) return `${nameOf(r, last.actor)}의 치명타가 갑주 틈을 찔렀다.`; const st = r.events.find(e => e.kind === 'stumble'); return st ? `${nameOf(r, st.actor)}이(가) 먼저 헛디뎠다.` : r.log.slice(-1)[0] ?? '짧은 경기였다.'; };
   // 경기 카드
-  const games = S.seasonReports.map(r => h('div', { class: `gamecard ${r.winner === 'A' ? 'win' : r.winner === 'B' ? 'lose' : 'draw'}` },
+  const games = S.seasonReports.map(r => { const gnet = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0), harm = r.fates.filter(f => f.fate === 'dead' || f.fate === 'injured');
+    return h('div', { class: `gamecard ${r.winner === 'A' ? 'win' : r.winner === 'B' ? 'lose' : 'draw'}` },
     h('div', { class: 'ghead' }, arenaIcon(r.contract.tier), h('div', { class: 'grow' },
       h('div', {}, h('b', { class: r.winner === 'A' ? 'plus' : r.winner === 'B' ? 'minus' : '' }, r.winner === 'A' ? '승리' : r.winner === 'B' ? '패배' : '무승부'), ` · 등급 ${r.contract.tier} ${r.contract.venue} `, h('span', { class: 'size' }, `${r.contract.size}대${r.contract.size}`), ' · ', h('span', { class: 'meta' }, HOST_KO[r.contract.host]), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:6px' }, '전통 짝') : null),
-      h('div', { class: 'meta' }, `대여 +${r.rent.toLocaleString()} · 경비 −${r.expense.toLocaleString()} · 상금 +${r.prize.toLocaleString()}${r.compensation ? ` · 배상 +${r.compensation.toLocaleString()}` : ''} · 호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`))),
-    h('div', { class: 'grow2' }, ...r.team.map(g => h('div', { class: 'mini' }, portrait(g, 44), h('div', {}, h('div', { class: 'nm' }, g.name), h('div', {}, fateOf(r, g), r.promoted.includes(g) ? badge('promo', '★ 승급') : null)))))));
+      h('div', { class: 'meta' }, `수지 ${gnet >= 0 ? '+' : '−'}${Math.abs(gnet).toLocaleString()} HS · 호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}${harm.length ? ` · 피해 ${harm.length}` : ''}`),
+      h('div', { class: 'turnline' }, turnOf(r)))),
+    h('div', { class: 'grow2' }, ...r.team.map(g => h('div', { class: 'mini' }, portrait(g, 44), h('div', {}, h('div', { class: 'nm' }, g.name), h('div', {}, fateOf(r, g), r.promoted.includes(g) ? badge('promo', '★ 승급') : null)))))); });
   // 로스터 변화
   const dead = S.seasonReports.flatMap(r => r.fates.filter(f => f.fate === 'dead').map(f => f.g));
   const injuredNow = S.st.roster.filter(g => g.injured > 0);
