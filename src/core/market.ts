@@ -1,16 +1,22 @@
-import type { Gladiator } from './types.js';
+import type { Gladiator, GType } from './types.js';
+import { equipOf, type MainHand } from './equipment.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { grantRandomSkills } from './skills.js';
-import { valueOf, makeGladiator } from './gladiator.js';
+import { valueOf, makeGladiator, TYPES } from './gladiator.js';
 import { rollTalent } from './talent.js';
 
+// 판매대: 되도록 주무기가 겹치지 않게 뽑는다 (같은 무기 둘이 나란히 서면 고를 맛이 없다). 무기는 네 가지뿐이라 그보다 많아지면 그때부터 겹친다
+function pickType(rng: Rng, used: Set<MainHand>): GType | undefined {
+  const free = TYPES.filter(t => !used.has(equipOf(t).main));
+  return free.length ? rng.pick(free) : undefined;
+}
 export function offerMarket(rng: Rng, season = 1): Gladiator[] {
-  const list: Gladiator[] = [];
-  const nTiro = season === 1 ? rng.int(3, 4) : rng.int(2, 3); // 첫 시즌은 팀을 꾸릴 수 있게
-  for (let i = 0; i < nTiro; i++) list.push(withOrigin(rng, makeGladiator(rng, 'tiro'), season));
-  if (season === 1 && !list.some(g => g.buyPrice <= 1500)) { const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.damnatus.stat); g.base.def = Math.max(0, g.base.def + O.damnatus.stat); g.buyPrice = valueOf(g); list.push(g); } // 첫 시즌엔 싼 죄수가 반드시 하나 (초반 완화)
-  if (rng.chance(0.5)) { const v = withOrigin(rng, makeGladiator(rng, 'veteranus', { season }), season); grantRandomSkills(rng, v, rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1])); v.buyPrice = valueOf(v); list.push(v); } // 베테라누스 매물도 기술을 갖고 있고 그만큼 비싸다
+  const list: Gladiator[] = []; const used = new Set<MainHand>();
+  const add = (g: Gladiator) => { used.add(equipOf(g.type).main); list.push(g); };
+  const nTiro = rng.int(2, 3); // 첫 시즌 혜택은 없앴다 (2026-09-16: 시작 검투사 둘을 직접 고르므로 그 역할이 끝났다)
+  for (let i = 0; i < nTiro; i++) add(withOrigin(rng, makeGladiator(rng, 'tiro', { type: pickType(rng, used) }), season));
+  if (rng.chance(0.5)) { const v = withOrigin(rng, makeGladiator(rng, 'veteranus', { season, type: pickType(rng, used) }), season); grantRandomSkills(rng, v, rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1])); v.buyPrice = valueOf(v); add(v); } // 베테라누스는 절반 확률
   return list;
 }
 // 출신 부여: 첫 시즌은 노예 상인만 (규칙을 익힐 때 변수를 줄인다)

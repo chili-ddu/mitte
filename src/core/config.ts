@@ -5,12 +5,13 @@ export const CONFIG = {
   startMoney: 24000,
   startGladiators: 2, // 물려받은 티로 (초반에 경기 없는 시즌이 생기지 않도록)
   upkeepPerGladiator: 300,  // 베테라누스 유지비. 검투사는 싸고 시설·명성이 비싸다 (2026-09-15 재편)
-  upkeepTiro: 200,          // 티로 유지비
+  upkeepTiro: 200,
+  upkeepValueRate: 0.03, // 검투사 유지비는 값의 이 비율과 기본값 중 큰 쪽 (시험 중)          // 티로 유지비
   upkeepFacility: { cell: 30, star: 50, kitchen: 80, bed: 50, medicine: 60, herbs: 80, palus: 175, gym: 80 }, // 2026-09-16 절반 수준으로 (두 개만 올려도 유지비가 너무 뛰었다) // 시설 유지비: 증축 칸·숙소 ★·조리장 단계·침상(첫 침상 제외)·의술 단계·약재 단계·팔루스(기본 2개부터, 훈련 회당 요금 대신)·훈련 시설 단계
   upkeepSmallLudus: 0.75,   // 켈라 4칸 이하 작은 루두스는 검투사 유지비 −25% (초반 완화)
   upkeepFame: { from: 60, per: 40 },
   contractDiff: { ratio: { weak: 0.85, even: 1.1, strong: 1.4 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
-  rivalFameGrow: 0.004,     // 경쟁 파밀리아 보충 검투사 강도: 내 호감도 50 위로 1점당 // 명성 유지비: 호감도 60부터 (호감도−50)×40 (연회·선물·후원 없이는 이름이 안 남는다)
+  /* rivalFameGrow 제거(2026-09-16): 경쟁 파밀리아를 세게 만들어도 계약 생성기가 내 전력 대비 비율로 상대를 뽑아 정규화해 버려 효과가 0이었다. 같은 뜻을 contractDiff.fameRamp 로 옮겼다 */
   statRoll: { // 시장·상대 검투사의 초기 능력치: 유형 기본치에 스탯마다 [lo, hi] 배율을 따로 굴린다 (전력은 그 결과로 계산). 속도는 유형 고정
     tiro:      { hp: [0.80, 0.92], atk: [0.80, 0.92], def: [0.75, 0.92] },   // 어린 티로: 단련이 없으니 약하다
     veteranus: { hp: [0.95, 1.05], atk: [0.95, 1.05], def: [0.95, 1.05] },   // 베테라누스: 기본치 안팎
@@ -21,7 +22,7 @@ export const CONFIG = {
   rentTiro: 600,
   rentVeteran: 1500,
   prizePerTier: 1500,
-  fightExpense: { rentRate: 0.25, perTier: 150 }, // 출전 경비 = 대여료×rate (장비 정비·식량·의료) + 등급×perTier (이동·호송). 대여료는 고증대로 승패 무관, 경비가 차감된다
+  fightExpense: { rentRate: 0.25, byTier: { 1: 150, 2: 700, 3: 1600 } as Record<number, number> }, // 출전 경비 = 대여료×rentRate (장비 정비·식량·의료) + 등급별 고정비(이동·호송·숙박). 등급별로 바꿈(2026-09-16, 옛 등급×150): 졸업으로 상위 등급에 올라가면 버는 돈이 늘어 후반에 자금이 남았다 — 로마로 가려면 호송·숙박이 비싸다. 시골 경기만 도는 쪽은 150 그대로라 영향 없음 // 출전 경비 = 대여료×rate (장비 정비·식량·의료) + 등급×perTier (이동·호송). 대여료는 고증대로 승패 무관, 경비가 차감된다
   deathCompMultiplier: 10, // (구) 대여료 배수. 이제 미사용
   deathComp: { priceMult: 1.2, perWin: 0 }, // 배상 = 지금 값(valueOf: 능력치·승수) × 1.2 (대체 비용). 승수는 값에 이미 들어 있다
   sellBase: 0.7,   // 매각가 = 지금 값 × 0.7 (키우면 구매가를 넘길 수 있다)
@@ -71,13 +72,15 @@ export const CONFIG = {
   fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 4, overworkPer: 0.12, free: 1, cleanWinHp: 0.7, chanceHard: 0.8, chanceClean: 0.3, perCellStar: 0.15, trainAfterFight: 0.6 }, // trainAfterFight: 출전한 시즌에 훈련까지 하면 그 확률로 피로 +1 (숙소 ★마다 −15%) // free: 페널티 없는 피로 점수(첫 1점 무료). 피로가 쌓일 확률: 힘든 경기 80%, 가벼운 경기(쓰러지지 않고 HP 70%↑ 이김) 30%, 숙소 ★마다 −15% // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
-  form: { atk: 5, def: 4, team: 0.5, tell: 0.5 }, // 그날의 몸 상태(2026-09-16): 경기마다 f∈[−1,1]을 굴려 공 +round(f×atk)·방 +round(f×def). f 는 팀 공통분(team: 그날 파밀리아의 분위기)과 개인분을 섞는다 — 다인전에서 개인 우연이 평균으로 묻히지 않게. 시즌 단위 피로와 별개인 '경기 당일'의 우연 — 수십 번 굴리는 타격 흔들림은 평균으로 수렴하지만 이건 경기 내내 남아 승부를 바꾼다(열세 역전의 주된 통로). |f|≥tell 이면 기록에 '몸이 가볍다/무겁다'로 드러난다
+  form: { atk: 5, def: 4, team: 0.5, tell: 0.35 }, // 그날의 몸 상태(2026-09-16): 경기마다 f∈[−1,1]을 굴려 공 +round(f×atk)·방 +round(f×def). f 는 팀 공통분(team: 그날 파밀리아의 분위기)과 개인분을 섞는다 — 다인전에서 개인 우연이 평균으로 묻히지 않게. 시즌 단위 피로와 별개인 '경기 당일'의 우연 — 수십 번 굴리는 타격 흔들림은 평균으로 수렴하지만 이건 경기 내내 남아 승부를 바꾼다(열세 역전의 주된 통로). |f|≥tell 이면 배정 화면 칩과 기록에 '몸이 가볍다/무겁다'로 드러난다 (2026-09-16 0.5→0.35: f 가 삼각분포라 0.5 문턱에서는 넷 중 하나만 드러나 고를 거리가 못 됐다 — 0.35 면 열에 넷)
   stamina: { max: 100, swing: 20, sprintPerSec: 10, regen: 4, windedAt: 30, windedInterval: 1.35, windedMove: 0.8, stumble: 0.15, stumbleSec: 0.9, openMult: 1.5, openIgnore: 1.0, weight: { scutum: 1.2, medium: 1.1, parma: 1.0, parmula: 0.95, net: 0.9, blade: 0.9, none: 1.0 } }, // 스태미나(2026-09-16): 휘두를 때마다 swing×장비 무게, 질주 중 초당 sprintPerSec 소모, 초당 regen 회복 (1대1 평균 17타·11초: 중무장은 4~5타, 경무장은 6~7타째부터 지친다). windedAt 밑이면 지침 — 공격 간격 ×1.35, 걸음 ×0.8, 휘두를 때 15%로 헛디딤(0.9초 무방비 — 그 사이 맞는 타격은 빈틈 강타: 방어 openIgnore 무시·×openMult). 무게는 보조 장비 기준: 스쿠툼·중형 방패를 든 중무장(무르밀로·세쿠토르·프로보카토르)이 먼저 지친다 — 검투 경기의 승부처는 지치는 쪽이 나오는 것이었다
   crit: { base: 0.08, perSpd: 0.005, mult: 1.3, defIgnore: 1.0 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 갑주 틈을 찌른 깨끗한 일격 — 방어를 defIgnore 만큼 무시(1.0 = 전부)하고 ×1.3, 방패 반감 무시. (2026-09-16 ×1.6·방어 적용 → 방어 무시·×1.3: 약자가 방어 높은 상대를 뚫는 통로) // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 0,       // 무명에서 시작 (2026-09-16, 월계관 단계에 맞춰). 시뮬: 30→0 이 파산율을 올리지 않고(등급1만 14%→1%) 초반 사망만 조금 늘어난다(미시오 보정 없음)
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
   synergy: { cavalrySpd: 2, cavalrySec: 5, spearFirst: 1.2, sicaBrothers: 0.10, mythMissio: 0.05, hometownRest: 1, nicknameFame: 1, captiveAtk: 1 }, // 추가 조합 7종 (2026-09-16, 열세에서도 뒤집을 여지): 기병대 = 에퀘스 첫 5초 속도 +2 · 창 벽 = 첫 타 피해 ×1.2 · 곡도 형제 = 시카 방어 무시 +10%p · 신화×2 = 미시오 +5% · 동향 = 지명 계보 둘이 함께 싸우면 시즌 끝 피로 −1 · 별칭×2 = 승리 호감도 +1 · 동포 = 포로 둘 이상 공격 +1
-  tierPowerCap: { 1: 160, 2: 200, 3: Infinity } as Record<number, number>, // 경기장 등급별 **상대** 전력 상한. 내 편은 제한 없음 (사용자: 나는 마음대로 내고, 상대가 등급에 맞춰 나오길 원한다 — 상대가 무작위라 출전을 망설였다). 티로 104~145(중간 121), 베테라누스 118~164(1시즌)·163~212(16시즌): 시골 목조는 티로·초기 베테 무대, 석조는 단련된 베테까지, 대경기장은 무제한 (2026-09-16)
+  tierPowerCap: { 1: 160, 2: 200, 3: Infinity } as Record<number, number>,
+  tierGraduate: 0.95, // 졸업(2026-09-16): 내 검투사 평균 전력이 그 등급 상한의 이 배를 넘으면 아래 등급 주최자는 더 이상 나를 부르지 않는다. 으뜸이 아니라 평균인 이유: 으뜸 기준이면 검투사 하나만 세져도 하위 경기가 사라져 새로 산 티로를 키울 자리가 없어진다(사용자). 상한은 약할 때를 지키는 장치이고, 세월이 지나 상한을 추월하면 하위 등급 경기는 이길 게 뻔한 공짜 승리가 된다 — 상한을 올리는 대신 등급을 졸업시킨다 (위 등급이 호감도로 아직 안 열렸으면 그대로 둔다: 경기가 없어지면 안 된다)
+ // 경기장 등급별 **상대** 전력 상한. 내 편은 제한 없음 (사용자: 나는 마음대로 내고, 상대가 등급에 맞춰 나오길 원한다 — 상대가 무작위라 출전을 망설였다). 티로 104~145(중간 121), 베테라누스 118~164(1시즌)·163~212(16시즌): 시골 목조는 티로·초기 베테 무대, 석조는 단련된 베테까지, 대경기장은 무제한 (2026-09-16)
   missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, instantDeath: { base: 0.03, crit: 0.08 } }, // instantDeath: 쓰러뜨리는 타격이 그 자리에서 목숨을 앗을 확률 (치명타면 더). 판정과 별개, 승리 측도 해당
   fameDelta: { win: 5, classicWin: 2, lose: -3, refuse: -2, refuseFrom: 40, death: -1, decay: -1, decayAt: [[50, -2], [80, -3]] as [number, number][], winAt: [[50, 3], [80, 2]] as [number, number][], active: 1 }, // winAt: 이미 유명하면 승리 한 번의 호감도가 작다 (50↑ +3, 80↑ +2) // decayAt: 호감도가 높을수록 망각이 빠르다 (50↑ −2, 80↑ −3) // refuse: 시즌당 1회, 받을 수 있었던 계약을 거절했을 때만. active: 시즌에 한 번이라도 출전하면 +1
 } as const;

@@ -1,9 +1,12 @@
 // 진입점: 부트스트랩(무대·저장·초기 상태)·render() 분배·헤더 아래 서판 토글·탭 바
-import { S } from './state.js';
+import { S, TEAM_COLORS } from './state.js';
 import { sfx, unlockAudio } from './sound.js';
 import { declineSkill, isPrimusPalus, setForceProc, skillSlots, skillsOf, type SkillId } from '../core/skills.js';
 import { available, deserialize, newGame, palusTrainees, serialize, type GameState } from '../core/game.js';
-import { TYPE_KO } from '../core/gladiator.js';
+import { TYPES, TYPE_KO } from '../core/gladiator.js';
+import { CONFIG } from '../core/config.js';
+import { MAIN_HAND, OFF_HAND, equipOf } from '../core/equipment.js';
+import type { GType } from '../core/types.js';
 import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget } from './dom.js';
 import { portrait, startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
@@ -75,6 +78,7 @@ S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신
 S.gladSel = null; // 검투사 시트에 보이는 검투사 id
  // 검투사 시트에 보이는 검투사 id
 S.detailSwipe = null;
+S.setup = saved ? null : { color: 'caeruleum', types: [] }; // 저장이 없으면 새 게임 설정부터
 S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
  // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
 S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
@@ -160,6 +164,22 @@ export function render() {
     h('p', {}, '검투사는 지고도 살 수 있다.'), h('p', {}, '관중이 미테!를 외치게 하라.'),
     h('p', { class: 'hint' }, '검투사를 사들이고, 시설을 키우고, 계약에 맞춰 내보내라. 명예와 호감도가 높을수록 관중은 살려 달라 외친다.'),
     h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); S.showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
+  if (S.setup && !S.showIntro) { // 새 게임 설정: 파밀리아 색과 시작 검투사 두 유형. 능력치는 여느 티로처럼 굴린다 (고르는 것은 개성이지 힘이 아니다)
+    const st = S.setup;
+    const swatch = (c: { id: string; ko: string; ink: string }) => h('button', { class: `tpick${st.color === c.id ? ' on' : ''}`, title: c.ko, style: `background:${c.ink}`, onclick: () => { st.color = c.id; sfx.step(); render(); } });
+    const typeBtn = (t: GType) => { const on = st.types.includes(t); const full = st.types.length >= CONFIG.startGladiators;
+      return h('button', { class: `gpick${on ? ' on' : ''}`, disabled: !on && full, title: `${TYPE_KO[t]} — ${MAIN_HAND[equipOf(t).main].label} · ${OFF_HAND[equipOf(t).off].label}`,
+        onclick: () => { st.types = on ? st.types.filter(x => x !== t) : [...st.types, t]; sfx.step(); render(); } }, sq(t), h('span', {}, TYPE_KO[t])); };
+    const ready = st.types.length === CONFIG.startGladiators;
+    app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox setup' },
+      h('div', { class: 'title' }, '파밀리아를 꾸린다'),
+      h('p', { class: 'hint' }, '우리 색을 고르고, 물려받을 검투사 두 사람의 유형을 정하세요. 능력치는 여느 티로처럼 굴려집니다.'),
+      h('div', { class: 'colors' }, ...TEAM_COLORS.map(swatch)),
+      h('div', { class: 'types' }, ...TYPES.map(typeBtn)),
+      h('div', { class: 'hint' }, ready ? st.types.map(t => TYPE_KO[t]).join(' · ') : `유형을 ${CONFIG.startGladiators - st.types.length}명 더 고르세요`),
+      h('button', { class: 'primary', disabled: !ready, onclick: () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
+        S.st = newGame(seed, { types: st.types, color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); } }, '문을 연다'))));
+  }
   if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
     const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);
     const left = Math.max(6, Math.min((document.getElementById('stage')?.clientWidth ?? STAGE_W) - W - 6, S.cellPop.cx - W / 2)), top = Math.max(40, Math.min(stageH - H - 6, S.cellPop.cy - 30));

@@ -53,6 +53,8 @@ export function showTip(target: Element) {
 }
 // 한국어 조사: 받침이 있으면 '으로', 없거나 ㄹ 받침이면 '로' (포룸으로 · 훈련소로 · 의무실로)
 export function ro(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; const jong = c >= 0 && c <= 11171 ? c % 28 : 0; return jong === 0 || jong === 8 ? '로' : '으로'; }
+export function ga(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '이' : '가'; } // 받침이 있으면 '이'
+export function eun(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '은' : '는'; } // 받침이 있으면 '은'
 export function hideTip() { if (S.tipEl) { S.tipEl.remove(); S.tipEl = null; } S.tipFor = null; }
 export const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
 export const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile');

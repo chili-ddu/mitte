@@ -1,6 +1,6 @@
 // 화면의 공유 가변 상태. main.ts 의 모듈 수준 let 을 한 객체로 모았다 (2026-09-16 리팩터링). 각 화면 모듈은 여기서 읽고 쓴다
 import type { Action, SeasonEvents, GameState, FightReport } from '../core/game.js';
-import type { Contract, Gladiator } from '../core/types.js';
+import type { Contract, Gladiator, GType } from '../core/types.js';
 import type { View } from './main.js';
 import type { StickPose } from './scenes.js';
 export interface State {
@@ -24,7 +24,8 @@ export interface State {
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
   gladSel: number | null;
   detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null;
-  detailSwipe: 1 | -1 | null; /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
+  detailSwipe: 1 | -1 | null;
+  setup: { color: string; types: GType[] } | null; /* 새 게임 설정: 파밀리아 색과 시작 검투사 두 유형 (고르는 동안 뒤에는 임시 판이 떠 있다) */ /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;
   cellSel: number;
   cellSide: 'glad' | 'empty' | null;
@@ -63,3 +64,17 @@ export interface State {
   shownSeason: boolean;
 }
 export const S = {} as State; // 초기값은 main.ts 가 원래 순서대로 대입한다
+
+// 우리 파밀리아 색: 새 게임에서 고른다. 벽화 안료로 설명되는 여섯 가지 (자유 색상은 낙서풍 팔레트를 깬다)
+// ink = 베테라누스, light = 티로. 상대는 stickman.ts 의 ENEMY(자주)
+export const TEAM_COLORS: { id: string; ko: string; ink: string; light: string }[] = [
+  { id: 'caeruleum', ko: '청금', ink: '#2c4f9b', light: '#6e7f9b' },   // 이집트 청(카이룰레움) — 기본
+  { id: 'viride', ko: '초록토', ink: '#3b7a4a', light: '#7b9b7e' },    // 녹토(테라 베르데)
+  { id: 'aerugo', ko: '청록', ink: '#2e7d7d', light: '#6e9b9b' },      // 청동 녹
+  { id: 'sil', ko: '황토', ink: '#b8860b', light: '#c2a86a' },         // 황토(실)
+  { id: 'minium', ko: '주사', ink: '#a8321f', light: '#b87a6a' },      // 주사(미니움)
+  { id: 'aes', ko: '구리', ink: '#8a5a2b', light: '#a98a66' },         // 구리빛 흙
+];
+export const teamColorOf = (id?: string) => TEAM_COLORS.find(c => c.id === id) ?? TEAM_COLORS[0];
+export const myInk = () => teamColorOf(S.st?.color).ink;      // 베테라누스
+export const myLight = () => teamColorOf(S.st?.color).light;  // 티로

@@ -1,5 +1,5 @@
 // 스틱맨 초상 캔버스와 대화 장면 루프 (Codex: 그림)
-import { S } from './state.js';
+import { S, myInk, myLight } from './state.js';
 import { type GType, type Gladiator } from '../core/types.js';
 import { ENEMY, INK, drawStickman, type Pose, type Skeleton, walkSkeleton } from './stickman.js';
 import { accessoriesOf } from '../core/epithets.js';
@@ -42,7 +42,7 @@ function drawPortrait(e: { c: HTMLCanvasElement; g: Gladiator; pose: 'idle' | 's
   const ctx = e.c.getContext('2d')!; const W = e.c.width / devicePixelRatio, S = e.c.height / devicePixelRatio; // S: 높이 (인물 크기·발 위치 기준), W: 폭 (가운데 맞춤)
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); ctx.clearRect(0, 0, W, S);
   ctx.fillStyle = '#e3d3a6'; ctx.fillRect(0, 0, W, S); ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, S - 8, W, 8);
-  const team = e.enemy ? ENEMY : e.g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
+  const team = e.enemy ? ENEMY : e.g.rank === 'veteranus' ? myInk() : myLight();
   const sc0 = 0.68 * (S / 64); // 초상 크기에 비례 (상세 페이지의 큰 초상은 2배 이상)
   const ENTER = 1.1; const el = e.enter ? (performance.now() - e.enter) / 1000 : ENTER; // 걸어 들어오기: 왼쪽 밖에서 가운데까지 1.1초
   if (el < ENTER) { const k = el / ENTER, ease = 1 - Math.pow(1 - k, 2); const x = -30 * sc0 + (W / 2 - 2 + 30 * sc0) * ease; const walk = walkSkeleton(el * 9, 1);

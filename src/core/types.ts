@@ -20,6 +20,7 @@ export interface Gladiator {
   fought?: boolean;     // 이번 시즌 출전함 (시즌당 1회)
   fatigue?: number;     // 누적 피로 0~3: 출전마다 +1, 쉬는 시즌마다 −1. 1당 공·방 −2, 미시오 −5%
   trained?: boolean;    // 이번 시즌 훈련함 (시즌당 1회)
+  form?: number;        // 이번 철의 몸 상태 −1~1. 시즌이 시작될 때 굴려 두고 그 철의 모든 경기에 적용한다 (공 +round(f×5) · 방 +round(f×4)). 배정 화면에서 미리 보인다
   buyPrice: number;
   alive: boolean;
   origin?: 'slave' | 'captive' | 'damnatus' | 'auctoratus'; // 출신: 노예 상인 / 전쟁 포로 / 형벌 죄수 / 자유민 계약자
@@ -102,7 +103,7 @@ export interface BattleEvent {
 }
 
 // 위치 스냅샷: [id, x, y, hp]
-export interface BattleFrame { t: number; u: [number, number, number, number][]; }
+export interface BattleFrame { t: number; u: [number, number, number, number, number][]; } // [검투사 id, x, y, 남은 HP, 남은 숨]
 
 export interface BattleResult {
   events: BattleEvent[];

@@ -1,5 +1,5 @@
 // 마을 장면 그림(의무실·훈련소·포룸·시장·묘지·거리)과 좌표 상수 (Codex: 그림)
-import { S } from './state.js';
+import { S, myInk, myLight } from './state.js';
 import { INK, NPC_POSES, attackClipFor, clipLength, clipSkeleton, drawStickman, type DrawOpts, type Skeleton, walkSkeleton } from './stickman.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { HOST } from '../core/hosts.js';
@@ -192,7 +192,7 @@ export function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
       const sel = g.id === S.marketSel, dim = S.marketSel != null && !sel;
       const x = slotX(i), y = H - 68 + (sel ? 8 : 0);
       ctx.globalAlpha = dim ? 0.45 : 1;
-      const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
+      const team = g.rank === 'veteranus' ? myInk() : myLight();
       const sc0 = sel ? 1.05 : 0.95;
       drawStickman(ctx, g.type, { x, y, scale: sc0, pose: sel ? 'captive_up' : 'captive', t: t + i, team, facing: 1, bare: true }); // 시장: 맨몸 + 손목 묶임 (고증)
       // 손목 밧줄: 두 손이 모인 자리(몸 앞 아래)에 고리 + 아래로 늘어진 줄
@@ -292,7 +292,7 @@ export function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
     if (!g) { // 빈 침상: 누르면 켈라에서 부상자를 고른다 (부상자가 있을 때만 표시)
       if (S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { const bob = Math.sin(t * 2 + i) * 1.2; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(bx + 37 - 7, H - 62 + bob); ctx.lineTo(bx + 37 + 7, H - 62 + bob); ctx.moveTo(bx + 37, H - 69 + bob); ctx.lineTo(bx + 37, H - 55 + bob); ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(58,36,18,.7)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('부상자 눕히기', bx + 37, H - 6); }
       return; }
-    const team = g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
+    const team = g.rank === 'veteranus' ? myInk() : myLight();
     ctx.save(); ctx.beginPath(); ctx.rect(bx - 4, 0, 92, H); ctx.clip();
     drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); crosses(bx + 37, H - 80, Math.min(4, g.injured), i);
     nameTag(g, bx + 37, H - 6); }); // 침상 아래 무기 아이콘 + 이름
@@ -445,7 +445,7 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       for (let i = 0; i < 2; i++) { const x = ax + 88 + i * 12; ctx.beginPath(); ctx.moveTo(x, 130); ctx.lineTo(x, 88); ctx.moveTo(x - 3, 92); ctx.lineTo(x, 84); ctx.lineTo(x + 3, 92); ctx.stroke(); }
       ctx.restore(); }
     // 검투사 배치: 팔루스에 세운 검투사는 그 기둥에서 각목(목검) 훈련(공격 클립 반복, 사람마다 위상 다르게). 세우지 않은 건강한 검투사는 짝이 맞는 만큼 연습장에서 대련(최대 2조)
-    const teamColor = (g: Gladiator) => g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b';
+    const teamColor = (g: Gladiator) => g.rank === 'veteranus' ? myInk() : myLight();
     for (let k2 = 0; k2 < postN; k2++) { const g = palusTrainee(S.st, k2); if (!g) continue; const px = posts[k2]; const clip = attackClipFor(g.type); const len = clipLength(clip) + 700; const el = ((t * 1000) + k2 * 400) % len;
       drawStickman(ctx, g.type, { x: px - 44, y: H - 20, scale: 0.9, skeleton: clipSkeleton(clip, el), t, team: teamColor(g), accessories: accessoriesOf(g) }); }
     const idle = roster.filter(g => g.alive && !g.injured && g.status !== 'doctor' && palusOf(S.st, g) < 0); const sparN = Math.min(4, idle.length) - (Math.min(4, idle.length) % 2);

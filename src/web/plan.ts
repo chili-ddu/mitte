@@ -5,7 +5,7 @@ import { ACTION_KO, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doSh
 import { Rng } from '../core/rng.js';
 import { battle } from '../core/battle.js';
 import { CONFIG } from '../core/config.js';
-import { LINEAGE_KO, TYPE_KO, powerOf, rentFee } from '../core/gladiator.js';
+import { LINEAGE_KO, TYPE_KO, powerOf, rentFee, formLabel, formTip } from '../core/gladiator.js';
 import { HOST } from '../core/hosts.js';
 import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
@@ -249,7 +249,7 @@ export function renderPlan() {
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 속도 ${g.base.spd} 사거리 ${g.base.range}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}${skillsOf(g).length ? `\n기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
     pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${dis ? ' dis' : ''}`, title: tip,
       onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
-      ...miniGlad(g, { size: 56, meta: [fat >= 2 ? h('span', { class: `badge ${fat >= 3 ? 'injured' : 'warn'}`, title: `피로 ${fat}: 계속 출전하면 과로 위험이 오른다` }, `피로 ${fat}`) : null, stateNode, revengeNode, tagNode] }), elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
+      ...miniGlad(g, { size: 56, meta: [formLabel(g) ? h('span', { class: `badge form ${formLabel(g) === '가벼움' ? 'good' : 'bad'}`, title: formTip(g) }, `몸 ${formLabel(g)}`) : null, fat >= 2 ? h('span', { class: `badge ${fat >= 3 ? 'injured' : 'warn'}`, title: `피로 ${fat}: 계속 출전하면 과로 위험이 오른다` }, `피로 ${fat}`) : null, stateNode, revengeNode, tagNode] }), elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
   }
   { const c = coach(); if (c) pleft.append(c); }
   app.classList.add('land', 'plan'); const frag = document.createDocumentFragment(); frag.append(tools, cpanel, bar);

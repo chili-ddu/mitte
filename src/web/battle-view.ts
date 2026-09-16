@@ -1,5 +1,5 @@
 // 전투 화면: 경기장 그림·재생·결과 (규칙은 core/battle.ts, 여기는 재생만)
-import { S } from './state.js';
+import { S, myInk, myLight } from './state.js';
 import { CEREMONIES, ENEMY, INK, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Skeleton, walkSkeleton } from './stickman.js';
 import { SKILLS, SKILL_NAME, skillsOf } from '../core/skills.js';
 import { type GType, type Gladiator, type HostKind } from '../core/types.js';
@@ -206,7 +206,7 @@ export function renderBattle() {
   const foldLineup = () => { lineup.classList.add('folded'); lineupTab.classList.add('show'); };
   const wrap = h('div', { class: 'panel battle' }, // 헤더 아래 장면 영역을 채운다 (헤더는 그대로). 편성(VS) 블록은 경기장 위에 겹쳐 띄웠다가 잠시 뒤 위로 접힌다
     h('div', { class: 'stage' }, canvas, lineup, lineupTab,
-      legendShown ? null : h('div', { class: 'legend' }, h('span', { style: 'color:#2c4f9b;font-weight:700' }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')),
+      legendShown ? null : h('div', { class: 'legend' }, h('span', { style: `color:${myInk()};font-weight:700` }, '■ 파란 방패·허리천 = 내 루두스'), '   ', h('span', { style: `color:${ENEMY};font-weight:700` }, '■ 자주색 = 상대 파밀리아')),
       h('div', { class: 'actions' }, skip)));
   app.append(headerEl(), wrap); app.classList.add('land', 'battle'); window.scrollTo(0, 0); // 전투도 같은 가로 무대 안: 위 헤더는 그대로, 아래는 경기장이 채운다 (하단 바 없음)
 // 경기장 높이 = 남는 높이 (스크롤 없이 바 바로 위까지)
@@ -492,13 +492,13 @@ export function renderBattle() {
       const breath = winded ? 1.4 + Math.sin(ct * 5.5 + id) * 1.6 : 0;
       if (a.clip.startsWith('combo') && busy && el > 120 && el < 300) { // 연속 공격: 2타의 잔상 (60ms 전 자세를 흐리게 겹쳐 그린다)
         const gs = clipSkeleton(a.clip, el - 60); ctx.save(); ctx.globalAlpha *= 0.32;
-        drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); ctx.restore(); }
-      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath, scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) });
+        drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) }); ctx.restore(); }
+      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath, scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) });
       if (winded && !busy) { const bx = p.x + recoilDx + lapDx + exitDx + face[id] * 18, by = p.y - 33 + breath, drift = (ct * 10 + id) % 1; ctx.save(); ctx.globalAlpha = exitAlpha * (0.34 + Math.sin(ct * 5.5 + id) * 0.12); ctx.strokeStyle = '#6e7f9b'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; for (let k = 0; k < 2; k++) { const d = (k * 5 + drift * 3) * face[id]; ctx.beginPath(); ctx.arc(bx + d, by - k * 5, 3 + k * 1.5, face[id] > 0 ? -0.9 : Math.PI - 0.9, face[id] > 0 ? 0.9 : Math.PI + 0.9); ctx.stroke(); } ctx.restore(); } // 숨참: 막대 없이도 지친 검투사를 읽게 하는 얇은 숨결
       if (exitAlpha <= 0) { ctx.globalAlpha = 1; continue; }
       ctx.globalAlpha = exitAlpha; // 퇴장(미시오 생존·승자 퇴장) 중에는 이름표·체력바도 사람과 함께 옮겨 가며 사라진다
       ctx.fillStyle = TYPE_COLOR[u.g.type]; ctx.beginPath(); ctx.arc(p.x + recoilDx - 22 + lapDx + exitDx, p.y + 40, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = u.side === 'A' ? '#2c4f9b' : ENEMY; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = u.side === 'A' ? myInk() : ENEMY; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(u.side === 'A' ? u.g.name : u.g.name.replace('(적)', ''), p.x + recoilDx + 3 + lapDx + exitDx, p.y + 44);
       const ratio = Math.max(0, hp[id]) / r.initialHp[id];
       ctx.fillStyle = '#7a6a4e'; ctx.fillRect(p.x + recoilDx - 17 + lapDx + exitDx, p.y - 56, 34, 4);
@@ -538,7 +538,7 @@ export function renderBattle() {
       else if (f.kind === 'thrust') { const life = f.life ?? 0.34, k2 = 1 - f.t / life; ctx.strokeStyle = '#6b4a22'; ctx.globalAlpha = 0.78 * (1 - k2); ctx.lineWidth = 2.8 - k2 * 1.5; for (const o of [-4, 4]) { ctx.beginPath(); ctx.moveTo(f.x - f.dir * (34 + k2 * 8), f.y + o); ctx.lineTo(f.x + f.dir * (22 + k2 * 22), f.y + o * 0.4); ctx.stroke(); } ctx.strokeStyle = '#9b2c1c'; ctx.globalAlpha = 0.7 * (1 - k2); ctx.beginPath(); ctx.moveTo(f.x - f.dir * 8, f.y); ctx.lineTo(f.x + f.dir * (20 + k2 * 18), f.y - 2); ctx.stroke(); }
       else if (f.kind === 'dust') { const k2 = 1 - f.t / 0.5; ctx.globalAlpha = 0.6 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI + Math.PI; const rr = 8 + k2 * 22; ctx.beginPath(); ctx.arc(f.x - f.dir * 10 + Math.cos(a) * rr, f.y + Math.sin(a) * rr * 0.4, 3 + k2 * 4, 0, Math.PI * 2); ctx.stroke(); } }
       else { const life = f.life ?? 0.5, k2 = 1 - f.t / life; const u = f.id != null ? byId[f.id] : null; const cur = f.id != null ? pos[f.id] : null; // 기술 연출
-        if (f.kind === 'ghost' && u && cur) { ctx.globalAlpha = 0.35 * (1 - k2); drawStickman(ctx, u.g.type, { x: cur.x - f.dir * (10 + k2 * 26), y: cur.y + 30 * SC, scale: 1.15 * SC, facing: f.dir as 1 | -1, pose: 'guard', t: 0, team: u.side === 'A' ? '#2c4f9b' : ENEMY, accessories: accessoriesOf(u.g) }); }
+        if (f.kind === 'ghost' && u && cur) { ctx.globalAlpha = 0.35 * (1 - k2); drawStickman(ctx, u.g.type, { x: cur.x - f.dir * (10 + k2 * 26), y: cur.y + 30 * SC, scale: 1.15 * SC, facing: f.dir as 1 | -1, pose: 'guard', t: 0, team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) }); }
         else if (f.kind === 'shock') { ctx.globalAlpha = 0.8 * (1 - k2); ctx.lineWidth = 3 - k2 * 1.5; for (let i = 0; i < 2; i++) { const rr = 14 + k2 * 26 + i * 8; ctx.beginPath(); ctx.arc(f.x, f.y - 6, rr, -Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI), Math.PI * 0.45 + (f.dir > 0 ? 0 : Math.PI)); ctx.stroke(); } }
         else if (f.kind === 'gslash') { ctx.strokeStyle = '#d4a52a'; ctx.globalAlpha = 1 - k2; ctx.lineWidth = 4 - k2 * 2; ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y, 24 + k2 * 12, 0.5 * f.dir + (f.dir > 0 ? Math.PI : 0), -0.9 * f.dir + (f.dir > 0 ? Math.PI : 0), f.dir > 0); ctx.stroke(); }
         else if (f.kind === 'dslash') { ctx.globalAlpha = 1 - k2; ctx.lineWidth = 3 - k2 * 2; for (const o of [-7, 7]) { ctx.beginPath(); ctx.arc(f.x - f.dir * 8, f.y + o, 24 + k2 * 10, -0.9 * f.dir + (f.dir > 0 ? 0 : Math.PI), 0.5 * f.dir + (f.dir > 0 ? 0 : Math.PI), f.dir < 0); ctx.stroke(); } }
@@ -689,5 +689,8 @@ function renderResult() {
       h('div', { class: 'mrow total' }, h('span', {}, '수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)))),
   ));
   app.prepend(headerEl()); window.scrollTo(0, 0);
-  app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, () => { S.phase = 'battle'; nextFight(); }, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', () => { S.phase = 'battle'; nextFight(); })); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
+  const needsChoice = r.rudis.some(g => g.status === 'rudiarius');
+  const advance = () => { if (S.phase !== 'result' || S.report !== r) return; S.phase = 'battle'; nextFight(); };
+  app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, advance, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', advance)); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
+  if (!needsChoice) window.setTimeout(advance, flags.length ? 3200 : 2200); // 짧은 결과는 보고만 지나간다. 루디스 거절처럼 즉시 선택이 있으면 자동 넘김을 멈춘다.
 }

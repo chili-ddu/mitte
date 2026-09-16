@@ -1,5 +1,5 @@
 // 검투사 상세·확정(구매/매각/치료) 페이지와 카드 조각
-import { S } from './state.js';
+import { S, myInk, myLight } from './state.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
 import { buy, canBuy, cellOf, cellQuality, heal, healCostOf, inBed, leavePalus, mentoredBy, moveToCell, occupantOf, palusOf, priceOf, recordVsMe, release, renewContract, renewCost, rivalOf, rivalStar, rosterCap, sell, skillTrainable, trainGain, upgrade, upgradeCost } from '../core/game.js';
@@ -101,7 +101,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
   const ENTER = 0.9; const gx1 = W * 0.36; const k = Math.min(1, el / ENTER), ease = 1 - Math.pow(1 - k, 2); const gx = -40 + (gx1 + 40) * ease;
   if (e.what === 'heal') { // 치료 장면: 침상에 걸터앉은 부상자(왼쪽) + 붕대 뭉치를 든 의사(오른쪽에서 걸어와 살핀다). 도장이 찍히면 일어선다
     const bx = gx1 - 30 * sc, by = gy; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx, by - 22 * sc); ctx.lineTo(bx + 70 * sc, by - 22 * sc); ctx.moveTo(bx + 3, by - 22 * sc); ctx.lineTo(bx + 3, by); ctx.moveTo(bx + 70 * sc - 3, by - 22 * sc); ctx.lineTo(bx + 70 * sc - 3, by); ctx.stroke(); ctx.fillStyle = '#e8d9b5'; ctx.fillRect(bx + 2, by - 27 * sc, 70 * sc - 4, 5 * sc); // 침상
-    const up = e.healed ? Math.max(0, Math.min(1, (performance.now() - e.healed) / 600)) : 0; const team = e.g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b'; const w = Math.sin(t * 2);
+    const up = e.healed ? Math.max(0, Math.min(1, (performance.now() - e.healed) / 600)) : 0; const team = e.g.rank === 'veteranus' ? myInk() : myLight(); const w = Math.sin(t * 2);
     const sit: Skeleton = { ...NPC_POSES.stand, lean: 8, frontArm: [40, 60], backArm: [30, 50], frontLeg: [40, -70], backLeg: [-10, -70], headBob: 6 + w * 0.5, sink: 18 }; // 침상에 걸터앉음
     const stand: Skeleton = { ...NPC_POSES.stand, lean: -2, frontArm: [20 + w * 3, 15], headBob: 0 };
     const lerp = (a: number, b: number, u: number) => a + (b - a) * u; const pair = (a: readonly [number, number], b: readonly [number, number], u: number): [number, number] => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
@@ -112,7 +112,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
     const tending = mk >= 1 && ((el > 1.2 && el < 2.4) || (el > 3.6 && el < 4.8)); const msk: Skeleton = mk < 1 ? { ...walkSkeleton(el * 9, 0.8), frontArm: [55, 50] } : tending ? { ...NPC_POSES.tend, lean: 14 + w * 2, frontArm: [72 + w * 6, 34], backArm: [50, 45], headBob: 5 } : { ...NPC_POSES.tablet, lean: 3, headBob: w * 0.6 };
     drawStickman(ctx, 'murmillo', { x: mx, y: gy, scale: sc, facing: -1, skeleton: msk, t, ink: INK, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16', hands: (c, f) => { c.fillStyle = '#f3ead0'; c.beginPath(); c.arc(f.hx - 3, f.hy - 4, 5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#c9b283'; c.lineWidth = 1; c.stroke(); } }); // 붕대 뭉치
     return; }
-  const team = e.g.rank === 'veteranus' ? '#2c4f9b' : '#6e7f9b'; const w = Math.sin(t * 2);
+  const team = e.g.rank === 'veteranus' ? myInk() : myLight(); const w = Math.sin(t * 2);
   const gsk: Skeleton = k < 1 ? walkSkeleton(el * 9, 1) : e.what === 'release' ? { ...NPC_POSES.stand, lean: 2, frontArm: [30 + w * 3, 40], headBob: 1 } : e.what === 'sell' ? { ...NPC_POSES.stand, lean: -3, headBob: 6 + w * 0.5, frontArm: [10, 8] } : { ...NPC_POSES.stand, lean: 4, headBob: 2, frontArm: [20 + w * 3, 15] };
   if (e.what === 'buy') { // 시장 노예: 판매대와 똑같이 맨몸 + 손목 묶임 + 발의 백묵 (걸어 들어온 뒤)
     if (k < 1) drawStickman(ctx, e.g.type, { x: gx, y: gy, scale: sc, skeleton: gsk, t, team, facing: 1, bare: true });

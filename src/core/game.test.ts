@@ -1,0 +1,53 @@
+// 게임 진행 골든 테스트: 새 게임·시즌·저장이 시드대로 재현되는가
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { newGame, score, serialize, deserialize, endSeason, available } from './game.js';
+import { formLabel, formMod } from './gladiator.js';
+import { CONFIG } from './config.js';
+
+test('새 게임은 시드대로 재현된다 (골든)', () => {
+  const st = newGame(2026);
+  assert.equal(st.money, CONFIG.startMoney);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['세베루스', 14, 3], ['플람마', 12, 6]]);
+  assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.371);
+  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.578, -0.467]);
+  assert.equal(st.contracts.length, 4);
+  assert.equal(score(st), 28165);
+  assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
+});
+
+test('몸 상태는 시즌마다 다시 정해지고 모두에게 있다', () => {
+  const st = newGame(11);
+  const before = st.roster.map(g => g.form);
+  endSeason(st);
+  const after = st.roster.map(g => g.form);
+  assert.ok(after.every(f => typeof f === 'number' && Math.abs(f!) <= 1), '모두 −1~1');
+  assert.notDeepEqual(after, before, '철이 바뀌면 다시 굴린다');
+});
+
+test('몸 상태의 말과 수치가 맞물린다', () => {
+  const st = newGame(5); const g = st.roster[0];
+  g.form = 0.8; assert.equal(formLabel(g), '가벼움'); assert.deepEqual(formMod(g), { atk: 4, def: 3 });
+  g.form = -0.8; assert.equal(formLabel(g), '무거움'); assert.deepEqual(formMod(g), { atk: -4, def: -3 });
+  g.form = 0; assert.equal(formLabel(g), null); assert.deepEqual(formMod(g), { atk: 0, def: 0 });
+  g.form = CONFIG.form.tell; assert.equal(formLabel(g), '가벼움', '문턱 위는 드러난다');
+});
+
+test('저장하고 불러오면 그대로다 (몸 상태 포함)', () => {
+  const st = newGame(77); endSeason(st);
+  const back = deserialize(JSON.parse(JSON.stringify(serialize(st))));
+  assert.equal(back.money, st.money);
+  assert.equal(back.season, st.season);
+  assert.equal(back.formTeam, st.formTeam);
+  assert.deepEqual(back.roster.map(g => [g.name, g.form, g.fatigue]), st.roster.map(g => [g.name, g.form, g.fatigue]));
+  assert.equal(score(back), score(st));
+});
+
+test('출전 가능 명단은 부상·독토르·이번 철 출전자를 뺀다', () => {
+  const st = newGame(9);
+  assert.equal(available(st).length, st.roster.length);
+  st.roster[0].injured = 1;
+  assert.ok(!available(st).includes(st.roster[0]));
+  st.roster[0].injured = 0; st.roster[0].fought = true;
+  assert.ok(!available(st).includes(st.roster[0]));
+});

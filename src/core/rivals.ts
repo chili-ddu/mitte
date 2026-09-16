@@ -18,7 +18,7 @@ export const RIVAL_DEFS: { id: number; name: string; profile: RivalProfile; fame
 const ROSTER_SIZE = 6;
 const PROFILE = { local: { vet: 0, grow: 0, skills: 0 }, major: { vet: 0.35, grow: 1, skills: 1 }, grand: { vet: 0.6, grow: 2, skills: 1 } }; // 서열 확률 가산 · 공방 가산 · 기술 가산
 
-function strengthAt(season: number, fame = 0) { return 0.75 + season * 0.03 + Math.max(0, fame - 50) * CONFIG.rivalFameGrow; } // 시즌 + 내 명성(50 위로 1점당 0.4%): 이름난 루두스에는 강한 파밀리아가 붙는다
+function strengthAt(season: number, fame = 0) { void fame; return 0.75 + season * 0.03; } /* 내 호감도에 따른 가산은 뺐다 — 계약 생성기가 목표 전력으로 정규화해 효과가 없었다 (난이도는 CONFIG.contractDiff 의 이름값 가산으로) */ // 시즌 + 내 명성(50 위로 1점당 0.4%): 이름난 루두스에는 강한 파밀리아가 붙는다
 const ORD = ['', ' 세쿤두스', ' 테르티우스', ' 콰르투스', ' 퀸투스'];
 function makeMember(rng: Rng, season: number, roster: Gladiator[] = [], profile: RivalProfile = 'local', fame = 0): Gladiator {
   const P = PROFILE[profile]; const s = strengthAt(season, fame); const rank = rng.chance(Math.min(0.95, s - 0.6 + P.vet)) ? 'veteranus' : 'tiro';

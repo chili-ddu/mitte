@@ -37,9 +37,10 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     let tier: 1 | 2 | 3 = 1;
     if (season >= 3 && fame >= CONFIG.fameTierReq[2] && rng.chance(0.3 + season * 0.04)) tier = 2; // 첫 두 시즌은 등급 1만
     if (fame >= CONFIG.fameTierReq[3] && rng.chance(0.3)) tier = 3;
+    while (tier < 3 && ref > CONFIG.tierPowerCap[tier] * CONFIG.tierGraduate && fame >= CONFIG.fameTierReq[tier + 1]) tier = (tier + 1) as 1 | 2 | 3; // 졸업 판정은 으뜸이 아니라 평균으로 — 으뜸 기준이면 새로 산 검투사를 키울 하위 경기가 사라진다(사용자) // 졸업: 상한을 추월한 등급은 더 이상 나를 부르지 않는다
     const host: HostKind = rng.pick(HOSTS_BY_TIER[tier]);
     const strength = 0.75 + season * 0.03 + (tier - 1) * 0.15; // 적 강도
-    const cap = CONFIG.tierPowerCap[tier]; // 등급별 상대 전력 상한: 시골 경기장에 단련된 베테라누스는 나오지 않는다. 내 편은 제한 없음
+    const cap = CONFIG.tierPowerCap[tier]; // 등급별 상대 전력 상한: 시골 경기장에 단련된 베테라누스는 나오지 않는다. 내 편은 제한 없음 // 상한: 등급별 고정값과 내 으뜸 검투사의 비율 중 큰 쪽 // 등급별 상대 전력 상한: 시골 경기장에 단련된 베테라누스는 나오지 않는다. 내 편은 제한 없음
     const fits = (g: Gladiator) => powerOf(g) <= cap;
     const size: 1 | 2 | 3 = tier === 1 ? rng.pick([1, 1, 1, 1, 2, 2] as const) : tier === 2 ? rng.pick([1, 1, 2, 2, 3] as const) : rng.pick([2, 3, 3] as const); // 고증: 무누스의 기본은 1대1 결투(파리아). 집단전은 대형 경기에만
     // 상대: 파밀리아 중 하나에서 뽑는다 (맞는 조합이 없으면 타지 라니스타의 검투사)

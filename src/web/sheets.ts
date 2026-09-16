@@ -95,7 +95,7 @@ function menuPanel(): Node {
     h('button', { onclick: () => { const inp = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
       inp.onchange = () => { const f = inp.files?.[0]; if (!f) return; f.text().then(txt => { try { const next = deserialize(JSON.parse(txt)); void ask(`${next.lanista.name} ${next.season}번째 시즌 저장을 불러옵니다. 지금 게임은 덮어씁니다.`, { ok: '불러오기' }).then(ok => { if (!ok) return; S.st = next; S.phase = 'manage'; S.sheet = null; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; S.cellsOpen = false; S.notice = '저장 파일을 불러왔습니다.'; render(); }); } catch { void tell('저장 파일을 읽을 수 없습니다.'); } }); };
       inp.click(); } }, '저장 파일 불러오기'),
-    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); S.st = newGame(Math.floor(Math.random() * 100000)); S.phase = 'manage'; S.sheet = null; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); }); } }, '새 게임')));
+    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); S.setup = { color: S.st.color ?? 'caeruleum', types: [] }; S.phase = 'manage'; S.sheet = null; /* 새 게임도 설정 화면부터 */ S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); }); } }, '새 게임')));
 }
   // 문 앞의 지원자 (자유민 아욱토라티): 계약금으로 데려온다
 function applicantsPanel(): Node | null {
@@ -185,7 +185,7 @@ function renderHelp(): Node {
       row('내기 (스폰시오)', '기량 시합에 거는 내기는 로마법에서도 허용됐다(Digesta 11.5). 도박꾼 주최자의 계약에서 받으면 이길 때 상금 두 배, 지면 상금만큼 물어낸다.')),
     sec('경영',
       row('수입', `계약마다 대여료 (티로 ${CONFIG.rentTiro}, 베테라누스 ${CONFIG.rentVeteran}) + 승리 상금 (등급×${CONFIG.prizePerTier}). 대여료는 승패와 무관 (고증).`),
-      row('출전 경비', `대여료의 ${Math.round(CONFIG.fightExpense.rentRate * 100)}% (장비 정비·식량·의료) + 등급×${CONFIG.fightExpense.perTier} (이동·호송) 이 경기마다 차감.`),
+      row('출전 경비', `대여료의 ${Math.round(CONFIG.fightExpense.rentRate * 100)}% (장비 정비·식량·의료) + 등급별 이동·호송비 (${[1, 2, 3].map(t => CONFIG.fightExpense.byTier[t].toLocaleString()).join(' · ')}) 가 경기마다 차감. 큰 경기일수록 가는 길이 비싸다.`),
       row('지출', `시즌 유지비: 티로 ${CONFIG.upkeepTiro}, 베테라누스 ${CONFIG.upkeepPerGladiator}, 독토르 ${CONFIG.doctorSalary} (켈라 4칸 이하 작은 루두스는 검투사 유지비 −25%). 시설은 단계마다 유지비. 호감도 ${CONFIG.upkeepFame.from} 이상이면 명성 유지비 (호감도−50)×${CONFIG.upkeepFame.per}. 훈련은 따로 돈을 받지 않고 팔루스 유지비(${CONFIG.upkeepFacility.palus}/개)에 든다.`),
       row('호감도', `승리 +${CONFIG.fameDelta.win} (호감도 ${CONFIG.fameDelta.winAt[0][0]}↑이면 +${CONFIG.fameDelta.winAt[0][1]}, ${CONFIG.fameDelta.winAt[1][0]}↑이면 +${CONFIG.fameDelta.winAt[1][1]}), 패배 ${CONFIG.fameDelta.lose}, 사망 ${CONFIG.fameDelta.death}. 매 시즌 망각 ${CONFIG.fameDelta.decay} (${CONFIG.fameDelta.decayAt[0][0]}↑ ${CONFIG.fameDelta.decayAt[0][1]}, ${CONFIG.fameDelta.decayAt[1][0]}↑ ${CONFIG.fameDelta.decayAt[1][1]}; 한 번이라도 출전하면 +${CONFIG.fameDelta.active}). 명성은 오를수록 지키기 어렵다. 받을 수 있는 중요한 계약(등급 2·3)을 거절하면 시즌당 ${CONFIG.fameDelta.refuse} (검투사를 전부 내보냈으면 벌점 없음). 등급 2는 ${CONFIG.fameTierReq[2]}, 등급 3은 ${CONFIG.fameTierReq[3]} 이상 필요.`),
       row('별칭', `베테라누스가 전적 조건을 채우면 붙는다 (최대 3개, 초상·경기 화면에 장식). ${EPITHETS.map(e => `'${e.name}'${e.attested ? '*' : ''}(${e.cond}: ${e.effect})`).join(' · ')}. *는 폼페이 낙서·묘비·마르티알리스의 실제 기록.`),
