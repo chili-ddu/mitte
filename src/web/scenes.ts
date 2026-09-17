@@ -366,7 +366,8 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     }
     // 스냅 감지: 팁 속도가 크고 땅 근처면 "딱!"
     const tip = whipState.p[WN - 1]; const sp = Math.hypot(tip.x - tip.px, tip.y - tip.py) / Math.max(h2, 1e-3);
-    if (ph > 1.65 && ph < 2.2 && sp > 600 && tip.y > -10 && t - whipState.crackT > 1.5) { whipState.crackT = t; whipState.crackX = tip.x; if (document.visibilityState === 'visible' && S.view === 'ludus' && !S.travel) sfx.whip(); }
+    if (ph > 1.65 && ph < 2.2 && sp > 600 && tip.y > -10 && t - whipState.crackT > 1.5) { whipState.crackT = t; whipState.crackX = tip.x; { const wx = TOWN.yardX + tip.x, onScreen = wx > S.camX + 16 && wx < S.camX + S.VW - 16; /* 채찍이 실제로 화면 안에 있을 때만 (S.view 는 카메라가 향하는 곳일 뿐, 보이는 것과 다르다) */
+      if (document.visibilityState === 'visible' && onScreen) sfx.whip(); } }
     return hand;
   };
   const drawWhip = (t: number, facing: number, sc: number) => {

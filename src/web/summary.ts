@@ -1,12 +1,13 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S } from './state.js';
-import { ACTION_KO, EVENT_KEYS, EVENT_KO, healCostOf, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, EVENT_KEYS, EVENT_KO, healCostOf, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
 import { h } from './dom.js';
 import { clearSave, render, tabbar } from './main.js';
 import { portrait } from './portrait.js';
+import { gladCard, CARD_PORTRAIT } from './gcard.js';
 import { arenaIcon } from './scenes.js';
 import { coach } from './header.js';
 import { camFor, lanista, restX } from './town.js';
@@ -32,9 +33,9 @@ export function renderSummary() {
   const net = S.st.money - sum.before;
   const fameFights = S.seasonReports.reduce((a, r) => a + r.fameDelta, 0);
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${Math.abs(v).toLocaleString()}`));
-  const badge = (cls: string, text: string) => h('span', { class: `badge ${cls}` }, text);
+  const fline = (text: string, tone: 'bad' | 'good' | 'grave' | 'plain' = 'plain') => h('span', { class: `fline ${tone}` }, text); // 정산도 칩 대신 문장으로 (2026-09-17 사용자)
   const fateOf = (r: FightReport, g: Gladiator) => { const f = r.fates.find(x => x.g.id === g.id); const downed = r.downed.some(d => d.id === g.id); const won = r.winner === 'A';
-    return f?.fate === 'dead' ? badge('dead', f.wound ? '즉사' : '처형') : f?.fate === 'injured' ? badge('injured', '부상') : downed ? badge('missio', won ? '쓰러졌으나 무사' : '미테! 살았다') : badge('ok', '무사'); };
+    return f?.fate === 'dead' ? fline(f.wound ? '그 자리에서 숨졌다' : '관중의 뜻으로 처형됐다', 'grave') : f?.fate === 'injured' ? fline(g.injured >= 3 ? '크게 다쳐 눕는다' : '다쳐서 쉰다', 'bad') : downed ? fline(won ? '쓰러졌으나 걸어 나왔다' : '미테! 관중이 살렸다', 'bad') : fline('무사하다'); };
   const nameOf = (r: FightReport, id: number) => [...r.team, ...r.contract.enemy].find(g => g.id === id)?.name.replace('(적)', '') ?? '누군가';
   const turnOf = (r: FightReport) => { const last = [...r.events].reverse().find(e => e.kind === 'attack' && e.downed); if (last?.open) return `${nameOf(r, last.target!)}의 빈틈이 승부를 갈랐다.`; if (last?.crit) return `${nameOf(r, last.actor)}의 치명타가 갑주 틈을 찔렀다.`; const st = r.events.find(e => e.kind === 'stumble'); return st ? `${nameOf(r, st.actor)}이(가) 먼저 헛디뎠다.` : r.log.slice(-1)[0] ?? '짧은 경기였다.'; };
   // 경기 카드
@@ -44,7 +45,7 @@ export function renderSummary() {
       h('div', {}, h('b', { class: r.winner === 'A' ? 'plus' : r.winner === 'B' ? 'minus' : '' }, r.winner === 'A' ? '승리' : r.winner === 'B' ? '패배' : '무승부'), ` · 등급 ${r.contract.tier} ${r.contract.venue} `, h('span', { class: 'size' }, `${r.contract.size}대${r.contract.size}`), ' · ', h('span', { class: 'meta' }, HOST_KO[r.contract.host]), r.classic ? h('span', { class: 'syn classic', style: 'margin-left:6px' }, '전통 짝') : null),
       h('div', { class: 'meta' }, `수지 ${gnet >= 0 ? '+' : '−'}${Math.abs(gnet).toLocaleString()} HS · 호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}${harm.length ? ` · 피해 ${harm.length}` : ''}`),
       h('div', { class: 'turnline' }, turnOf(r)))),
-    h('div', { class: 'grow2' }, ...r.team.map(g => h('div', { class: 'mini' }, portrait(g, 44), h('div', {}, h('div', { class: 'nm' }, g.name), h('div', {}, fateOf(r, g), r.promoted.includes(g) ? badge('promo', '★ 승급') : null)))))); });
+    h('div', { class: 'grow2' }, ...r.team.map(g => gladCard(g, { size: CARD_PORTRAIT, cls: 'small', rows: [h('div', {}, fateOf(r, g), r.promoted.includes(g) ? fline(' · 베테라누스로 승급', 'good') : null)] })))); }); /* 정산도 공통 검투사 카드 (2026-09-17 사용자) */
   // 로스터 변화
   const dead = S.seasonReports.flatMap(r => r.fates.filter(f => f.fate === 'dead').map(f => f.g));
   const injuredNow = S.st.roster.filter(g => g.injured > 0);
@@ -54,7 +55,7 @@ export function renderSummary() {
   if (promoted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `승급: ${promoted.map(g => g.name).join(', ')} → 베테라누스`)));
   { const ne = S.seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
   { const freed = S.seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
-  if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => `${t.g.name} ${t.stat === 'atk' ? '공격' : '방어'} +1`).join(', ')}`)));
+  if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => `${t.g.name} ${TRAIN_KO[t.stat]} +${t.gain}`).join(', ')}`)));
   if (S.st.lastLeft?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `계약 만료로 떠남: ${S.st.lastLeft.join(', ')}`)));
   if (S.st.lastOverwork?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `혹사 끝에 쓰러져 죽음: ${S.st.lastOverwork.join(', ')} — 피로가 쌓인 채 시즌을 넘겼다`)));
   if (S.st.lastFreed?.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `형기 만료: ${S.st.lastFreed.join(', ')} — 자유민이 됐습니다 (독토르 고용 또는 급료 출전)`)));

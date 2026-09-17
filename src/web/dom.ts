@@ -15,6 +15,15 @@ export function ask(msg: string, opts: { ok?: string; cancel?: boolean; title?: 
     document.body.append(ov); (ov.querySelector('button.primary') as HTMLButtonElement).focus();
   });
 }
+// 토스트: 화면 위 가운데에 떴다가 떠오르며 사라지는 한 줄. **이 함수가 유일한 통로다** — 화면마다 따로 만들지 않는다 (2026-09-17 사용자)
+// 말만 넘기면 되고(`toast('…')`), 좋고 나쁨은 tone 으로. `S.notice` 도 render() 가 이 함수로 흘려보낸다.
+let toastTimer = 0;
+export function toast(text: string, tone: 'good' | 'bad' | 'plain' = 'plain') {
+  if (!text) return;
+  document.querySelector('.toast')?.remove(); window.clearTimeout(toastTimer);
+  const el = h('div', { class: `toast ${tone}` }, text); document.body.append(el);
+  toastTimer = window.setTimeout(() => el.remove(), 3600); // 애니메이션(toastup 3.6s)이 끝나면 치운다
+}
 export const tell = (msg: string, title?: string) => ask(msg, { cancel: false, title });
 // ? 아이콘: 누르면 자세한 설명 모달. 화면에는 짧은 말만 남긴다
 export const helpBtn = (title: string, body: string) => { const b = h('button', { class: 'qmark', title: '설명', onclick: (ev: Event) => { ev.stopPropagation(); void tell(body, title); } });
@@ -54,6 +63,7 @@ export function showTip(target: Element) {
 // 한국어 조사: 받침이 있으면 '으로', 없거나 ㄹ 받침이면 '로' (포룸으로 · 훈련소로 · 의무실로)
 export function ro(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; const jong = c >= 0 && c <= 11171 ? c % 28 : 0; return jong === 0 || jong === 8 ? '로' : '으로'; }
 export function ga(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '이' : '가'; } // 받침이 있으면 '이'
+export function eul(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '을' : '를'; } // 받침이 있으면 '을'
 export function eun(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '은' : '는'; } // 받침이 있으면 '은'
 export function hideTip() { if (S.tipEl) { S.tipEl.remove(); S.tipEl = null; } S.tipFor = null; }
 export const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;

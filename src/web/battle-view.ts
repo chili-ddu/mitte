@@ -12,7 +12,7 @@ import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
 import { refuseRudis, rivalOf, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
-import { ask, h, sq, eun, ga } from './dom.js';
+import { ask, h, sq, eun, eul, ga } from './dom.js';
 import { DEBUG, app } from './main.js';
 import { TYPE_COLOR, glyphSvg } from './portrait.js';
 import { headerEl } from './header.js';
@@ -266,6 +266,8 @@ export function renderBattle() {
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
   let zoomOutDur = 1.2;
+  const lastCam = { cx: 0, z: 1 }; // 방금 그린 카메라
+  const audible = (x: number) => Math.abs((x - lastCam.cx) * lastCam.z) < W / 2 + 60; // 효과음은 그 일이 화면에 보일 때만 (2026-09-17 규칙)
   let crowdCheer = 0, hushUntil = -1; // hushUntil: 판정 직후의 정적 (소리도 함성도 멎는다)
   const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
@@ -350,7 +352,7 @@ export function renderBattle() {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
       const e = r.events[ei++];
-      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.whip();
+      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); { const px = posAt(ct)[e.actor]?.x ?? 0; if (audible(px)) { if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.hit(true); } } /* 채찍 소리는 훈련소의 것이라 전투 기술에서는 쓰지 않는다 */
         skillFx(e.actor, e.skill ?? '', ct); continue; }
       if (e.kind === 'stumble') { const trip = !!e.trip; flash.push({ id: e.actor, t: trip ? 1.8 : 1.3, text: trip ? '넘어졌다!' : '헛디딤!', color: trip ? '#9b1f14' : '#6b4a22' });
         if (trip) { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.7); const pp = posAt(ct)[e.actor]; shouts.length = 0; shouts.push({ text: '넘어졌다!', t: 1.4, x: pp.x }); } const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
@@ -384,7 +386,7 @@ export function renderBattle() {
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
         if (e.downed) addWall(`${byId[aid].g.name.replace('(적)', '')} V`, true); // 이긴 자의 이름과 V(vicit)
         if (e.downed && isFinal && !woundOf(tid)) { const pw = posAt(ct)[tid]; fx.push({ kind: 'sandwall', x: pw.x, y: pw.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); } // 항복으로 끝나도 먼지는 인다
-        if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo));
+        if (audible(posAt(ct)[tid]?.x ?? 0)) { if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo)); } // 화면 밖의 타격은 들리지 않는다
         const stack = flash.filter(f => f.id === tid).length;
         flash.push({ id: tid, t: 1 + stack * 0.35, text: `-${e.dmg}${e.counter ? '!' : ''}${e.charge ? ' 돌진' : ''}${e.combo ? ' 연속' : ''}${e.blocked ? ' 방패' : ''}${e.net ? ' 그물' : ''}`, color: e.counter ? '#9b2c1c' : e.blocked ? '#2c4f9b' : '#2b1d0e' });
         const heavy = e.counter || e.charge || e.downed;
@@ -402,7 +404,7 @@ export function renderBattle() {
           const main = equipOf(byId[tid].g.type).main, dx = sx(e.dropX), dy = sy(e.dropY);
           fx.push({ kind: 'weaponfly', x: dx, y: dy, x2: pt.x, y2: pt.y - 18, t: 0.55, life: 0.55, dir: dx > pt.x ? 1 : -1, seed: tid, main });
           fx.push({ kind: 'weapondown', x: dx, y: dy, t: CONFIG.disarm.sec, life: CONFIG.disarm.sec, dir: 1, seed: tid, main });
-          flash.push({ id: tid, t: 1.6, text: '무기를 놓쳤다!', color: '#9b1f14' }); addWall(byId[aid].g.name.replace('(적)', '')); slowUntil = Math.max(slowUntil, ct + 0.3); sfx.block(); }
+          flash.push({ id: tid, t: 1.6, text: '무기를 놓쳤다!', color: '#9b1f14' }); addWall(byId[aid].g.name.replace('(적)', '')); slowUntil = Math.max(slowUntil, ct + 0.3); if (audible(pt.x)) sfx.block(); }
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
         if (!e.blocked && Math.random() < pBlood) { addMark(pt.x + (Math.random() - 0.5) * 22, pt.y + 26, 'blood', 4 + ratioDmg * 12); bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2); }
@@ -469,7 +471,7 @@ export function renderBattle() {
       const lim = Math.max(0, WORLD.rx - W / (2 * CAM_IN.z) + 40);
       const tx = Math.max(-lim, Math.min(lim, mx));
       followX += (tx - followX) * Math.min(1, dt * 2.5); }
-    const cam = camera(ct, lastDtReal);
+    const cam = camera(ct, lastDtReal); lastCam.cx = cam.cx; lastCam.z = cam.z; // 소리 판정용 (화면 밖의 일은 들리지 않는다)
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#e6d6ad'; ctx.fillRect(0, 0, W, H);
     const shakeK = ct < shakeUntil ? (shakeUntil - ct) / Math.max(0.001, shakeUntil - shakeStart) : 0;
@@ -782,11 +784,13 @@ function renderResult() {
   const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
   const bad = r.fates.filter(f => f.fate === 'dead' || f.fate === 'injured');
+  // 결과·정산은 칩 대신 문장으로 말한다 (2026-09-17 사용자): 경기가 끝난 자리에서는 한 줄로 읽히는 편이 낫다
   const flags: Node[] = [];
-  for (const f of bad) flags.push(h('span', { class: `badge ${f.fate === 'dead' ? 'dead' : 'injured'}` }, `${f.g.name} ${f.fate === 'dead' ? '사망' : '부상'}`));
-  for (const g of r.rudis) { flags.push(h('span', { class: 'badge free' }, `${g.name} 루디스`)); if (g.status === 'rudiarius') flags.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '거절')); }
-  for (const g of r.promoted) flags.push(h('span', { class: 'badge promo' }, `${g.name} 승급`));
-  for (const ne of r.newEpithets) flags.push(h('span', { class: 'badge epithet', title: `${ne.e.cond} → ${ne.e.effect}` }, `${ne.g.name} '${ne.e.name}'`));
+  const line = (text: string, tone: 'bad' | 'good' | 'grave' = 'bad') => flags.push(h('div', { class: `rline ${tone}` }, text));
+  for (const f of bad) line(f.fate === 'dead' ? `${f.g.name}${eun(f.g.name)} 돌아오지 못했다.` : `${f.g.name}${eun(f.g.name)} ${f.g.injured >= 3 ? '크게 다쳤다. 세 시즌은 눕는다.' : `다쳤다. ${f.g.injured >= 2 ? '두' : '한'} 시즌은 쉬어야 한다.`}`, f.fate === 'dead' ? 'grave' : 'bad');
+  for (const g of r.rudis) { line(`${g.name}${eun(g.name)} 목검(루디스)을 받았다 — 자유다.`, 'good'); if (g.status === 'rudiarius') flags.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '거절')); }
+  for (const g of r.promoted) line(`${g.name}${eun(g.name)} 베테라누스가 되었다.`, 'good');
+  for (const ne of r.newEpithets) flags.push(h('div', { class: 'rline good', title: `${ne.e.cond} → ${ne.e.effect}` }, `관중이 ${ne.g.name}${eul(ne.g.name)} '${ne.e.name}' 이라 부르기 시작했다.`));
   const title = won ? '승리' : r.winner === 'draw' ? '무승부' : '패배';
   const tp = turningPoint(r);
   app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
@@ -794,7 +798,7 @@ function renderResult() {
     tp ? h('div', { class: 'hint turning' }, tp) : null,
     h('div', { class: 'resultbrief' },
       h('div', { class: 'scoreline' }, h('span', {}, '이번 경기'), h('b', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`)),
-      flags.length ? h('div', { class: 'flagline' }, ...flags) : h('div', { class: 'flagline' }, h('span', { class: 'badge ok' }, '우리 파밀리아 무사'))),
+      h('div', { class: 'flagline' }, ...(flags.length ? flags : [h('div', { class: 'rline good' }, '모두 제 발로 걸어 나왔다.')]))),
     h('details', { class: 'quickdetail' }, h('summary', { class: 'hint' }, '이번 경기 수지 보기'), h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money(r.bet?.won ? '승리 상금 (내기 ×2)' : '승리 상금', r.prize), r.guestGift ? money('귀족 사례금', r.guestGift) : null, money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null, r.bet && !r.bet.won ? money('내기 패배', r.bet.amount, -1) : null,
       h('div', { class: 'mrow total' }, h('span', {}, '수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)))),
   ));

@@ -16,6 +16,7 @@ import { TYPE_COLOR, glyphSvg, portrait, portraits, talkScenes } from './portrai
 import { lerp } from './battle-view.js';
 import { assignedTo, planOf } from './plan.js';
 import { canPayFac } from './sheets.js';
+import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
 export const ORIGIN_SHORT: Record<string, string> = { captive: '포로', damnatus: '죄수', auctoratus: '자유민 계약' };
 function originBadge(g: Gladiator): Node | null {
@@ -59,16 +60,17 @@ export function skillOfferRows(g: Gladiator, after: () => void = render, opts: {
     return row; });
 }
 function epithetBadges(g: Gladiator, withSkills = true): Node[] {
-  const sc = g.scaeva ? [h('span', { class: 'badge scaeva', title: '왼손잡이(스카이바): 타고난 특성(10명에 1명). 반대쪽에서 들어오니 상대가 방패로 막을 확률이 절반이 된다. 상대도 왼손잡이면 서로 익숙해 효과가 없다' }, '왼손잡이')] : [];
+  const sc: Node[] = []; // 왼손잡이 칩은 뺐다 — 카드 바닥에 뒤집힌 손이 그려진다 (2026-09-17 사용자)
   return [...sc, ...(withSkills ? skillBadges(g) : []), ...(g.epithets ?? []).map(id => { const e = EPITHET_BY_ID[id as EpithetId]; return e ? h('span', { class: 'badge epithet', title: `${e.latin} · ${e.cond} → ${e.effect}${e.attested ? ' (실제 기록)' : ''}` }, `'${e.name}'`) : null; }).filter((n): n is HTMLElement => !!n)];
 }
-export function gladCard(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boolean; other?: boolean; dis?: boolean; onclick?: () => void; tag?: Node | null } = {}) {
-  return h('div', { class: `card${opts.sel ? ' sel' : ''}${opts.other ? ' other' : ''}${opts.dis ? ' dis' : ''}`, onclick: opts.onclick },
-    portrait(g, 56),
-    h('div', { class: 'grow' },
-      h('div', {}, h('span', { class: `rank ${g.rank}`, title: g.rank === 'tiro' ? `티로: 신참. ${CONFIG.promoteWins}승을 채우면 베테라누스` : '베테라누스: 승리를 쌓은 경험자. 큰 경기의 필수 요건' }, g.rank === 'tiro' ? '티로' : '베테'), g.status === 'rudiarius' ? h('span', { class: 'badge free', title: '루디스를 받은 자유민. 계약으로 출전하며 출전마다 급료를 받는다. 팔 수 없다' }, '자유민') : g.status === 'doctor' ? h('span', { class: 'badge doc', title: '교관. 출전하지 않고 같은 유형 훈련을 돕는다' }, '독토르') : null, g.status !== 'doctor' && mentoredBy(S.st, g) ? h('span', { class: 'badge mentor', title: '독토르에게 유형 기술을 전수받음' }, '기술 전수') : null, originBadge(g), ' ', h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14)), ' ', h('span', { class: 'nm' }, g.name), ' ', ...epithetBadges(g), h('span', { class: 'meta' }, `${TYPE_KO[g.type]} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세`), opts.tag ?? null),
-      h('div', { class: 'meta' }, `HP ${g.base.hp}  공 ${g.base.atk}  방 ${g.base.def}  |  ${g.wins}승/${g.fights}전  미시오 ${g.missios}  명예 ${g.honor ?? 0}  팬 ${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}${g.injured ? '  ⚠ 부상' : ''}${g.fought ? '  ✓ 출전 완료' : ''}${(g.fatigue ?? 0) > 0 ? `  피로 ${g.fatigue} (공·방 −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty})` : ''}${g.trained ? '  훈련함' : ''}`)),
-    ...extra);
+// 켈라·시장·지원자의 검투사 카드. 모양은 공통 카드(gcard.ts) 그대로 쓰고, 이 화면만 아는 표식(예명·출신·상태)과 능력치 줄, 행동 버튼을 얹는다 (2026-09-17 사용자: "카드는 모두 통일")
+export function gladRow(g: Gladiator, extra: (Node | null)[] = [], opts: { sel?: boolean; other?: boolean; dis?: boolean; onclick?: () => void; tag?: Node | null } = {}) {
+  const nameExtra: (Node | null)[] = [
+    /* '자유민' 칩도 뺐다 — 초상이 허리에 나무 검(루디스)을 찼다 (2026-09-17 사용자) */
+    originBadge(g), ...epithetBadges(g, false), opts.tag ?? null]; /* '기술 전수' 칩은 뺐다 — 전수는 훈련 결과로 드러난다 (2026-09-17 사용자) */ /* 기술은 카드 위쪽 기술 칩이 이미 말한다 */
+  const stat = h('span', {}, `${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 팬 ${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}`); /* HP·공·방은 카드가 세로로 세워 보여 준다 */
+  const state = `${TYPE_KO[g.type]} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세${g.injured ? ' · ⚠ 부상' : ''}${g.fought ? ' · ✓ 출전 완료' : ''}${(g.fatigue ?? 0) > 0 ? ` · 피로 ${g.fatigue} (공·방 −${(g.fatigue ?? 0) * CONFIG.fatigue.statPenalty})` : ''}${g.trained ? ' · 훈련함' : ''}`;
+  return gladCard(g, { size: CARD_PORTRAIT, cls: 'full', sel: opts.sel, other: opts.other, dis: opts.dis, onclick: opts.onclick, nameExtra, rows: [stat, h('span', {}, state)], acts: extra });
 }
 // 검투사 카드의 행동 버튼(치료·매각·독토르·재훈련·재계약·내보내기·기술 제안). 켈라 방 시트가 쓴다
 function gladActions(g: Gladiator): (Node | null)[] {
@@ -196,7 +198,7 @@ export function detailPage(): Node {
   const d = S.detail!; const g = d.kind === 'roster' ? S.st.roster.find(x => x.id === d.id) : S.st.market.find(x => x.id === d.id);
   if (!g) { S.detail = null; return h('div'); }
   const again = S.shownDetail === `${d.kind}:${d.id}`; S.shownDetail = `${d.kind}:${d.id}`; // 같은 검투사가 이미 떠 있으면(확인 페이지를 열고 닫을 때의 재렌더) 슬라이드·걸어 들어오기를 반복하지 않는다
-  const figure = portrait(g, 116, false, undefined, 170); figure.classList.add('big'); /* 초상 크기는 여기(인라인)가 정한다 — 폭 116(오른쪽에 기술 칩 3개가 든다), 높이 170(인물은 높이 기준으로 크게) */ if (!again) for (const e of portraits) if (e.c === figure) { e.enter = performance.now(); } // 큰 초상: 왼쪽에서 발소리를 내며 걸어 들어온다
+  const figure = portrait(g, 116, false, undefined, 170, true); figure.classList.add('big'); /* 초상 크기는 여기(인라인)가 정한다 — 폭 116(오른쪽에 기술 칩 3개가 든다), 높이 170(인물은 높이 기준으로 크게) */ if (!again) for (const e of portraits) if (e.c === figure) { e.enter = performance.now(); } // 큰 초상: 왼쪽에서 발소리를 내며 걸어 들어온다
   const status = d.kind === 'market' ? (g.rank === 'tiro' ? '티로' : '베테라누스') : g.status === 'doctor' ? '독토르' : g.status === 'rudiarius' ? '자유민' : g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스';
   const dskills = h('div', { class: 'gskills dskills' }, ...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0'))); // 편성 타일처럼 초상 오른쪽에 기술 칩과 빈 자리
   const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, h('div', {}, equipHandsKo(g.type, g.scaeva)), `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g, false)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
@@ -266,7 +268,7 @@ export function gladSheet(): Node {
     h('span', { class: 'nm' }, `${j + 1}번`), h('span', { class: 'stars', style: 'margin-left:6px' }, '★'.repeat(qj) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - qj)), o ? h('b', { style: 'margin-left:6px' }, o.name) : h('span', { class: 'meta' }, ' 빈 방'), h('span', { style: 'flex:1' }), j === k ? null : h('span', { class: 'hint' }, '옮기기 →')); }; // 방 줄: 번호 · ★ · 거주자 이름(굵게) — 누르면 그 방으로(사람이 있으면 자리를 바꾼다)
   return h('div', { class: 'panel' },
     h('h2', {}, `켈라 ${k + 1}번`, h('span', { class: 'stars', style: 'margin-left:8px' }, '★'.repeat(q) + '☆'.repeat(CONFIG.ludus.cells.qualityCost.length - q)), helpBtn('켈라와 검투사', '검투사가 자는 작은 방입니다. 방 장식이 상태입니다: 벽의 획수 = 승수(5승 묶음), 종려가지 = 5승마다, 월계관 = 명예 20 이상(40 이상 금빛), 하트 낙서 = 팬 스타, 목검 = 배운 기술 수, 오른쪽 벽 걸이 = 그 유형의 투구·방패·무기, 벽의 나무 검 = 자유민(루디스), 지팡이 = 독토르, 붕대·목발 = 부상. 피로는 자세로: 1 축 처져 앉음, 2 꾸벅임(z z), 3 벽에 기대 잠. 왼쪽 아래 ★ = 켈라 등급.\n\n숙소 질 ★1 피로 회복 −2 · ★2 유지비 −25% · ★3 명예 +1/시즌. 여기서 치료·매각·재훈련·재계약을 하고, 방을 강화하거나 다른 방으로 옮깁니다.')),
-    gladCard(g, gladActions(g), { dis: !!g.injured }),
+    gladRow(g, gladActions(g), { dis: !!g.injured }),
     h('div', { class: 'frow', style: 'margin-top:8px' }, h('div', { class: 'grow' }, h('b', {}, '이 방 강화'), h('div', { class: 'meta' }, '★1 피로 회복 −2 · ★2 피로 덜 쌓임 · ★3 명예 +1/시즌 (★마다 유지비 +100)')), cost != null ? h('button', { disabled: !canPayFac(cost), onclick: () => { if (upgrade(S.st, 'cell', k)) { sfx.coin(); render(); } } }, `방 손보기 ${cost.toLocaleString()}`) : h('span', { class: 'hint' }, '더 손볼 데 없음')),
     h('div', { class: 'two' }, // 왼쪽 시즌 행동 · 오른쪽 방 옮기기
       h('div', {}, h('h3', { class: 'sub' }, '시즌 행동', g.status === 'doctor' ? h('span', { class: 'hint', style: 'margin-left:6px' }, '독토르') : assignedTo(g.id) != null ? h('span', { class: 'hint', style: 'margin-left:6px' }, '출전 예정') : null),
@@ -282,7 +284,7 @@ function actionSeg(g: Gladiator): (Node | null)[] {
   if (slot >= 0) { // 팔루스에 서 있다: 무엇을 단련할지는 시즌 끝에 무작위 (공·방, 조건이 되면 기술)
     const str = skillTrainable(S.st, g); const fatigueTip = at != null ? ` · 출전 뒤 훈련: 피로가 쌓일 확률 ${Math.round(Math.max(0, CONFIG.fatigue.trainAfterFight - cellQuality(S.st, g) * CONFIG.fatigue.perCellStar) * 100)}%` : '';
     return [h('span', { class: 'seg' },
-      h('span', { class: 'hint', title: `시즌 끝에 공격(+${trainGain(S.st, g, 'atk')})·방어(+${trainGain(S.st, g, 'def')})${str ? `·기술(${str.pool.map(SKILL_NAME).join('·')} 중 하나, ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}%)` : ''} 중 하나를 무작위로 단련${fatigueTip}` }, `팔루스 ${slot + 1} — 공·방${str ? '·기술' : ''} 중 무작위`),
+      h('span', { class: 'hint', title: `시즌 끝에 공격(+${trainGain(S.st, g, 'atk')})·방어(+${trainGain(S.st, g, 'def')})·체력(+${trainGain(S.st, g, 'hp')})${str ? `·기술(${str.pool.map(SKILL_NAME).join('·')} 중 하나, ${Math.round((str.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) * 100)}%. 빗나가도 공·방·체력 중 하나는 오른다)` : ''} 중 하나를 무작위로 단련${fatigueTip}` }, `팔루스 ${slot + 1} — 공·방·체력${str ? '·기술' : ''} 중 무작위`),
       h('button', { title: `팔루스 ${slot + 1}에서 내려온다 (이번 시즌 훈련 없음)`, onclick: (ev: Event) => { ev.stopPropagation(); leavePalus(S.st, g); save(); render(); } }, '내려오기'))];
   }
   const f = g.fatigue ?? 0; return [h('span', { class: 'hint' }, at != null ? '출전만' : f > 0 ? `휴식 (피로 ${f} → −${cellQuality(S.st, g) >= 1 ? 2 : 1}${S.st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? '−1' : ''})` : `시범 (명예 +${CONFIG.actions.show.honor}) — 훈련은 훈련소의 팔루스에 세워서`)]; // 고르지 않는다: 팔루스에 안 섰으면 피로가 있으면 쉬고, 없으면 시범

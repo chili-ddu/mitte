@@ -2,7 +2,7 @@
 import type { Gladiator } from './types.js';
 
 export type EpithetId = 'invictus' | 'immortalis' | 'superstes' | 'cicatrix' | 'suspirium' | 'flamma' | 'retiarii_terror' | 'coronatus' | 'attilius' | 'par' | 'magister' | 'martia' | 'omnia_solus' | 'dictata' | 'vindex';
-export type EpithetAccessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband';
+export type EpithetAccessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband' | 'staff' | 'rudis' | 'grudge' | 'revenge'; // 예명 밖의 표식: 신분(막대·나무 검)과 인연(원한·복수) (2026-09-17 사용자)
 export interface EpithetDef { id: EpithetId; name: string; latin: string; attested: boolean; cond: string; effect: string; accessory: EpithetAccessory; check: (g: Gladiator) => boolean; anyRank?: boolean }
 export const MAX_EPITHETS = 3;
 

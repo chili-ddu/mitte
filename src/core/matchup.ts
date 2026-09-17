@@ -1,6 +1,6 @@
 // 장비가 만드는 상성을 말로 옮긴다. 상성표는 없다(2026-09-11 제거) — 여기 문장은 전부 장비·유형 데이터에서 그때그때 만들어지므로 규칙을 고치면 문구도 따라 바뀐다.
 // 편성 화면이 "이번 상대에게 무엇이 걸리는가"를 한 줄씩 보여주는 데 쓴다.
-import type { Gladiator } from './types.js';
+import type { Gladiator, GType } from './types.js';
 import { MAIN_HAND, OFF_HAND, TYPE_TRAIT, equipOf } from './equipment.js';
 import { effectiveStats } from './gladiator.js';
 
@@ -53,4 +53,19 @@ export function matchupNotes(team: Gladiator[], enemy: Gladiator[]): MatchupNote
   if (has(enemy, bareHead)) out.push({ ko: '상대는 투구가 없어 치명타가 잘 난다', good: true });
   if (has(team, bareHead)) out.push({ ko: `${nameOf(team, bareHead)}은(는) 투구가 없다`, good: false });
   return out;
+}
+
+// 이 짝의 기울기를 **누구 탓으로 볼 것인가**. 한 번의 배정에 한쪽만 움직이게 하려고 임자를 가린다 (2026-09-17 사용자)
+// 강점(그물·사거리·방패 넘기기·큰 방패)을 가진 쪽이 임자고, 그런 게 없으면 약점(정강이받이·투구 없음)을 가진 쪽이 임자다.
+export function matchupOwner(a: GType, b: GType): GType {
+  const net = (t: GType) => OFF_HAND[equipOf(t).off].skill === 'bind';
+  const reach = (t: GType) => MAIN_HAND[equipOf(t).main].range >= 2;
+  const pierce = (t: GType) => (MAIN_HAND[equipOf(t).main].shieldPierce ?? 1) <= PIERCE;
+  const bigShield = (t: GType) => (OFF_HAND[equipOf(t).off].block ?? 0) >= BIG_SHIELD;
+  const bareLegs = (t: GType) => TYPE_TRAIT[t].greaves === 0;
+  const bareHead = (t: GType) => TYPE_TRAIT[t].critTaken >= BARE_HEAD;
+  for (const has of [net, reach, pierce, bigShield, bareLegs, bareHead]) { // 위에서부터 먼저 걸리는 것이 이야기의 임자
+    const x = has(a), y = has(b); if (x !== y) return x ? a : b;
+  }
+  return a; // 아무 특징도 갈리지 않으면 먼저 놓인 쪽(우리)이 임자
 }

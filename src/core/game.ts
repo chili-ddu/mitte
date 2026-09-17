@@ -131,7 +131,9 @@ export function cellOf(st: GameState, g: Gladiator): number {
 }
 export function occupantOf(st: GameState, k: number): Gladiator | undefined { return st.roster.find(g => cellOf(st, g) === k); }
 export function cellQuality(st: GameState, g: Gladiator): number { const i = cellOf(st, g); return i >= 0 && i < st.ludus.cells.length ? st.ludus.cells[i] : 0; }
-export function injurySeasons(st: GameState): number { return st.ludus.medicine >= CONFIG.ludus.medicine.injuryAt ? 1 : 2; } // 침상은 여기가 아니라 시즌 말 회복 인원 상한으로 작용한다
+// 과로사 확률: 피로가 쌓일수록 가파르게 (2026-09-17 사용자: 가중치를 주자). 화면도 이 함수를 그대로 쓴다
+export function overworkChance(fatigue: number): number { const F = CONFIG.fatigue; const n = fatigue - F.overworkAt + 1; return n <= 0 ? 0 : Math.min(F.overworkCap, F.overworkPer * n * (1 + (n - 1) * F.overworkRamp)); }
+export function injurySeasons(st: GameState): number { const I = CONFIG.injury, r = st.rng.next(); const s = r < I.mild ? 1 : r < I.mild + I.mid ? 2 : 3; return Math.max(1, s - (st.ludus.medicine >= CONFIG.ludus.medicine.injuryAt ? I.medicineCut : 0)); } // 상처의 무게를 굴린다 — 중상이면 세 시즌을 눕는다 // 침상은 여기가 아니라 시즌 말 회복 인원 상한으로 작용한다
 export function healCostOf(st: GameState): number { const M = CONFIG.ludus.medicine; return M.healCostByLevel[Math.min(st.ludus.medicine, M.healCostByLevel.length - 1)]; }
 export function injuryChanceOf(st: GameState): number { const M = CONFIG.ludus.medicine; return M.injuryChanceByLevel[Math.min(st.ludus.medicine, M.injuryChanceByLevel.length - 1)]; } // 내 검투사가 쓰러진 뒤 부상 확률 (의술 4·5단계에서 내려간다)
 export function trainCap(st: GameState): number { return st.ludus.palus; }
@@ -178,7 +180,7 @@ export function newGame(seed: number, opts: { types?: GType[]; color?: string } 
   const rng = new Rng(seed);
   const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], applicants: [], rivals: makeRivals(rng, 1, CONFIG.startFame), history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1) };
   st.color = opts.color; // 고르지 않으면 화면의 기본 색
-  for (let i = 0; i < CONFIG.startGladiators; i++) { const g = makeGladiator(rng, 'tiro', { type: opts.types?.[i] }); g.origin = 'slave'; g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 유형만 고르고 능력치는 여느 티로처럼 굴린다 — 선택은 개성이지 힘이 아니다 */ // 전임자에게 물려받은 검투사
+  for (let i = 0; i < CONFIG.startGladiators; i++) { const g = makeGladiator(rng, 'tiro', { type: opts.types?.[i] }); g.rank = 'veteranus'; g.wins = rng.int(3, 6); g.fights = g.wins + rng.int(0, 2); g.buyPrice = valueOf(g); g.origin = 'slave'; g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 능력치는 갓 들어온 자의 폭으로 굴리되 전적은 여느 검투사의 기본값(3~6승·0~2패) — 처음부터 '일반 검투사'다 (2026-09-17 사용자) — 선택은 개성이지 힘이 아니다 */ // 전임자에게 물려받은 검투사
   startSeason(st);
   return st;
 }
@@ -199,7 +201,8 @@ export function startSeason(st: GameState) {
 
 export function available(st: GameState): Gladiator[] { return st.roster.filter(g => g.alive && g.injured === 0 && !g.fought && g.status !== 'doctor'); }
 // 훈련 폭: 기본 1 + 같은 유형 독토르가 해당 능력치에서 얼마나 앞서는가
-export function trainGain(st: GameState, g: Gladiator, stat: 'atk' | 'def'): number { const d = doctorFor(st, g.type); const gap = d && d !== g ? d.base[stat] - g.base[stat] : 0; return 1 + gymBonus(st) + (gap >= CONFIG.doctorBonus.gapBig ? 2 : gap >= CONFIG.doctorBonus.gapSmall ? 1 : 0) + (st.lanista.trait === 'doctor' && st.lanista.type === g.type ? CONFIG.lanista.doctorTrainBonus : 0); }
+export function trainHpRange(st: GameState): [number, number] { const b = 1 + gymBonus(st); return [CONFIG.trainHpGain[0] * b, CONFIG.trainHpGain[1] * b]; } // 체력 훈련은 폭이 있다 — 미리 보여 줄 땐 범위로
+export function trainGain(st: GameState, g: Gladiator, stat: TrainStat): number { if (stat === 'hp') { const [lo, hi] = trainHpRange(st); return Math.round((lo + hi) / 2); } /* 예상치(가운데). 실제 상승은 train() 이 굴린다 */ const d = doctorFor(st, g.type); const gap = d && d !== g ? d.base[stat] - g.base[stat] : 0; return 1 + gymBonus(st) + (gap >= CONFIG.doctorBonus.gapBig ? 2 : gap >= CONFIG.doctorBonus.gapSmall ? 1 : 0) + (st.lanista.trait === 'doctor' && st.lanista.type === g.type ? CONFIG.lanista.doctorTrainBonus : 0); }
 // 기술 전수: 승수 8 이상 독토르의 같은 유형 제자
 export function mentoredBy(st: GameState, g: Gladiator): Gladiator | undefined { const d = doctorFor(st, g.type); if (d && d !== g && d.wins >= CONFIG.doctorSkillWins) return d; return st.roster.find(x => x.status === 'doctor' && x !== g && (x.epithets ?? []).includes('magister')); } // '검투사이자 스승'은 모든 유형에게
 export function doctorFor(st: GameState, type: Gladiator['type']): Gladiator | undefined { return st.roster.find(g => g.status === 'doctor' && g.type === type); }
@@ -242,19 +245,21 @@ export function trainFatigue(st: GameState, g: Gladiator): boolean {
   if (!g.fought) return false; const F = CONFIG.fatigue; const p = Math.max(0, F.trainAfterFight - cellQuality(st, g) * F.perCellStar);
   if (!st.rng.chance(p)) return false; g.fatigue = Math.min(F.max, (g.fatigue ?? 0) + 1); st.history.push(`${seasonName(st.season)}: ${g.name} 출전 뒤 훈련으로 피로 +1`); return true;
 }
-export function train(st: GameState, g: Gladiator, stat: 'atk' | 'def'): boolean {
+export type TrainStat = 'atk' | 'def' | 'hp'; // 팔루스에서 단련하는 것 셋 (2026-09-17 사용자: 체력도 오른다)
+export function train(st: GameState, g: Gladiator, stat: TrainStat): boolean {
   if (g.trained || !g.alive || st.money < CONFIG.trainCost || trainedCount(st) >= trainCap(st)) return false; // 훈련장 수용 인원
-  let gain = trainGain(st, g, stat); // 같은 유형 독토르가 앞서는 만큼 추가
-  if (st.rng.chance(TALENT_TRAIN_BONUS[talentOf(g)])) gain += 1; // 자질: 재능 35% · 비범 55% · 천부 70% 로 +1 더
+  let gain = stat === 'hp' ? st.rng.int(...trainHpRange(st)) : trainGain(st, g, stat); // 체력은 범위에서 굴리고, 공·방은 독토르가 앞서는 만큼 더한다
+  if (st.rng.chance(TALENT_TRAIN_BONUS[talentOf(g)])) gain += stat === 'hp' ? CONFIG.trainHpGain[0] : 1; // 자질: 재능 35% · 비범 55% · 천부 70% 로 한 단계 더
   st.money -= CONFIG.trainCost; g.trained = true; g.base[stat] += gain; g.talentKnown = true; // 첫 훈련에서 자질이 밝혀진다
   trainFatigue(st, g);
-  st.history.push(`${seasonName(st.season)}: ${g.name} 훈련(${stat === 'atk' ? '공격' : '방어'} +${gain})`);
+  st.history.push(`${seasonName(st.season)}: ${g.name} 훈련(${TRAIN_KO[stat]} +${gain})`);
   { const d = doctorFor(st, g.type); if (d && d !== g && (d.honor ?? 0) >= 30) { const a = awaken(st.rng, g, `${d.name} 의 가르침`); if (a) st.history.push(`${seasonName(st.season)}: ${g.name} 자질을 깨우치다 (${TALENT_KO[a.from]} → ${TALENT_KO[a.to]}, ${a.why})`); } } // 명예 높은 독토르의 가르침은 깨우침의 계기
   return true;
 }
 // ── 시즌 행동 (편성에서 고르고 시즌 종료 때 실행)
-export type Action = 'rest' | 'show' | 'recover' | 'atk' | 'def' | 'skill'; // 플레이어가 고르는 것은 rest·show·recover. 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 무작위(공·방, 조건이 되면 기술) — atk·def·skill 은 정산 표시용
-export const ACTION_KO: Record<Action, string> = { rest: '휴식', show: '시범', recover: '요양', atk: '훈련·공', def: '훈련·방', skill: '기술 훈련' };
+export const TRAIN_KO: Record<TrainStat, string> = { atk: '공격', def: '방어', hp: '체력' };
+export type Action = 'rest' | 'show' | 'recover' | 'atk' | 'def' | 'hp' | 'skill'; // 플레이어가 고르는 것은 rest·show·recover. 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 무작위(공·방, 조건이 되면 기술) — atk·def·skill 은 정산 표시용
+export const ACTION_KO: Record<Action, string> = { rest: '휴식', show: '시범', recover: '요양', atk: '훈련·공', def: '훈련·방', hp: '훈련·체력', skill: '기술 훈련' };
 // 기술 훈련: 팔루스 자리를 쓰고 훈련비를 낸다. 같은 유형 독토르가 아는 기술(내가 모르는 것) 중 하나, 독토르가 없으면 훈련 시설 3단계부터 유형에 맞는 기술 하나를 확률로 깨친다 → 배울 기회(제안)
 export function skillTrainable(st: GameState, g: Gladiator): { from: 'doctor' | 'gym'; pool: SkillId[] } | null {
   if (g.injured > 0 || g.status === 'doctor' || !g.alive) return null;
@@ -263,14 +268,16 @@ export function skillTrainable(st: GameState, g: Gladiator): { from: 'doctor' | 
   if (st.ludus.gym >= CONFIG.skills.gymLevel) { const e = eligibleSkills(g).map(x => x.id); if (e.length) return { from: 'gym', pool: e }; }
   return null;
 }
-export function doSkillTrain(st: GameState, g: Gladiator): { id: SkillId; ok: boolean; from: 'doctor' | 'gym' } | null {
+export function doSkillTrain(st: GameState, g: Gladiator): { id: SkillId; ok: boolean; from: 'doctor' | 'gym'; fallback?: { stat: TrainStat; gain: number } } | null {
   const tr = skillTrainable(st, g); if (!tr || g.trained || st.money < CONFIG.trainCost || trainedCount(st) >= trainCap(st)) return null;
   st.money -= CONFIG.trainCost; g.trained = true; trainFatigue(st, g);
   const id = st.rng.pick(tr.pool); const d = doctorFor(st, g.type);
   const p = (tr.from === 'doctor' ? CONFIG.skills.trainChance + (d && d.wins >= CONFIG.doctorSkillWins ? CONFIG.skills.masterBonus : 0) : CONFIG.skills.gymChance) + (st.lanista.trait === 'doctor' ? CONFIG.lanista.skillTrainBonus : 0); // 독토르 출신 라니스타는 가르칠 줄 안다
   const ok = st.rng.chance(p) && offerSkill(g, id);
-  st.history.push(`${seasonName(st.season)}: ${g.name} 기술 훈련 ${SKILL_BY_ID[id].name} ${ok ? '깨침' : '실패'}`);
-  return { id, ok, from: tr.from };
+  let fallback: { stat: TrainStat; gain: number } | undefined; // 기술을 못 깨쳐도 한 철을 팔루스에서 보낸 몸은 남는다 (2026-09-17 사용자: 셋 중 하나는 무조건 오른다)
+  if (!ok) { const stat = st.rng.pick(['atk', 'def', 'hp'] as const); const gain = trainGain(st, g, stat); g.base[stat] += gain; fallback = { stat, gain }; }
+  st.history.push(`${seasonName(st.season)}: ${g.name} 기술 훈련 ${SKILL_BY_ID[id].name} ${ok ? '깨침' : `실패 (${TRAIN_KO[fallback!.stat]} +${fallback!.gain})`}`);
+  return { id, ok, from: tr.from, fallback };
 }
 export function doShow(st: GameState, g: Gladiator): { honor: number } | null {
   if (g.injured > 0 || g.status === 'doctor') return null;
@@ -307,7 +314,7 @@ export function validTeam(st: GameState, c: Contract, team: Gladiator[]): string
   if (team.some(g => !g.alive || g.injured > 0)) return '출전 불가 검투사가 포함되어 있습니다';
   if (new Set(team).size !== team.length) return '중복';
   const vets = team.filter(g => g.rank === 'veteranus').length;
-  if (vets < c.needVeterans) return `베테라누스 ${c.needVeterans}명 이상 필요`;
+  if (vets < c.needVeterans) return c.needVeterans >= c.size ? '티로는 나갈 수 없는 경기' : `티로는 ${c.size - c.needVeterans}명까지`; /* 표시해야 할 쪽은 예외(신참)다 — 베테라누스가 기본 (2026-09-17 사용자) */
   return null;
 }
 
@@ -456,7 +463,7 @@ export function endSeason(st: GameState): { upkeep: number; gift: number } {
   }
   for (const g of leftNow) { st.roster = st.roster.filter(r => r !== g); st.history.push(`${seasonName(st.season)}: ${g.name} 계약 만료로 떠남`); }
   // 과로사: 피로가 4 이상인 채 시즌을 넘기면 (피로−3)×12% 로 쓰러져 죽는다 (혹사)
-  const F = CONFIG.fatigue; const overworked = st.roster.filter(g => (g.fatigue ?? 0) >= F.overworkAt && st.rng.chance(((g.fatigue ?? 0) - F.overworkAt + 1) * F.overworkPer));
+  const F = CONFIG.fatigue; const overworked = st.roster.filter(g => (g.fatigue ?? 0) >= F.overworkAt && st.rng.chance(overworkChance(g.fatigue ?? 0)));
   for (const g of overworked) { g.alive = false; st.graveyard.push(g); st.roster = st.roster.filter(r => r !== g); st.history.push(`${seasonName(st.season)}: ${g.name} 혹사 끝에 쓰러져 죽다 (피로 ${g.fatigue})`); }
   st.lastLeft = leftNow.map(g => g.name); st.lastFreed = freedNow.map(g => g.name); st.lastOverwork = overworked.map(g => g.name);
   const active = st.history.some(h => h.startsWith(seasonName(st.season)) && /승|패|무 대여/.test(h));

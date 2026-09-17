@@ -5,7 +5,7 @@ import { TYPE_EQUIP, type MainHand, type OffHand } from '../core/equipment.js';
 export type Helmet = 'crested' | 'smooth' | 'griffin' | 'brimmed' | 'visored' | 'plumed' | 'none'; // visored: 면갑 투구(프로보카토르), plumed: 챙+깃털(에퀘스)
 export type Extra = 'manica' | 'greaves' | 'galerus' | 'pectorale';
 // 악세사리: 별칭·전적으로 생기는 장식. 부착점에 겹쳐 그린다
-export type Accessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband';
+export type Accessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband' | 'staff' | 'rudis' | 'grudge' | 'revenge'; // 예명 밖의 표식: 독토르의 훈련 막대 · 자유민의 나무 검 · 원한(검은 그림자) · 복수(붉은 눈빛) (2026-09-17 사용자)
 
 export interface Loadout {
   main: MainHand;        // 오른손: 공격

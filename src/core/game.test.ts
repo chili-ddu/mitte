@@ -8,11 +8,12 @@ import { CONFIG } from './config.js';
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['세베루스', 14, 3], ['플람마', 12, 6]]);
-  assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.371);
-  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.578, -0.467]);
-  assert.equal(st.contracts.length, 4);
-  assert.equal(score(st), 28340); // 2026-09-17 전력 가중치 재측정으로 점수(검투사 값 포함)가 조금 올랐다
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['세베루스', 14, 3], ['풀구르', 12, 7]]);
+  assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['veteranus', 3, 4], ['veteranus', 3, 5]], '시작 검투사도 일반 검투사 — 3승 이상에 몇 패 (2026-09-17)');
+  assert.equal(+(st.formTeam ?? 0).toFixed(3), 0.871);
+  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [0.822, 0.645]);
+  assert.equal(st.contracts.length, 2);
+  assert.equal(score(st), 29775); // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 
@@ -27,9 +28,9 @@ test('몸 상태는 시즌마다 다시 정해지고 모두에게 있다', () =>
 
 test('몸 상태의 말과 수치가 맞물린다', () => {
   const st = newGame(5); const g = st.roster[0];
-  g.form = 0.8; assert.equal(formLabel(g), '가벼움'); assert.deepEqual(formMod(g), { atk: 4, def: 3 });
-  g.form = -0.8; assert.equal(formLabel(g), '무거움'); assert.deepEqual(formMod(g), { atk: -4, def: -3 });
-  g.form = 0; assert.equal(formLabel(g), null); assert.deepEqual(formMod(g), { atk: 0, def: 0 });
+  g.form = 0.8; assert.equal(formLabel(g), '가벼움'); assert.deepEqual(formMod(g), { atk: 4, def: 3, hp: 6 }); // 2026-09-17 몸 상태가 체력에도 걸린다
+  g.form = -0.8; assert.equal(formLabel(g), '무거움'); assert.deepEqual(formMod(g), { atk: -4, def: -3, hp: -6 });
+  g.form = 0; assert.equal(formLabel(g), null); assert.deepEqual(formMod(g), { atk: 0, def: 0, hp: 0 });
   g.form = CONFIG.form.tell; assert.equal(formLabel(g), '가벼움', '문턱 위는 드러난다');
 });
 

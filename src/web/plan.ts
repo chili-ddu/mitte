@@ -1,23 +1,25 @@
 // 편성: 계약 카드·배정·서판·시즌 확정·시즌 진행(시작→경기→정산)
 import { S } from './state.js';
 import { type Contract, type GType, type Gladiator } from '../core/types.js';
-import { ACTION_KO, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, doSkillTrain, endSeason, fight, fightExpense, healCostOf, holdEvents, isImportant, mentoredBy, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, skillTrainable, train, trainCap, type Action, upkeepOf, validTeam } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, trainGain, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, doSkillTrain, endSeason, fight, fightExpense, healCostOf, holdEvents, isImportant, mentoredBy, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, skillTrainable, train, trainCap, type Action, upkeepOf, validTeam } from '../core/game.js';
 import { Rng } from '../core/rng.js';
 import { battle } from '../core/battle.js';
 import { CONFIG } from '../core/config.js';
-import { LINEAGE_KO, TYPE_KO, powerOf, rentFee, formLabel, formTip } from '../core/gladiator.js';
+import { LINEAGE_KO, TYPE_KO, powerOf, powerNow, rentFee, formLabel, formTip } from '../core/gladiator.js';
 import { HOST } from '../core/hosts.js';
 import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
 import { classicMatchup, computeSynergies, describeSynergies, isClassicPair } from '../core/synergy.js';
 import { matchupNotes } from '../core/matchup.js';
+import { TYPE_MATCHUP } from '../core/matchup-table.js';
 import { SKILL_BY_ID, SKILL_NAME, skillSlots, skillsOf } from '../core/skills.js';
-import { backBtn, h, sq, tell, ro } from './dom.js';
+import { backBtn, h, sq, tell, ro, toast, eun } from './dom.js';
 import { app, render, save, sideToolsLand, VIEW_KO } from './main.js';
 import { hostPrize, hostSpan, moneyRow } from './detail.js';
 import { arenaIcon } from './scenes.js';
 import { graffitiCheck, renderBattle } from './battle-view.js';
 import { portrait } from './portrait.js';
+import { gladCardParts as miniGlad, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 gcard.ts 한 곳 (2026-09-17) */
 import { coach } from './header.js';
 import { eventRows } from './sheets.js';
 
@@ -26,7 +28,7 @@ const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringi
 const setPlan = (g: Gladiator, a: Action) => { S.trainPlan[g.id] = a; savePlan(); };
 export const planOf = (g: Gladiator): Action => S.trainPlan[g.id] ?? (g.injured ? 'recover' : 'rest'); // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
  // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
-const rollTraining = (g: Gladiator): 'atk' | 'def' | 'skill' => { const pool: ('atk' | 'def' | 'skill')[] = ['atk', 'def']; if (skillTrainable(S.st, g)) pool.push('skill'); return pool[Math.floor(S.st.rng.next() * pool.length)]; }; // 팔루스에 선 검투사가 단련할 것: 공·방, 기술을 배울 조건이 되면 기술도 후보
+const rollTraining = (g: Gladiator): TrainStat | 'skill' => { const pool: (TrainStat | 'skill')[] = ['atk', 'def', 'hp']; if (skillTrainable(S.st, g)) pool.push('skill'); return pool[Math.floor(S.st.rng.next() * pool.length)]; }; // 팔루스에 선 검투사가 단련할 것: 공·방, 기술을 배울 조건이 되면 기술도 후보
 export function assignedTo(gid: number): number | null { for (const cid in S.assign) if (S.assign[cid].includes(gid)) return +cid; return null; }
 // 승리 예측: 실제 전투 규칙으로 40번 돌려 본 결과 (편성이 바뀔 때만 다시 계산). 상대 원한 보정·조리장 HP·독토르 전수까지 fight() 와 같게
 const oddsCache = new Map<string, { win: number; draw: number }>();
@@ -77,16 +79,6 @@ function tabletsPage(cs: Contract[]): Node {
   const btn = h('button', { class: 'sealbtn', title: '도장을 찍어 계약을 맺습니다', onclick: sign }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, cs.length > 1 ? `${cs.length}장 서명` : '서명'));
   return h('div', { class: `planpage tablet n${cs.length}${again ? ' still' : ''}` }, h('div', { class: 'tablets' }, ...cs.map(tablet)), h('div', { class: 'cbtns tbtns' }, btn), backBtn(closePlanConfirm, '계약 벽으로 돌아가기'));
 }
-const honorBadge = (g: Gladiator) => { const b = h('span', { class: 'honor', title: `명예 ${g.honor ?? 0}: 쓰러졌을 때 관중이 살려 줄 확률과 루디스에 영향` }); b.innerHTML = `<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>`; b.append(String(g.honor ?? 0)); return b; }; // 초상 왼쪽 아래 명예 배지
- // 초상 왼쪽 아래 명예 배지
-const tileMeta = (g: Gladiator) => S.lineupView === 'record' ? `${g.wins}승/${g.fights}전` : `HP${g.base.hp}·ATK${g.base.atk}·DEF${g.base.def}`; // 편성 왼쪽 타일 아래 줄 (HP부터, 약자)
- // 편성 왼쪽 타일 아래 줄 (HP부터, 약자)
-const skillChips = (g: Gladiator) => [...skillsOf(g).map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)), ...Array.from({ length: Math.max(0, skillSlots(g) - skillsOf(g).length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0'))]; // 검투사 미니 카드의 기술 칩: 배운 기술과 빈 자리를 같은 폭으로 고정
-const miniGlad = (g: Gladiator, opts: { enemy?: boolean; size?: number; name?: string; meta?: (Node | string | null | undefined)[] } = {}) => [
-  h('div', { class: 'mini-top' }, h('div', { class: 'mini-port' }, portrait(g, opts.size ?? 40, !!opts.enemy), h('span', { class: `rank ${g.rank}` }, g.rank === 'tiro' ? '티로' : '베테'), honorBadge(g)), h('div', { class: 'mini-skills' }, ...skillChips(g))),
-  h('div', { class: 'mini-name' }, sq(g.type), ' ', opts.name ?? g.name.replace('(적)', '')),
-  h('div', { class: 'mini-meta' }, tileMeta(g), ...(opts.meta ?? [])),
-]; // 편성 화면 공통 검투사 카드: 상대·배정·후보가 같은 정보 순서와 밀도로 보이게 한다
 // 낙서 그림 버튼: 결투(두 검투사) / 셈판(동전 더미). 위에 붉은 라틴어를 덧쓴다. 계약 벽의 PVGNABVNT 와 같은 만듦새
 const DUEL_SVG = `<svg viewBox="0 0 96 52" width="92" height="50" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#3a2412" stroke-width="2.2" opacity=".85">
@@ -122,9 +114,27 @@ export function seasonWarnings(): string[] {
       !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
       refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
       healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
-      (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(((g.fatigue ?? 0) + 1 - F.overworkAt + 1) * F.overworkPer * 100)).join('·')}%` : ''; })(),
+      (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(overworkChance((g.fatigue ?? 0) + 1) * 100)).join('·')}%` : ''; })(),
     ].filter(Boolean);
     return warn;
+}
+// 못 나가는 까닭: 카드 위에 굵게 긁어 쓴다. 글자 뒤로 붉은 긁힌 선 둘이 지나간다 (2026-09-17 사용자)
+function whyMark(why: { t: string; tip: string }): HTMLElement {
+  const el = h('div', { class: 'why', title: why.tip });
+  const svg = h('span', { class: 'scratch' });
+  svg.innerHTML = `<svg viewBox="0 0 100 24" preserveAspectRatio="none" fill="none" stroke="#9b2c1c" stroke-linecap="round">`
+    + `<path d="M3 15 C22 11.5, 48 13.5, 97 9.5" stroke-width="2.6" opacity=".7"/>`
+    + `<path d="M6 18.5 C26 15.5, 52 17, 94 13" stroke-width="1.3" opacity=".5"/></svg>`;
+  el.append(svg, h('span', { class: 'w' }, why.t));
+  return el;
+}
+// 배정하면 상성만큼 전력이 오르내린다. 기울기는 **임자 쪽 카드만** 움직이므로(matchupOwner), 토스트도 그 이야기를 말한다 (2026-09-17 사용자)
+function matchupToast(g: Gladiator, c: Contract) {
+  const rates = c.enemy.map(e => ({ e, dw: (TYPE_MATCHUP[g.type]?.[e.type] ?? 0.5) - 0.5 }));
+  const key = rates.reduce((a, x) => Math.abs(x.dw) > Math.abs(a.dw) ? x : a, rates[0]); // 가장 크게 기운 짝
+  if (!key || Math.abs(key.dw) < 0.02) return; // 호각이면 말하지 않는다
+  const note = matchupNotes([g], [key.e]).find(n => n.good === key.dw > 0)?.ko;
+  toast(note ?? `${TYPE_KO[key.e.type]}와의 싸움은 ${g.name}${eun(g.name)} ${key.dw > 0 ? '유리하다' : '불리하다'}`, key.dw > 0 ? 'good' : 'bad');
 }
 export function renderPlan() {
   S.pageSlide = null; const lineupTop = h('div', { class: 'lineuptop' }); // 가로 배치: 왼쪽 계약 목록, 오른쪽 위 고른 계약의 편성 카드 + 아래 검투사 목록
@@ -152,7 +162,7 @@ export function renderPlan() {
         H.fameWin ? chip(I.heart, `호감 +${H.fameWin}`, 'up', '이기면 호감도를 더 준다') : null,
         H.honorAll ? chip(I.award, `명예 +${H.honorAll}`, 'up', '출전자 전원 명예') : null,
         H.bet ? chip(I.dice, c.bet ? '내기 받음' : '내기 가능', 'flat', '스폰시오: 이기면 상금 두 배, 지면 상금만큼 물어냄') : null,
-        c.needVeterans ? chip(I.shield, `베테 ${c.needVeterans}명`, 'flat', '베테라누스가 이만큼 있어야 치를 수 있다') : null].filter((n): n is HTMLElement => !!n);
+        c.needVeterans ? chip(I.shield, c.needVeterans >= c.size ? '티로 불가' : `티로 ${c.size - c.needVeterans}명까지`, 'flat', '주최자는 리벨루스(경기 전 명단)에 이름과 전적을 실어 관중에게 판다. 첫 경기인 티로만으로는 명단이 서지 않는다 — 177년 칙령도 경기 등급마다 검투사 등급 비율을 정해 두었다') : null].filter((n): n is HTMLElement => !!n);
       cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
         h('div', { class: 'grow' },
           h('div', { class: 'ctitle' }, h('b', {}, c.venue)), // 이름 한 줄
@@ -164,23 +174,27 @@ export function renderPlan() {
     }
     // 왼쪽 편성 카드: 줄마다 하나씩. 제목 / 규모·주최 / 전력 / 상대(파밀리아 줄 + 검투사 한 줄씩) / 자리(베테라누스 몫은 금색 표시) / 시너지 / 비용 / 피로
     // 자리 배치: 베테라누스가 왼쪽 대장 자리 — [배정된 베테][베테 몫 빈 자리][티로][빈 자리]
-    const vetsIn = team.filter(g => g.rank === 'veteranus'), tirosIn = team.filter(g => g.rank !== 'veteranus'), vetsLeft = Math.max(0, c.needVeterans - vetsIn.length);
+    const vetsIn = team.filter(g => g.rank === 'veteranus'), tirosIn = team.filter(g => g.rank !== 'veteranus'), vetsLeft = c.needVeterans >= c.size ? 0 : Math.max(0, c.needVeterans - vetsIn.length); /* 자리를 전부 금색으로 칠하지 않는다 — 티로 전면 불가는 위 칩이 말한다 */
     const slotList: ({ g: Gladiator } | { vet: true } | { empty: true })[] = [...vetsIn.map(g => ({ g })), ...Array.from({ length: vetsLeft }, () => ({ vet: true as const })), ...tirosIn.map(g => ({ g })), ...Array.from({ length: Math.max(0, c.size - team.length - vetsLeft) }, () => ({ empty: true as const }))];
     const rv = rivalOf(S.st.rivals, c.rivalId);
-    const rentLine = team.length ? `대여료 ${Math.round(team.reduce((a, g) => a + rentFee(g, c.tier), 0) * HOST[c.host].rent).toLocaleString()} · 경비 −${fightExpense(team, c.tier).toLocaleString()}` : '';
     lineupTop.append(h('div', { class: `card contract sel lineup` },
       h('div', { class: 'grow' },
-        h('div', { class: 'ltitle' }, h('span', { class: 'tierchip' }, `등급 ${c.tier}`), h('b', {}, c.venue)), /* 등급은 계약 카드와 같은 칩 */
-        h('div', { class: 'lmeta' }, h('span', { class: `eff count${team.length === c.size ? ' ok' : ''}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c), h('button', { class: 'lview', title: `누르면 ${S.lineupView === 'record' ? '능력치' : '전적'}로 바뀝니다`, onclick: (ev: Event) => { ev.stopPropagation(); S.lineupView = S.lineupView === 'record' ? 'stats' : 'record'; render(); } }, S.lineupView === 'record' ? '전적' : '능력치', h('span', { class: 'sw' }, '⇄')), h('span', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size))), // 전력은 규모·주최 줄 오른쪽 끝에, 전력 식으로 (자리를 채우는 중에도 평균으로)
-        h('div', { class: 'lenemy' }, h('div', { class: 'lfam' }, h('b', {}, rv ? rv.name : '타지 라니스타의 검투사'), rv ? h('span', { class: 'hint' }, ` (${recordVsMe(rv)})`) : ''), // 버튼 하나로 전적 ⇄ 능력치 스위칭 (양쪽 타일에 같이 적용)
+        h('div', { class: 'larena' }, /* 경기장 정보: 어디서·누가·얼마에 (2026-09-17 사용자: 경기장과 스틱맨 카드를 나눈다) */
+        h('div', { class: 'ltitle' }, h('span', { class: 'tierchip' }, `등급 ${c.tier}`),
+          h('b', {}, c.venue)), /* 등급 칩 + 경기장 이름 (2026-09-17 사용자) */
+        /* 인원 칩·주최자 성격도 뺐다 — 자리가 인원을 말하고, 주최자 이야기는 계약 벽에서 이미 읽었다 (2026-09-17 사용자). 전력은 두 줄 사이로 */
+        ), /* 대여료·경비도 뺐다 — 편성에서는 누구를 내보낼지만 고른다. 돈 이야기는 계약 벽과 정산에서 (2026-09-17 사용자) */
+        h('div', { class: 'lcards' }, /* 스틱맨 카드: 상대 / 우리 파밀리아 / 상성 / 시너지 */
+        h('div', { class: 'lenemy' }, h('div', { class: 'lfam' }, h('b', { title: rv ? `나와의 전적 ${recordVsMe(rv)}` : '' }, rv ? rv.name : '타지 라니스타의 검투사')), /* 전적은 이름 툴팁으로 (2026-09-17 사용자) */
           h('div', { class: 'etiles' }, ...c.enemy.map(e => { const spBy = S.st.roster.filter(g => (g.spared ?? []).includes(e.id)); const star = rv ? rivalStar(rv) : undefined; // 상대 검투사도 스틱맨 초상 타일로 (복수 표시는 우리 타일 쪽에)
             return h('div', { class: 'etile', title: `${TYPE_KO[e.type]} · ${e.rank === 'tiro' ? '티로' : '베테라누스'} · ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}${(e.skills ?? []).length ? `\n기술 ${(e.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` },
-              ...miniGlad(e, { enemy: true, size: 40, meta: [star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null, spBy.length ? h('span', { class: 'badge grudge', title: `${spBy.map(g => g.name).join(', ')} 이(가) 살려 준 자. 재대결이면 공격 +10%, 그에게 지면 미시오 −15%` }, '원한') : null] })); }))),
-        h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아'), h('span', { class: 'hint' }, ` (${team.length}/${c.size})`)), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}`, title: vet ? '대장 자리: 베테라누스만 들어갈 수 있습니다' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: 40 }) : [h('span', { class: 'hint' }, vet ? '베테라누스' : '빈 자리')])); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
+              ...miniGlad(e, { enemy: true, size: CARD_PORTRAIT, foes: team, mood: spBy.length ? 'grudge' : undefined, meta: [star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null] })); }))),
+        h('div', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size)), /* 두 줄의 경계에 걸쳐 앉는다 — 마주 선 두 편 사이의 저울 */
+        h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아')), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; const rough = !g && !vet; /* 신참도 설 수 있는 자리 — 허름하게 (2026-09-17 사용자) */
+      return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}${rough ? ' rough' : ''}`, title: rough ? '신참도 설 수 있는 자리' : vet ? '주최자가 신참을 받지 않는 자리' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: CARD_PORTRAIT, foes: c.enemy }) : []) /* 빈 자리는 글자 없이 홈으로만 말한다 (2026-09-17 사용자) */); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
         (() => { const notes = matchupNotes(team, c.enemy); return notes.length ? h('div', { class: 'lmatch' }, ...notes.slice(0, 3).map(n => h('div', { class: `mnote ${n.good ? 'good' : 'bad'}` }, n.ko))) : null; })(), /* 장비가 만드는 상성: 이번 상대에게 실제로 걸리는 것만 한 줄씩 (상성표는 없다) */
         h('div', { class: 'lsyn' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : classicPart ? h('span', { class: 'syn classic maybe' }, `전통 짝 ${team.length}/${c.size}`) : null), // 항상 한 줄 자리를 잡아 둔다 (시너지가 생겨도 카드 높이가 안 흔들리게, '시너지 없음' 문구 없음)
-        h('div', { class: 'meta lcost' }, rentLine), // 대여료 줄도 항상 자리 유지
-        )));
+        ))));
   }
   for (let i = S.st.contracts.length; i < 4; i++) cpanel.append(h('div', { class: 'card contract empty' }, h('span', { class: 'hint' }, i === 0 && !S.st.contracts.length ? '이번 시즌 계약 없음' : '빈 칸'))); // 한 줄 4칸 고정: 남는 칸은 빈 칸으로
   // (출전 가능 인원 부족·시장 안내는 뺐다: 계약 페이지는 계약만)
@@ -235,23 +249,26 @@ export function renderPlan() {
     const swapKeepsVets = (() => { if (!selC) return false; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return true; if (!swapTarget) return false; const team = ids.filter(id => id !== swapTarget.id).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const vets = team.filter(x => x.rank === 'veteranus').length + (g.rank === 'veteranus' ? 1 : 0); return vets >= selC.needVeterans; })();
     const canSwap = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && swapKeepsVets; // 자리가 다 찼으면 마지막 자리(티로)와 교체
     const swapVetBlock = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && !swapKeepsVets;
-    if (isDoc) { // 독토르도 같은 미니 카드 문법으로 보이게 접는다
-      pright.append(h('div', { class: 'gtile dis' }, ...miniGlad(g, { size: 56, meta: [h('span', { class: 'badge doc' }, '독토르')] })));
-      continue;
-    }
+    if (isDoc) continue; // 독토르는 배정 목록에 서지 않는다 — 가르치는 사람이다 (2026-09-17 사용자)
     const elsewhere = at != null && selC != null && at !== selC.id; // 다른 계약에 배정됨: 누르면 그 계약에서 빼고 이 계약에 넣는다 (자리가 없으면 마지막과 교체)
     const rec = elsewhere ? recommend(g) : null;
-    const fat = g.fatigue ?? 0;
     const tagNode = null; // 피로·부상은 표의 숫자로 (칩 없음)
     const elseSwapBlock = elsewhere && !!selC && (S.assign[selC.id]?.length ?? 0) >= selC.size && !swapKeepsVets; // 다른 계약의 티로: 이 계약이 찼고 교체하면 베테 조건이 깨지면 못 온다
     // 베테 조건으로 막힌 티로는 칩 없이 흐리게만 (왼쪽 금색 베테 자리가 이유를 말한다)
-    const stateNode = elsewhere ? null : at != null ? h('span', { class: 'badge sel', title: '이 계약에 배정됨. 다시 누르면 뺀다' }, '출전') : g.injured ? null : g.fought ? h('span', { class: 'badge injured', title: '이번 시즌 이미 출전' }, '출전 완료') : swapVetBlock ? null : rec ? h('span', { class: 'badge rec' }, `추천 ${rec}`) : canSwap ? h('span', { class: 'hint', title: `누르면 ${swapTarget?.name ?? '마지막'} 과 교체` }, '교체') : canAssign && recommend(g) ? h('span', { class: 'badge rec', title: `함께 넣으면 ${recommend(g)}` }, `추천 ${recommend(g)}`) : unfulfillable ? h('span', { class: 'badge injured', title: '이 계약은 조건(베테라누스·인원)을 채울 수 없어 배정할 수 없습니다' }, '조건 미달') : null;
+    const stateNode = elsewhere ? null : /* '출전' 칩은 뺐다 — 배정된 타일은 파란 테두리가 이미 말한다 (2026-09-17 칩 정리) */ at != null ? null : rec ? h('span', { class: 'badge rec' }, `추천 ${rec}`) : canSwap ? h('span', { class: 'hint', title: `누르면 ${swapTarget?.name ?? '마지막'} 과 교체` }, '교체') : canAssign && recommend(g) ? h('span', { class: 'badge rec', title: `함께 넣으면 ${recommend(g)}` }, `추천 ${recommend(g)}`) : null;
+    // 못 나가는 까닭은 칩이 아니라 흐려진 카드 위에 한 줄로 적는다 (2026-09-17 사용자)
+    // 못 나가는 까닭은 하나씩만 적는다. 인원이 모자라 계약이 안 서는 것은 사람의 사정이 아니므로 흐리게만 두고 말하지 않는다 (2026-09-17 사용자)
+    const vetShort = !!selC && g.rank !== 'veteranus' && available(S.st).filter(x => x.rank === 'veteranus').length < selC.needVeterans; // 베테라누스가 모자라 티로가 낄 자리가 없다 = '티로는 못 나감' 과 같은 말
+    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` }
+      : g.fought ? { t: '출전중', tip: '이번 시즌에 이미 모래를 밟았다 — 한 시즌에 한 번만 나간다' }
+      : vetBlock || swapVetBlock || vetShort ? { t: '출전불가', tip: '주최자가 신참을 받지 않는다 — 남은 자리는 티로가 채울 수 없다' }
+      : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' } : null;
     const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || (!!selC && at == null && !!g.fought);
-    const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; const revengeNode = revengeOn.length ? h('span', { class: 'badge revenge', title: `${revengeOn.map(e => e.name.replace('(적)', '')).join(', ')} 에게 진 적이 있다. 꺾으면 복수 (명예 +8, '복수자')` }, '복수') : null; // 복수 기회는 우리 검투사 타일에
+    const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; // 복수 기회는 우리 검투사 타일에
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 속도 ${g.base.spd} 사거리 ${g.base.range}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}${skillsOf(g).length ? `\n기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
     pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${dis ? ' dis' : ''}`, title: tip,
-      onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
-      ...miniGlad(g, { size: 56, meta: [formLabel(g) ? h('span', { class: `badge form ${formLabel(g) === '가벼움' ? 'good' : 'bad'}`, title: formTip(g) }, `몸 ${formLabel(g)}`) : null, fat >= 2 ? h('span', { class: `badge ${fat >= 3 ? 'injured' : 'warn'}`, title: `피로 ${fat}: 계속 출전하면 과로 위험이 오른다` }, `피로 ${fat}`) : null, stateNode, revengeNode, tagNode] }), elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
+      onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); matchupToast(g, selC); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
+      ...miniGlad(g, { size: CARD_PORTRAIT, foes: selC ? selC.enemy : [], mood: revengeOn.length ? 'revenge' : undefined, meta: [formLabel(g) ? h('span', { class: `badge form ${formLabel(g) === '가벼움' ? 'good' : 'bad'}`, title: formTip(g) }, `몸 ${formLabel(g)}`) : null, stateNode, tagNode] }) /* 원한·복수는 칩이 아니라 초상의 연출로 (2026-09-17 사용자) */, why ? whyMark(why) : null, elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
   }
   { const c = coach(); if (c) pleft.append(c); }
   app.classList.add('land', 'plan'); const frag = document.createDocumentFragment(); frag.append(tools, cpanel, bar);
@@ -304,12 +321,12 @@ export function nextFight() {
 function finishSeason() {
   const label = seasonName(S.st.season); const fameBefore0 = S.st.fame - S.seasonReports.reduce((a, r) => a + r.fameDelta, 0); // 경기 전 호감도
   // 훈련 처리
-  const trained: { g: Gladiator; stat: 'atk' | 'def' }[] = [];
+  const trained: { g: Gladiator; stat: TrainStat; gain: number }[] = [];
   const acted: { g: Gladiator; act: Action; note: string }[] = [];
   for (const g of S.st.roster) { if (g.status === 'doctor' || !g.alive) continue; const tp: Action = planOf(g);
     if (palusOf(S.st, g) >= 0) { const k = rollTraining(g); // 팔루스에 선 검투사: 무엇을 단련할지 무작위. 자리 수만큼만 서 있으니 상한을 넘지 않는다. 출전했으면 피로가 쌓일 수 있다(train 안에서)
-      if (k === 'skill') { const r = doSkillTrain(S.st, g); if (r) acted.push({ g, act: 'skill', note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 돌아오면 배울지 정합니다' : '실패'}` }); else acted.push({ g, act: 'rest', note: '기술 훈련 못 함 (돈·조건)' }); }
-      else if (train(S.st, g, k)) trained.push({ g, stat: k }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' });
+      if (k === 'skill') { const r = doSkillTrain(S.st, g); if (r) acted.push({ g, act: 'skill', note: `${SKILL_BY_ID[r.id].name} ${r.ok ? '깨침 — 돌아오면 배울지 정합니다' : `실패 — 대신 ${TRAIN_KO[r.fallback!.stat]} +${r.fallback!.gain}`}` }); else acted.push({ g, act: 'rest', note: '기술 훈련 못 함 (돈·조건)' }); }
+      else { const gain = trainGain(S.st, g, k); if (train(S.st, g, k)) trained.push({ g, stat: k, gain }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' }); } 
       continue; }
     if (assignedTo(g.id) != null || g.fought) continue; // 출전만 한 검투사는 따로 행동 없음
     if (g.injured > 0) { if (doRecover(S.st, g)) acted.push({ g, act: 'recover', note: '회복 가속' }); } // 부상자는 자동 요양

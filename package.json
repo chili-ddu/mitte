@@ -11,7 +11,10 @@
     "deploy": "bash scripts/deploy.sh",
     "curve": "tsx src/cli/curve.ts",
     "test": "node --import tsx --test src/core/*.test.ts",
-    "matrix": "tsx src/cli/matrix.ts"
+    "matrix": "tsx src/cli/matrix.ts",
+    "dev": "vite --host",
+    "build:watch": "vite build --watch",
+    "matchup:table": "tsx src/cli/matchup-table.ts 600 > src/core/matchup-table.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",

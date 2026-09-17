@@ -1,4 +1,5 @@
 // 시트(시설·독토르·파밀리아·소식·지원자·규칙)와 대시보드 항목
+import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드 한 종류 (2026-09-17 사용자) */
 import { S } from './state.js';
 import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, healCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf } from '../core/game.js';
 import { type Gladiator } from '../core/types.js';
@@ -11,7 +12,7 @@ import { rivalDef } from '../core/rivals.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { View, clearSave, render } from './main.js';
 import { ask, h, helpBtn, hintSpan, sq, tell } from './dom.js';
-import { gladCard, gladSheet } from './detail.js';
+import { gladRow, gladSheet } from './detail.js';
 import { cellPanel } from './cells.js';
 import { TYPE_COLOR, glyphSvg, portrait } from './portrait.js';
 
@@ -55,17 +56,18 @@ export function renderSheet(): Node {
 // 독토르 시트: 고용한 교관(유형·기준 능력치·기술 전수·제자와 보너스)과 고용할 수 있는 자유민
 function doctorsPanel(): Node {
   const docs = S.st.roster.filter(g => g.status === 'doctor'), free = S.st.roster.filter(g => g.status === 'rudiarius');
-  const docCard = (d: Gladiator) => { const pupils = S.st.roster.filter(g => g !== d && g.type === d.type && g.status !== 'doctor');
-    return h('div', { class: 'card' }, portrait(d, 56),
-      h('div', { class: 'grow' },
-        h('div', {}, h('span', { class: 'badge doc' }, '독토르'), h('b', {}, d.name), h('span', { class: 'meta' }, ` ${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · ${d.wins}승/${d.fights}전`), d.wins >= CONFIG.doctorSkillWins ? h('span', { class: 'badge mentor', style: 'margin-left:6px' }, '기술 전수') : null),
-        h('div', { class: 'meta' }, `기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌 · 가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
-        h('div', { class: 'meta' }, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(S.st, g, 'atk') - 1 - gymBonus(S.st)}·방 +${trainGain(S.st, g, 'def') - 1 - gymBonus(S.st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)),
-      h('button', { onclick: () => { backToArena(S.st, d); render(); } }, '다시 출전'),
-      h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(S.st, d); render(); } }); } }, '내보내기')); };
-  const freeCard = (g: Gladiator) => h('div', { class: 'card' }, portrait(g, 56),
-    h('div', { class: 'grow' }, h('div', {}, h('span', { class: 'badge free' }, '자유민'), h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전`)), h('div', { class: 'meta' }, `공 ${g.base.atk} · 방 ${g.base.def}${doctorFor(S.st, g.type) ? ` · ${TYPE_KO[g.type]} 독토르 이미 있음` : ''}`)),
-    h('button', { class: 'primary', title: `${g.name} 에게 독토르 자리를 제안한다. 시즌 급료 ${CONFIG.doctorSalary} HS`, onclick: () => { hireDoctor(S.st, g); S.notice = `${g.name} 이(가) 독토르 제안을 받아들였다`; render(); } }, `독토르 제안 ${CONFIG.doctorSalary}/시즌`));
+  const docCard = (d: Gladiator) => { const pupils = S.st.roster.filter(g => g !== d && g.type === d.type && g.status !== 'doctor'); /* 공통 검투사 카드 (2026-09-17 사용자) */
+    return gladCard(d, { size: CARD_PORTRAIT, cls: 'full',
+      nameExtra: [d.wins >= CONFIG.doctorSkillWins ? h('span', { class: 'badge teach', title: `${CONFIG.doctorSkillWins}승 이상이라 같은 유형 제자에게 기술까지 전수한다` }, '기술까지') : null], /* '독토르' 칩은 뺐다 — 시트 제목이 이미 말하고 초상이 훈련 막대를 들었다 (2026-09-17 사용자) */
+      rows: [h('span', {}, `${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · 기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌`),
+        h('span', {}, `가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
+        h('span', {}, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(S.st, g, 'atk') - 1 - gymBonus(S.st)}·방 +${trainGain(S.st, g, 'def') - 1 - gymBonus(S.st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)],
+      acts: [h('button', { onclick: () => { backToArena(S.st, d); render(); } }, '다시 출전'),
+        h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(S.st, d); render(); } }); } }, '내보내기')] }); };
+  const freeCard = (g: Gladiator) => gladCard(g, { size: CARD_PORTRAIT, cls: 'full',
+    nameExtra: [], /* 자유민 표식은 초상의 나무 검이 대신한다 */
+    rows: [h('span', {}, `${TYPE_KO[g.type]} · 공 ${g.base.atk} · 방 ${g.base.def}${doctorFor(S.st, g.type) ? ` · ${TYPE_KO[g.type]} 독토르 이미 있음` : ''}`)],
+    acts: [h('button', { class: 'primary', title: `${g.name} 에게 독토르 자리를 제안한다. 시즌 급료 ${CONFIG.doctorSalary} HS`, onclick: () => { hireDoctor(S.st, g); S.notice = `${g.name} 이(가) 독토르 제안을 받아들였다`; render(); } }, `독토르 제안 ${CONFIG.doctorSalary}/시즌`)] });
   return h('div', { class: 'panel' }, h('h2', {}, '독토르', helpBtn('독토르', `루디스를 받은 자유민을 교관으로 고용합니다. 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS. 같은 유형 훈련에서 독토르의 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2. ${CONFIG.doctorSkillWins}승 이상이면 유형 기술을 전수합니다. 비문의 doctor secutorum·myrmillonum 처럼 무장별로 한 명씩 두는 것이 자연스럽습니다. 독토르는 라니스타의 후계자 후보가 됩니다.`)),
     ...docs.map(docCard), docs.length ? null : h('div', { class: 'hint', style: 'margin-bottom:8px' }, '고용한 독토르가 없습니다.'),
     free.length ? h('h3', { class: 'sub' }, '고용할 수 있는 자유민') : null, ...free.map(freeCard),
@@ -102,7 +104,7 @@ function applicantsPanel(): Node | null {
   if (!S.st.applicants.length) return null;
     const full = S.st.roster.length >= rosterCap(S.st);
     return (h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '문 앞의 지원자', helpBtn('자유민 지원자 (아욱토라티)', `자유민 검투사가 스스로 계약을 청합니다. 계약금만 내면 되고, 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%를 급료로 받으며 ${CONFIG.origins.auctoratus.term}시즌 계약입니다. 자유민이라 팔 수 없고 사망 배상도 없습니다. 이번 시즌이 지나면 떠납니다.`)),
-      h('div', { class: 'cardgrid' }, ...S.st.applicants.map(g => gladCard(g, [
+      h('div', { class: 'cardgrid' }, ...S.st.applicants.map(g => gladRow(g, [
         h('button', { class: 'primary', disabled: S.st.money < g.buyPrice || full, title: full ? '켈라이 가득 찼습니다' : '', onclick: () => { if (buy(S.st, g)) { sfx.coin(); render(); } } }, `계약 ${g.buyPrice.toLocaleString()}`)])))));
 }
   // 루두스 시설: 세 건물 × 세부 항목. 모든 항목이 유한 단계 (장기 지출처)
@@ -138,11 +140,17 @@ function facilitiesPanel(): Node {
 function rivalsPanel(): Node {
     return h('div', { class: 'panel' }, h('h2', {}, '상대 파밀리아', hintSpan(`${S.st.rivals.length}곳 · 이번 시즌 계약 상대 ${new Set(S.st.contracts.map(c => c.rivalId).filter(Boolean)).size}곳`)),
       h('div', { class: 'rivals' }, ...S.st.rivals.map(rv => { const star = rivalStar(rv); const inContracts = S.st.contracts.filter(c => c.rivalId === rv.id).length;
-        return h('div', { class: 'rivalcard' }, star ? portrait(star, 56, true) : h('div', { class: 'portrait', style: 'width:56px;height:56px' }),
-          h('div', { class: 'grow' }, h('div', {}, h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}`, style: 'margin-left:6px', title: rivalDef(rv)?.desc ?? '' }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), inContracts ? h('span', { class: 'badge revenge', style: 'margin-left:6px' }, `이번 시즌 계약 ${inContracts}`) : null),
-            h('div', { class: 'meta' }, star && ((star.honor ?? 0) >= 20 || star.wins >= 3) ? `간판: ${star.name} (${TYPE_KO[star.type]} ${star.rank === 'tiro' ? '티로' : '베테'}, ${star.wins}승/${star.fights}전, 명예 ${star.honor ?? 0}${(star.skills ?? []).length ? `, 기술 ${(star.skills ?? []).map(SKILL_NAME).join('·')}` : ''})` : '아직 이름난 검투사가 없음'),
+        const named = star && ((star.honor ?? 0) >= 20 || star.wins >= 3); /* 이름이 났다고 할 만한가 */
+        return h('div', { class: 'rivalcard' },
+          h('div', { class: 'rvinfo' }, /* 왼쪽: 파밀리아 정보 (2026-09-17 사용자) */
+            h('div', { class: 'rvname' }, h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}`, title: rivalDef(rv)?.desc ?? '' }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), inContracts ? h('span', { class: 'badge revenge' }, `이번 시즌 계약 ${inContracts}`) : null),
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
-            h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`))))); })));
+            h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`)))),
+          h('div', { class: `rvstar${named ? '' : ' none'}` }, /* 오른쪽: 간판 검투사 카드 */
+            h('div', { class: 'rvcap' }, '간판 검투사'),
+            named && star ? gladCard(star, { enemy: true, size: CARD_PORTRAIT, meta: [h('span', { class: 'hint' }, `명예 ${star.honor ?? 0}`)] }) /* 공통 검투사 카드 */
+              : h('div', { class: 'meta rvempty' }, '아직 이름난 검투사가 없다')));
+        })));
 }
 // ── 도움말: 장비 규칙 + 시너지 효과 + 전투·미시오·경제 규칙 (상성은 제거됨) (수치는 config/equipment/synergy 와 동기화)
 function renderHelp(): Node {
@@ -221,7 +229,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
     if (g && g.origin && g.origin !== 'slave') out.push(item('idle', `${ORIGIN_KO[g.origin]}: ` + (g.origin === 'captive' ? `값 ${Math.round((1 - CONFIG.origins.captive.price) * 100)}% 저렴, 공격 +${CONFIG.origins.captive.atk}·HP +${CONFIG.origins.captive.hp}. 관중이 이방인에게 냉담해 미시오 ${Math.round(CONFIG.origins.captive.missio * 100)}%.` : g.origin === 'damnatus' ? `값 ${Math.round((1 - CONFIG.origins.damnatus.price) * 100)}% 저렴, 능력치 ${CONFIG.origins.damnatus.stat}. 사망 배상 절반. ${CONFIG.origins.damnatus.freeAfter}시즌 뒤 형기 만료로 자유민이 됨.` : `계약금 ${g.buyPrice.toLocaleString()} HS 로 ${CONFIG.origins.auctoratus.term}시즌 계약. 자유민이라 매각·배상 없음, 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}% 급료. 만료 전 재계약(계약금의 절반) 가능.`)));
     if (g) { // 고른 매물의 자세한 정보 (목록은 없다: 위 판매대의 검투사를 눌러 고른다)
       const price = priceOf(S.st, g);
-      out.push(gladCard(g, [h('button', { class: 'primary', disabled: S.st.money < price || full, onclick: () => { if (buy(S.st, g)) { sfx.coin(); S.marketSel = null; S.detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
+      out.push(gladRow(g, [h('button', { class: 'primary', disabled: S.st.money < price || full, onclick: () => { if (buy(S.st, g)) { sfx.coin(); S.marketSel = null; S.detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
       out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 속도 ${g.base.spd} · 사거리 ${g.base.range}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
       if (S.st.money < price) out.push(item('warn', `자금이 ${(price - S.st.money).toLocaleString()} HS 부족합니다.`));
       const idx = S.st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${S.st.market.length} — 판매대의 다른 검투사를 누르면 바꿔 본다`));

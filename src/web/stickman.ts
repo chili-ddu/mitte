@@ -478,6 +478,26 @@ function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, 
         for (let i = -3; i <= 3; i++) { const t = Math.PI * (1.15 + i * 0.12); const cx = hx + Math.cos(t) * (r + 2), cy = hy + Math.sin(t) * (r + 2) - 1; ctx.save(); ctx.translate(cx, cy); ctx.rotate(t + Math.PI / 2); ctx.beginPath(); ctx.ellipse(0, -2.5, 1.6, 3.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
         ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 0.9; ctx.beginPath(); ctx.arc(hx, hy, r + 0.5, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
         break;
+      case 'staff': // 훈련 막대(루디스): 독토르가 쥔 나무 막대. 무기 대신 이걸로 자세를 잡아 준다
+        ctx.strokeStyle = '#6b4a22'; ctx.lineWidth *= 1.6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(shX - r * 0.4, shY - r * 0.6); ctx.lineTo(shX + r * 1.1, hipY + r * 2.6); ctx.stroke();
+        ctx.strokeStyle = '#8a6a44'; ctx.lineWidth *= 0.45;
+        ctx.beginPath(); ctx.moveTo(shX - r * 0.3, shY - r * 0.4); ctx.lineTo(shX + r * 1.0, hipY + r * 2.4); ctx.stroke();
+        break;
+      case 'grudge': // 원한: 살려 준 자를 노린다 — 머리와 어깨에 검은 그늘이 지고 눈이 가려진다
+        ctx.fillStyle = 'rgba(20,12,6,.42)'; ctx.beginPath(); ctx.ellipse(hx, hy - r * 0.15, r * 1.25, r * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(20,12,6,.5)'; ctx.lineWidth *= 1.2; ctx.beginPath(); ctx.moveTo(shX - r * 1.2, shY - r * 0.2); ctx.lineTo(shX + r * 1.2, shY - r * 0.2); ctx.stroke();
+        break;
+      case 'revenge': // 복수: 갚아 줄 차례다 — 투구 틈으로 붉은 눈빛
+        ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.ellipse(hx - r * 0.34, hy - r * 0.05, r * 0.2, r * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(hx + r * 0.34, hy - r * 0.05, r * 0.2, r * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.ellipse(hx, hy, r * 1.1, r * 1.0, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+        break;
+      case 'rudis': // 나무 검(루디스): 자유를 받은 자가 허리에 찬다 — 신분의 표식이지 싸우는 무기가 아니다
+        ctx.strokeStyle = '#8a6a44'; ctx.lineWidth *= 1.3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(shX - r * 1.3, hipY + r * 0.2); ctx.lineTo(shX - r * 1.9, hipY + r * 2.0); ctx.stroke(); // 칼몸
+        ctx.lineWidth *= 0.8; ctx.beginPath(); ctx.moveTo(shX - r * 1.0, hipY + r * 0.35); ctx.lineTo(shX - r * 1.7, hipY + r * 0.05); ctx.stroke(); // 코등이
+        break;
       case 'scar': // 흉터: 붉은 사선 + 봉합 자국
         ctx.strokeStyle = '#c0392b'; ctx.lineWidth *= 0.8; ctx.beginPath(); ctx.moveTo(hx + 1, hy - 5); ctx.lineTo(hx + 5, hy + 3); ctx.stroke();
         ctx.lineWidth *= 0.7; ctx.beginPath(); for (let i = 0; i < 3; i++) { const t = i / 2; const x = hx + 1 + 4 * t, y = hy - 5 + 8 * t; ctx.moveTo(x - 1.5, y + 0.8); ctx.lineTo(x + 1.5, y - 0.8); } ctx.stroke();

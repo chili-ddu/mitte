@@ -1,5 +1,5 @@
 // 화면의 공유 가변 상태. main.ts 의 모듈 수준 let 을 한 객체로 모았다 (2026-09-16 리팩터링). 각 화면 모듈은 여기서 읽고 쓴다
-import type { Action, SeasonEvents, GameState, FightReport } from '../core/game.js';
+import type { Action, SeasonEvents, GameState, FightReport, TrainStat } from '../core/game.js';
 import type { Contract, Gladiator, GType } from '../core/types.js';
 import type { View } from './main.js';
 import type { StickPose } from './scenes.js';
@@ -18,7 +18,7 @@ export interface State {
   view: View;
   travel: { to: View; from: View; fromX: number; start: number } | null;
   seasonReports: FightReport[];
-  seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: 'atk' | 'def' }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
+  seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: TrainStat; gain: number }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
   report: FightReport | null;
   notice: string;
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
@@ -55,7 +55,6 @@ export interface State {
   stickFn: ((x: number, y: number, sc: number, pose: StickPose, t: number, seed: number, facing?: 1 | -1) => void) | null;
   pageSlide: 'fwd' | 'back' | null;
   shownPlan: number | null;
-  lineupView: 'record' | 'stats';
   tabletQueue: number[] | null;
   tabletIdx: number;
   shownTablet: boolean;

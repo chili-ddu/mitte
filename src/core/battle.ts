@@ -65,7 +65,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
 export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { mentored?: Set<number>; hpBonusA?: number; boostedB?: Set<number>; boostMul?: number } = {}): BattleResult {
   const synA = computeSynergies(teamA), synB = computeSynergies(teamB);
   const units = [...makeUnits(teamA, 'A', synA, opts.hpBonusA ?? 0), ...makeUnits(teamB, 'B', synB, 0, opts.boostedB, opts.boostMul ?? 1)];
-  const form: Record<number, number> = {}; const teamForm = { A: rng.range(-1, 1), B: rng.range(-1, 1) }; for (const u of units) { const f = u.g.form ?? (teamForm[u.side] * CONFIG.form.team + rng.range(-1, 1) * (1 - CONFIG.form.team)); form[u.g.id] = f; /* 우리 검투사는 시즌 시작에 정해 둔 값(g.form), 상대는 경기 때 굴린다 — 내 사람의 상태는 알고 남의 것은 모른다 */ u.atk = Math.max(1, u.atk + Math.round(f * CONFIG.form.atk)); u.def = Math.max(0, u.def + Math.round(f * CONFIG.form.def)); } // 그날의 몸 상태: 경기 내내 남는 우연
+  const form: Record<number, number> = {}; const teamForm = { A: rng.range(-1, 1), B: rng.range(-1, 1) }; for (const u of units) { const f = u.g.form ?? (teamForm[u.side] * CONFIG.form.team + rng.range(-1, 1) * (1 - CONFIG.form.team)); form[u.g.id] = f; /* 우리 검투사는 시즌 시작에 정해 둔 값(g.form), 상대는 경기 때 굴린다 — 내 사람의 상태는 알고 남의 것은 모른다 */ u.hp = Math.max(1, u.hp + Math.round(f * CONFIG.form.hp)); u.atk = Math.max(1, u.atk + Math.round(f * CONFIG.form.atk)); u.def = Math.max(0, u.def + Math.round(f * CONFIG.form.def)); } // 그날의 몸 상태: 경기 내내 남는 우연
   const mentored = opts.mentored ?? new Set<number>(); // 독토르에게 기술을 전수받은 검투사 (유형 특기 강화)
   const M = CONFIG.mentor;
   const syn = { A: synA, B: synB };

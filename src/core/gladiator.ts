@@ -1,6 +1,8 @@
 import type { Gladiator, GType, Lineage, Rank, Stats } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
+import { TYPE_MATCHUP } from './matchup-table.js';
+import { matchupOwner } from './matchup.js';
 import { epithetMods } from './epithets.js';
 import { SKILL_WORTH } from './skills.js';
 import { rollTalent, talentOf, TALENT_PRICE_MUL } from './talent.js';
@@ -48,9 +50,21 @@ export function effectiveStats(g: Gladiator): Stats {
   const grow = 1 + g.wins * 0.02;
   const pen = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat; // 피로(첫 1점 무료) + 노쇠
   const E = epithetMods(g); // 별칭
-  return { hp: Math.round(g.base.hp * grow * E.hp), atk: Math.max(1, Math.round(g.base.atk * grow * E.atk) - pen), def: Math.max(0, Math.round(g.base.def * grow * E.def) - pen), spd: Math.max(1, g.base.spd - agePenalty(g).spd), range: g.base.range };
+  return { hp: Math.max(1, Math.round(g.base.hp * grow * E.hp) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow * E.atk) - pen), def: Math.max(0, Math.round(g.base.def * grow * E.def) - pen), spd: Math.max(1, g.base.spd - agePenalty(g).spd), range: g.base.range };
 }
 // 노쇠: 31세부터 3년마다 속도 −1, 33세부터 2년마다 공·방 −1
+// 체력 한 줄을 이루는 몫들 — 화면의 체력바가 이 값으로 초록(기본)·연초록(보너스)·붉은(패널티)을 칠한다 (2026-09-17 사용자)
+export interface HpParts { base: number; bonus: number; pen: number; total: number }
+export function hpParts(g: Gladiator, kitchen = 0): HpParts {
+  const base = g.base.hp;
+  const grown = Math.round(base * (1 + g.wins * 0.02) * epithetMods(g).hp) - base; // 승수 성장 + 예명('흉터'는 음수)
+  const wear = (Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat) * CONFIG.hpPenPerStat; // 피로 + 노쇠
+  const form = formMod(g).hp; // 이번 시즌 몸 상태
+  const bonus = Math.max(0, grown) + kitchen + Math.max(0, form);
+  const pen = wear + Math.max(0, -grown) + Math.max(0, -form);
+  return { base, bonus, pen, total: Math.max(1, base + bonus - pen) };
+}
+
 export function agePenalty(g: Gladiator): { spd: number; stat: number } {
   const A = CONFIG.age, age = g.age ?? 22;
   return { spd: age >= A.spdFrom ? Math.floor((age - A.spdFrom) / A.spdEvery) + 1 : 0, stat: age >= A.statFrom ? Math.floor((age - A.statFrom) / A.statEvery) + 1 : 0 };
@@ -77,11 +91,27 @@ export function label(g: Gladiator): string {
 // 전력 점수: 계약 난이도(상대가 나보다 강한가)를 재는 대략치. 능력치 + 서열 + 기술 수. 전투 규칙 자체는 아니다
 // 전력(전투력): 거울 대결로 잰 가중치 — 공 1 = 4.5, 방 1 = 3, HP 1 = 0.44, 속도 1 = 1.35. 2026-09-17 재측정: 거울 대결로 잰 승률 이득이 HP+10 11.5%p · 공+1 11.8%p · 방+1 8.1%p · 속+1 3.6%p 였다 — 방패가 첫 타만 막던 시절에 잰 옛 값(방 4.5·속 2.2)은 방어와 속도를 과대평가하고 있었다. 비율은 측정값 그대로 두되 전체를 1.12배 해서 평균 전력을 옛 저울(135)에 맞춘다 — 등급 상한 160/200 과 값 기준선이 절대 수치를 쓰기 때문. 기술은 잰 값(SKILL_WORTH). 계급·승수는 전투에 영향이 없어 넣지 않는다. 피로는 무료 1점을 넘긴 만큼 공·방 −1 → −8.5/점
 // 이번 철의 몸 상태: 값과 말. |f| 가 tell 을 넘어야 드러난다 (미지근한 날은 아무 말도 하지 않는다)
-export const formMod = (g: Gladiator) => { const f = g.form ?? 0; return { atk: Math.round(f * CONFIG.form.atk), def: Math.round(f * CONFIG.form.def) }; };
+export const formMod = (g: Gladiator) => { const f = g.form ?? 0; return { atk: Math.round(f * CONFIG.form.atk), def: Math.round(f * CONFIG.form.def), hp: Math.round(f * CONFIG.form.hp) }; };
 export const formLabel = (g: Gladiator): '가벼움' | '무거움' | null => { const f = g.form ?? 0; return f >= CONFIG.form.tell ? '가벼움' : f <= -CONFIG.form.tell ? '무거움' : null; };
-export const formTip = (g: Gladiator) => { const m = formMod(g), l = formLabel(g); return `이번 철 몸 상태: ${l === '가벼움' ? '가볍다' : l === '무거움' ? '무겁다' : '보통'} — 공 ${m.atk >= 0 ? '+' : ''}${m.atk} · 방 ${m.def >= 0 ? '+' : ''}${m.def}. 철마다 다시 정해진다`; };
+export const formTip = (g: Gladiator) => { const m = formMod(g), l = formLabel(g); return `이번 철 몸 상태: ${l === '가벼움' ? '가볍다' : l === '무거움' ? '무겁다' : '보통'} — 체력 ${m.hp >= 0 ? '+' : ''}${m.hp} · 공 ${m.atk >= 0 ? '+' : ''}${m.atk} · 방 ${m.def >= 0 ? '+' : ''}${m.def}. 철마다 다시 정해진다`; };
 export function powerOf(g: Gladiator): number {
   const b = g.base; const skills = (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
   return b.hp * 0.44 + b.atk * 4.5 + b.def * 3 + b.spd * 1.35 + skills + (CONFIG.typePower[g.type] ?? 0) - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5; // 유형 보정: 같은 전력이면 실제로 호각이도록
 }
+// 화면에 보여 줄 전력: 규칙이 쓰는 powerOf 와 같은 저울이되 **지금 몸**으로 잰다(승수 성장·예명·노쇠·피로·몸 상태).
+// powerOf 는 타고난 값으로 재므로 계약 난이도·값 계산은 그대로 두고, 카드의 ± 만 이 차이를 보여 준다 (2026-09-17 사용자)
+// 이번 상대와의 상성: 붙게 될 상대들을 평균해 1보다 크면 유리, 작으면 불리 (표는 matchup-table.ts — 실제 전투로 측정)
+export function matchupFactor(g: Gladiator, foes: Gladiator[] = []): number {
+  if (!foes.length) return 1;
+  // 한 짝의 기울기는 **임자 쪽 전력만** 움직인다 — 같은 이야기로 양쪽이 동시에 오르내리지 않게 (2026-09-17 사용자)
+  const d = foes.reduce((a, f) => a + (matchupOwner(g.type, f.type) === g.type ? (TYPE_MATCHUP[g.type]?.[f.type] ?? 0.5) - 0.5 : 0), 0) / foes.length;
+  return 1 + d * CONFIG.matchup.power;
+}
+export function powerNow(g: Gladiator, foes: Gladiator[] = []): number {
+  const e = effectiveStats(g), f = formMod(g);
+  const skills = (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
+  const raw = (e.hp + f.hp) * 0.44 + (e.atk + f.atk) * 4.5 + (e.def + f.def) * 3 + e.spd * 1.35 + skills + (CONFIG.typePower[g.type] ?? 0);
+  return raw * matchupFactor(g, foes); // 마주 설 상대가 정해졌으면 상성만큼 오르내린다
+}
+
 export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);

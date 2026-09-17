@@ -7,7 +7,7 @@ import { TYPES, TYPE_KO } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
 import { equipHandsKo } from '../core/equipment.js';
 import type { GType } from '../core/types.js';
-import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget } from './dom.js';
+import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget, toast } from './dom.js';
 import { portrait, startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
@@ -16,6 +16,7 @@ import { cellPanel } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
 import { renderPlan, seasonConfirmPage, seasonWarnings } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
+import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
 export const app = document.getElementById('app')!;
  // 마을 장면의 보이는 폭 (월드 단위): 라니스타 주변만, 이웃 장소는 걸어가서 본다
@@ -112,7 +113,7 @@ document.addEventListener('pointerdown', (ev) => { hideTip(); clearTimeout(S.tip
 document.addEventListener('pointerup', () => clearTimeout(S.tipTimer), { capture: true });
 document.addEventListener('pointercancel', () => clearTimeout(S.tipTimer), { capture: true });
 document.addEventListener('click', (ev) => { if (S.tipSuppressClick) { S.tipSuppressClick = false; ev.stopPropagation(); ev.preventDefault(); return; } // 길게 눌러 말풍선을 봤으면 그 클릭은 동작하지 않는다
-  const t = tipTarget(ev); if (t && (!isAction(t) || (isChip(t) && !t.closest('.card.contract.detail')))) { showTip(t); ev.stopPropagation(); } }, { capture: true }); // 칩(배지·효과 칩·타일)은 카드 안에 있어도 탭하면 말풍선 — 단 계약 광고 카드에서는 탭이 카드를 여는 게 우선 (설명은 길게 누르기·호버)
+  const t = tipTarget(ev); if (t && (!isAction(t) || (isChip(t) && !t.closest('.card.contract.detail, .gtile, .slot, .etile, .gcard')))) { showTip(t); ev.stopPropagation(); } }, { capture: true }); // 칩(배지·효과 칩·타일)은 카드 안에 있어도 탭하면 말풍선 — 단 계약 광고 카드와 **검투사 카드**에서는 탭이 카드를 고르는 게 우선이다 (설명은 길게 누르기·호버). 2026-09-17: 기술 칩이 카드 오른쪽 기둥을 다 채우게 되면서 그 자리를 누르면 배정이 씹혔다
  // 칩(배지·효과 칩·타일)은 카드 안에 있어도 탭하면 말풍선 — 단 계약 광고 카드에서는 탭이 카드를 여는 게 우선 (설명은 길게 누르기·호버)
 // 마우스: 같은 대상 안에서 자식(아이콘·배지) 사이를 오가도 말풍선을 다시 만들지 않고, 대상 밖으로 나갈 때만 지운다 (깜박임 방지)
 document.addEventListener('mouseover', (ev) => { if (matchMedia('(hover: none)').matches) return; const t = tipTarget(ev); if (t && t !== S.tipFor) showTip(t); });
@@ -127,7 +128,9 @@ function fitDash() {
   body.style.height = `${Math.max(140, Math.floor(innerHeight - top - barH - 8))}px`; // 8 = 바 위 여백. 페이지는 스크롤되지 않고 대시보드 안에서만 스크롤
 }
 window.addEventListener('resize', () => { if (S.phase === 'manage') fitDash(); });
-export function render() {
+// 그리기를 마친 **뒤에** 알림을 흘려보낸다 — 그리는 도중에 정해지는 알림(예: 저장 이어하기)이 한 번 늦게 뜨지 않도록 (2026-09-17 사용자 지적)
+export function render() { renderScreen(); if (S.notice) { toast(S.notice); S.notice = ''; } }
+function renderScreen() {
   save();
   // 장면 패널이 닫힐 때(토글 해제·다른 토글·켈라 열기·상세로 이동): 켈라처럼 아래로 내려가며 사라지게, 옛 패널 노드를 잠시 남겨 둔다
   const oldPanel = app.querySelector('.scenepanel:not(.closing)') as HTMLElement | null; const oldKey = oldPanel ? [...oldPanel.classList].find(c => c.startsWith('key-'))?.slice(4) : null;
@@ -149,8 +152,10 @@ export function render() {
       S.offerPage = Math.max(0, Math.min(S.offerPage, learners.length - 1)); const g = learners[S.offerPage];
       app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
         h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 배운 기술 중 버릴 것을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
-        h('div', { class: 'card' }, portrait(g, 48), h('div', { class: 'grow' }, h('div', {}, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)),
-          h('div', { class: 'meta' }, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음'])), ...skillOfferRows(g, render, { noDecline: true }))),
+        h('div', { class: 'offerbox' }, gladCard(g, { size: CARD_PORTRAIT, cls: 'full', /* 공통 검투사 카드 (2026-09-17 사용자) */
+          nameExtra: [h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)],
+          rows: [h('span', {}, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음']))] }),
+          ...skillOfferRows(g, render, { noDecline: true })),
         h('div', { class: 'actions pager' },
           h('button', { disabled: S.offerPage <= 0, onclick: () => { S.offerPage--; render(); } }, '◀'),
           h('span', { class: 'meta' }, `${S.offerPage + 1} / ${learners.length}`),
@@ -202,16 +207,15 @@ export function render() {
   if (S.phase === 'plan') { app.append(renderPlan()); return; }
   if (S.phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
   if (S.st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
-  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; } render(); } }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }])); app.append(town);
+  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; S.detail = null; S.shownDetail = null; } render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }])); app.append(town);
     if (S.cellsOpen && S.cellsCanvas) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
       const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자의 방을 누르세요` : S.palusMode ? `팔루스 배정 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 방을 누르면 세우고, 다시 누르면 내려옵니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
-      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, S.cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
+      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; S.detail = null; S.shownDetail = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, S.cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
-  const noticeEl = S.notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, S.notice)) : null; S.notice = '';
+
   if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
   if (S.seasonConfirm && S.seasonFrom === 'manage') app.append(seasonConfirmPage(seasonWarnings())); /* 시즌 넘기기: 계약 벽을 거치지 않고 마을 위로 바로 (뒤로가기는 마을 그대로) */
-  if (noticeEl) app.append(h('div', { class: 'toast' }, noticeEl.textContent ?? '')); // 토스트: 배경 없이 굵은 글자, 위 가운데에 나타나 위로 떠오르며 사라진다. 정보는 서랍과 장면 클릭으로
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
   // 편성 버튼은 없다: 포룸의 공고벽을 누르면 편성으로 (규칙은 메뉴에, 토글은 장면 위)
@@ -277,7 +281,6 @@ S.pageSlide = null; // 편성 페이지 전환 방향: 계약 → 검투사(오�
  // 편성 페이지 전환 방향: 계약 → 검투사(오른쪽에서), 검투사 → 계약(왼쪽에서)
 S.shownPlan = null; // 지금 떠 있는 편성 페이지의 계약 id (재렌더 때 다시 밀려 들어오지 않게)
  // 지금 떠 있는 편성 페이지의 계약 id (재렌더 때 다시 밀려 들어오지 않게)
-S.lineupView = 'stats'; // 편성 왼쪽 타일 아래 줄: 능력치(기본) / 전적 (스위치)
  // 계약에 배정된 검투사들
 S.tabletQueue = null;
  S.tabletIdx = 0; // 결투 낙서를 누르면 준비된 계약마다 밀랍 서판이 차례로 나온다 (도장으로 서명) → 마지막 뒤 시즌 시작 확인

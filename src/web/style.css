@@ -85,7 +85,6 @@ button.primary { background:#8f2618; color:#fff7de; border-color:#5e170f; box-sh
 .betline { display:flex; align-items:center; gap:8px; margin:2px 0; }
 button.tiny.bet { margin-left:auto; } button.tiny.bet.on { background:#7a5a1c; color:#fff; border-color:#7a5a1c; }
 .card.mini { padding:4px 8px; flex-wrap:nowrap; cursor:pointer; }
-.card.mini .portrait { width:34px !important; height:34px !important; }
 .contract.mini.ready { border-left-color:var(--ok); }
 .contract .tier { font-weight:700; }
 .legend { display:flex; gap:10px; font-size:12px; color:var(--dim); margin:6px 0; flex-wrap:wrap; }
@@ -218,7 +217,7 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .seg { display:inline-flex; gap:2px; }
 .seg button { padding:2px 7px; font-size:12px; }
 .seg button.on { background:var(--blue); color:#fff; border-color:var(--blue); }
-.portrait { border-radius:4px; flex:none; border:1px solid var(--sand2); }
+.portrait { border-radius:4px; flex:none; } /* 테두리 선 없음 — 배경 그라데이션이 상자를 잡는다 (2026-09-17 사용자) */
 .yardwrap { padding:0; overflow:hidden; margin-bottom:10px; position:relative; }
 /* 디스플레이 상단 장소 표지판 (나무 팻말 느낌) */
 .loctabs { position:absolute; top:6px; left:6px; right:6px; display:flex; gap:4px; transition:opacity .25s, transform .3s; }
@@ -280,25 +279,20 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .resultbrief { display:grid; gap:8px; margin-top:8px; }
 .scoreline { display:flex; align-items:baseline; gap:12px; padding:8px 10px; background:#fbf6e6; border:1px solid var(--sand2); border-radius:5px; font-size:13px; }
 .scoreline b { font-size:18px; margin-left:auto; }
-.flagline { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:24px; }
+.flagline { display:grid; gap:3px; min-height:24px; }
+/* 전투 결과·정산은 칩 대신 문장으로 말한다 (2026-09-17 사용자) */
+.rline { font-size:12.5px; line-height:1.45; color:var(--ink); }
+.rline.bad { color:#8a5a12; } .rline.grave { color:var(--red); font-weight:700; } .rline.good { color:#2f5a22; }
+.fline { font-size:12px; color:#6b5a3c; } .fline.bad { color:#8a5a12; } .fline.grave { color:var(--red); font-weight:700; } .fline.good { color:#2f5a22; }
 .quickdetail { margin-top:8px; }
 .quickdetail summary { cursor:pointer; }
 .rcols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .rlayout { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
 .rlayout .rleft h3:first-child { margin-top:0; }
 .rlayout .rright .mtable { margin-top:0; border-top:0; padding-top:0; }
-.rlayout .fatecard { margin-bottom:6px; }
-.fatecard { display:flex; align-items:center; gap:10px; padding:6px 8px; margin-bottom:6px; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; }
-.fatecard.enemy { padding:6px 8px; }
-.fatecard.enemy.down { opacity:.85; }
-.fatecard .portrait { width:84px !important; height:84px !important; border-radius:6px; }
-.fatecard.dead .portrait { filter:grayscale(.5) sepia(.2); }
 .badge { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:10px; margin-right:4px; background:var(--sand2); color:var(--ink); }
-.badge.dead { background:var(--red); color:#fff; }
-.badge.injured { background:#c58a1a; color:#fff; }
-.badge.missio { background:#7a6a4e; color:#fff; }
-.badge.ok { background:var(--ok); color:#fff; }
-.badge.promo { background:#2c4f9b; color:#fff; }
+.badge.injured { background:#c58a1a; color:#fff; } /* 주의: 부상·피로 3 이상 */
+.badge.warn { background:#f2e3c0; color:#8a5a12; border:1px solid #c58a1a; } /* 같은 주의색의 옅은 단계 (피로 2) */
 .mtable { margin-top:10px; border-top:1px solid var(--sand2); padding-top:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px 24px; font-size:13px; }
 .mrow { display:flex; justify-content:space-between; }
 .mrow.total { grid-column:1 / -1; border-top:1px solid var(--sand2); margin-top:4px; padding-top:4px; font-weight:700; }
@@ -312,18 +306,15 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .gamecard.win { border-left-color:var(--ok); } .gamecard.lose { border-left-color:var(--red); } .gamecard.draw { border-left-color:var(--dim); }
 .gamecard .ghead { display:flex; gap:10px; align-items:center; margin-bottom:6px; }
 .gamecard .turnline { margin-top:3px; color:#7a3b1e; font-size:12px; font-weight:700; }
-.gamecard .grow2 { display:flex; gap:8px; flex-wrap:wrap; }
-.gamecard .mini { display:flex; gap:6px; align-items:center; font-size:12px; }
-.gamecard .mini .nm { font-weight:700; }
+.gamecard .grow2 { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; } /* 출전자 카드는 공통 카드 한 종류 (2026-09-17) */
 
 .syn.classic { background:#7a5a1c; color:#fff; }
 .syn.classic.maybe { background:transparent; color:#7a5a1c; border:1px dashed #7a5a1c; }
 
-.badge.free { background:#3b7a2c; color:#fff; } .badge.doc { background:#7a5a1c; color:#fff; }
+.badge.teach { background:transparent; color:#5a4224; border:1px solid #5a4224; } /* 가르침: 기술까지 전수하는 독토르 */
 .card .badge { margin-right:4px; vertical-align:1px; }
 
-.badge.mentor { background:#5a4224; color:#fff; }
-.badge.skill { background:#c58a1a; color:#fff; }
+.badge.skill { background:#d8c08a; color:#2a1b0c; box-shadow:inset 0 0 0 1px rgba(255,255,255,.45), 0 1px 1px rgba(58,36,18,.14); } /* 완전히 불투명 — 뒤의 계보 무늬가 비치지 않게 (2026-09-17 사용자) */ /* 기술은 정보 칩 — 경고색(#c58a1a)은 피로·부상에만 (2026-09-17 칩 정리) */
 .offer { display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%; margin-top:6px; padding:6px 8px; background:#fff3c4; border:1px solid #c9a227; border-radius:6px; font-size:12.5px; }
 .offer .grow { flex:1 1 180px; min-width:0; }
 .offer .replace { width:100%; margin-top:4px; }
@@ -354,11 +345,10 @@ button.tiny { padding:1px 5px; font-size:11px; }
 .evrow { display:flex; gap:8px; align-items:center; padding:5px 8px; border:1px solid var(--sand2); border-radius:6px; margin-bottom:6px; background:#fbf6e6; font-size:13px; cursor:pointer; }
 .evrow.on { background:#efe2b8; }
 
-.badge.origin.captive { background:#6e7f9b; color:#fff; } .badge.origin.damnatus { background:#7a4a3a; color:#fff; } .badge.origin.auctoratus { background:#3b7a2c; color:#fff; }
+.badge.origin { background:transparent; box-shadow:none; } .badge.origin.captive { color:#4a5a78; border:1px solid #6e7f9b; } .badge.origin.damnatus { color:#7a4a3a; border:1px solid #7a4a3a; } .badge.origin.auctoratus { color:#2f5a22; border:1px solid #3b7a2c; } /* 출신은 배경 정보 — 테두리 칩 (2026-09-17 칩 정리: 자유민 초록과 겹치던 것) */
 
 .badge.epithet { background:#c9a94a; color:#3a2412; }
 
-.badge.scaeva { background:#3f2c14; color:#e8d9b5; }
 
 select.tiny { font:inherit; font-size:12px; padding:4px 26px 4px 10px; border:1px solid #7a5a1c; border-radius:14px; background:#fbf6e6 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a3b1e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 8px center / 12px 12px; color:var(--ink); -webkit-appearance:none; appearance:none; cursor:pointer; min-height:30px; }
 select.tiny:focus { outline:2px solid rgba(44,79,155,.35); }
@@ -367,7 +357,7 @@ select.tiny:focus { outline:2px solid rgba(44,79,155,.35); }
 .stat-ico.injured { background:#c58a1a; color:#fff; }
 .stat-ico.doc { background:#7a5a1c; color:#fff; }
 
-.badge.grudge { background:#7a1f16; color:#fff; } .badge.revenge { background:#2c4f9b; color:#fff; }
+.badge.grudge { background:#7a1f16; color:#fff; } .badge.revenge { background:transparent; color:#7a1f16; border:1px dashed #7a1f16; } /* 적과의 인연은 붉은 한 계열: 원한(그가 앙심)은 채움, 복수(우리 차례)는 점선 (2026-09-17 칩 정리) */
 .enemyline { line-height:1.7; }
 
 .seg.off button { opacity:.45; }
@@ -375,7 +365,15 @@ select.tiny:focus { outline:2px solid rgba(44,79,155,.35); }
 .fixedline { min-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 .rivals { display:grid; grid-template-columns:1fr; gap:8px; } /* 파밀리아 시트: 검투사 시트처럼 행당 하나 */
-.rivalcard { display:flex; gap:10px; align-items:flex-start; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:8px 10px; font-size:13px; }
+.rivalcard { display:grid; grid-template-columns:1fr 210px; gap:10px; align-items:stretch; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:8px 10px; font-size:13px; } /* 왼쪽 파밀리아 정보, 오른쪽 간판 검투사 카드 (2026-09-17 사용자) */
+.rivalcard .rvinfo { min-width:0; }
+.rivalcard .rvname { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.rivalcard .rvstar { background:#f3ead0; border:1px solid var(--sand2); border-radius:6px; padding:5px 7px; min-width:0; }
+.rivalcard .rvstar.none { background:rgba(58,36,18,.04); border-style:dashed; }
+.rivalcard .rvcap { font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--dim); margin-bottom:3px; }
+.rivalcard .gcard { background:#fbf6e6; }
+.rivalcard .rvstar .meta { font-size:11px; }
+.rivalcard .rvempty { padding:12px 0; text-align:center; }
 .rivalroster { display:flex; flex-wrap:wrap; gap:4px 8px; margin-top:4px; }
 .rmini { white-space:nowrap; } .rmini.inj { opacity:.5; text-decoration:line-through; }
 .badge.star { background:#d4a63a; color:#3a2412; }
@@ -401,7 +399,6 @@ h2.rowhead { display:flex; align-items:center; gap:4px; }
 .card .seg { flex:1 1 100%; display:flex; flex-wrap:wrap; }
 .card .seg button { flex:1 1 auto; }
 .card > button, .card > select { flex:0 0 auto; }
-.card .portrait { width:48px !important; height:48px !important; }
 .seg button, button { min-height:34px; }
 .facility, .frow { flex-wrap:wrap; }
 .evrow { flex-wrap:wrap; }
@@ -418,7 +415,7 @@ button.small { padding:3px 8px; font-size:12px; }
 .segcol .seg button { width:100%; text-align:left; }
 .two .dlist .drow { padding:4px 6px; }
 
-.badge.rec { background:#3b7a2c; color:#fff; }
+.badge.rec { background:transparent; color:#2c4f9b; border:1px dashed #2c4f9b; font-weight:600; } /* 추천은 잠깐의 제안 — 채운 색은 상태에만 (2026-09-17 칩 정리) */
 
 .card.contract.detail { cursor:pointer; }
 .card.contract.detail .assignline { margin-top:4px; }
@@ -431,7 +428,6 @@ button.small { padding:3px 8px; font-size:12px; }
 .odds.bad { background:#9b2c1c; color:#fff; }
 
 .card.other { border-style:dashed; border-color:#7a5a1c; }
-.badge.other { background:#7a5a1c; color:#f3ead0; }
 
 .fixedrow { min-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .odds.none { background:transparent; color:var(--dim); border:1px dashed var(--dim); }
@@ -553,27 +549,22 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage.closing { animation:pageout-r .28s cubic-bezier(.5,0,.8,.4) forwards; }
 #app.land > .planpage > .panel.roster { position:absolute; inset:0; overflow:hidden; margin:0; padding:8px 8px 8px 30px; display:grid; grid-template-columns:340px 1fr; gap:10px; background:transparent; border:0; } /* 왼쪽 열을 뒤로가기 화살표 아래까지 넓혀 상대 3명이 한 줄에 */
 #app.land > .planpage .lineuptop .ltitle { padding-left:64px; display:flex; align-items:center; gap:6px; min-width:0; } /* 제목은 뒤로가기 화살표를 넉넉히 피해 오른쪽으로 (사용자: 화살표 누르기 쉽게) */
-#app.land > .planpage .lineuptop .ltitle .tierchip { flex:none; font-size:11px; font-weight:700; padding:1px 8px; border-radius:9px; background:#3a2412; color:#f3ead0; } #app.land > .planpage .lineuptop .ltitle b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#app.land > .planpage .lineuptop .ltitle .tierchip { flex:none; font-size:11px; font-weight:700; padding:1px 8px; border-radius:9px; background:#3a2412; color:#f3ead0; }
 #app.land > .planpage .pleft { overflow:auto; min-height:0; padding-bottom:0; }
 #app.land > .planpage .pright { overflow-y:auto; overflow-x:hidden; min-height:0; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); grid-auto-rows:max-content; gap:6px; align-content:start; padding:2px 6px 52px 2px; } /* 4열 고정, 16명이면 4×4. 검투사 격자만 스크롤 */
-#app.land > .planpage .lineuptop { margin:0; }
-#app.land > .planpage .lineuptop .card.contract.lineup { margin:0; padding:6px 8px; flex-direction:column; align-items:stretch; background:#efe5c9; border:1px solid #b9a26f; }
+#app.land > .planpage .lineuptop { margin:0 -8px 0 -30px; } /* 바깥 패널의 여백까지 뚫고 나가 띠가 화면 끝에 닿는다 (2026-09-17 사용자) */
+#app.land > .planpage .lineuptop .card.contract.lineup { margin:0; padding:2px 0 4px; flex-direction:column; align-items:stretch; background:#f1e7cd; border:0; outline:0; border-radius:0; } /* 테두리 없이 바탕색만 — 상자가 아니라 '자리'로 보이게 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .card.contract.lineup .bigline { font-size:14px; }
-#app.land > .planpage .lineuptop .slots { flex-direction:row; flex-wrap:wrap; gap:6px; }
-#app.land > .planpage .lineuptop .slots .slot { flex:0 0 calc(33.33% - 4px); min-width:0; overflow:hidden; height:82px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:10.5px; padding:3px 3px; box-sizing:border-box; } /* 상대 타일과 같은 높이 */
-#app.land > .planpage .lineuptop .slots .slot.filled { align-items:stretch; justify-content:flex-start; background:#f6efd8; }
-#app.land > .planpage .lineuptop .slots .slot.filled .etop { display:flex; align-items:flex-start; gap:3px; width:100%; }
-#app.land > .planpage .lineuptop .slots .slot.filled .gport { position:relative; line-height:0; flex:none; }
-#app.land > .planpage .lineuptop .slots .slot.filled .gport .rank { position:absolute; left:-4px; top:-4px; font-size:8.5px; line-height:1.3; }
-#app.land > .planpage .lineuptop .slots .slot.filled .eskills { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; padding-top:1px; }
-#app.land > .planpage .lineuptop .slots .slot.filled .eskills .badge { font-size:8.5px; padding:0; width:42px; margin:0; letter-spacing:-.02em; }
-#app.land > .planpage .lineuptop .slots .slot.filled .eskills .badge.empty { min-height:12px; background:transparent; border:1px dashed rgba(58,36,18,.4); }
-#app.land > .planpage .lineuptop .slots .slot.filled .ename { font-weight:700; display:flex; align-items:center; gap:2px; white-space:nowrap; max-width:100%; overflow:hidden; }
-#app.land > .planpage .lineuptop .slots .slot.filled .ename .sq { width:13px; height:13px; border-radius:2px; } #app.land > .planpage .lineuptop .slots .slot.filled .ename .sq svg { width:9px; height:9px; }
-#app.land > .planpage .lineuptop .slots .slot.filled .emeta { color:var(--dim); font-size:9.5px; }
-#app.land > .planpage .lineuptop .slots .slot .portrait { width:40px !important; height:40px !important; border-radius:4px; }
-#app.land > .planpage .lineuptop .slots .slot .sname { display:flex; align-items:center; gap:3px; font-weight:700; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
-#app.land > .planpage .lineuptop .slots .slot:not(.filled) { border-style:dashed; }
+#app.land > .planpage .lineuptop .slots { flex-direction:row; flex-wrap:nowrap; justify-content:center; align-items:stretch; gap:5px; padding:0 2px; } /* 하나·둘이면 가운데, 셋이면 꽉 찬다 (2026-09-17 사용자) */
+/* 상대 타일과 우리 자리는 한 규칙을 쓴다 — 갈라 두면 크기가 어긋난다 (2026-09-17 사용자: 우리 파밀리아가 작아 보인다) */
+#app.land > .planpage .lineuptop .slots .slot, #app.land > .planpage .lineuptop .lenemy .etile {
+  flex:0 0 calc((100% - 10px) / 3); min-width:0; min-height:126px; box-sizing:border-box; align-self:stretch;
+  display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:1px; padding:5px 6px 6px; font-size:11px; }
+#app.land > .planpage .lineuptop .slots .slot.filled, #app.land > .planpage .lineuptop .lenemy .etile {
+  background:linear-gradient(#fbf6e6, #f3ead0); border-radius:6px; box-shadow:0 1px 2px rgba(58,36,18,.16), inset 0 1px 0 rgba(255,255,255,.5); }
+#app.land > .planpage .lineuptop .slots .slot:not(.filled) { align-items:center; justify-content:center; background:none; box-shadow:none; }
+#app.land > .planpage .lineuptop .slots .slot:not(.filled) { border:0; border-radius:6px; color:var(--dim); background:rgba(58,36,18,.08);
+  box-shadow:inset 0 2px 4px rgba(58,36,18,.18), inset 0 0 0 1px rgba(58,36,18,.1), inset 0 -1px 0 rgba(255,255,255,.35); } /* 카드가 딱 들어맞는 홈 — 파인 자리 (2026-09-17 사용자) */
 #app.land > .planpage .pleft { overflow-x:hidden; }
 #app.land > .planpage .lineuptop .card.contract.lineup { min-width:0; width:100%; box-sizing:border-box; }
 #app.land > .planpage .lineuptop .card.contract.lineup > .grow { min-width:0; }
@@ -582,86 +573,133 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage .lineuptop .card.contract.lineup > .grow { display:flex; flex-direction:column; gap:4px; }
 #app.land > .planpage .lineuptop .ltitle { font-size:14px; line-height:1.3; }
 #app.land > .planpage .lineuptop .lmeta { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:8px; } /* 인원 칩 줄은 제목에서 살짝 내려 */
-#app.land > .planpage .lineuptop .lodds { margin-left:0; flex:none; width:74px; text-align:right; font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* 전력 칩 폭 고정 */
-#app.land > .planpage .lineuptop .lmeta button.lview { margin-left:auto; flex:none; width:auto; box-sizing:border-box; display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:600; padding:0 7px; min-height:19px; height:19px; line-height:17px; border-radius:8px; border:1px solid #c9a86a; background:#f6efd8; color:#3a2412; box-shadow:none; } #app.land > .planpage .lineuptop .lmeta button.lview .sw { font-size:11px; color:var(--red); } /* 전적 ⇄ 능력치 토글: 칩 모양 (사용자) */
-#app.land > .planpage .lineuptop .lenemy, #app.land > .planpage .lineuptop .lally { font-size:11.5px; line-height:1.4; padding:3px 6px 4px; background:rgba(58,36,18,.05); border-radius:4px; }
-#app.land > .planpage .lineuptop .lally { background:rgba(44,79,155,.07); } /* 우리 편: 파란 기 */
-#app.land > .planpage .lineuptop .lally .lfam { margin-bottom:2px; }
+/* 전력비: 상대 줄과 우리 줄의 경계에 걸터앉는다 (2026-09-17 사용자) */
+#app.land > .planpage .lineuptop .lodds { position:relative; z-index:2; align-self:center; margin:-11px auto -10px; padding:1px 12px; width:auto; max-width:60%; text-align:center; font-size:12px; font-weight:700; white-space:nowrap;
+  background:#f1e7cd; border-radius:11px; box-shadow:0 1px 2px rgba(58,36,18,.2), inset 0 0 0 1px rgba(58,36,18,.14); }
+#app.land > .planpage .lineuptop .lenemy, #app.land > .planpage .lineuptop .lally { font-size:11.5px; line-height:1.4; padding:5px 0 6px; background:none; border-radius:0; border-top:1px solid rgba(58,36,18,.22); background:rgba(122,42,106,.045); } /* 상자 대신 수평선 + 옅은 바탕 (2026-09-17 사용자) */
+#app.land > .planpage .lineuptop .lenemy .lfam, #app.land > .planpage .lineuptop .lally .lfam { padding:0 6px; } /* 제목 줄만 안쪽으로 */
+#app.land > .planpage .lineuptop .lally { border-top-color:rgba(44,79,155,.3); background:rgba(44,79,155,.06); } /* 우리 편: 파란 기가 도는 선과 바탕 */
+#app.land > .planpage .lineuptop .lally .lfam { margin-bottom:2px; display:flex; justify-content:flex-end; text-align:right; } /* 우리 편 이름은 오른쪽에 — 상대(왼쪽)와 마주 본다 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .lmeta .eff.count { font-size:13px; font-weight:700; padding:2px 9px; line-height:1.3; } #app.land > .planpage .lineuptop .lmeta .eff.count.ok { background:#e4f0dc; border-color:#9cc48a; color:var(--ok); } /* 배정 카드의 인원 칩: 주최자 칩 왼쪽, 계약 카드와 같은 모양 */
 #app.land > .planpage .lineuptop .lenemy .lfam { margin-bottom:2px; display:flex; align-items:center; gap:4px; }
 #app.land > .planpage .lineuptop .lfam { white-space:nowrap; } #app.land > .planpage .lineuptop .lfam .hint { overflow:hidden; text-overflow:ellipsis; min-width:0; }
-#app.land > .planpage .lineuptop .lfam button.lview { margin-left:auto; flex:none; width:52px; box-sizing:border-box; font-size:9.5px; padding:0 4px; min-height:16px; height:16px; line-height:16px; position:relative; display:inline-flex; align-items:center; justify-content:center; padding-right:14px; } /* 너비 고정, 글자는 가운데, ⇄ 는 오른쪽 끝 */ #app.land > .planpage .lineuptop .lfam button.lview .sw { position:absolute; right:4px; top:0; line-height:16px; font-size:10px; color:var(--dim); }
-#app.land > .planpage .lineuptop .emeta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-#app.land > .planpage .lineuptop .lenemy .etiles { display:flex; flex-wrap:wrap; gap:6px; }
-#app.land > .planpage .lineuptop .lenemy .etile { flex:0 0 calc(33.33% - 4px); min-width:0; overflow:hidden; box-sizing:border-box; height:82px; display:flex; flex-direction:column; align-items:stretch; gap:1px; padding:3px 3px; background:#f6efd8; border:1px solid #c9b283; border-radius:5px; font-size:10.5px; }
-#app.land > .planpage .lineuptop .lenemy .etile .etop { display:flex; align-items:flex-start; gap:3px; width:100%; }
-#app.land > .planpage .lineuptop .lenemy .etile .eskills { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; padding-top:1px; }
-#app.land > .planpage .lineuptop .lenemy .etile .eskills .badge { font-size:8.5px; padding:0; width:42px; margin:0; letter-spacing:-.02em; }
-#app.land > .planpage .lineuptop .lenemy .etile .eskills .badge.empty { min-height:12px; background:transparent; border:1px dashed rgba(58,36,18,.4); }
-#app.land > .planpage .lineuptop .lenemy .etile .gport { position:relative; line-height:0; flex:none; }
-#app.land > .planpage .lineuptop .lenemy .etile .gport .portrait { width:40px !important; height:40px !important; border-radius:4px; }
-#app.land > .planpage .lineuptop .lenemy .etile .gport .rank { position:absolute; left:-4px; top:-4px; font-size:8.5px; line-height:1.3; }
-#app.land > .planpage .lineuptop .lenemy .etile .ename { font-weight:700; display:flex; align-items:center; gap:2px; white-space:nowrap; max-width:100%; overflow:hidden; }
-#app.land > .planpage .lineuptop .lenemy .etile .ename .sq { width:13px; height:13px; border-radius:2px; } #app.land > .planpage .lineuptop .lenemy .etile .ename .sq svg { width:9px; height:9px; }
-#app.land > .planpage .lineuptop .lenemy .etile .emeta { display:flex; align-items:center; gap:3px; color:var(--dim); font-size:9.5px; white-space:nowrap; }
+#app.land > .planpage .lineuptop .lenemy .etiles { display:flex; flex-wrap:nowrap; justify-content:center; align-items:stretch; gap:5px; padding:0 2px; }
 #app.land > .planpage .lineuptop .lenemy .lene { display:flex; align-items:center; flex-wrap:wrap; gap:3px; }
 #app.land > .planpage .lineuptop .lenemy .lene .sq { width:14px; height:14px; border-radius:2px; } #app.land > .planpage .lineuptop .lenemy .lene .sq svg { width:10px; height:10px; }
 #app.land > .planpage .lineuptop .lenemy .lene .meta { font-size:10.5px; }
 #app.land > .planpage .lineuptop .lenemy .badge { font-size:9.5px; padding:0 5px; }
 #app.land > .planpage .lineuptop .slots { margin:0; }
-#app.land > .planpage .lineuptop .slots .slot.vet { border:1.5px dashed #b8860b; background:rgba(232,201,106,.18); color:#8a6508; font-weight:700; }
+#app.land > .planpage .lineuptop .slots .slot.rough { background:rgba(58,36,18,.11);
+  box-shadow:inset 0 2px 4px rgba(58,36,18,.2), inset 0 0 0 1.5px rgba(58,36,18,.16), inset 0 -1px 0 rgba(255,255,255,.28);
+  background-image:repeating-linear-gradient(-38deg, rgba(58,36,18,.07) 0 2px, transparent 2px 7px); } /* 신참도 설 수 있는 허름한 자리 — 긁힌 자국이 남은 홈 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .lsyn { display:flex; flex-wrap:wrap; gap:4px; font-size:11px; min-height:20px; }
+/* 배정 카드는 두 덩이: 위는 경기장 정보, 아래는 스틱맨 카드 (2026-09-17 사용자) */
+#app.land > .planpage .lineuptop .larena { display:flex; flex-direction:column; gap:4px; padding:10px 6px 1px; } /* 점선은 뺐다 — 아래 줄의 수평선이 이미 가른다 (2026-09-17 사용자) */
+#app.land > .planpage .lineuptop .lcards { display:flex; flex-direction:column; align-items:stretch; gap:4px; padding-top:2px; }
+#app.land > .planpage .lineuptop .larena .lmeta { margin-top:4px; }
 #app.land > .planpage .lineuptop .lcost { font-size:11px; } #app.land > .planpage .lineuptop .lcost:empty, #app.land > .planpage .lineuptop .lsyn:empty { display:none; } /* 비어 있을 땐 자리를 두지 않는다 (사용자: 우리 파밀리아 아래가 너무 빈다) */
 #app.land > .planpage .lineuptop .card.contract.lineup .enemyline .sq { width:14px; height:14px; border-radius:2px; vertical-align:-3px; } #app.land > .planpage .lineuptop .card.contract.lineup .enemyline .sq svg { width:10px; height:10px; } /* 상대 줄 무기 아이콘도 글자 높이로 */
 /* 검투사 초상 타일 */
-.badge.skill, .badge.empty { display:inline-block; width:64px; box-sizing:border-box; text-align:center; white-space:nowrap; overflow:hidden; } /* 기술 이름은 4글자 이내라 칩 너비를 통일 */
-.gtile { display:flex; flex-direction:column; align-items:stretch; gap:3px; padding:6px 5px 5px; min-width:0; overflow:hidden; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; cursor:pointer; text-align:left; }
-.gtile .portrait { width:52px !important; height:52px !important; border-radius:4px; }
-.mini-top { display:flex; align-items:flex-start; gap:5px; width:100%; min-width:0; }
+.badge.skill, .badge.empty { width:64px; box-sizing:border-box; text-align:center; white-space:nowrap; overflow:hidden; } /* 기술 이름은 4글자 이내라 칩 너비를 통일 */
+.gtile { position:relative; display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:1px; padding:5px 6px 6px; min-width:0; min-height:126px; box-sizing:border-box; font-size:11px; overflow:hidden; cursor:pointer; text-align:left;
+  background:linear-gradient(#fbf6e6, #f3ead0); border:0; border-radius:6px; box-shadow:0 1px 2px rgba(58,36,18,.16), inset 0 1px 0 rgba(255,255,255,.5); } /* 편성 자리·상대 타일과 같은 카드 상자 (2026-09-17 사용자) */
+/* 공통 검투사 카드 상자 (gcard.ts). 타일이 이미 있는 자리는 줄 셋만 펼쳐 쓰고, 새로 놓는 자리는 이 상자째 쓴다 (2026-09-17 사용자: "카드는 모두 통일") */
+.gcard { display:flex; flex-direction:column; gap:2px; box-sizing:border-box; padding:5px 6px; background:#f6efd8; border:1px solid #c9b283; border-radius:5px; min-width:0; }
+.gcard.enemy { background:#f3ead0; }
+.gcard.sel { outline:2px solid var(--blue); background:#eef2fb; }
+.gcard.other { border-style:dashed; border-color:#7a5a1c; }
+.gcard.dis { opacity:.45; }
+.gcard .gc-row { color:var(--dim); font-size:11px; line-height:1.4; }
+.gcard .gc-acts { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
+.gcard .gc-acts button { flex:1 1 auto; }
+/* 켈라·시장·지원자처럼 자리가 넉넉한 곳: 초상을 키우고 이름·표식을 두 줄로 흘린다 */
+.gcard.full { margin-bottom:6px; }
+.gtile.dis { opacity:.55; } /* 못 나가는 카드: 흐리게 + 아래 사유 띠 */
+.gtile .why { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%) rotate(-8deg); text-align:center; pointer-events:none; } /* 못 나가는 까닭: 카드 위에 긁어 쓴 붉은 낙서 (2026-09-17 사용자) */
+/* 한글에는 Georgia 가 안 먹어 시스템 고딕으로 떨어졌다 — 획 대비가 있는 명조·궁서 계열을 먼저 찾는다 (웹폰트는 안 들인다: 의존성 0 원칙) */
+.gtile .why .w { position:relative; z-index:1; display:inline-block; font:900 19px/1.1 'AppleMyungjo','Nanum Myeongjo','GungSeo','Batang','Apple SD Gothic Neo',serif; letter-spacing:.02em; color:#8f1f12;
+  transform:skewX(-8deg); text-shadow:1px 1px 0 rgba(243,234,208,.9), -1px -1px 0 rgba(243,234,208,.7), 1px -1px 0 rgba(243,234,208,.7), -1px 1px 0 rgba(243,234,208,.7); }
+.gtile .why .scratch { position:absolute; left:0; right:0; top:50%; height:26px; transform:translateY(-50%); line-height:0; } .gtile .why .scratch svg { width:100%; height:100%; }
+.offerbox { display:grid; gap:6px; } /* 기술 깨침 모달: 카드 + 제안 줄 */
+.gcard.full .mini-name { flex-wrap:wrap; white-space:normal; } /* 넓은 자리에서는 표식이 여러 줄로 흐른다 (글자 크기는 같다) */
+.gcard.full .mini-name .badge { font-weight:700; }
+.mini-top { display:flex; align-items:stretch; gap:5px; width:100%; min-width:0; }
 .mini-port { position:relative; display:inline-block; line-height:0; flex:none; }
 .mini-port .rank { position:absolute; left:-4px; top:-4px; font-size:9px; line-height:1.3; box-shadow:0 1px 1px rgba(0,0,0,.25); }
+.mini-port .honor { position:absolute; left:-3px; bottom:4px; display:inline-flex; align-items:center; gap:2px; padding:0 4px 0 3px; height:13px; border-radius:7px; background:#e8c96a; color:#3a2412; font-size:9px; font-weight:700; line-height:1; box-shadow:0 1px 1px rgba(0,0,0,.25); } /* 명예: 초상 왼쪽 아래 금색 알약. 카드를 gcard 로 합치며 선택자가 .gport 에 남아 규칙이 붕 떠 있었다 (2026-09-17) */
 .mini-port .portrait { position:relative; z-index:0; border-radius:4px; }
-.mini-port .rank, .mini-port .honor { z-index:2; }
-.mini-skills { display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-width:0; flex:1; padding-top:2px; }
-.mini-skills .badge { width:42px; margin:0; font-size:9px; padding:1px 0; border-radius:6px; letter-spacing:0; }
-.mini-skills .badge.empty { min-height:14px; background:rgba(58,36,18,.025); border:1px solid rgba(58,36,18,.12); color:transparent; box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); } /* 빈 기술 자리는 정보 칩이 아니라 자리 표시만: 카드 높이는 지키고 시선은 빼앗지 않는다 */
+.mini-port .honor svg { display:block; }
+.mini-port .honor i { font-style:normal; line-height:1; position:relative; top:.5px; } /* 숫자가 아이콘보다 조금 떠 보이던 것 */
+.mini-port .rank, .mini-port .honor, .mini-port .wound, .mini-port .tired, .mini-port .tiro { z-index:2; }
+/* 부상·피로는 칩이 아니라 초상 오른쪽의 표식이다 (2026-09-17 사용자). 왼쪽 위=티로 · 왼쪽 아래=명예 · 오른쪽 위=부상 · 오른쪽 아래=피로 */
+.mini-port .tiro { position:absolute; left:1px; top:0; line-height:0; } /* 테두리를 없앴으니 표식도 판 안으로 (2026-09-17 사용자) */ /* 긁어 쓴 T (칩이 아니라 벽 낙서다) */
+.mini-port .wound { position:absolute; right:-6px; top:-6px; line-height:0; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.mini-port .tired { position:absolute; right:-2px; bottom:3px; display:flex; gap:1px; padding:1px; border-radius:3px; background:rgba(58,36,18,.35); }
+.mini-port .tired i { width:5px; height:7px; border-radius:1px; background:rgba(243,234,208,.32); box-shadow:inset 0 0 0 .5px rgba(58,36,18,.25); } /* 오른쪽에 붙어 왼쪽으로 넓어진다 — 칸이 커야 남은 숨이 읽힌다 (2026-09-17 사용자) */
+.mini-port .tired i.on { background:#6e7f9b; } /* 전투 화면이 숨을 그리는 그 색 그대로 (battle-view.ts) — 진하게 올렸다가 파랗게 넘어간 것을 되돌림 (2026-09-17) */
+/* 숨이 다 빠진 피로 4: 눈금이 깜박인다. 과로가 시작되는 5 부터: 테두리는 얇게 두고 붉은 번짐이 숨 쉬듯 깜박인다 (2026-09-17 사용자) */
+.mini-port .tired.warn { animation:tiredBlink 1.25s ease-in-out infinite; }
+.mini-port .tired.hot { background:rgba(155,44,28,.42); animation:tiredGlow 1.5s ease-in-out infinite; } /* 테두리 없이 번짐만 (2026-09-17 사용자) */
+@keyframes tiredBlink { 0%,100% { background:rgba(58,36,18,.35); } 50% { background:rgba(155,44,28,.34); } }
+@keyframes tiredGlow { 0%,100% { box-shadow:0 0 0 0 rgba(155,44,28,0); } 50% { box-shadow:0 0 7px 2.5px rgba(155,44,28,.6); } }
+@media (prefers-reduced-motion:reduce) { .mini-port .tired.warn, .mini-port .tired.hot { animation:none; } }
+.mini-skills { display:flex; flex-direction:column; align-items:stretch; justify-content:stretch; gap:3px; min-width:0; flex:1; height:100%; align-self:stretch; } /* 기술 칩은 초상+체력바 높이를 채운다 (2026-09-17 사용자) */
+.mini-skills .badge { width:42px; margin:0; font-size:9.5px; padding:0; border-radius:6px; letter-spacing:0; flex:1 1 0; min-height:0; height:auto; display:flex; align-items:center; justify-content:center; } /* 기둥 높이를 남김없이 나눠 갖는다 */
+.mini-skills .badge.empty.lock { background:transparent; border:1px dashed rgba(58,36,18,.16); box-shadow:none; } /* 아직 열리지 않은 자리 */
+.mini-skills .badge.empty { min-height:0; background:rgba(251,246,230,.72); border:1px solid rgba(58,36,18,.14); color:transparent; box-shadow:inset 0 0 0 1px rgba(255,255,255,.3); } /* 빈 자리도 바탕을 덮는다 */ /* 빈 기술 자리는 정보 칩이 아니라 자리 표시만: 카드 높이는 지키고 시선은 빼앗지 않는다 */
 .mini-name { min-width:0; font-size:12px; font-weight:700; display:flex; align-items:center; gap:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* 계보는 카드 바닥의 물결무늬 — 다섯을 다 보이되 칩을 늘리지 않는다 (2026-09-17 사용자) */
+.linbg { position:absolute; left:6px; top:5px; width:84px; height:84px; z-index:0; line-height:0; pointer-events:none; opacity:.17; } /* 계보는 카드 배경 — 왼쪽 위 모서리에 크게 (2026-09-17 사용자) */
+.linbg svg { width:100%; height:100%; }
+/* 계보마다 색을 준다 — 벽화 안료에서 고른다 (2026-09-17 사용자). 규칙이 걸린 자연만 한 단계 진하게 */
+.linbg.nature { opacity:.28; color:#2f6a22; }   /* 잎 — 초록 */
+.linbg.victory { color:#b08a3a; }               /* 종려가지 — 금 */
+.linbg.myth { color:#7a2a6a; }                  /* 신전 기둥 — 자주 */
+.linbg.nickname { color:#4a5a78; }              /* 말풍선 — 청회 */
+.linbg.place { color:#7a4a3a; }                 /* 성문 — 적갈 */
+.handbg { position:absolute; right:-8px; bottom:0; width:52px; height:52px; line-height:0; pointer-events:none; opacity:.17; color:var(--ink); transform:rotate(7deg); } /* 오른쪽으로 기운 낙서 (2026-09-17 사용자) */ /* 쥐는 손: 벽에 긁어 쓴 L·R (2026-09-17 사용자) */
+.handbg svg { width:100%; height:100%; }
+
+.gcard, .gtile, .etile, .slot.filled { position:relative; }
 .mini-name .sq { flex:none; width:15px; height:15px; border-radius:2px; } .mini-name .sq svg { width:11px; height:11px; }
+.mini-left { display:flex; flex-direction:column; gap:2px; flex:none; min-width:0; } /* 초상 + 체력바 한 기둥 */
+.hpbar { display:flex; align-items:center; width:calc(100% - 4px); } /* 스틱맨 박스보다 오른쪽을 조금 들여 놓는다 (2026-09-17 사용자) */
+.hpbar .track { position:relative; flex:1; min-width:0; display:flex; height:13px; border-radius:6px; overflow:hidden; background:rgba(58,36,18,.12); box-shadow:inset 0 1px 1px rgba(58,36,18,.18); }
+.hpbar .track i { display:block; height:100%; }
+.hpbar .track .solid { background:#6fae45; } /* 타고난 몫: 연두 (묻히지 않게 한 단계 진하게) */
+.hpbar .track .cut { background:var(--red); } /* 피로·노쇠·무거운 몸으로 깎인 몫 */
+.hpbar .track .extra { background:#27601b; } /* 보태진 몫(승수 성장·조리장·가벼운 몸): 진한 초록, 막대 왼쪽에 */
+.hpbar .track .n { position:absolute; left:0; right:0; top:0; text-align:center; height:12px; line-height:12px; font-size:9px; font-weight:700; color:#f3ead0; text-shadow:0 1px 1px rgba(58,36,18,.85); } /* 숫자는 막대 안에 (2026-09-17 사용자) */
+.mini-stats { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; font-size:11px; line-height:1.4; color:var(--dim); } /* 왼쪽 칸 능력치 · 오른쪽 칸 전적, 약자로 (2026-09-17 사용자) */
+.mini-stats .sline { display:flex; justify-content:flex-start; gap:4px; border-bottom:1px dotted rgba(58,36,18,.16); } /* 값은 모두 왼쪽에 선다 (2026-09-17 사용자) */
+.mini-stats .sline .k { flex:none; min-width:24px; }
+.mini-stats .sline.rec { border-bottom:0; } .mini-stats .sline.rec .v { white-space:nowrap; font-weight:600; color:var(--dim); } /* '4전 3승' 은 라벨 없이 한 덩이 */
+.mini-stats .sline.pw { justify-content:flex-start; gap:3px; color:#7a2a6a; border-bottom:0; transition:color .5s ease-out; } /* 상성이 붙으면 색이 서서히 물든다 (2026-09-17 사용자) */ .mini-stats .sline.pw .v { color:#7a2a6a; min-width:26px; transition:color .5s ease-out; } /* 숫자 폭을 잡아 화살표 자리를 고정한다 */ .mini-stats .sline.pw .pwi { flex:none; } /* 전력: 칼 표식 + 숫자 */
+.mini-stats .sline.pw.up, .mini-stats .sline.pw.up .v { color:#2f5a22; } /* 타고난 전력보다 오름 */
+.mini-stats .sline.pw.down, .mini-stats .sline.pw.down .v { color:var(--red); } /* 내림 */
+.mini-stats .sline.pw .v em { min-width:8px; text-align:center; }
+.mini-stats .sline .v { font-weight:700; color:var(--ink); display:inline-flex; align-items:baseline; gap:2px; }
+.mini-stats .sline .v em { font-style:normal; font-weight:700; font-size:9.5px; }
+.mini-stats .sline.pw em.tr { flex:none; width:9px; text-align:center; font-style:normal; font-weight:700; font-size:8.5px; line-height:1; position:relative; top:1.5px; } /* 화살표가 숫자 가운데 높이에 오도록 조금 내린다 (2026-09-17 사용자) */ /* 오름·내림 화살표 자리 고정 */ /* 전력의 오름·내림 화살표 */
+.mini-stats .sline .v em.up { color:#2f5a22; } .mini-stats .sline .v em.down { color:var(--red); }
 .mini-meta { display:flex; flex-wrap:wrap; align-items:center; gap:3px; min-height:16px; color:var(--dim); font-size:10px; line-height:1.3; overflow:hidden; }
-.mini-meta .badge, .mini-meta .hint { font-size:10px; flex:none; }
+.mini-meta .badge, .mini-meta .hint { font-size:9.5px; flex:none; }
 #app.land > .planpage .lineuptop .mini-top { gap:3px; }
-#app.land > .planpage .lineuptop .mini-port .portrait { width:40px !important; height:40px !important; }
 #app.land > .planpage .lineuptop .mini-port .rank { font-size:8.5px; }
 #app.land > .planpage .lineuptop .mini-skills { gap:2px; padding-top:1px; }
-#app.land > .planpage .lineuptop .mini-skills .badge { font-size:8.5px; padding:0; min-height:12px; }
-#app.land > .planpage .lineuptop .mini-name { font-size:10.5px; gap:2px; }
+#app.land > .planpage .lineuptop .mini-skills .badge { padding:0; } /* 높이는 기둥을 나눠 갖는다 (2026-09-17) */
+#app.land > .planpage .lineuptop .mini-name { gap:2px; }
 #app.land > .planpage .lineuptop .mini-name .sq { width:13px; height:13px; } #app.land > .planpage .lineuptop .mini-name .sq svg { width:9px; height:9px; }
-#app.land > .planpage .lineuptop .mini-meta { flex-wrap:nowrap; white-space:nowrap; font-size:9.5px; }
-.gtile .gname { font-size:12px; font-weight:700; display:flex; align-items:center; gap:3px; white-space:nowrap; }
-.gtile .gname .sq { width:15px; height:15px; border-radius:2px; } .gtile .gname .sq svg { width:11px; height:11px; } /* 무기 아이콘은 이름 글자 높이에 맞춰서 */
-#app.land > .planpage .lineuptop .slots .slot .sname .sq { width:14px; height:14px; border-radius:2px; } #app.land > .planpage .lineuptop .slots .slot .sname .sq svg { width:10px; height:10px; }
-.gtile .gtop { display:flex; align-items:flex-start; gap:5px; width:100%; }
-.gtile .gport { position:relative; display:inline-block; line-height:0; flex:none; }
-.gport .portrait { position:relative; z-index:0; } .gport .rank, .gport .honor, .gport .nbadge, .gport .badge { z-index:2; } /* 초상 위에 얹는 칩은 항상 앞에: 초상 캔버스가 걸어 들어오는 애니메이션(transform)으로 쌓임 문맥을 만들면 칩이 뒤로 들어가던 것 */
-.gtile .gskills { display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-width:0; flex:1; padding-top:2px; }
-.gtile .gskills .badge { font-size:9px; padding:1px 0; width:42px; margin:0; letter-spacing:-.02em; } /* 기술 칩은 같은 너비(타일 폭에 맞춤), 글자 가운데 */
-.gtile .gskills .badge.empty { min-height:14px; background:transparent; border:1px dashed rgba(58,36,18,.4); }
-.gtile .gport .rank { position:absolute; left:-4px; top:-4px; font-size:9px; line-height:1.3; box-shadow:0 1px 1px rgba(0,0,0,.25); }
-.gport .honor { position:absolute; left:-3px; bottom:4px; display:inline-flex; align-items:center; gap:2px; padding:0 4px 0 3px; height:13px; border-radius:7px; background:#e8c96a; color:#3a2412; font-size:9px; font-weight:700; line-height:13px; box-shadow:0 1px 1px rgba(0,0,0,.25); } /* 명예: 초상 왼쪽 아래 월계관 배지 */
-.gtile .ginfo2 { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; width:100%; font-size:10px; line-height:1.35; }
+#app.land > .planpage .lineuptop .mini-meta { flex-wrap:nowrap; white-space:nowrap; }
 .gtile .gcol > div { display:flex; justify-content:space-between; gap:4px; border-bottom:1px dotted rgba(58,36,18,.15); }
 .gtile .gcol .k { color:var(--dim); }
 .gtile .gcol b { color:#3a2412; }
 .gtile .gcol > div.warn b { color:#a0620e; } .gtile .gcol > div.bad b { color:#8a2417; }
-.gtile .gmeta { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:3px; min-height:16px; }
-.gtile .gmeta .badge { font-size:10px; }
-.gtile .gmeta .hint { font-size:10px; }
-.gtile.sel { outline:2px solid var(--blue); background:#eef2fb; }
+.gtile.sel { outline:2px solid var(--blue); background:linear-gradient(#eef2fb, #e3ecf9); }
 .gtile.other { position:relative; outline:2px dashed #b08a3a; }
 .gtile .tstamp { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) rotate(-14deg); pointer-events:none; }
 .gtile .tstamp span { display:block; padding:2px 8px; border:3px double #9b2c1c; border-radius:5px; color:#9b2c1c; font:900 15px/1.1 'Georgia','Times New Roman',serif; letter-spacing:.1em; opacity:.8; mix-blend-mode:multiply; } /* 다른 계약에 빌려줌: 붉은 도장 */
 .gtile.dis { opacity:.5; cursor:default; }
-.badge.sel { background:var(--blue); color:#fff; }
 #app.land > .planpage .backbtn { position:absolute; left:8px; top:8px; width:60px; height:44px; padding:0; background:transparent; border:0; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); }
 #app.land > .planpage .pbar { position:absolute; right:12px; bottom:8px; z-index:2; }
 #app.land > .planpage .pbar button { min-width:120px; min-height:38px; }
@@ -741,7 +779,8 @@ body:has(#app.fit) { overflow:hidden; }
 .overlay.sheet .modal .sheetbody .cardgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; } /* 넓으니 카드 두 열 */
 .overlay.sheet .modal .sheetbody > .panel > .two { grid-template-columns:1fr 1fr 1fr; }
 .overlay.sheet .modal .sheetbody { padding-bottom:12px; }
-.toast { position:absolute; left:50%; top:calc(var(--top-h, 40px) + 46px); /* 토글 줄에서 한 뼘 내려온 장면의 하늘 자리 (건물 지붕선 위) */ max-width:560px; padding:0; background:transparent; border:0; font-weight:700; font-size:14px; color:#2c4f9b; text-shadow:0 1px 0 rgba(255,255,255,.8), 0 0 6px rgba(243,234,208,.9); pointer-events:none; z-index:5; animation:toastup 3.6s cubic-bezier(.25,.6,.3,1) forwards; } /* 포스트 메시지: 누끼(배경 없음), 굵게, 위 가운데에서 떠오르며 사라짐 */
+.toast { position:fixed; left:50%; top:calc(var(--top-h, 40px) + 46px); /* 토글 줄에서 한 뼘 내려온 장면의 하늘 자리 (건물 지붕선 위) */ max-width:560px; padding:0; background:transparent; border:0; font-weight:700; font-size:14px; color:#2c4f9b; text-shadow:0 1px 0 rgba(255,255,255,.8), 0 0 6px rgba(243,234,208,.9); pointer-events:none; z-index:50; animation:toastup 3.6s cubic-bezier(.25,.6,.3,1) forwards; } /* 포스트 메시지: 누끼(배경 없음), 굵게, 위 가운데에서 떠오르며 사라짐 */
+.toast.good { color:#2f5a22; } .toast.bad { color:#8f1f12; } /* 좋고 나쁨은 글자색으로 (2026-09-17) */
 @keyframes toastup { 0% { transform:translate(-50%, 14px); opacity:0; } 15% { transform:translate(-50%, 0); opacity:1; } 60% { transform:translate(-50%, -10px); opacity:1; } 100% { transform:translate(-50%, -44px); opacity:0; } }
 header .newsbtn { position:static; width:28px; height:28px; min-height:28px; padding:0; border:0; background:transparent; color:#ffe1a0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; position:relative; box-shadow:none; }
 header .newsbtn:hover, header .newsbtn.on { background:rgba(255,242,207,.16); color:#fff2cf; }
@@ -812,7 +851,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 @keyframes pagein-r { from { transform:translateX(105%); } to { transform:none; } }
 @keyframes pageout-r { from { transform:none; } to { transform:translateX(105%); } }
 .detailpage .dleft { display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:6px; }
-.detailpage .dleft .portrait.big { width:170px; height:170px; background:transparent; border:0; }
+.detailpage .dleft .portrait.big { width:170px; height:170px; background:transparent; border:0; } /* 배경 판은 캔버스 쪽에서도 안 그린다(bare) */
 .detailpage .dname .age { font-size:12px; color:var(--dim); font-weight:400; margin-left:4px; }
 .detailpage .dname { font-size:16px; display:flex; align-items:center; gap:6px; }
 .detailpage .dmeta { text-align:center; line-height:1.35; white-space:nowrap; }
@@ -869,7 +908,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .detailpage .dleft { display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:start; gap:10px 16px; padding:22px 6px 6px 0; } /* 초상이 뒤로가기 화살표와 살짝 겹쳐도 위로 (사용자) */ /* 초상 왼쪽에 붙이고(뒤로가기 줄 아래), 오른쪽 정보, 아래 별칭 칩 — 넓게 */
 .detailpage .dinfo { display:flex; flex-direction:column; gap:8px; min-width:0; padding-top:6px; } .detailpage .dinfo .dname { font-size:19px; } .detailpage .dinfo .dname .age { font-size:13px; } .detailpage .dinfo .dmeta { font-size:13px; line-height:1.4; } .detailpage .dbadges { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:6px; padding:0; } .detailpage .dbadges:empty { display:none; }
 .detailpage .dleft .portrait.big { width:112px; height:112px; }
-.detailpage .dskills { display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:6px; padding-top:2px; } .detailpage .dskills .badge { font-size:10.5px; width:64px; padding:3px 0; margin:0; text-align:center; letter-spacing:-.02em; } .detailpage .dskills .badge.empty { min-height:20px; background:transparent; border:1px dashed rgba(58,36,18,.4); } /* 상세: 초상 왼쪽, 기술 칩·빈 자리 오른쪽 (편성 타일과 같은 문법) */
+.detailpage .dskills { display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:6px; padding-top:2px; } .detailpage .dskills .badge { font-size:11px; width:64px; padding:3px 0; margin:0; text-align:center; letter-spacing:-.02em; } .detailpage .dskills .badge.empty { min-height:20px; background:transparent; border:1px dashed rgba(58,36,18,.4); } /* 상세: 초상 왼쪽, 기술 칩·빈 자리 오른쪽 (편성 타일과 같은 문법) */
 .detailpage .dright { overflow:visible; padding:0; }
 .detailpage .bubble { max-width:220px; font-size:12px; }
 .detailpage .cbox.row { flex:0 0 auto; flex-direction:column; align-items:stretch; gap:10px; }
@@ -880,6 +919,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 /* 편성: 위 계약 카드, 아래 3열 타일 */
 #app.land > .planpage > .panel.roster { grid-template-columns:1fr; grid-template-rows:auto minmax(0, 1fr); padding:6px 6px 6px 6px; gap:6px; }
 #app.land > .planpage .pleft { overflow:visible; max-height:none; }
+  #app.land > .planpage .lineuptop { margin:0 -6px; } /* 좁은 화면: 패널 여백이 6px */
 #app.land > .planpage .pright { grid-template-columns:repeat(3, minmax(0, 1fr)); padding-bottom:60px; }
 /* 서판·시즌 확정: 한 열 */
 #app.land > .planpage.tablet { padding:44px 10px 70px; align-items:flex-start; overflow:auto; }
@@ -921,15 +961,12 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .badge, .rank, .syn, .host, .tierchip { border:1px solid transparent; }
 .syn { margin-right:0; } .badge { margin-right:0; }
 .statrow, .dbadges, .lsyn, .effrow, .cmeta, .lmeta { gap:6px; } /* 칩 사이는 여백 대신 gap 으로 */
-.gtile .gskills .badge { font-size:9px; padding:1px 0; border-radius:6px; } /* 타일 기술 칩은 작게 (타일 폭 42px) */
-.badge.skill, .badge.empty { width:64px; padding:2px 0; justify-content:center; } .gtile .gskills .badge.skill, .gtile .gskills .badge.empty, .mini-skills .badge.skill, .mini-skills .badge.empty { width:42px; } .mini-skills .badge.empty { padding:1px 0; }
 
 /* 몸 상태 칩과 경기의 분수령 (2026-09-16): 체력·부상 칩과 다르게 한눈에 컨디션으로 읽히게 한다. */
 .badge.form { position:relative; overflow:hidden; padding-left:18px; background:#e8d9b5; color:#3a2412; border:1px solid rgba(58,36,18,.22); box-shadow:inset 0 0 0 1px rgba(255,255,255,.28); }
 .badge.form::before { content:''; position:absolute; left:7px; top:50%; width:6px; height:6px; border-radius:50%; transform:translateY(-50%); background:currentColor; opacity:.9; box-shadow:0 0 0 2px rgba(255,255,255,.38); }
 .badge.form.good { background:#e4efd9; border-color:#9cbf87; color:#245a28; }
 .badge.form.bad { background:#ead8cf; border-color:#c6927d; color:#8a2417; }
-.gtile .gmeta .badge.form, .mini-meta .badge.form { font-size:9.5px; padding:1px 6px 1px 17px; border-radius:9px; }
 .hint.turning { position:relative; display:block; margin:-2px 0 10px; padding:6px 10px 7px 30px; max-width:100%; color:#6f2b1c; background:rgba(155,44,28,.07); border:1px solid rgba(155,44,28,.22); border-radius:4px; font:700 12px/1.45 sans-serif; }
 .hint.turning::before { content:'//'; position:absolute; left:10px; top:6px; color:#9b2c1c; font:900 14px/1 Georgia,'Times New Roman',serif; letter-spacing:0; transform:rotate(-8deg); }
 .hint.turning::after { content:''; position:absolute; left:30px; right:10px; bottom:4px; height:1.5px; background:linear-gradient(90deg, rgba(155,44,28,.7), transparent); transform:rotate(-.4deg); transform-origin:left center; }
