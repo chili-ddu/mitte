@@ -16,7 +16,7 @@ export const EPITHETS: EpithetDef[] = [
   { id: 'coronatus', name: '화관의 주인', latin: 'Coronatus', attested: true, cond: '화관(주최자 만족 승리) 5개', effect: '대여료 +10%', accessory: 'laurel', check: g => (g.crowns ?? 0) >= 5 },
   { id: 'attilius', name: '티로의 기적', latin: 'Attilius', attested: true, cond: '티로일 때 승수 10 이상의 베테라누스를 1대1로 꺾음', effect: '즉시 베테라누스 승급, 명예 +8', accessory: 'palm', check: g => !!g.tiroUpset, anyRank: true },
   { id: 'par', name: '스탄테스 미시', latin: 'Stantes missi', attested: true, cond: '무승부 2회', effect: '미시오 +5%, 명예 +5', accessory: 'armband', check: g => (g.draws ?? 0) >= 2 },
-  { id: 'magister', name: '검투사이자 스승', latin: 'Gladiator et magister', attested: true, cond: '승수 8 이상의 독토르', effect: '모든 유형에게 기술 전수', accessory: 'sash', check: g => g.status === 'doctor' && g.wins >= 8, anyRank: true },
+  { id: 'magister', name: '검투사이자 스승', latin: 'Gladiator et magister', attested: true, cond: '승수 8 이상의 독토르', effect: '스승의 이름 — 효과는 없다 (기술 전수는 2026-09-18 뺐다)', accessory: 'sash', check: g => g.status === 'doctor' && g.wins >= 8, anyRank: true },
   { id: 'martia', name: '군신의 기쁨', latin: 'Martia voluptas', attested: true, cond: '명예 80 이상', effect: '출전마다 호감도 +1', accessory: 'laurel', check: g => (g.honor ?? 0) >= 80 },
   { id: 'omnia_solus', name: '혼자서 세 유형을 다 싸우는 자', latin: 'Omnia solus', attested: true, cond: '세 가지 유형으로 각각 승리 (유형 전환)', effect: '어떤 상대와도 전통 짝으로 인정, 명예 +10', accessory: 'laurel', check: g => (g.typesWon ?? []).length >= 3 },
   { id: 'vindex', name: '복수자', latin: 'Vindex', attested: true, cond: '나를 쓰러뜨렸던 상대를 재대결에서 꺾음', effect: '재대결 상대에게 피해 +10%', accessory: 'sash', check: g => (g.revenged ?? 0) >= 1 },

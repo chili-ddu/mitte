@@ -5,6 +5,8 @@ import { battle } from './battle.js';
 import { judgeLoser, judgeWinnerDowned, type Fate } from './missio.js';
 import { offerContracts, resetContractIds } from './contracts.js';
 import { offerMarket, offerApplicants } from './market.js';
+import { equipOf } from './equipment.js';
+import { TYPES } from './gladiator.js';
 import { label, maybePromote, rentFee, resetIds, sellPrice, valueOf, peekNextId, setNextId, makeGladiator } from './gladiator.js';
 import { computeSynergies, classicMatchup } from './synergy.js';
 import { TYPE_KO as TYPE_LABEL, TYPE_STATS } from './gladiator.js';
@@ -180,7 +182,8 @@ export function newGame(seed: number, opts: { types?: GType[]; color?: string } 
   const rng = new Rng(seed);
   const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], applicants: [], rivals: makeRivals(rng, 1, CONFIG.startFame), history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1) };
   st.color = opts.color; // 고르지 않으면 화면의 기본 색
-  for (let i = 0; i < CONFIG.startGladiators; i++) { const g = makeGladiator(rng, 'tiro', { type: opts.types?.[i] }); g.rank = 'veteranus'; g.wins = rng.int(3, 6); g.fights = g.wins + rng.int(0, 2); g.buyPrice = valueOf(g); g.origin = 'slave'; g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 능력치는 갓 들어온 자의 폭으로 굴리되 전적은 여느 검투사의 기본값(3~6승·0~2패) — 처음부터 '일반 검투사'다 (2026-09-17 사용자) — 선택은 개성이지 힘이 아니다 */ // 전임자에게 물려받은 검투사
+  const used = new Set<string>(); /* 시작 검투사 둘은 주무기가 겹치지 않게 (2026-09-18 사용자: 유형을 고르는 설정은 없앴다 — 물려받는 것이지 고르는 것이 아니다) */
+  for (let i = 0; i < CONFIG.startGladiators; i++) { const free = TYPES.filter(t => !used.has(equipOf(t).main)); const type = opts.types?.[i] ?? rng.pick(free); used.add(equipOf(type).main); const g = makeGladiator(rng, 'tiro', { type }); g.rank = 'veteranus'; g.wins = rng.int(3, 6); g.fights = g.wins + rng.int(0, 2); g.buyPrice = valueOf(g); g.origin = 'slave'; g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 능력치는 갓 들어온 자의 폭으로 굴리되 전적은 여느 검투사의 기본값(3~6승·0~2패) — 처음부터 '일반 검투사'다 (2026-09-17 사용자) — 선택은 개성이지 힘이 아니다 */ // 전임자에게 물려받은 검투사
   startSeason(st);
   return st;
 }
@@ -204,7 +207,6 @@ export function available(st: GameState): Gladiator[] { return st.roster.filter(
 export function trainHpRange(st: GameState): [number, number] { const b = 1 + gymBonus(st); return [CONFIG.trainHpGain[0] * b, CONFIG.trainHpGain[1] * b]; } // 체력 훈련은 폭이 있다 — 미리 보여 줄 땐 범위로
 export function trainGain(st: GameState, g: Gladiator, stat: TrainStat): number { if (stat === 'hp') { const [lo, hi] = trainHpRange(st); return Math.round((lo + hi) / 2); } /* 예상치(가운데). 실제 상승은 train() 이 굴린다 */ const d = doctorFor(st, g.type); const gap = d && d !== g ? d.base[stat] - g.base[stat] : 0; return 1 + gymBonus(st) + (gap >= CONFIG.doctorBonus.gapBig ? 2 : gap >= CONFIG.doctorBonus.gapSmall ? 1 : 0) + (st.lanista.trait === 'doctor' && st.lanista.type === g.type ? CONFIG.lanista.doctorTrainBonus : 0); }
 // 기술 전수: 승수 8 이상 독토르의 같은 유형 제자
-export function mentoredBy(st: GameState, g: Gladiator): Gladiator | undefined { const d = doctorFor(st, g.type); if (d && d !== g && d.wins >= CONFIG.doctorSkillWins) return d; return st.roster.find(x => x.status === 'doctor' && x !== g && (x.epithets ?? []).includes('magister')); } // '검투사이자 스승'은 모든 유형에게
 export function doctorFor(st: GameState, type: Gladiator['type']): Gladiator | undefined { return st.roster.find(g => g.status === 'doctor' && g.type === type); }
 // 자유민 → 독토르 고용 / 독토르 → 다시 출전(아욱토라투스) / 자유민 내보내기
 export function hireDoctor(st: GameState, g: Gladiator) { if (g.status !== 'rudiarius') return; g.status = 'doctor'; grantEpithets(g); st.history.push(`${seasonName(st.season)}: ${g.name} 독토르 고용`); }
@@ -272,7 +274,7 @@ export function doSkillTrain(st: GameState, g: Gladiator): { id: SkillId; ok: bo
   const tr = skillTrainable(st, g); if (!tr || g.trained || st.money < CONFIG.trainCost || trainedCount(st) >= trainCap(st)) return null;
   st.money -= CONFIG.trainCost; g.trained = true; trainFatigue(st, g);
   const id = st.rng.pick(tr.pool); const d = doctorFor(st, g.type);
-  const p = (tr.from === 'doctor' ? CONFIG.skills.trainChance + (d && d.wins >= CONFIG.doctorSkillWins ? CONFIG.skills.masterBonus : 0) : CONFIG.skills.gymChance) + (st.lanista.trait === 'doctor' ? CONFIG.lanista.skillTrainBonus : 0); // 독토르 출신 라니스타는 가르칠 줄 안다
+  const p = (tr.from === 'doctor' ? CONFIG.skills.trainChance : CONFIG.skills.gymChance) + (st.lanista.trait === 'doctor' ? CONFIG.lanista.skillTrainBonus : 0); // 독토르 출신 라니스타는 가르칠 줄 안다
   const ok = st.rng.chance(p) && offerSkill(g, id);
   let fallback: { stat: TrainStat; gain: number } | undefined; // 기술을 못 깨쳐도 한 철을 팔루스에서 보낸 몸은 남는다 (2026-09-17 사용자: 셋 중 하나는 무조건 오른다)
   if (!ok) { const stat = st.rng.pick(['atk', 'def', 'hp'] as const); const gain = trainGain(st, g, stat); g.base[stat] += gain; fallback = { stat, gain }; }
@@ -323,7 +325,7 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   const grudges: FightReport['grudges'] = [];
   for (const g of team) for (const e of c.enemy) if ((g.spared ?? []).includes(e.id)) grudges.push({ mine: g, enemy: e }); // 살려 준 상대와의 재대결
   const boosted = new Set(grudges.map(x => x.enemy.id));
-  const res = battle(st.rng, team, c.enemy, { mentored: new Set(team.filter(g => mentoredBy(st, g)).map(g => g.id)), hpBonusA: st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk });
+  const res = battle(st.rng, team, c.enemy, { hpBonusA: st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk });
   const syn = computeSynergies(team);
   if (syn.hometown) for (const g of team) g.bonded = true; // 동향: 시즌 끝에 서로 돌본다 (피로 −1)
   const classic = classicMatchup(team.map(g => g.type), c.enemy.map(g => g.type)) || (c.size === 1 && (team[0].epithets ?? []).includes('omnia_solus')); // 만능 검투사는 어떤 짝이든 볼거리

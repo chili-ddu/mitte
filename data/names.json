@@ -139,6 +139,146 @@
       "meaning": "산사람",
       "attested": true,
       "note": "(실) 폼페이 낙서, 10승"
+    },
+    {
+      "ko": "키크누스",
+      "la": "Cycnus",
+      "meaning": "백조",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "플로루스",
+      "la": "Florus",
+      "meaning": "꽃피는",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "아페르",
+      "la": "Aper",
+      "meaning": "멧돼지",
+      "attested": false,
+      "note": "(창작) 로마 별호에서"
+    },
+    {
+      "ko": "케르부스",
+      "la": "Cervus",
+      "meaning": "사슴",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "코르부스",
+      "la": "Corvus",
+      "meaning": "까마귀",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "드라코",
+      "la": "Draco",
+      "meaning": "용·큰뱀",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "벤투스",
+      "la": "Ventus",
+      "meaning": "바람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "글라키에스",
+      "la": "Glacies",
+      "meaning": "얼음",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "닉스",
+      "la": "Nix",
+      "meaning": "눈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "솔",
+      "la": "Sol",
+      "meaning": "해",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "루나",
+      "la": "Luna",
+      "meaning": "달",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아리에스",
+      "la": "Aries",
+      "meaning": "숫양",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "스코르피오",
+      "la": "Scorpio",
+      "meaning": "전갈",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "세르펜스",
+      "la": "Serpens",
+      "meaning": "뱀",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "케라우누스",
+      "la": "Ceraunus",
+      "meaning": "벼락",
+      "attested": false,
+      "note": "(창작) 그리스 별호에서"
+    },
+    {
+      "ko": "아우스테르",
+      "la": "Auster",
+      "meaning": "남풍",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "보레아스",
+      "la": "Boreas",
+      "meaning": "북풍",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "사기타",
+      "la": "Sagitta",
+      "meaning": "화살",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "풀비스",
+      "la": "Pulvis",
+      "meaning": "모래먼지",
+      "attested": false,
+      "note": "(창작) 경기장의 모래"
+    },
+    {
+      "ko": "루비고",
+      "la": "Rubigo",
+      "meaning": "녹·붉은 흙",
+      "attested": false,
+      "note": "(창작)"
     }
   ],
   "victory": [
@@ -279,6 +419,146 @@
       "ko": "살부스",
       "la": "Salvus",
       "meaning": "무사한",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "힐라루스",
+      "la": "Hilarus",
+      "meaning": "유쾌한",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "비탈리스",
+      "la": "Vitalis",
+      "meaning": "생명력",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "아욱투스",
+      "la": "Auctus",
+      "meaning": "번영한",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "트로피무스",
+      "la": "Trophimus",
+      "meaning": "길러진",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "폴리크로누스",
+      "la": "Polychronus",
+      "meaning": "오래 사는",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "조시무스",
+      "la": "Zosimus",
+      "meaning": "살아남은",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "발레리우스",
+      "la": "Valerius",
+      "meaning": "굳센",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "스테파누스",
+      "la": "Stephanus",
+      "meaning": "화관",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "글리코",
+      "la": "Glyco",
+      "meaning": "달콤한",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "플라키두스",
+      "la": "Placidus",
+      "meaning": "온화한",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "프로스페르",
+      "la": "Prosper",
+      "meaning": "번창하는",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "클레멘스",
+      "la": "Clemens",
+      "meaning": "너그러운",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아마투스",
+      "la": "Amatus",
+      "meaning": "사랑받는",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "마르티알리스",
+      "la": "Martialis",
+      "meaning": "마르스의",
+      "attested": false,
+      "note": "(창작) 로마 별호"
+    },
+    {
+      "ko": "라이투스",
+      "la": "Laetus",
+      "meaning": "기쁜",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "팍스",
+      "la": "Pax",
+      "meaning": "평화",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "스페스",
+      "la": "Spes",
+      "meaning": "희망",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "옵타투스",
+      "la": "Optatus",
+      "meaning": "바라던",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "페르페투우스",
+      "la": "Perpetuus",
+      "meaning": "끝없는",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "콘코르디우스",
+      "la": "Concordius",
+      "meaning": "화합의",
       "attested": false,
       "note": "(창작)"
     }
@@ -423,6 +703,146 @@
       "meaning": "쌍둥이 신. 에퀘스용",
       "attested": false,
       "note": "(창작)"
+    },
+    {
+      "ko": "아스테로파이우스",
+      "la": "Asteropaeus",
+      "meaning": "일리아스의 파이오니아 영웅",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "니카노르",
+      "la": "Nicanor",
+      "meaning": "승리자",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "알렉산데르",
+      "la": "Alexander",
+      "meaning": "수호자",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "안티고누스",
+      "la": "Antigonus",
+      "meaning": "조상에 맞서는",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "에우메네스",
+      "la": "Eumenes",
+      "meaning": "호의의",
+      "attested": true,
+      "note": "(실) 비문, 그리스계"
+    },
+    {
+      "ko": "이아손",
+      "la": "Iason",
+      "meaning": "아르고호의 영웅",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아이네아스",
+      "la": "Aeneas",
+      "meaning": "트로이의 영웅",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "울릭세스",
+      "la": "Ulixes",
+      "meaning": "오디세우스",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "파트로클루스",
+      "la": "Patroclus",
+      "meaning": "아킬레스의 벗",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "다이달루스",
+      "la": "Daedalus",
+      "meaning": "장인",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "페가수스",
+      "la": "Pegasus",
+      "meaning": "날개 달린 말",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "이카루스",
+      "la": "Icarus",
+      "meaning": "추락한 자",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "프로메테우스",
+      "la": "Prometheus",
+      "meaning": "불을 훔친 자",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아틀라스",
+      "la": "Atlas",
+      "meaning": "하늘을 짊어진 자",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "오르페우스",
+      "la": "Orpheus",
+      "meaning": "가인",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "메르쿠리우스",
+      "la": "Mercurius",
+      "meaning": "전령신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아폴로",
+      "la": "Apollo",
+      "meaning": "태양신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "바쿠스",
+      "la": "Bacchus",
+      "meaning": "술의 신",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "폴룩스",
+      "la": "Pollux",
+      "meaning": "쌍둥이 권투사",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "트리톤",
+      "la": "Triton",
+      "meaning": "바다의 전령",
+      "attested": false,
+      "note": "(창작)"
     }
   ],
   "nickname": [
@@ -565,6 +985,146 @@
       "meaning": "꼬마",
       "attested": false,
       "note": "(창작)"
+    },
+    {
+      "ko": "무라누스",
+      "la": "Murranus",
+      "meaning": "몰약 장수",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "베브릭스",
+      "la": "Bebryx",
+      "meaning": "비티니아 부족",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "만수에투스",
+      "la": "Mansuetus",
+      "meaning": "온순한",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "핀나스",
+      "la": "Pinnas",
+      "meaning": "깃털",
+      "attested": true,
+      "note": "(실) 폼페이 낙서"
+    },
+    {
+      "ko": "아틸리우스",
+      "la": "Attilius",
+      "meaning": "(로마 성)",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, 자유민 자원자 M. Attilius"
+    },
+    {
+      "ko": "라이키우스",
+      "la": "Raecius",
+      "meaning": "(로마 성)",
+      "attested": true,
+      "note": "(실) 폼페이 낙서, L. Raecius Felix"
+    },
+    {
+      "ko": "베릴루스",
+      "la": "Beryllus",
+      "meaning": "녹주석",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "키나무스",
+      "la": "Cinnamus",
+      "meaning": "계피",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "히아킨투스",
+      "la": "Hyacinthus",
+      "meaning": "히아신스",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "나르키수스",
+      "la": "Narcissus",
+      "meaning": "수선화",
+      "attested": true,
+      "note": "(실) 콤모두스를 목 졸라 죽인 자"
+    },
+    {
+      "ko": "푸르푸리오",
+      "la": "Purpurio",
+      "meaning": "자줏빛",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "클라두스",
+      "la": "Cladus",
+      "meaning": "가지",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "도루스",
+      "la": "Dorus",
+      "meaning": "선물",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "팜필루스",
+      "la": "Pamphilus",
+      "meaning": "모두의 벗",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "디오도루스",
+      "la": "Diodorus",
+      "meaning": "제우스의 선물",
+      "attested": true,
+      "note": "(실) 비문 — 심판의 실수로 죽었다고 새김"
+    },
+    {
+      "ko": "크릭수스",
+      "la": "Crixus",
+      "meaning": "곱슬머리",
+      "attested": true,
+      "note": "(실) 스파르타쿠스 반란의 갈리아인"
+    },
+    {
+      "ko": "오이노마우스",
+      "la": "Oenomaus",
+      "meaning": "(그리스 왕 이름)",
+      "attested": true,
+      "note": "(실) 스파르타쿠스 반란"
+    },
+    {
+      "ko": "간니쿠스",
+      "la": "Gannicus",
+      "meaning": "(켈트 이름)",
+      "attested": true,
+      "note": "(실) 스파르타쿠스 반란"
+    },
+    {
+      "ko": "카스투스",
+      "la": "Castus",
+      "meaning": "순결한",
+      "attested": true,
+      "note": "(실) 스파르타쿠스 반란"
+    },
+    {
+      "ko": "아드볼란스",
+      "la": "Advolans",
+      "meaning": "날아드는",
+      "attested": false,
+      "note": "(실? 마르티알리스, 출처 불확실)"
     }
   ],
   "place": [
@@ -705,6 +1265,146 @@
       "ko": "캄파누스",
       "la": "Campanus",
       "meaning": "캄파니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "마케도",
+      "la": "Macedo",
+      "meaning": "마케도니아 사람",
+      "attested": true,
+      "note": "(실) 비문"
+    },
+    {
+      "ko": "갈라타",
+      "la": "Galata",
+      "meaning": "갈라티아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "파르투스",
+      "la": "Parthus",
+      "meaning": "파르티아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "아라브스",
+      "la": "Arabs",
+      "meaning": "아라비아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "노리쿠스",
+      "la": "Noricus",
+      "meaning": "노리쿰 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "루시타누스",
+      "la": "Lusitanus",
+      "meaning": "루시타니아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "크레텐시스",
+      "la": "Cretensis",
+      "meaning": "크레타 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "키프리우스",
+      "la": "Cyprius",
+      "meaning": "키프로스 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "이탈리쿠스",
+      "la": "Italicus",
+      "meaning": "이탈리아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "라티누스",
+      "la": "Latinus",
+      "meaning": "라티움 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "에트루스쿠스",
+      "la": "Etruscus",
+      "meaning": "에트루리아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "푸니쿠스",
+      "la": "Punicus",
+      "meaning": "카르타고 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "알피누스",
+      "la": "Alpinus",
+      "meaning": "알프스 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "레누스",
+      "la": "Rhenus",
+      "meaning": "라인강",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "다누비우스",
+      "la": "Danubius",
+      "meaning": "도나우강",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "파두스",
+      "la": "Padus",
+      "meaning": "포강",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "네아폴리타누스",
+      "la": "Neapolitanus",
+      "meaning": "나폴리 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "푸테올라누스",
+      "la": "Puteolanus",
+      "meaning": "푸테올리 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "오스티엔시스",
+      "la": "Ostiensis",
+      "meaning": "오스티아 사람",
+      "attested": false,
+      "note": "(창작)"
+    },
+    {
+      "ko": "베로넨시스",
+      "la": "Veronensis",
+      "meaning": "베로나 사람",
       "attested": false,
       "note": "(창작)"
     }

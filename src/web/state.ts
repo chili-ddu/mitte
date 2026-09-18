@@ -25,7 +25,7 @@ export interface State {
   gladSel: number | null;
   detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null;
   detailSwipe: 1 | -1 | null;
-  setup: { color: string; types: GType[] } | null; /* 새 게임 설정: 파밀리아 색과 시작 검투사 두 유형 (고르는 동안 뒤에는 임시 판이 떠 있다) */ /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
+  setup: { color: string } | null; /* 새 게임 설정: 파밀리아 색 (2026-09-18: 유형 선택은 없앴다) (고르는 동안 뒤에는 임시 판이 떠 있다) */ /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;
   cellSel: number;
   cellSide: 'glad' | 'empty' | null;

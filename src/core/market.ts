@@ -6,10 +6,10 @@ import { grantRandomSkills } from './skills.js';
 import { valueOf, makeGladiator, TYPES } from './gladiator.js';
 import { rollTalent } from './talent.js';
 
-// 판매대: 되도록 주무기가 겹치지 않게 뽑는다 (같은 무기 둘이 나란히 서면 고를 맛이 없다). 무기는 네 가지뿐이라 그보다 많아지면 그때부터 겹친다
-function pickType(rng: Rng, used: Set<MainHand>): GType | undefined {
-  const free = TYPES.filter(t => !used.has(equipOf(t).main));
-  return free.length ? rng.pick(free) : undefined;
+// 판매대: 주무기가 겹치는 유형은 가중치를 낮춰 뽑는다 (2026-09-18: 무조건 배제 → 확률. 같은 무기 둘이 나란히 서는 일이 드물되, 같은 무장을 모을 길은 열어 둔다)
+function pickType(rng: Rng, used: Set<MainHand>): GType {
+  const w = TYPES.map(t => used.has(equipOf(t).main) ? CONFIG.market.dupWeight : 1); const total = w.reduce((a, b) => a + b, 0);
+  let r = rng.next() * total; for (let i = 0; i < TYPES.length; i++) { r -= w[i]; if (r <= 0) return TYPES[i]; } return TYPES[TYPES.length - 1];
 }
 export function offerMarket(rng: Rng, season = 1): Gladiator[] {
   const list: Gladiator[] = []; const used = new Set<MainHand>();

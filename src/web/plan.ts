@@ -1,7 +1,7 @@
 // 편성: 계약 카드·배정·서판·시즌 확정·시즌 진행(시작→경기→정산)
 import { S } from './state.js';
 import { type Contract, type GType, type Gladiator } from '../core/types.js';
-import { ACTION_KO, TRAIN_KO, trainGain, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, doSkillTrain, endSeason, fight, fightExpense, healCostOf, holdEvents, isImportant, mentoredBy, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, skillTrainable, train, trainCap, type Action, upkeepOf, validTeam } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, trainGain, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, doSkillTrain, endSeason, fight, fightExpense, healCostOf, holdEvents, isImportant, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, skillTrainable, train, trainCap, type Action, upkeepOf, validTeam } from '../core/game.js';
 import { Rng } from '../core/rng.js';
 import { battle } from '../core/battle.js';
 import { CONFIG } from '../core/config.js';
@@ -36,8 +36,7 @@ function winOdds(c: Contract, team: Gladiator[]): { win: number; draw: number } 
   const hit = oddsCache.get(key); if (hit) return hit;
   const N = 40; let win = 0, draw = 0; const rng = new Rng(c.id * 7919 + team.reduce((a, g) => a + g.id * 31, 17));
   const boosted = new Set<number>(); for (const g of team) for (const e of c.enemy) if ((g.spared ?? []).includes(e.id)) boosted.add(e.id);
-  const mentored = new Set(team.filter(g => mentoredBy(S.st, g)).map(g => g.id));
-  for (let i = 0; i < N; i++) { const r = battle(rng, team, c.enemy, { mentored, hpBonusA: S.st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk }); if (r.winner === 'A') win++; else if (r.winner === 'draw') draw++; }
+  for (let i = 0; i < N; i++) { const r = battle(rng, team, c.enemy, { hpBonusA: S.st.ludus.kitchen * CONFIG.ludus.kitchen.hpPerLevel, boostedB: boosted, boostMul: CONFIG.grudge.atk }); if (r.winner === 'A') win++; else if (r.winner === 'draw') draw++; }
   const out = { win: win / N, draw: draw / N }; oddsCache.set(key, out); return out;
 }
 // 전력 비교는 숫자 대신 말로: 압도적 우위 · 우위 · 호각 · 열세 · 크게 열세 (라니스타의 감이지 계산표가 아니다)

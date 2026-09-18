@@ -79,7 +79,7 @@ S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신
 S.gladSel = null; // 검투사 시트에 보이는 검투사 id
  // 검투사 시트에 보이는 검투사 id
 S.detailSwipe = null;
-S.setup = saved ? null : { color: 'caeruleum', types: [] }; // 저장이 없으면 새 게임 설정부터
+S.setup = saved ? null : { color: 'caeruleum' }; // 저장이 없으면 새 게임 설정부터
 S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
  // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
 S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
@@ -169,27 +169,18 @@ function renderScreen() {
     h('p', {}, '검투사는 지고도 살 수 있다.'), h('p', {}, '관중이 미테!를 외치게 하라.'),
     h('p', { class: 'hint' }, '검투사를 사들이고, 시설을 키우고, 계약에 맞춰 내보내라. 명예와 호감도가 높을수록 관중은 살려 달라 외친다.'),
     h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); S.showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
-  if (S.setup && !S.showIntro) { // 새 게임 설정: 파밀리아 색과 시작 검투사 두 유형. 능력치는 여느 티로처럼 굴린다 (고르는 것은 개성이지 힘이 아니다)
+  if (S.setup && !S.showIntro) { // 새 게임 설정: 파밀리아 색만 고른다. 검투사 둘은 물려받는 것이지 고르는 것이 아니다 (2026-09-18 사용자: 유형 선택 제거)
     const st = S.setup;
-    const swatches: HTMLElement[] = [], picks: HTMLElement[] = [];
-    const hint = h('div', { class: 'hint' }), go = h('button', { class: 'primary' }, '문을 연다') as HTMLButtonElement;
-    const sync = () => { // 고를 때마다 화면을 다시 그리지 않는다 (깜박임) — 이 자리에서만 바꾼다
-      swatches.forEach((b, i) => b.classList.toggle('on', TEAM_COLORS[i].id === st.color));
-      picks.forEach((b, i) => { const on = st.types.includes(TYPES[i]); b.classList.toggle('on', on); (b as HTMLButtonElement).disabled = !on && st.types.length >= CONFIG.startGladiators; });
-      const ready = st.types.length === CONFIG.startGladiators;
-      hint.textContent = ready ? st.types.map(t => TYPE_KO[t]).join(' · ') : `유형을 ${CONFIG.startGladiators - st.types.length}명 더 고르세요`;
-      go.disabled = !ready;
-    };
+    const swatches: HTMLElement[] = [];
+    const sync = () => swatches.forEach((b, i) => b.classList.toggle('on', TEAM_COLORS[i].id === st.color)); // 고를 때마다 화면을 다시 그리지 않는다 (깜박임)
     for (const c of TEAM_COLORS) { const b = h('button', { class: 'tpick', title: c.ko, style: `background:${c.ink}`, onclick: () => { st.color = c.id; sfx.step(); sync(); } }); swatches.push(b); }
-    for (const t of TYPES) { const hands = equipHandsKo(t);
-      const b = h('button', { class: 'gpick', title: `${TYPE_KO[t]} — ${hands}`, onclick: () => { st.types = st.types.includes(t) ? st.types.filter(x => x !== t) : [...st.types, t]; sfx.step(); sync(); } }, sq(t), h('span', {}, TYPE_KO[t])); picks.push(b); }
-    go.onclick = () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
-      S.st = newGame(seed, { types: st.types, color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); };
+    const go = h('button', { class: 'primary', onclick: () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
+      S.st = newGame(seed, { color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); } }, '문을 연다');
     sync();
     app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox setup' },
       h('div', { class: 'title' }, '파밀리아를 꾸린다'),
-      h('p', { class: 'hint' }, '우리 색을 고르고, 물려받을 검투사 두 사람의 유형을 정하세요. 능력치는 여느 티로처럼 굴려집니다.'),
-      h('div', { class: 'colors' }, ...swatches), h('div', { class: 'types' }, ...picks), hint, go)));
+      h('p', { class: 'hint' }, '우리 파밀리아의 색을 고르세요. 검투사 둘은 전임 라니스타에게서 물려받습니다.'),
+      h('div', { class: 'colors' }, ...swatches), go)));
   }
   if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
     const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);

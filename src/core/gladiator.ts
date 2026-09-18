@@ -22,8 +22,8 @@ export const TYPE_STATS: Record<GType, Stats> = {
 export const TYPE_KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스' };
 export const LINEAGE_KO: Record<Lineage, string> = { nature: '자연', victory: '승리', myth: '신화', nickname: '별명', place: '지명' };
 
-// 1차: 자연·승리 두 계열만
-const LINEAGES_1ST: Lineage[] = ['nature', 'victory'];
+// 계보 다섯 모두 (2026-09-18 사용자: 그동안 자연·승리 둘만 뽑아 신화·별명·지명 이름 60개와 그 무늬가 한 번도 나오지 않았다)
+const LINEAGES_1ST: Lineage[] = ['nature', 'victory', 'myth', 'nickname', 'place'];
 export const TYPES: GType[] = ['murmillo', 'secutor', 'thraex', 'retiarius', 'hoplomachus', 'provocator', 'eques', 'dimachaerus'];
 
 let nextId = 1;

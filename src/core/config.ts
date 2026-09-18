@@ -64,10 +64,10 @@ export const CONFIG = {
   age: { tiro: [17, 30], veteran: [24, 32], applicant: [24, 34], spdFrom: 31, spdEvery: 3, statFrom: 33, statEvery: 2 }, // 검투사 나이와 노쇠 (비문의 사망 연령은 대부분 20~30대, 30대 중반 넘겨 싸운 예는 드묾)
   lanista: { ageMin: 32, ageMax: 40, voluntaryAge: 46, mortality: [[40, 0.01], [45, 0.03], [50, 0.06], [60, 0.09], [999, 0.15]] as [number, number][], inheritanceTax: 0.05 /* 유산세 5% (비케시마 헤레디타티움, 고증) */, fameKeep: 0.6, fameFromHonor: 0.2, freedmanDiscount: 0.1, doctorTrainBonus: 1, skillTrainBonus: 0.10 }, // 고증: 울피아누스 생명표 근사 — 해마다 죽을 확률 (40세 미만 1%, 40대 2.5%, 50대 4.5%, 60대 8%, 70세 이상 14%). 은퇴 나이는 없고 46세(세니오레스)부터 자발 은퇴. 호감도 60% + 후계자 명예×0.2 계승, 해방노예 후계 = 시장 10% 할인, 독토르 후계 = 그 유형 훈련 +1
   honor: { win: 3, perTier: 2, classic: 2, crown: 3, lose: -1, missioPer: 0.004, rentPer: 0.01 }, // 검투사 명예: 미시오 +0.4%/점, 대여료 +1%/점
-  doctorSkillWins: 8,  // 승수가 이 이상인 독토르는 같은 유형 제자에게 유형 기술을 전수
-  mentor: { comboBonus: 0.04, shieldReduce: 0.6, sicaIgnore: 0.4, bindSec: 1.6, chargeMult: 1.3, critTaken: 0.6, twinBonus: 0.10 }, // 추가 4유형: 호플로마쿠스·에퀘스 돌진 ×1.3, 프로보카토르 치명타 피격 0.6, 디마카에루스 연속 +10% 더
+  // 독토르의 '기술 전수'(전투 보정 7종·doctorSkillWins·masterBonus)는 2026-09-18 뺐다 — 전투 보정은 특성 하나만 맡는다(docs/08). 독토르는 같은 유형의 훈련만 돕는다
+  // // 추가 4유형: 호플로마쿠스·에퀘스 돌진 ×1.3, 프로보카토르 치명타 피격 0.6, 디마카에루스 연속 +10% 더
   grudge: { atk: 1.10, missio: -0.15, revengeHonor: 8 }, // 원한: 내가 살려 준 상대는 재대결에서 공격 ×1.1, 그 상대에게 지면 미시오 −15% (우르비쿠스의 경고). 나를 이겼던 상대를 꺾으면 '복수자' 명예 +8
-  skills: { expChance: 0.14, trainChance: 0.35, masterBonus: 0.15, gymChance: 0.25, gymLevel: 3, rivalSkillsVet: [1, 2] as [number, number] }, // 기술: 경험으로 깨칠 확률(2026-09-16 0.25→0.14, 검투사당 경기 1회 굴림 — 8시즌에 티로 슬롯이 전부 차 있었다), 독토르 훈련 성공률(+8승 독토르 보너스), 훈련 시설(3단계~) 독학 성공률, 상대 베테라누스 기술 수
+  skills: { expChance: 0.14, trainChance: 0.35, gymChance: 0.25, gymLevel: 3, rivalSkillsVet: [1, 2] as [number, number] }, // 기술: 경험으로 깨칠 확률(2026-09-16 0.25→0.14, 검투사당 경기 1회 굴림 — 8시즌에 티로 슬롯이 전부 차 있었다), 독토르 훈련 성공률(+8승 독토르 보너스), 훈련 시설(3단계~) 독학 성공률, 상대 베테라누스 기술 수
   retrainCost: 2000,   // 유형 전환(재훈련): 비용, 그 시즌은 출전 불가 // 기술 전수: 세쿠토르 연속 +4% / 무르밀로 방패 첫 타격 감소 60% / 트라엑스 방어 무시 40% / 레티아리우스 속박 1.6초
   promoteWins: 3,
   teamSize: 3,   // 최대 규모 (계약마다 size 1~3)
@@ -91,6 +91,7 @@ export const CONFIG = {
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
   synergy: { cavalrySpd: 2, cavalrySec: 5, spearFirst: 1.2, sicaBrothers: 0.10, mythMissio: 0.05, hometownRest: 1, nicknameFame: 1, captiveAtk: 1 }, // 추가 조합 7종 (2026-09-16, 열세에서도 뒤집을 여지): 기병대 = 에퀘스 첫 5초 속도 +2 · 창 벽 = 첫 타 피해 ×1.2 · 곡도 형제 = 시카 방어 무시 +10%p · 신화×2 = 미시오 +5% · 동향 = 지명 계보 둘이 함께 싸우면 시즌 끝 피로 −1 · 별칭×2 = 승리 호감도 +1 · 동포 = 포로 둘 이상 공격 +1
   tierPowerCap: { 1: 160, 2: 200, 3: Infinity } as Record<number, number>,
+  market: { dupWeight: 0.35 }, // 판매대에 이미 있는 주무기는 뽑힐 가중치가 이만큼으로 준다 — 대개 고루, 가끔 겹친다 (2026-09-18 사용자: 무조건 안 겹치게보다 확률로. 같은 무장을 모을 길)
   matchup: { power: 1.2 }, // 상성이 전력에 실리는 폭: 보이는 전력 × (1 + (상성 승률 − 0.5) × power). 최악의 짝(0.39/0.61)에서 ±13% (2026-09-17 사용자: 배정하면 상성만큼 전력이 깎이거나 오르게)
   typePower: { murmillo: -1.5, secutor: 2.5, thraex: -1.5, retiarius: 0, hoplomachus: 0, provocator: 0, eques: 1, dimachaerus: 0 } as Record<string, number>, // 유형 보정(2026-09-17): 전력 계산식의 가중치는 같은 유형끼리의 거울 대결로 쟀기 때문에 유형 사이의 차이(그물·방패·방어 무시)를 담지 못한다. 전력이 같다고 표시된 짝이 실제로 호각이 되도록 유형마다 더하는 값 — npm run matrix 로 맞춘다. 2026-09-17: 가중치 재측정 뒤에도 세쿠토르 59%·트라엑스 44% 가 남아 보정. 보정 1점이 승률 3.5%p 를 움직이므로 작게 쓴다
   tierGraduate: 0.95, // 졸업(2026-09-16): 내 검투사 평균 전력이 그 등급 상한의 이 배를 넘으면 아래 등급 주최자는 더 이상 나를 부르지 않는다. 으뜸이 아니라 평균인 이유: 으뜸 기준이면 검투사 하나만 세져도 하위 경기가 사라져 새로 산 티로를 키울 자리가 없어진다(사용자). 상한은 약할 때를 지키는 장치이고, 세월이 지나 상한을 추월하면 하위 등급 경기는 이길 게 뻔한 공짜 승리가 된다 — 상한을 올리는 대신 등급을 졸업시킨다 (위 등급이 호감도로 아직 안 열렸으면 그대로 둔다: 경기가 없어지면 안 된다)

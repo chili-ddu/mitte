@@ -2,7 +2,7 @@
 import { S, myInk, myLight } from './state.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
-import { buy, canBuy, cellOf, cellQuality, heal, healCostOf, inBed, leavePalus, mentoredBy, moveToCell, occupantOf, palusOf, priceOf, recordVsMe, release, renewContract, renewCost, rivalOf, rivalStar, rosterCap, sell, skillTrainable, trainGain, upgrade, upgradeCost } from '../core/game.js';
+import { buy, canBuy, cellOf, cellQuality, heal, healCostOf, inBed, leavePalus, moveToCell, occupantOf, palusOf, priceOf, recordVsMe, release, renewContract, renewCost, rivalOf, rivalStar, rosterCap, sell, skillTrainable, trainGain, upgrade, upgradeCost } from '../core/game.js';
 import { equipHandsKo } from '../core/equipment.js';
 import { SKILL_BY_ID, SKILL_NAME, declineSkill, isPrimusPalus, learnSkill, masteryBonus, procChance, skillSlots, skillsOf, type SkillId } from '../core/skills.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';

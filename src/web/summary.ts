@@ -88,5 +88,5 @@ export function renderOver() {
     h('div', { class: 'grave' }, S.st.graveyard.length ? '묘비: ' + S.st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ') : '사망자 없음'),
     S.st.lineageLog?.length ? h('div', { class: 'grave' }, '역대 라니스타: ' + S.st.lineageLog.join(' → ') + ` → ${S.st.lanista.name}`) : null,
     h('div', { class: 'log', style: 'margin-top:8px;max-height:300px' }, S.st.history.join('\n')),
-    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.setup = { color: S.st.color ?? 'caeruleum', types: [] }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임')));
+    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.setup = { color: S.st.color ?? 'caeruleum' }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임')));
 }

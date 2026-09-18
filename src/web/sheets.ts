@@ -58,7 +58,7 @@ function doctorsPanel(): Node {
   const docs = S.st.roster.filter(g => g.status === 'doctor'), free = S.st.roster.filter(g => g.status === 'rudiarius');
   const docCard = (d: Gladiator) => { const pupils = S.st.roster.filter(g => g !== d && g.type === d.type && g.status !== 'doctor'); /* 공통 검투사 카드 (2026-09-17 사용자) */
     return gladCard(d, { size: CARD_PORTRAIT, cls: 'full',
-      nameExtra: [d.wins >= CONFIG.doctorSkillWins ? h('span', { class: 'badge teach', title: `${CONFIG.doctorSkillWins}승 이상이라 같은 유형 제자에게 기술까지 전수한다` }, '기술까지') : null], /* '독토르' 칩은 뺐다 — 시트 제목이 이미 말하고 초상이 훈련 막대를 들었다 (2026-09-17 사용자) */
+      nameExtra: [], /* '독토르' 칩은 뺐다 — 시트 제목이 이미 말하고 초상이 훈련 막대를 들었다 (2026-09-17 사용자) */
       rows: [h('span', {}, `${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · 기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌`),
         h('span', {}, `가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
         h('span', {}, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(S.st, g, 'atk') - 1 - gymBonus(S.st)}·방 +${trainGain(S.st, g, 'def') - 1 - gymBonus(S.st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)],
@@ -68,7 +68,7 @@ function doctorsPanel(): Node {
     nameExtra: [], /* 자유민 표식은 초상의 나무 검이 대신한다 */
     rows: [h('span', {}, `${TYPE_KO[g.type]} · 공 ${g.base.atk} · 방 ${g.base.def}${doctorFor(S.st, g.type) ? ` · ${TYPE_KO[g.type]} 독토르 이미 있음` : ''}`)],
     acts: [h('button', { class: 'primary', title: `${g.name} 에게 독토르 자리를 제안한다. 시즌 급료 ${CONFIG.doctorSalary} HS`, onclick: () => { hireDoctor(S.st, g); S.notice = `${g.name} 이(가) 독토르 제안을 받아들였다`; render(); } }, `독토르 제안 ${CONFIG.doctorSalary}/시즌`)] });
-  return h('div', { class: 'panel' }, h('h2', {}, '독토르', helpBtn('독토르', `루디스를 받은 자유민을 교관으로 고용합니다. 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS. 같은 유형 훈련에서 독토르의 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2. ${CONFIG.doctorSkillWins}승 이상이면 유형 기술을 전수합니다. 비문의 doctor secutorum·myrmillonum 처럼 무장별로 한 명씩 두는 것이 자연스럽습니다. 독토르는 라니스타의 후계자 후보가 됩니다.`)),
+  return h('div', { class: 'panel' }, h('h2', {}, '독토르', helpBtn('독토르', `루디스를 받은 자유민을 교관으로 고용합니다. 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS. 같은 유형 훈련에서 독토르의 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2. 비문의 doctor secutorum·myrmillonum 처럼 무장별로 한 명씩 두는 것이 자연스럽습니다. 독토르는 라니스타의 후계자 후보가 됩니다.`)),
     ...docs.map(docCard), docs.length ? null : h('div', { class: 'hint', style: 'margin-bottom:8px' }, '고용한 독토르가 없습니다.'),
     free.length ? h('h3', { class: 'sub' }, '고용할 수 있는 자유민') : null, ...free.map(freeCard),
     !docs.length && !free.length ? h('div', { class: 'hint' }, `검투사가 ${CONFIG.rudis.wins}승에 이르면 루디스(자유)를 받을 수 있고, 그 자유민을 독토르로 고용합니다.`) : null);
@@ -97,7 +97,7 @@ function menuPanel(): Node {
     h('button', { onclick: () => { const inp = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
       inp.onchange = () => { const f = inp.files?.[0]; if (!f) return; f.text().then(txt => { try { const next = deserialize(JSON.parse(txt)); void ask(`${next.lanista.name} ${next.season}번째 시즌 저장을 불러옵니다. 지금 게임은 덮어씁니다.`, { ok: '불러오기' }).then(ok => { if (!ok) return; S.st = next; S.phase = 'manage'; S.sheet = null; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; S.cellsOpen = false; S.notice = '저장 파일을 불러왔습니다.'; render(); }); } catch { void tell('저장 파일을 읽을 수 없습니다.'); } }); };
       inp.click(); } }, '저장 파일 불러오기'),
-    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); S.setup = { color: S.st.color ?? 'caeruleum', types: [] }; S.phase = 'manage'; S.sheet = null; /* 새 게임도 설정 화면부터 */ S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); }); } }, '새 게임')));
+    h('button', { onclick: () => { void ask('저장을 지우고 새 게임을 시작합니까?', { ok: '새 게임' }).then(ok => { if (!ok) return; clearSave(); S.setup = { color: S.st.color ?? 'caeruleum' }; S.phase = 'manage'; S.sheet = null; /* 새 게임도 설정 화면부터 */ S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); }); } }, '새 게임')));
 }
   // 문 앞의 지원자 (자유민 아욱토라티): 계약금으로 데려온다
 function applicantsPanel(): Node | null {
@@ -175,7 +175,7 @@ function renderHelp(): Node {
       row('전통 짝', `무르밀로–트라엑스, 레티아리우스–세쿠토르처럼 로마인이 좋아한 대결 조합. 내 팀과 상대가 전부 짝지어지면 승리 시 호감도 +${CONFIG.fameDelta.classicWin}, 패배 시 미시오 +${Math.round(CONFIG.missio.classic * 100)}%.`),
       row('승리 계열 ×2 / ×3', `×2: 미시오(패자 생존) 확률 +${Math.round(M.victorySynergy * 100)}%. ×3: 시간 초과 무승부 때 승리 판정.`)),
     sec('기술 (배워서 익히는 동작)',
-      row('배우기', `경기 경험(조건을 채우면 ${Math.round(CONFIG.skills.expChance * 100)}%)이나 편성의 '기술 훈련'(같은 유형 독토르 ${Math.round(CONFIG.skills.trainChance * 100)}%, 8승 독토르 +${Math.round(CONFIG.skills.masterBonus * 100)}%, 훈련 시설 ${CONFIG.skills.gymLevel}단계부터 독학 ${Math.round(CONFIG.skills.gymChance * 100)}%)으로 배울 기회가 생기고, 카드에서 배울지 정한다. 슬롯은 티로 1, 베테라누스 2, 프리무스 팔루스(승수 8·명예 20) 3. 상대 베테라누스도 1~2개 가진다.`),
+      row('배우기', `경기 경험(조건을 채우면 ${Math.round(CONFIG.skills.expChance * 100)}%)이나 편성의 '기술 훈련'(같은 유형 독토르 ${Math.round(CONFIG.skills.trainChance * 100)}%, 훈련 시설 ${CONFIG.skills.gymLevel}단계부터 독학 ${Math.round(CONFIG.skills.gymChance * 100)}%)으로 배울 기회가 생기고, 카드에서 배울지 정한다. 슬롯은 티로 1, 베테라누스 2, 프리무스 팔루스(승수 8·명예 20) 3. 상대 베테라누스도 1~2개 가진다.`),
       row('숙련', `발동할 때마다 확률 +${Math.round(0.02 * 100)}% (최대 +15%). 독토르가 되면 아는 기술을 제자에게 가르친다.`),
       ...SKILLS.map(sk => row(sk.name, `${sk.types === 'all' ? '공용' : sk.types.map(t => TYPE_KO[t]).join('·')} · 기본 ${Math.round(sk.base * 100)}% · ${sk.desc} (${sk.learn})`))),
     sec('전투',
@@ -200,7 +200,6 @@ function renderHelp(): Node {
       row('상대 파밀리아', `상대는 시즌을 넘어 유지되는 네 파밀리아(율리우스·암플리아투스·네로니아누스·스카이바)에서 나온다. 그들도 승패·명예·부상·사망이 쌓이고 빈자리를 채운다. 경기 광고(에딕타)처럼 상대 이름과 전적은 전부 공개.`),
       row('원한과 복수', `내가 이기고 살려 준 상대를 다시 만나면 그는 공격 ×${CONFIG.grudge.atk}, 그에게 지면 미시오 ${Math.round(CONFIG.grudge.missio * 100)}% (우르비쿠스 묘비: "네가 이긴 자를 조심하라"). 나를 쓰러뜨렸던 상대를 꺾으면 복수: 명예 +${CONFIG.grudge.revengeHonor}, 별칭 '복수자'.`),
       row('유형 전환', `검투사가 스스로 청할 때만(이벤트, 준비 중) 다른 유형으로 재훈련 (${CONFIG.retrainCost} HS, 그 시즌 출전 불가). 공·방은 유지, 속도·사거리는 새 유형. 세 유형으로 각각 이기면 '혼자서 세 유형을 다 싸우는 자'(헤르메스).`),
-      row('기술 전수 (추가 유형)', `호플로마쿠스·에퀘스 돌진 ×${CONFIG.mentor.chargeMult}, 프로보카토르 치명타 피격 ${CONFIG.mentor.critTaken}, 디마카에루스 연속 +${Math.round(CONFIG.mentor.twinBonus * 100)}% 추가.`),
       row('왼손잡이', `타고난 특성(매물 10%). 왼손잡이(스카이바)는 상대 방패의 첫 타격 감소를 절반으로 만든다. 비문에 따로 표기될 만큼 귀했다.`),
       row('루디스 거절', `루디스를 받은 경기의 결과 화면에서 거절할 수 있다. 플람마처럼 노예로 남는 대신 명예 +8.`),
       row('나이', `검투사는 티로 ${CONFIG.age.tiro[0]}~${CONFIG.age.tiro[1]}세, 베테라누스 ${CONFIG.age.veteran[0]}~${CONFIG.age.veteran[1]}세로 들어오고 봄마다 한 살. ${CONFIG.age.spdFrom}세부터 ${CONFIG.age.spdEvery}년마다 속도 −1, ${CONFIG.age.statFrom}세부터 ${CONFIG.age.statEvery}년마다 공·방 −1 (비문의 검투사 사망 연령은 대부분 20~30대).`),
@@ -208,7 +207,6 @@ function renderHelp(): Node {
       row('확보 경로', `시장 매물의 출신: 노예 상인(기본), 전쟁 포로(값 −35%, 공격·HP 높음, 미시오 −5%), 형벌 죄수(값 −60%, 능력치 −2, 배상 절반, 12시즌 뒤 자유), 자유민 계약자(아욱토라티)는 시장에 서지 않고 루두스 문 앞에 찾아온다(호감도가 높을수록 자주): 계약금 ×0.8, 급료 지급, 8시즌 계약, 재계약 = 계약금 절반. 첫 시즌은 노예 상인만.`),
       row('루디스', `승리로 ${CONFIG.rudis.wins}승에 이르면 주최자가 확률적으로 루디스(나무 검)를 내려 자유민이 된다 (기본 ${Math.round(CONFIG.rudis.base * 100)}% + 호감도, 관대 +20%/잔혹 −20%). 자유민은 팔 수 없고 사망 배상도 없다. 계속 출전하면 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%를 급료로 가져간다.`),
       row('독토르', `자유민을 교관으로 고용하면 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS 를 받는다. 같은 유형 훈련에서 독토르의 해당 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2 추가 (스승을 넘어서면 보너스 없음).`),
-      row('기술 전수', `${CONFIG.doctorSkillWins}승 이상 독토르는 같은 유형 제자에게 유형 기술을 전수: 세쿠토르 연속 공격 +${Math.round(CONFIG.mentor.comboBonus * 100)}%, 무르밀로 방패 첫 타격 감소 ${Math.round(CONFIG.mentor.shieldReduce * 100)}%, 트라엑스 방어 무시 ${Math.round(CONFIG.mentor.sicaIgnore * 100)}%, 레티아리우스 속박 ${CONFIG.mentor.bindSec}초.`),
       row('시설', `켈라 칸 수 = 로스터 상한(3→15, 한 줄 3칸씩 증축). 칸마다 숙소 질 ★1 피로 회복 −2, ★2 피로 덜 쌓임, ★3 명예 +1/시즌 (★마다 유지비 +100). 시설은 단계마다 유지비가 붙는다(조리장·훈련 시설·약재 150, 의술·침상·팔루스·증축 칸 50~100). 조리장 출전 HP +5/단계. 의무실: 침상(1→4, 모자라면 부상 +1시즌)·의술(2단계 부상 1시즌, 4단계 치료 250)·약재(피로 면제 20%/단계). 훈련장: 팔루스 = 시즌당 훈련 인원(2→6)·훈련 시설(3·5단계 훈련 폭 +1).`),
       row('시즌 행동', `출전하지 않는 검투사는 편성에서 행동을 고른다. 휴식(피로 −1, ★1 숙소면 −2) · 훈련 공/방(팔루스 자리) · 시범(훈련장 공개, 명예 +${CONFIG.actions.show.honor}). 부상자는 요양(무료, 회복 +${CONFIG.actions.recover.extra}시즌 가속) 또는 치료.`),
       row('시즌 행사', `편성 화면에서 선택. 공개 만찬(케나 리베라) ${CONFIG.events.cena.cost}: 출전 검투사 명예 +${CONFIG.events.cena.honor}, 호감도 +${CONFIG.events.cena.fame}. 행렬(폼파) ${CONFIG.events.pompa.cost}: 명예 +${CONFIG.events.pompa.honor}, 호감도 +${CONFIG.events.pompa.fame}. 네메시스 봉헌 ${CONFIG.events.votum.cost}: 이번 시즌 미시오 +${Math.round(CONFIG.events.votum.missio * 100)}%. 벽화 광고(에딕타) ${CONFIG.events.edicta.cost}: 출전 검투사 명예 +${CONFIG.events.edicta.honor}. 귀족 손님 초대 ${CONFIG.events.guests.cost}: 출전 가능 검투사 명예 +${CONFIG.events.guests.honor}, 호감도 +${CONFIG.events.guests.fame}, 사례금 +${CONFIG.events.guests.gift}.`),
@@ -277,7 +275,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   { const expiring = S.st.roster.filter(g => g.status === 'rudiarius' && g.contractUntil != null && g.contractUntil - S.st.season <= 1); if (expiring.length) out.push(item('warn', `계약 만료 임박: ${expiring.map(g => `${g.name} (${Math.max(0, g.contractUntil! - S.st.season + 1)}시즌)`).join(', ')} — 재계약(계약금의 절반)하지 않으면 떠납니다.`)); }
   { const free = S.st.roster.filter(g => g.status === 'rudiarius'); const docs = S.st.roster.filter(g => g.status === 'doctor');
     if (free.length) out.push(item('todo', `자유민(루디아리우스) ${free.length}명: ${free.map(g => g.name).join(', ')} — 급료(대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%)를 받고 계속 출전하거나, 독토르로 고용(${CONFIG.doctorSalary} HS/시즌, 같은 유형 훈련 강화).`));
-    if (docs.length) out.push(item('idle', `독토르 ${docs.length}명: ${docs.map(g => `${g.name}(${TYPE_KO[g.type]} 공 ${g.base.atk}·방 ${g.base.def}${g.wins >= CONFIG.doctorSkillWins ? ' · 기술 전수' : ''})`).join(', ')} — 능력치가 앞서는 만큼 같은 유형 훈련 +1~2.`)); }
+    if (docs.length) out.push(item('idle', `독토르 ${docs.length}명: ${docs.map(g => `${g.name}(${TYPE_KO[g.type]} 공 ${g.base.atk}·방 ${g.base.def})`).join(', ')} — 능력치가 앞서는 만큼 같은 유형 훈련 +1~2.`)); }
   if (injured.length) out.push(item('warn', `부상 검투사 ${injured.length}명: ${injured.map(g => g.name).join(', ')} — 치료(${healCostOf(S.st)} HS)하면 이번 시즌 출전 가능.`));
   // 계약·상대 이야기는 편성 화면에 있으므로 정문에서는 다루지 않는다 (편성에서 관리로 되돌아올 수 있음)
   if (S.st.roster.length >= rosterCap(S.st)) out.push(item('idle', `켈라 ${S.st.roster.length}/${rosterCap(S.st)} 가득 참 (증축 ${upgradeCost(S.st, 'cells')?.toLocaleString() ?? '최대'} HS)`));

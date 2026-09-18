@@ -62,12 +62,10 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', syn: Synergies, hpBonus =
   });
 }
 
-export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { mentored?: Set<number>; hpBonusA?: number; boostedB?: Set<number>; boostMul?: number } = {}): BattleResult {
+export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { hpBonusA?: number; boostedB?: Set<number>; boostMul?: number } = {}): BattleResult {
   const synA = computeSynergies(teamA), synB = computeSynergies(teamB);
   const units = [...makeUnits(teamA, 'A', synA, opts.hpBonusA ?? 0), ...makeUnits(teamB, 'B', synB, 0, opts.boostedB, opts.boostMul ?? 1)];
   const form: Record<number, number> = {}; const teamForm = { A: rng.range(-1, 1), B: rng.range(-1, 1) }; for (const u of units) { const f = u.g.form ?? (teamForm[u.side] * CONFIG.form.team + rng.range(-1, 1) * (1 - CONFIG.form.team)); form[u.g.id] = f; /* 우리 검투사는 시즌 시작에 정해 둔 값(g.form), 상대는 경기 때 굴린다 — 내 사람의 상태는 알고 남의 것은 모른다 */ u.hp = Math.max(1, u.hp + Math.round(f * CONFIG.form.hp)); u.atk = Math.max(1, u.atk + Math.round(f * CONFIG.form.atk)); u.def = Math.max(0, u.def + Math.round(f * CONFIG.form.def)); } // 그날의 몸 상태: 경기 내내 남는 우연
-  const mentored = opts.mentored ?? new Set<number>(); // 독토르에게 기술을 전수받은 검투사 (유형 특기 강화)
-  const M = CONFIG.mentor;
   const syn = { A: synA, B: synB };
   const byId = new Map(units.map(u => [u.g.id, u]));
   const log: string[] = [];
@@ -182,7 +180,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       if (u.range < 2) u.retreatUntil = u.holdUntil + 0.4 + rng.next() * 0.3; // 그 뒤 짧게 이탈
       if (rng.chance(0.4)) u.circleDir = (u.circleDir === 1 ? -1 : 1);
       for (let hit = 0; hit < 2; hit++) {
-        if (hit === 1 && (target.hp <= 0 || !rng.chance(CONFIG.combo.base + u.spd * CONFIG.combo.perSpd + (mentored.has(u.g.id) && u.g.type === 'secutor' ? M.comboBonus : 0) + (mentored.has(u.g.id) && u.g.type === 'dimachaerus' ? M.twinBonus : 0) + (OFF_HAND[equipOf(u.g.type).off].comboBonus ?? 0) + (hasSkill(u.g, 'twin_cut') ? 0.15 : 0)))) break;
+        if (hit === 1 && (target.hp <= 0 || !rng.chance(CONFIG.combo.base + u.spd * CONFIG.combo.perSpd + (OFF_HAND[equipOf(u.g.type).off].comboBonus ?? 0) + (hasSkill(u.g, 'twin_cut') ? 0.15 : 0)))) break;
         const combo = hit === 1;
         if (combo && hasSkill(u.g, 'twin_cut')) { (skillUses[u.g.id] ??= {}).twin_cut = ((skillUses[u.g.id] ??= {}).twin_cut ?? 0) + 1; exp[u.g.id].combos++; } else if (combo) exp[u.g.id].combos++;
         let mult = 1.0;
@@ -195,18 +193,18 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (mySyn.spearWall && !u.struck) mult *= CONFIG.synergy.spearFirst; u.struck = true; // 창 벽: 첫 타
         if (t < u.disarmUntil) mult *= OFF_HAND[uEq.off].skill === 'bind' ? CONFIG.disarm.pugioMul : CONFIG.disarm.atkMul; // 무기를 놓친 손 (레티아리우스는 허리에 단검이 있다)
         const feint = !combo && proc(u, 'feint'); // 허초: 방패 감소 무시 + 방어 1/3만
-        const ignore = Math.min(0.9, (feint ? 0.2 : mentored.has(u.g.id) && uEq.main === 'sica' ? M.sicaIgnore : MAIN_HAND[uEq.main].defIgnore) + (mySyn.sicaBrothers && uEq.main === 'sica' ? CONFIG.synergy.sicaBrothers : 0)); // 곡도 형제
+        const ignore = Math.min(0.9, (feint ? 0.2 : MAIN_HAND[uEq.main].defIgnore) + (mySyn.sicaBrothers && uEq.main === 'sica' ? CONFIG.synergy.sicaBrothers : 0)); // 곡도 형제
         const def = Math.round(target.def * (1 - ignore));
         if (feint) mult *= 1.1; // 허초: 빈틈을 찔러 피해 +10%
-        if (charge && !combo) { mult *= mentored.has(u.g.id) && (u.g.type === 'hoplomachus' || u.g.type === 'eques') ? M.chargeMult : 1.15; exp[u.g.id].charges++; if (proc(u, 'charge_plus')) { mult *= 2.5; target.boundUntil = Math.max(target.boundUntil, t + 1.5); } } // 돌진 공격: 기세 보너스 (창 유형 전수 시 ×1.3)
-        const crit = rng.chance((CONFIG.crit.base + u.spd * CONFIG.crit.perSpd) * (mentored.has(target.g.id) && target.g.type === 'provocator' ? M.critTaken : TYPE_TRAIT[target.g.type].critTaken));
+        if (charge && !combo) { mult *= 1.15; exp[u.g.id].charges++; if (proc(u, 'charge_plus')) { mult *= 2.5; target.boundUntil = Math.max(target.boundUntil, t + 1.5); } } // 돌진 공격: 기세 보너스
+        const crit = rng.chance((CONFIG.crit.base + u.spd * CONFIG.crit.perSpd) * TYPE_TRAIT[target.g.type].critTaken);
         const open = t < target.openUntil || t < target.boundUntil; // 빈틈 강타: 헛디딘 상대·그물에 묶인 상대는 방어가 없다 (그물에 감긴 채로 방패를 들 수는 없다)
         let defUsed = def; if (crit) { mult *= CONFIG.crit.mult; defUsed = Math.round(defUsed * (1 - CONFIG.crit.defIgnore)); } if (open) { mult *= ST.openMult; defUsed = Math.round(defUsed * (1 - ST.openIgnore)); }
         let dmg = Math.max(1, Math.round(u.atk * mult * rng.range(0.85, 1.15) - defUsed));
         let blocked = false;
         { const SH = CONFIG.shield; /* 매 타 방패 막기: 치명타·허초는 넘어간다. 시카처럼 방패를 넘기는 무기는 확률을 깎는다. 막을 때마다 방패가 닳는다 */
           if (target.blockChance > 0 && !crit && !feint && t >= target.boundUntil && rng.chance(target.blockChance * (MAIN_HAND[uEq.main].shieldPierce ?? 1) * (u.g.scaeva && !target.g.scaeva ? SH.scaeva : 1))) {
-            const cut = mentored.has(target.g.id) && tEq.off === 'scutum' && target.g.type === 'murmillo' ? M.shieldReduce : SH.cut;
+            const cut = SH.cut;
             dmg = Math.max(1, Math.round(dmg * (1 - cut))); target.blockChance = Math.max(SH.min, target.blockChance - SH.wear); blocked = true; } }
         if (blocked) { target.blocksMade++; exp[target.g.id].blocks++; exp[u.g.id].blockedOn++; }
         let parried = false;
@@ -223,7 +221,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         let net = false, stun = false;
         let netMiss = false;
         if (!u.netUsed && !combo && OFF_HAND[uEq.off].skill === 'bind') { u.netUsed = true; const NT = CONFIG.net; /* 던지면 그만이다 — 빗나가면 그물을 잃는다 */
-          if (rng.chance(Math.max(NT.min, NT.base - target.spd * NT.perSpd))) { target.boundUntil = t + (mentored.has(u.g.id) ? M.bindSec : CONFIG.net.sec); net = true; } else netMiss = true; }
+          if (rng.chance(Math.max(NT.min, NT.base - target.spd * NT.perSpd))) { target.boundUntil = t + CONFIG.net.sec; net = true; } else netMiss = true; }
         else if (u.netUsed && !combo && !u.netRecovered && OFF_HAND[uEq.off].skill === 'bind' && proc(u, 'net_recover')) { u.netRecovered = true; target.boundUntil = t + BIND_SEC; net = true; } // 그물회수
         if (blocked && proc(target, 'shield_bash')) { u.boundUntil = Math.max(u.boundUntil, t + 2.5); target.cooldown = Math.min(target.cooldown, 0.2); stun = true; } // 방패치기: 공격자가 1.2초 비틀거리고 막은 쪽은 바로 되친다
         if (mySyn.nature3 && natureFirst[u.side]) { natureFirst[u.side] = false; target.boundUntil = Math.max(target.boundUntil, t + 0.8); stun = true; }

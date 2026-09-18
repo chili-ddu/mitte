@@ -8,7 +8,7 @@ import { CONFIG } from './config.js';
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['세베루스', 14, 3], ['풀구르', 12, 7]]);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['마르스', 14, 3], ['오리온', 12, 7]] /* 2026-09-18 계보 다섯 + 이름 200개: 같은 시드에서 뽑히는 이름만 바뀐다 — 능력치·점수는 그대로 */);
   assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['veteranus', 3, 4], ['veteranus', 3, 5]], '시작 검투사도 일반 검투사 — 3승 이상에 몇 패 (2026-09-17)');
   assert.equal(+(st.formTeam ?? 0).toFixed(3), 0.871);
   assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [0.822, 0.645]);
