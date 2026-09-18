@@ -1,6 +1,6 @@
 // 전투 화면: 경기장 그림·재생·결과 (규칙은 core/battle.ts, 여기는 재생만)
 import { S, myInk, myLight } from './state.js';
-import { CEREMONIES, ENEMY, INK, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Skeleton, walkSkeleton } from './stickman.js';
+import { CEREMONIES, ENEMY, INK, NPC_POSES, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Skeleton, walkSkeleton } from './stickman.js';
 import { SKILLS, SKILL_NAME, skillsOf } from '../core/skills.js';
 import { type GType, type Gladiator, type HostKind } from '../core/types.js';
 import { ARENA } from '../core/battle.js';
@@ -147,19 +147,43 @@ function drawHostBox(ctx: CanvasRenderingContext2D, py: number, tilt: number, ho
   if (!hostDrawn) drawSeated(ctx, 0, py - 40, WORLD.sc * 1.05, INK, false, true, 77, 1);
 }
 // 함성 오버레이: 화면 안 관중 일부가 팔을 들고 들썩임 (가벼움)
-function drawCheerOverlay(ctx: CanvasRenderingContext2D, seats: ReturnType<typeof seatList>, t: number, cheer: number, view: { x0: number; y0: number; x1: number; y1: number }, cloth = 0) {
+type CrowdMood = 'calm' | 'cheer' | 'gasp' | 'hush' | 'missio' | 'frenzy';
+function drawCheerOverlay(ctx: CanvasRenderingContext2D, seats: ReturnType<typeof seatList>, t: number, cheer: number, view: { x0: number; y0: number; x1: number; y1: number }, cloth = 0, surge = 0) {
   // cloth: 흰 천(마파)을 흔드는 관중 비율 — 미시오 판정 때 "살려라"의 뜻 (고증: 천을 흔드는 건 관중)
   for (const sd of seats) {
     if (sd.h >= 0.35 || sd.near) continue; // 캐시에 없는 동적 관중(먼 쪽)만
     if (sd.x < view.x0 - 60 || sd.x > view.x1 + 60 || sd.y < view.y0 - 100 || sd.y > view.y1 + 30) continue;
-    const up = cheer > 0;
-    const bob = up ? Math.abs(Math.sin(t * 16 + sd.j * 0.7 + sd.k)) * 8 * Math.min(1, cheer * 2) : 0;
+    const local = Math.max(0, surge - hash01(sd.j * 7 + 2, sd.k * 11 + 4) * 0.42);
+    const up = cheer > 0 || local > 0;
+    const bob = up ? Math.abs(Math.sin(t * (16 + local * 7) + sd.j * 0.7 + sd.k)) * (8 + local * 7) * Math.min(1, cheer * 2 + local) : 0;
     drawSeated(ctx, sd.x, sd.y - bob, WORLD.sc, INK, up, sd.toga, sd.j * 31 + sd.k, 1, true, seatFacing(sd));
     if (up && cloth > 0 && hash01(sd.j * 13 + 5, sd.k * 7 + 3) < cloth) { // 든 손끝에 흰 천
       const f = seatFacing(sd); const w = Math.sin(t * 12 + sd.j + sd.k) * 6; const hx = sd.x + 12 * f * WORLD.sc, hy = sd.y - bob - 11 * WORLD.sc; // 든 손끝 (머리 기준 −11)
       ctx.fillStyle = '#ffffff'; ctx.strokeStyle = INK; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(hx + 7 * f + w, hy - 12, hx + 14 * f + w, hy - 4); ctx.quadraticCurveTo(hx + 7 * f + w * 0.5, hy + 1, hx, hy); ctx.fill(); ctx.stroke();
     }
+  }
+}
+function drawRailSpectators(ctx: CanvasRenderingContext2D, t: number, view: { x0: number; y0: number; x1: number; y1: number }, mood: CrowdMood, force: number, teamColor: string) {
+  const ry = floorRy(1), baseY = ry * 1.18;
+  const people = [
+    { x: -WORLD.rx * 0.58, y: baseY, sc: .78, kind: 'lanista' as const, seed: 2, f: 1 as const },
+    { x: -WORLD.rx * 0.48, y: baseY + 4, sc: .68, kind: 'citizen' as const, seed: 5, f: 1 as const },
+    { x: WORLD.rx * 0.48, y: baseY + 5, sc: .68, kind: 'citizen' as const, seed: 9, f: -1 as const },
+    { x: WORLD.rx * 0.58, y: baseY, sc: .7, kind: 'citizen' as const, seed: 13, f: -1 as const },
+  ];
+  const active = mood !== 'calm' || force > 0.05;
+  ctx.save(); ctx.strokeStyle = '#8f7047'; ctx.lineWidth = 3; ctx.globalAlpha = 0.65; ctx.beginPath(); ctx.moveTo(Math.max(view.x0, -WORLD.rx * .72), baseY - 18); ctx.lineTo(Math.min(view.x1, WORLD.rx * .72), baseY - 18); ctx.stroke(); ctx.restore();
+  for (const p of people) {
+    if (p.x < view.x0 - 40 || p.x > view.x1 + 40 || p.y < view.y0 - 80 || p.y > view.y1 + 80) continue;
+    const wave = Math.sin(t * (active ? 7 : 2.4) + p.seed) * (active ? 1 : .35), jump = Math.max(0, Math.sin(t * 9 + p.seed)) * (mood === 'frenzy' ? 7 : mood === 'cheer' ? 4 : 0) * Math.min(1, force + .4);
+    let sk: Skeleton = p.kind === 'lanista' ? NPC_POSES.watch : NPC_POSES.stand;
+    if (mood === 'hush') sk = p.kind === 'lanista' ? NPC_POSES.watch : NPC_POSES.tiptoe;
+    else if (mood === 'gasp') sk = NPC_POSES.point;
+    else if (mood === 'missio') sk = p.seed % 2 ? NPC_POSES.point : NPC_POSES.tiptoe;
+    else if (mood === 'cheer' || mood === 'frenzy') sk = { ...NPC_POSES.point, frontArm: [-155 + wave * 8, -8], backArm: [-128 - wave * 8, 16], headBob: -2 - jump * .2, lift: jump };
+    else sk = { ...sk, headBob: sk.headBob + wave };
+    drawStickman(ctx, 'murmillo', { x: p.x, y: p.y - jump, scale: p.sc, facing: p.f, skeleton: sk, t: t + p.seed, ink: INK, bare: true, garment: p.kind === 'lanista' ? 'toga' : 'tunic', garmentColor: p.kind === 'lanista' ? '#f3ead0' : (p.seed % 2 ? '#c8a878' : '#b9c2a8'), garmentStripe: p.kind === 'lanista' ? teamColor : undefined, beard: p.kind === 'lanista' });
   }
 }
 // 폼페이 낙서풍 체크: 경기장 그림 위에 긁어 그린 듯 겹친 획 (출전 준비 완료)
@@ -268,8 +292,10 @@ export function renderBattle() {
   let zoomOutDur = 1.2;
   const lastCam = { cx: 0, z: 1 }; // 방금 그린 카메라
   const audible = (x: number) => Math.abs((x - lastCam.cx) * lastCam.z) < W / 2 + 60; // 효과음은 그 일이 화면에 보일 때만 (2026-09-17 규칙)
-  let crowdCheer = 0, hushUntil = -1; // hushUntil: 판정 직후의 정적 (소리도 함성도 멎는다)
-  const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; sfx.cheer(0.5); };
+  let crowdCheer = 0, crowdSurge = 0, hushUntil = -1; // hushUntil: 판정 직후의 정적 (소리도 함성도 멎는다)
+  let crowdMood: CrowdMood = 'calm', crowdMoodUntil = -1;
+  const rouse = (mood: CrowdMood, force: number, dur = 1.1) => { crowdMood = mood; crowdMoodUntil = Math.max(crowdMoodUntil, ct + dur); crowdSurge = Math.max(crowdSurge, force); };
+  const shout = (text: string, x: number) => { shouts.length = 0; shouts.push({ text, t: 1.2, x }); crowdCheer = 0.7; rouse('cheer', 0.65, 1.2); sfx.cheer(0.5); };
   applyArena(r.contract.tier); // 등급별 경기장 규모
   const fansAvg = [...r.team, ...r.contract.enemy].reduce((a, g) => a + fansOf(g), 0) / (r.team.length + r.contract.enemy.length);
   const density = Math.min(1, 0.12 + S.st.fame / 100 * 0.55 + (r.contract.tier - 1) * 0.22 + fansAvg / 200); // 팬이 많으면 관중석이 찬다
@@ -342,7 +368,7 @@ export function renderBattle() {
       case 'net_recover': if (pt) at('netline', 0.55, { x: pt.x, y: pt.y - 10, to: tid }); break;  // 그물이 줄에 끌려 되돌아온다
       case 'spear_ward': at('push', 0.3, { x: p0.x + d * 30, y: p0.y - 8 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.4, dir: d, seed: id + 1 }); break; // 창 끝에서 밀치는 직선
       case 'stand_firm': at('ring', 0.5, { y: p0.y + 34 }); break;                              // 발밑 먼지 고리 + 굵은 윤곽
-      case 'second_wind': at('halo', 2.0); crowdCheer = 1; slowUntil = Math.max(slowUntil, ct + 0.6); sfx.cheer(0.7); break; // 심판이 경기를 멈추는 순간 — 반전의 문턱        // 심판 지팡이가 내려오고 흰 원, 초록 점
+      case 'second_wind': at('halo', 2.0); crowdCheer = 1; rouse('cheer', 1, 1.6); slowUntil = Math.max(slowUntil, ct + 0.6); sfx.cheer(0.7); break; // 심판이 경기를 멈추는 순간 — 반전의 문턱        // 심판 지팡이가 내려오고 흰 원, 초록 점
       case 'appeal': at('cloth', 1.2); crowdCloth = Math.min(1, crowdCloth + 0.3); break;         // 손수건이 날린다
       case 'charge_plus': at('trail', 0.45); break;                                               // 긴 먼지 자국
     }
@@ -355,18 +381,18 @@ export function renderBattle() {
       if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); { const px = posAt(ct)[e.actor]?.x ?? 0; if (audible(px)) { if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.hit(true); } } /* 채찍 소리는 훈련소의 것이라 전투 기술에서는 쓰지 않는다 */
         skillFx(e.actor, e.skill ?? '', ct); continue; }
       if (e.kind === 'stumble') { const trip = !!e.trip; flash.push({ id: e.actor, t: trip ? 1.8 : 1.3, text: trip ? '넘어졌다!' : '헛디딤!', color: trip ? '#9b1f14' : '#6b4a22' });
-        if (trip) { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.7); const pp = posAt(ct)[e.actor]; shouts.length = 0; shouts.push({ text: '넘어졌다!', t: 1.4, x: pp.x }); } const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
+        if (trip) { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.7); rouse('gasp', 0.9, 1.2); const pp = posAt(ct)[e.actor]; shouts.length = 0; shouts.push({ text: '넘어졌다!', t: 1.4, x: pp.x }); } const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
       if (e.skill === 'riposte') flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
-      if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); shout('우와아!', p0.x); }
+      if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); rouse('cheer', 0.8, 1.0); shout('우와아!', p0.x); }
       const hitDelay = hitDelayOf(e.combo);
       { const p0 = posAt(ct)[aid], pt0 = posAt(ct)[tid], big = e.crit || e.downed || e.charge || e.counter; fx.push({ kind: 'tell', x: p0.x + face[aid] * 26, y: p0.y - 10, t: hitDelay, life: hitDelay, dir: face[aid], seed: aid * 17 + tid }); sfx.swing(big); if (e.crit && !e.downed) { zoomAt = { x: (p0.x + pt0.x) / 2, y: (p0.y + pt0.y) / 2 - 12 }; zoomStart = ct; holdUntil = Math.max(holdUntil, ct + hitDelay + 0.18); zoomOutDur = 0.35; } } // 공격 예고: 휘두름 소리와 붉은 궤적이 먼저 나오고, 치명타는 잠깐 당겨 본다
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
-        slowUntil = Math.max(slowUntil, ct + 0.45); crowdCheer = Math.max(crowdCheer, 0.8); /* 그물에 걸리면 판이 뒤집힌다 */
+        slowUntil = Math.max(slowUntil, ct + 0.45); crowdCheer = Math.max(crowdCheer, 0.8); rouse('gasp', 0.75, 1.1); /* 그물에 걸리면 판이 뒤집힌다 */
         play(aid, 'net_throw', ct); netAway[aid] = true;
         nets.push({ from: aid, to: tid, start: ct + 0.14, dur: 0.38 }); sfx.net();
         pending.push({ at: ct + 0.5, fn: () => { boundUntil[tid] = ct + 0.5 + 1.2; } });
@@ -377,11 +403,11 @@ export function renderBattle() {
       pending.push({ at: ct + hitDelay + (e.net ? 0.55 : 0), fn: () => {
         if (evIdx >= (hpAppliedIdx[tid] ?? -1)) { hpAppliedIdx[tid] = evIdx; hp[tid] = e.targetHp!; }
         { const nl = shareOf(sideIds.A) - shareOf(sideIds.B); // 체력 우세가 뒤집히는 순간: 잠깐 늦추고 관중이 술렁인다
-          if (flips < MAX_FLIPS && nl > 0.02 && worstA <= -REVERSE_GAP) { flips++; worstA = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 1; sfx.cheer(0.8); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); flash.push({ id: aid, t: 1.6, text: '반전!', color: '#9b1f14' }); }
-          else if (flips < MAX_FLIPS && nl < -0.02 && worstB <= -REVERSE_GAP) { flips++; worstB = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 0.6; sfx.boo(); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); }
+          if (flips < MAX_FLIPS && nl > 0.02 && worstA <= -REVERSE_GAP) { flips++; worstA = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 1; rouse('cheer', 1, 1.5); sfx.cheer(0.8); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); flash.push({ id: aid, t: 1.6, text: '반전!', color: '#9b1f14' }); }
+          else if (flips < MAX_FLIPS && nl < -0.02 && worstB <= -REVERSE_GAP) { flips++; worstB = 0; slowUntil = Math.max(slowUntil, ct + 0.55); crowdCheer = 0.6; rouse('gasp', 0.8, 1.3); sfx.boo(); const p = posAt(ct)[aid]; shouts.length = 0; shouts.push({ text: '뒤집혔다!', t: 1.6, x: p.x }); }
           worstA = Math.min(worstA, nl); worstB = Math.min(worstB, -nl); lead = nl; void lead; }
         if (!e.downed && (e.targetHp ?? 0) > 0 && (e.targetHp ?? 0) / r.initialHp[tid] <= 0.08 && (hp[aid] ?? 0) / r.initialHp[aid] >= 0.4 && !brink.has(tid)) { brink.add(tid); /* 상대는 멀쩡한데 벼랑 끝에서 버텼다 */ // 벼랑 끝에서 버텼다
-          slowUntil = Math.max(slowUntil, ct + 0.35); const p = posAt(ct)[tid]; shouts.length = 0; shouts.push({ text: '아직 섰다!', t: 1.4, x: p.x }); crowdCheer = Math.max(crowdCheer, 0.9); }
+          slowUntil = Math.max(slowUntil, ct + 0.35); const p = posAt(ct)[tid]; shouts.length = 0; shouts.push({ text: '아직 섰다!', t: 1.4, x: p.x }); crowdCheer = Math.max(crowdCheer, 0.9); rouse('cheer', 0.85, 1.2); }
         play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
         if (e.downed) addWall(`${byId[aid].g.name.replace('(적)', '')} V`, true); // 이긴 자의 이름과 V(vicit)
@@ -408,14 +434,14 @@ export function renderBattle() {
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
         if (!e.blocked && Math.random() < pBlood) { addMark(pt.x + (Math.random() - 0.5) * 22, pt.y + 26, 'blood', 4 + ratioDmg * 12); bleed(pt.x, pt.y, pa.x <= pt.x ? 1 : -1, e.downed ? 22 : Math.round(4 + ratioDmg * 40), e.downed ? 1.6 : 0.7 + ratioDmg * 2); }
-        if (e.crit) { flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' }); addWall('HABET', true); }
+        if (e.crit) { flash.push({ id: tid, t: 1.3, text: '치명타!', color: '#9b1f14' }); addWall('HABET', true); rouse('gasp', 1, 1.3); }
         if (e.open) flash.push({ id: tid, t: 1.3, text: '빈틈!', color: '#9b1f14' });
         if (e.downed && woundOf(tid)) { // 그 자리에서 숨이 끊기는 타격: 무기에 맞춰 마지막 장면을 길게 눌러 준다
           const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6);
           if (isFinal) fx.push({ kind: 'sandwall', x: pt.x, y: pt.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); // 먼지가 확 일고, 가라앉으면 승자만 서 있다 shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
           bleed(pt.x, pt.y - (cut ? 16 : 6), pa.x <= pt.x ? 1 : -1, 30, 2.2); flash.push({ id: tid, t: 2, text: cut ? '목을 베었다' : '심장을 꿰뚫었다', color: '#9b1f14' }); }
         else if (e.downed && e.skill === 'riposte') { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
-        if (e.downed && !woundOf(tid)) shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); else if (e.downed) shout('…', pt.x); // 상처로 숨지면 관중은 말을 잃는다
+        if (e.downed && !woundOf(tid)) { rouse('gasp', 1, 1.5); shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); } else if (e.downed) { rouse('hush', 0.7, 1.4); shout('…', pt.x); } // 상처로 숨지면 관중은 말을 잃는다
         else if (e.crit) shout('하베트!  하베트!', pt.x);
         else if (heavy) shout('하베트!', pt.x);
         else if (e.blocked) shout('오오…', pt.x);
@@ -495,7 +521,11 @@ export function renderBattle() {
         ctx.fillStyle = m.kind === 'blood' ? '#6e1f12' : '#b9a26f';
         ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r, m.r * (m.kind === 'drag' ? 0.16 : 0.3), m.kind === 'drag' ? 0.1 : 0, 0, Math.PI * 2); ctx.fill(); }
       ctx.restore(); }
-    if (tilt >= 0.5) drawCheerOverlay(ctx, seats, ct, crowdCheer, view, crowdCloth); if (crowdCheer > 0) crowdCheer -= dt;
+    if (crowdMoodUntil < ct && crowdMood !== 'calm') crowdMood = 'calm';
+    const liveMood: CrowdMood = frenzy ? 'frenzy' : judge && judge.stage <= 2 ? (hushUntil > 0 || judge.stage === 1 ? 'hush' : 'missio') : crowdMood;
+    if (tilt >= 0.5) { drawCheerOverlay(ctx, seats, ct, crowdCheer, view, crowdCloth, crowdSurge); drawRailSpectators(ctx, ct, view, liveMood, Math.max(crowdCheer > 0 ? 0.45 : 0, crowdSurge), myInk()); }
+    if (crowdCheer > 0 && !frenzy) crowdCheer -= dt;
+    if (crowdSurge > 0) crowdSurge = Math.max(0, crowdSurge - dt * 0.75);
     // 주최자 반응 (세레모니)
     if (hostMood !== 'none') {
       const py = -floorRy(1) * 1.03;
@@ -662,7 +692,7 @@ export function renderBattle() {
   // 미시오 판정: 패배 측의 쓰러진 검투사. 내 검투사는 실제 판정(r.fates), 상대는 연출용 결과
   let judge: { start: number; stage: number; losers: { id: number; live: boolean; x: number; y: number }[] } | null = null;
   // 판정 중에 화면을 두드리면 내 루두스 식솔과 팬들이 함께 "미테!"를 외친다 (연출: 함성·손수건이 늘어난다. 결정은 주최자의 몫)
-  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2 || hushUntil > 0) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
+  canvas.onpointerdown = () => { if (!judge || done || judge.stage > 2 || hushUntil > 0) return; crowdCloth = Math.min(1, crowdCloth + 0.15); crowdCheer = 0.7; rouse('missio', 0.85, 1.2); sfx.chant(1); shouts.length = 0; shouts.push({ text: '미테!  미테!', t: 1.0, x: (Math.random() - 0.5) * 500 }); };
   const judged = new Set<number>();
   const yielded = new Set<number>(); // 항복 자세로 끝난 검투사 (마지막 쓰러짐)
   const judgeLive: Record<number, boolean> = {};
@@ -688,9 +718,9 @@ export function renderBattle() {
     if (intro < INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; // 입장 동안은 경기를 멈춰 둔다
       const st2 = introSkipped ? 3 : intro < INTRO_HOLD ? 0 : intro < INTRO_LEFT ? 1 : intro < INTRO_RIGHT ? 2 : 3;
       if (st2 !== introStage) { introStage = st2; // 뚜둥 — 한쪽씩 소개하고 마지막에 가운데로
-        if (st2 === 1) { introText.big = S.st.lanista.name + ' 의 파밀리아'; introText.sub = r.team.map(g => g.name).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); }
-        else if (st2 === 2) { introText.big = rivalName; introText.sub = r.contract.enemy.map(g => g.name.replace('(적)', '')).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); }
-        else if (st2 === 3) { introText.big = ''; introText.sub = ''; sfx.cheer(0.9); } }
+        if (st2 === 1) { introText.big = S.st.lanista.name + ' 의 파밀리아'; introText.sub = r.team.map(g => g.name).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); rouse('cheer', 0.7, 1.2); }
+        else if (st2 === 2) { introText.big = rivalName; introText.sub = r.contract.enemy.map(g => g.name.replace('(적)', '')).join(' · '); introText.t = 1.5; sfx.drum(1); crowdCheer = Math.max(crowdCheer, 0.8); rouse('cheer', 0.65, 1.2); }
+        else if (st2 === 3) { introText.big = ''; introText.sub = ''; rouse('cheer', 0.9, 1.0); sfx.cheer(0.9); } }
       if (introText.t > 0) introText.t -= realRaw; } // 준비 단계: 실제 경과 시간으로 (프레임이 느려도 제때 줌인)
     else if (ct < slowUntil) dt = real * 0.25;
     if (!done && dt > 0) { ct += dt; fireEvents(ct); flash = flash.filter(f => (f.t -= dt * 1.8) > 0); }
@@ -700,20 +730,20 @@ export function renderBattle() {
       if (!losersRaw.length && units.some(u => u.side !== r.winner && woundOf(u.g.id))) { hasJudgeFailed = true; hostShout = '쓰러진 자는 다시 일어나지 못했다'; }
       else if (!losersRaw.length) { console.warn('judge: no losers', r.winner, JSON.stringify(hp), JSON.stringify(r.downed.map(g => g.id)), r.events.slice(-3).map(e => `${e.t}:${e.kind}:${e.actor}>${e.target}:${e.targetHp}:${e.downed}`).join(' ')); hasJudgeFailed = true; }
       const losers = losersRaw.map(u => ({ id: u.g.id, live: u.side === 'A' ? fateOf(u.g.id) !== 'dead' : (r.enemyFates.find(f => f.g.id === u.g.id)?.fate ?? 'unharmed') !== 'dead', x: pos0[u.g.id].x, y: pos0[u.g.id].y }));
-      judge = { start: ct, stage: 0, losers }; setCrowd(0); hushUntil = ct + 1.6; slowUntil = Math.max(slowUntil, ct + 0.7); // 판정의 정적: 함성이 멎고 관중의 손만 남는다
+      judge = { start: ct, stage: 0, losers }; setCrowd(0); hushUntil = ct + 1.6; rouse('hush', 0.55, 1.6); slowUntil = Math.max(slowUntil, ct + 0.7); // 판정의 정적: 함성이 멎고 관중의 손만 남는다
       for (const l of losers) { judged.add(l.id); judgeLive[l.id] = l.live; play(l.id, yielded.has(l.id) ? 'plead' : 'plea', ct); engaged[l.id] = undefined; face[l.id] = l.x < 0 ? 1 : -1; } // 항복 자세면 그대로, 누워 있던 자는 일어나 무릎 꿇고 검지를 든다
       if (!losers.length) { judge = null; } else {
       const L0 = losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.3; zoomOutDur = 0.5;
       hostShout = '쓰러진 검투사가 검지를 들어 미시오를 청한다 — 화면을 두드려 함께 외치자'; crowdCloth = 0.4; } // 정적 뒤에 관중이 돌아온다 (아래 hushUntil)
     }
-    if (judge && hushUntil > 0 && ct >= hushUntil) { hushUntil = -1; setCrowd(0.5); shout('미테!  미테!', judge.losers[0]?.x ?? 0); crowdCheer = 1; } // 정적이 걷히며 관중이 한꺼번에
+    if (judge && hushUntil > 0 && ct >= hushUntil) { hushUntil = -1; setCrowd(0.5); shout('미테!  미테!', judge.losers[0]?.x ?? 0); crowdCheer = 1; rouse('missio', 1, 1.6); } // 정적이 걷히며 관중이 한꺼번에
     if (judge && !done) {
       const e = ct - judge.start; const py = -floorRy(1) * 1.03;
-      if (judge.stage === 0 && e >= 1.6) { judge.stage = 1; hostMood = 'judging'; sfx.drum(1); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 2.6; zoomOutDur = 0.5; hostShout = '주최자가 일어선다… 관중이 숨을 죽인다'; shouts.length = 0; lastBeat = ct; }
+      if (judge.stage === 0 && e >= 1.6) { judge.stage = 1; hostMood = 'judging'; sfx.drum(1); hostGesture = 'none'; crowdCloth = hostBonus > 0 ? 0.8 : hostBonus < 0 ? 0.2 : 0.5; rouse('hush', 0.4, 2.4); zoomAt = { x: 0, y: py - 30 }; zoomStart = ct; holdUntil = ct + 2.6; zoomOutDur = 0.5; hostShout = '주최자가 일어선다… 관중이 숨을 죽인다'; shouts.length = 0; lastBeat = ct; }
       if (judge.stage === 1) { if (ct - lastBeat >= 0.75) { lastBeat = ct; sfx.drum(1); } if (e >= 3.0 && hostShout !== '주최자가 손을 든다…') hostShout = '주최자가 손을 든다…'; }
-      if (judge.stage === 1 && e >= 4.0) { judge.stage = 2; shout(hostBonus > 0 ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
+      if (judge.stage === 1 && e >= 4.0) { judge.stage = 2; rouse('missio', 0.9, 1.2); shout(hostBonus > 0 ? '미테!  미테!' : '이우굴라!  이우굴라!', 0); }
       if (judge.stage === 2 && e >= 4.8) { judge.stage = 3; slowUntil = ct + 0.5; const allLive = judge.losers.every(l => l.live); const anyLive = judge.losers.some(l => l.live);
-        hostGesture = allLive ? 'cloth' : 'thumb'; crowdCloth = allLive ? 0.9 : 0.1; if (allLive) sfx.cheer(1); else { sfx.boo(); sfx.drum(3); } holdUntil = ct + 1.0; zoomOutDur = 0.5;
+        hostGesture = allLive ? 'cloth' : 'thumb'; crowdCloth = allLive ? 0.9 : 0.1; rouse(allLive ? 'cheer' : 'gasp', 1, 1.5); if (allLive) sfx.cheer(1); else { sfx.boo(); sfx.drum(3); } holdUntil = ct + 1.0; zoomOutDur = 0.5;
         hostShout = allLive ? '주최자가 손을 높이 든다 — 미숨! 살려라' : anyLive ? '주최자가 엄지를 내린다 — 한 명은 살리고, 한 명은…' : '주최자가 엄지를 내린다 — 이우굴라! 죽여라';
         shout(allLive ? '미숨!' : '이우굴라!', 0); }
       if (judge.stage === 3 && e >= 6.2) { judge.stage = 4; const L0 = judge.losers[0]; zoomAt = { x: L0.x, y: L0.y - 10 }; zoomStart = ct; holdUntil = ct + 1.2; zoomOutDur = 0.6;
@@ -731,7 +761,7 @@ export function renderBattle() {
       const order = [...CEREMONIES].sort((a, b) => hash01(a.length * 3 + Math.floor(r.duration * 10), 1) - hash01(b.length * 3 + Math.floor(r.duration * 10), 1)); // 경기마다 다른 순서
       winners.forEach((u, i) => { const c = order[i % order.length]; play(u.g.id, c, ct); engaged[u.g.id] = undefined; face[u.g.id] = 1; if (c === 'lap') lap[u.g.id] = { start: ct, dir: (i % 2 ? -1 : 1) as 1 | -1 }; });
       const star = winners[0]; if (star) shout(`${star.g.name.replace('(적)', '')}!  ${star.g.name.replace('(적)', '')}!`, posAt(ct)[star.g.id].x);
-      crowdCheer = 999; frenzy = true; sfx.fanfare(); sfx.cheer(1); // 결과 보기까지 관중 전원 열광
+      crowdCheer = 999; crowdSurge = 1; crowdMood = 'frenzy'; crowdMoodUntil = Infinity; frenzy = true; sfx.fanfare(); sfx.cheer(1); // 결과 보기까지 관중 전원 열광
       hostMood = r.fameDelta >= 5 ? 'pleased' : 'flat';
       const freed = winners.find(u => r.rudis.includes(u.g));
       if (freed) { const w0 = posAt(ct)[freed.g.id]; palmAt = holdUntil + 0.1; palmTarget = { x: w0.x, y: w0.y + 20 }; palmKind = 'rudis'; hostMood = 'pleased'; hostShout = `주최자가 ${freed.g.name} 에게 루디스를 내린다 — 자유!`; }

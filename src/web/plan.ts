@@ -20,7 +20,6 @@ import { arenaIcon } from './scenes.js';
 import { graffitiCheck, renderBattle } from './battle-view.js';
 import { portrait } from './portrait.js';
 import { gladCardParts as miniGlad, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 gcard.ts 한 곳 (2026-09-17) */
-import { coach } from './header.js';
 import { eventRows } from './sheets.js';
 
  // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
@@ -177,7 +176,7 @@ export function renderPlan() {
     const vetsIn = team.filter(g => g.rank === 'veteranus'), tirosIn = team.filter(g => g.rank !== 'veteranus'), vetsLeft = c.needVeterans >= c.size ? 0 : Math.max(0, c.needVeterans - vetsIn.length); /* 자리를 전부 금색으로 칠하지 않는다 — 티로 전면 불가는 위 칩이 말한다 */
     const slotList: ({ g: Gladiator } | { vet: true } | { empty: true })[] = [...vetsIn.map(g => ({ g })), ...Array.from({ length: vetsLeft }, () => ({ vet: true as const })), ...tirosIn.map(g => ({ g })), ...Array.from({ length: Math.max(0, c.size - team.length - vetsLeft) }, () => ({ empty: true as const }))];
     const rv = rivalOf(S.st.rivals, c.rivalId);
-    lineupTop.append(h('div', { class: `card contract sel lineup` },
+    lineupTop.append(h('div', { class: `card contract sel lineup tier${c.tier}` },
       h('div', { class: 'grow' },
         h('div', { class: 'larena' }, /* 경기장 정보: 어디서·누가·얼마에 (2026-09-17 사용자: 경기장과 스틱맨 카드를 나눈다) */
         h('div', { class: 'ltitle' }, h('span', { class: 'tierchip' }, `등급 ${c.tier}`),
@@ -191,8 +190,8 @@ export function renderPlan() {
               ...miniGlad(e, { enemy: true, size: CARD_PORTRAIT, foes: team, mood: spBy.length ? 'grudge' : undefined, meta: [star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null] })); }))),
         h('div', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size)), /* 두 줄의 경계에 걸쳐 앉는다 — 마주 선 두 편 사이의 저울 */
         h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아')), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; const rough = !g && !vet; /* 신참도 설 수 있는 자리 — 허름하게 (2026-09-17 사용자) */
-      return h('span', { class: `slot${g ? ' filled' : ''}${vet ? ' vet' : ''}${rough ? ' rough' : ''}`, title: rough ? '신참도 설 수 있는 자리' : vet ? '주최자가 신참을 받지 않는 자리' : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: CARD_PORTRAIT, foes: c.enemy }) : []) /* 빈 자리는 글자 없이 홈으로만 말한다 (2026-09-17 사용자) */); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양. 베테라누스 몫(왼쪽)은 금색
-        (() => { const notes = matchupNotes(team, c.enemy); return notes.length ? h('div', { class: 'lmatch' }, ...notes.slice(0, 3).map(n => h('div', { class: `mnote ${n.good ? 'good' : 'bad'}` }, n.ko))) : null; })(), /* 장비가 만드는 상성: 이번 상대에게 실제로 걸리는 것만 한 줄씩 (상성표는 없다) */
+      return h('span', { class: `slot${g ? ' filled' : ' open'}${vet ? ' vet' : ''}${rough ? ' rough' : ''}`, title: '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: CARD_PORTRAIT, foes: c.enemy }) : [h('span', { class: 'slotcue' }, '↑')]) /* 빈 홈은 화살표만 둔다 — 아래 후보를 위 자리로 올린다는 신호 (2026-09-18 사용자) */); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양.
+        (() => { const notes = matchupNotes(team, c.enemy); return notes.length ? h('div', { class: 'lmatch' }, ...notes.slice(0, 3).map(n => { const [head, tail] = n.ko.split(' — '); return h('div', { class: `mnote ${n.good ? 'good' : 'bad'}`, title: n.ko }, h('span', { class: 'msign' }, n.good ? '▲' : '▼'), h('span', { class: 'mtext' }, head, tail ? h('small', {}, tail) : null)); })) : null; })(), /* 장비가 만드는 상성: 표식 + 짧은 본문으로 먼저 읽히게 (2026-09-18 사용자) */
         h('div', { class: 'lsyn' }, ...describeSynergies(syn).map(t => h('span', { class: 'syn' }, t)), classicNow ? h('span', { class: 'syn classic' }, '전통 짝 ✓') : classicMaybe ? h('span', { class: 'syn classic maybe' }, '전통 짝 예상') : classicPart ? h('span', { class: 'syn classic maybe' }, `전통 짝 ${team.length}/${c.size}`) : null), // 항상 한 줄 자리를 잡아 둔다 (시너지가 생겨도 카드 높이가 안 흔들리게, '시너지 없음' 문구 없음)
         ))));
   }
@@ -232,6 +231,7 @@ export function renderPlan() {
   const recommend = (g: Gladiator): string | null => { if (!selC0 || teamSel.includes(g)) return null; const withG = [...teamSel, g];
     const gained = teamSel.length ? synCount(withG) - baseSyn : 0; if (gained > 0) { const before = new Set(describeSynergies(computeSynergies(teamSel))); return describeSynergies(computeSynergies(withG)).filter(t => !before.has(t)).join('·'); }
     if (selC0.enemyPreview.length === selC0.size) { const types = withG.map(x => x.type); if (withG.length === selC0.size ? classicMatchup(types, selC0.enemyPreview) : classicPartial(types, selC0.enemyPreview)) return '전통 짝'; } return null; }; // 1대1이나 첫 배정에서도, 아직 다 안 채웠어도 짝이 이어지면 알린다 (전에는 마지막 한 명을 넣을 때만 보였다)
+  if (selC0) pright.append(h('div', { class: 'assign-guide', title: '아래 검투사 카드를 누르면 위 빈 자리로 배정됩니다' }, h('span', { class: 'arrow' }, '↑'), h('b', {}, '보낼 검투사'))); // 긴 안내문 대신 후보 목록 머리와 빈 슬롯이 같은 동작을 말하게 한다 (2026-09-18 사용자)
   for (const g of selC0 ? S.st.roster : []) {
     const at = assignedTo(g.id); const c = at != null ? S.st.contracts.find(x => x.id === at) : null;
     const selC = S.planSel != null ? S.st.contracts.find(x => x.id === S.planSel) : null;
@@ -264,13 +264,13 @@ export function renderPlan() {
       : vetBlock || swapVetBlock || vetShort ? { t: '출전불가', tip: '주최자가 신참을 받지 않는다 — 남은 자리는 티로가 채울 수 없다' }
       : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' } : null;
     const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || (!!selC && at == null && !!g.fought);
+    const ready = !dis && (canAssign || canSwap || (elsewhere && !!selC && !unfulfillable && swapKeepsVets)); // 누르면 위 자리로 들어갈 수 있는 카드: 빈 홈과 같은 파란 신호
     const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; // 복수 기회는 우리 검투사 타일에
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 속도 ${g.base.spd} 사거리 ${g.base.range}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}${skillsOf(g).length ? `\n기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
-    pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${dis ? ' dis' : ''}`, title: tip,
+    pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${ready ? ' ready' : ''}${dis ? ' dis' : ''}`, title: tip,
       onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); matchupToast(g, selC); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
       ...miniGlad(g, { size: CARD_PORTRAIT, foes: selC ? selC.enemy : [], mood: revengeOn.length ? 'revenge' : undefined, meta: [formLabel(g) ? h('span', { class: `badge form ${formLabel(g) === '가벼움' ? 'good' : 'bad'}`, title: formTip(g) }, `몸 ${formLabel(g)}`) : null, stateNode, tagNode] }) /* 원한·복수는 칩이 아니라 초상의 연출로 (2026-09-17 사용자) */, why ? whyMark(why) : null, elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
   }
-  { const c = coach(); if (c) pleft.append(c); }
   app.classList.add('land', 'plan'); const frag = document.createDocumentFragment(); frag.append(tools, cpanel, bar);
   if (selC0) { // 편성 페이지: 상세 페이지처럼 오른쪽에서 밀려 들어온다. 같은 계약이면(카드를 눌러 재렌더) 그 자리에
     const again = S.shownPlan === selC0.id; S.shownPlan = selC0.id;
