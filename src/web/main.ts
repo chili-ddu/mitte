@@ -172,7 +172,12 @@ function renderScreen() {
       h('h2', {}, '도전장이 왔다'),
       h('p', {}, h('b', {}, rv?.name ?? '파밀리아'), `이(가) 우리를 지목했다. ${c.venue}에서 `, h('span', { style: 'white-space:nowrap' }, `${c.size}대${c.size}`), '.'),
       h('div', { class: 'offerbox' }, ...c.enemy.map(e => gladCard(e, { enemy: true, size: CARD_PORTRAIT, cls: 'full', nameExtra: [h('span', { class: 'meta' }, e === star ? ' 간판' : '')] }))),
-      h('p', { class: 'hint' }, `상대는 그 파밀리아의 간판과 정예다 — 우리 전력에 맞추지 않는다. 이기면 상금 ×${CONFIG.challenge.prize}, 호감도 +${CONFIG.challenge.fame}. 받으면 반드시 세워야 한다. 피하면 벌점은 없지만 그들이 우리를 얕본다.`),
+      h('div', { class: 'challenge-terms' },
+        h('span', { class: 'term danger', title: '상대는 우리 전력에 맞춰 약해지지 않는다' }, '간판·정예'),
+        h('span', { class: 'term good', title: '도전장을 이기면 상금 배율이 오른다' }, `상금 ×${CONFIG.challenge.prize}`),
+        h('span', { class: 'term good', title: '도전장을 이기면 호감도가 오른다' }, `호감 +${CONFIG.challenge.fame}`),
+        h('span', { class: 'term warn', title: '받으면 이번 시즌 반드시 세워야 한다' }, '수락 시 필수 출전')),
+      h('p', { class: 'hint' }, '피해도 벌점은 없지만, 상대 파밀리아의 기세가 오른다.'),
       cannot ? h('p', { class: 'warn' }, cannot) : null,
       h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: !!cannot, onclick: () => { const err = acceptChallenge(S.st, c); if (err) toast(err, 'bad'); else { sfx.drum(1); toast('도전을 받았다 — 편성에서 세운다', 'good'); } save(); render(); } }, '받는다'), h('button', { onclick: () => { declineChallenge(S.st, c); save(); render(); } }, '피한다')))));
   }

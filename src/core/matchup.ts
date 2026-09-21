@@ -9,6 +9,7 @@ export interface MatchupNote { ko: string; good: boolean } // good: 우리에게
 const SLOW = 4; // 이 이하면 '느리다' (그물에 잘 걸린다)
 const has = (team: Gladiator[], f: (g: Gladiator) => boolean) => team.some(f);
 const nameOf = (team: Gladiator[], f: (g: Gladiator) => boolean) => team.find(f)?.name.replace('(적)', '') ?? '';
+const eun = (word: string): string => { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '은' : '는'; };
 const nets = (g: Gladiator) => hasDictata(g.type, 'net') || hasDictata(g.type, 'lasso');
 const reach = (g: Gladiator) => rangeOf(g.type) >= 2;
 const bigShield = (g: Gladiator) => blockOf(g.type) >= 0.5;
@@ -24,7 +25,7 @@ export function matchupNotes(team: Gladiator[], enemy: Gladiator[]): MatchupNote
     if (has(enemy, bigShield)) out.push({ ko: '상대는 큰 방패를 든다 — 곡도가 넘긴다', good: true });
     return out;
   }
-  if (has(enemy, nets) && has(team, slow)) out.push({ ko: `${nameOf(team, slow)}은(는) 느려 그물에 걸리기 쉽다`, good: false });
+  if (has(enemy, nets) && has(team, slow)) { const n = nameOf(team, slow); out.push({ ko: `${n}${eun(n)} 느려 그물에 걸리기 쉽다`, good: false }); }
   if (has(team, nets) && has(enemy, slow)) out.push({ ko: '상대가 느려 그물이 잘 걸린다', good: true });
   if (has(enemy, reach) && !has(team, reach)) out.push({ ko: '상대의 창이 들어오는 길목을 먼저 찌른다', good: false });
   if (has(team, reach) && !has(enemy, reach)) out.push({ ko: '우리 창이 들어오는 길목을 먼저 찌른다', good: true });

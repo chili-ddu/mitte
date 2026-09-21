@@ -1,7 +1,7 @@
 // 마을 아래 길가: 여정표(이티네라리움)·알붐(디핀티 상황판) (Codex: 모양)
 import { S } from './state.js';
 import { canFulfill, bedCostOf, inBed, palusTrainees, trainCap } from '../core/game.js';
-import { VIEW_KO, View } from './main.js';
+import { VIEW_KO, View, render } from './main.js';
 import { placeCenter, startTravel } from './town.js';
 import { h } from './dom.js';
 
@@ -22,16 +22,17 @@ function itinerary(): Node {
 }
 // 알붐(회칠한 게시벽)과 디핀티(붉은 글씨 공고): 포룸의 공고는 회칠 벽에 붉은 글씨로 썼다(폼페이 에딕타 무네룸). 이번 시즌 상황을 세계 안 물건으로 보여 준다. 줄을 누르면 그 장소로
 function album(): Node {
-  const lines: { la: string; n: number; ko: string; to?: View; warn?: boolean }[] = [];
+  const openPlan = () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); };
+  const lines: { la: string; n: number; ko: string; to?: View; action?: () => void; warn?: boolean }[] = [];
   const cs = S.st.contracts, ok = cs.filter(c => canFulfill(S.st, c)).length;
-  lines.push({ la: 'MVNERA', n: cs.length, ko: cs.length ? `계약 ${cs.length}건${ok < cs.length ? ` · 치를 수 있는 것 ${ok}` : ''}` : '이번 시즌 계약 없음', to: 'ludus' });
+  lines.push({ la: 'MVNERA', n: cs.length, ko: cs.length ? `계약 ${cs.length}건${ok < cs.length ? ` · 치를 수 있는 것 ${ok}` : ''}` : '이번 시즌 계약 없음', to: 'ludus', action: cs.length ? openPlan : undefined });
   lines.push({ la: 'VENALES', n: S.st.market.length, ko: S.st.market.length ? `시장 매물 ${S.st.market.length}명` : '시장 매물 없음', to: 'market' });
   if (S.st.applicants.length) lines.push({ la: 'AVCTORATI', n: S.st.applicants.length, ko: `문 앞 자유민 지원자 ${S.st.applicants.length}명`, to: 'ludus' }); // 정문(문루) 앞에 서 있다 — 정문은 포룸 화면
   { const pend = S.st.pendingChallenges.length, ch = S.st.contracts.filter(c => c.challenge).length; if (pend || ch) lines.push({ la: 'PROVOCATIO', n: pend + ch, ko: pend ? `도전장 ${pend}통이 답을 기다린다` : `도전 경기 ${ch}건 — 반드시 세운다`, to: 'ludus', warn: !!pend }); } // 도전장(docs/10): 관리 화면의 모달이 답을 받는다
   const inj = S.st.roster.filter(g => g.alive && g.injured > 0).length;
   { const noBed = S.st.roster.filter(g => g.alive && g.injured > 0 && !inBed(S.st, g)).length; lines.push({ la: 'SAVCII', n: inj, ko: inj ? `부상 ${inj}명${noBed ? ` · 침상 밖 ${noBed}명 (덧날 수 있다)` : ` · 시즌 치료비 ${(bedCostOf(S.st) * inj).toLocaleString()} HS`}` : '부상자 없음', to: 'medic', warn: noBed > 0 }); }
   const tr = palusTrainees(S.st).length, cap = trainCap(S.st); lines.push({ la: 'PALVS', n: tr, ko: tr ? `팔루스 ${tr}/${cap} 훈련 중` : `팔루스 ${cap}개 비어 있다`, to: 'yard' }); // 세운 만큼만 훈련한다 (초과 없음)
-  return h('div', { class: 'album' }, ...lines.map(l => h(l.to ? 'button' : 'div', { class: `dip${l.n ? '' : ' dim'}${l.warn ? ' warn' : ''}`, ...(l.to ? { onclick: () => { if (l.to !== S.view) startTravel(l.to!); } } : {}) },
+  return h('div', { class: 'album' }, ...lines.map(l => h(l.to || l.action ? 'button' : 'div', { class: `dip${l.n ? '' : ' dim'}${l.warn ? ' warn' : ''}`, ...(l.to || l.action ? { onclick: () => { if (l.action) l.action(); else if (l.to !== S.view) startTravel(l.to!); } } : {}) },
     h('span', { class: 'la' }, `${l.la} · ${roman(l.n)}`), h('span', { class: 'ko' }, l.ko)))); // 아래 남는 벽은 빈 회칠 그대로 (사용자: 소식은 넣지 않는다)
 }
 export function roadBoard(): Node {
