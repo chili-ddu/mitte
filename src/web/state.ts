@@ -3,6 +3,7 @@ import type { Action, SeasonEvents, GameState, FightReport, TrainStat } from '..
 import type { Contract, Gladiator, GType } from '../core/types.js';
 import type { View } from './main.js';
 import type { StickPose } from './scenes.js';
+import { ENEMY } from './stickman.js';
 export interface State {
   st: GameState;
   resumed: boolean;
@@ -77,3 +78,6 @@ export const TEAM_COLORS: { id: string; ko: string; ink: string; light: string }
 export const teamColorOf = (id?: string) => TEAM_COLORS.find(c => c.id === id) ?? TEAM_COLORS[0];
 export const myInk = () => teamColorOf(S.st?.color).ink;      // 베테라누스
 export const myLight = () => teamColorOf(S.st?.color).light;  // 티로
+export const randomColor = () => TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)].id; // 새 게임 설정의 첫 색 (2026-09-21 사용자: 랜덤 배정 — 바꿀 수는 있다)
+export const rivalInk = (rivalId?: number) => { const c = rivalId === undefined ? undefined : S.st?.rivals.find(r => r.id === rivalId)?.color; return c ? teamColorOf(c).ink : ENEMY; }; // 상대 파밀리아 색 (없으면 자주)
+export const rivalInkOf = (g: Gladiator) => rivalInk(S.st?.rivals.find(r => r.roster.some(x => x.id === g.id))?.id); // 검투사가 속한 파밀리아 색

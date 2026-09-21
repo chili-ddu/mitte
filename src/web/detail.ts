@@ -17,7 +17,7 @@ import { assignedTo, planOf } from './plan.js';
 import { canPayFac } from './sheets.js';
 import { gladCard, CARD_PORTRAIT, emptySlots } from './gcard.js';
 import { masteryOf, masteryCandidates } from '../core/dictata.js';
-import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO } from '../core/growth.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
+import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO, progOf } from '../core/growth.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
 export const ORIGIN_SHORT: Record<string, string> = { captive: '포로', damnatus: '죄수', auctoratus: '자유민 계약' };
 function originBadge(g: Gladiator): Node | null {
@@ -196,6 +196,7 @@ const SEC_ICON: Record<string, string> = {
   record: '<circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/>',
   status: '<path d="M12 4v16M4 12h16"/>',
   plan: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  growth: '<path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>',
   act: '<path d="M18 11V6a2 2 0 0 0-4 0v1a2 2 0 0 0-4 0v2a2 2 0 0 0-4 0v6a6 6 0 0 0 12 0v-1"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/>',
   room: '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/>',
   origin: '<path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><circle cx="12" cy="12" r="10"/>',
@@ -208,8 +209,7 @@ const tile = (k: string, v: string, cls = '', title?: string) => h('div', { clas
 const capCls = (g: Gladiator, k: 'hp' | 'atk' | 'def' | 'hand') => atCap(g, k) ? 'capped' : '';
 function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side: Node } {
   const fat = g.fatigue ?? 0; const b = g.base;
-  const statsRow = h('div', { class: 'tiles' }, ...([['HP', b.hp, '체력', capCls(g, 'hp')], ['ATK', b.atk, '공격', capCls(g, 'atk')], ['DEF', b.def, '방어', capCls(g, 'def')], ['손놀림', b.hand, '손놀림: 공격 간격·연속·치명타 — 훈련으로 자란다', capCls(g, 'hand')], ['걸음', b.spd, '걸음: 이동·행동 순서·그물 회피 — 유형이 정한다', '']] as const).map(([k, v, t, c]) => tile(k, String(v), c, c ? `${t} — 상한에 닿아 더 자라지 않는다` : t)),
-    h('div', { class: 'tile growth', title: '성장형: 곡선은 세 번째 훈련 뒤 독토르가, 결은 처음 작동할 때 드러난다. 상한은 감춰져 있고 닿으면 굵어진다' }, h('span', { class: 'k' }, `${AGE_BAND_KO[ageBand(g.age ?? 24)]}`), h('b', {}, fullyGrown(g) ? '다 컸다' : growthKo(g).join(' · ') || (kind === 'market' ? merchantLine(g) : '아직 모른다'))),
+  const statsRow = h('div', { class: 'tiles' }, ...([['HP', b.hp, '체력', capCls(g, 'hp'), g.cap?.hp], ['ATK', b.atk, '공격', capCls(g, 'atk'), g.cap?.atk], ['DEF', b.def, '방어', capCls(g, 'def'), g.cap?.def], ['손놀림', b.hand, '손놀림: 공격 간격·연속·치명타 — 훈련으로 자란다', capCls(g, 'hand'), g.cap?.hand], ['걸음', b.spd, '걸음: 이동·행동 순서·그물 회피 — 유형이 정한다', '', undefined]] as const).map(([k, v, t, c, cap]) => { const key = (k === 'HP' ? 'hp' : k === 'ATK' ? 'atk' : k === 'DEF' ? 'def' : k === '손놀림' ? 'hand' : null) as 'hp' | 'atk' | 'def' | 'hand' | null; const p = key ? progOf(g, key) : 0; return tile(k, cap != null ? `${v}/${cap}` : String(v), c, c ? `${t} — 상한에 닿아 더 자라지 않는다` : cap != null ? `${t} · 상한 ${cap}${p > 0 ? ` · 다음 한 점까지 ${Math.max(1, Math.round((1 - p) / 0.2))}번쯤` : ''}` : t); }), /* 소수점은 안 보인다 — 툴팁에 '다음 한 점까지 몇 번' 만 (2026-09-21 사용자) */ /* 상한 공개 (2026-09-21 사용자) */
     fat ? tile('피로', String(fat), `fat${fat >= 3 ? ' bad' : ''}`, `첫 ${CONFIG.fatigue.free}점은 괜찮고, 그 위로 1점마다 공·방 −${CONFIG.fatigue.statPenalty}. ${CONFIG.fatigue.overworkAt} 이상인 채 시즌을 넘기면 과로사 위험`) : null);
   const recordRow = h('div', { class: 'tiles' }, tile('전적', `${g.wins}승 ${g.fights - g.wins}패`, '', '승/패. 승리를 쌓으면 베테라누스, 루디스, 별칭'), tile('미시오', String(g.missios), '', '져서 쓰러졌지만 관중이 살려 준 횟수'), tile('명예', String(g.honor ?? 0), '', '검투사의 명예. 미시오 확률과 별칭·루디스에 영향'), tile('팬', `${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}`, '', `관중의 팬. ${FANS_STAR} 이상이면 ★ 인기 검투사`));
   const statusBits: string[] = [];
@@ -222,6 +222,11 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
   const mid: (Node | null)[] = [
     dsec('record', '전적', recordRow),
     dsec('stats', '능력치', statsRow),
+    (() => { const capped = (['hp', 'atk', 'def', 'hand'] as const).filter(k => atCap(g, k)); const KO: Record<string, string> = { hp: '체력', atk: '공격', def: '방어', hand: '손놀림' }; const known = growthKo(g);
+      return dsec('growth', '성장',
+        h('div', { class: 'line' }, `나이대: ${AGE_BAND_KO[ageBand(g.age ?? 24)]} — ${ageBand(g.age ?? 24) === 'young' ? '빨리 크고 위가 넓다' : ageBand(g.age ?? 24) === 'prime' ? '보통으로 자란다' : '더디고 곧 노쇠한다'}`),
+        h('div', { class: 'line' }, `성장형: ${known.length ? known.join(' · ') : '평범'}${kind === 'market' ? ` — 상인: "${merchantLine(g)}"` : ''}`),
+        h('div', { class: 'line' }, fullyGrown(g) ? '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' : capped.length ? `상한에 닿음: ${capped.map(k => KO[k]).join(' · ')} — 나머지는 더 자란다` : '아직 상한에 닿은 능력치가 없다')); })(), /* 성장은 별도 절 (2026-09-21 사용자) */
     // (기술 칸은 초상 오른쪽 칩으로 옮김)
     statusBits.length ? dsec('status', '상태', ...statusBits.map(t => h('div', { class: 'line' }, t))) : null,
   ];

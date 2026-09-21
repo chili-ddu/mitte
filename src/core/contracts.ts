@@ -46,7 +46,7 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     const size: 1 | 2 | 3 = tier === 1 ? rng.pick([1, 1, 1, 1, 2, 2] as const) : tier === 2 ? rng.pick([1, 1, 2, 2, 3] as const) : rng.pick([2, 3, 3] as const); // 고증: 무누스의 기본은 1대1 결투(파리아). 집단전은 대형 경기에만
     const capped = (make: () => Gladiator, type?: GType) => { for (let k = 0; k < 12; k++) { const g = make(); if (fits(g)) return g; } for (let k = 0; k < 12; k++) { const g = makeGladiator(rng, 'tiro', { season, type }); if (fits(g)) return g; } return make(); }; /* 정식 대결은 유형을 지켜야 하므로 티로 대체도 같은 유형으로 */ // 상한 안에 드는 검투사가 나올 때까지 (베테라누스가 안 들어가면 티로로)
     // 정식 대결(2026-09-18): 주최자가 짝을 주문한다. 우리 로스터에서 유형을 고르고 그 짝을 상대로 세운다 — 생성 시점엔 늘 채울 수 있다 (docs/08 4-6·10-1 ⑧)
-    const classic = mine.length >= size && rng.chance(CONFIG.classicContract.chance[tier] ?? 0);
+    const needVets = tier === 3 ? size : tier === 2 ? 1 : 0; const classic = mine.length >= size && mine.filter(g => g.rank === 'veteranus').length >= needVets && rng.chance(CONFIG.classicContract.chance[tier] ?? 0); // 티로만 있는 로스터에 베테라누스 조건이 붙는 정식 대결을 내지 않는다 (09-21: 시작이 티로 둘이 되며 드러남)
     const wantEnemy: GType[] = []; if (classic) { const pool = [...mine].sort(() => rng.next() - 0.5).slice(0, size); for (const g of pool) wantEnemy.push(rng.pick(partnersOf(g.type))); }
     let rivalId: number | undefined; let enemy: Gladiator[] | null = null;
     const diff = dist[i]; const target = ref * size * DIFF_RATIO()[diff];

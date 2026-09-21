@@ -1,7 +1,7 @@
 // 스틱맨 초상 캔버스와 대화 장면 루프 (Codex: 그림)
-import { S, myInk, myLight } from './state.js';
+import { S, myInk, myLight, rivalInkOf } from './state.js';
 import { type GType, type Gladiator } from '../core/types.js';
-import { ENEMY, INK, drawStickman, type Pose, type Skeleton, walkSkeleton } from './stickman.js';
+import { INK, drawStickman, type Pose, type Skeleton, walkSkeleton } from './stickman.js';
 import { accessoriesOf, type EpithetAccessory } from '../core/epithets.js';
 const accOf = (g: Gladiator, mood?: 'grudge' | 'revenge'): EpithetAccessory[] => [...accessoriesOf(g), ...(mood ? [mood] : []), ...(g.status === 'doctor' ? ['staff' as const] : []), ...(g.status === 'rudiarius' ? ['rudis' as const] : [])]; // 신분이 옷차림에 드러난다: 독토르의 훈련 막대, 자유민의 나무 검
 import { sfx } from './sound.js';
@@ -65,7 +65,7 @@ function drawPortrait(e: { c: HTMLCanvasElement; g: Gladiator; pose: 'idle' | 's
     const floor = ctx.createRadialGradient(W / 2, S - 7, 1, W / 2, S - 7, W * 0.42); // 발밑 그늘도 번지게 — 바닥 선을 긋지 않는다
     floor.addColorStop(0, hexA(tint, 0.3)); floor.addColorStop(1, hexA(tint, 0)); /* 발밑 그늘도 같은 안료로 */
     ctx.save(); ctx.translate(0, 0); ctx.scale(1, 0.34); ctx.fillStyle = floor; ctx.fillRect(0, (S - 7) / 0.34 - W * 0.42, W, W * 0.84); ctx.restore(); }
-  const team = e.enemy ? ENEMY : e.g.rank === 'veteranus' ? myInk() : myLight();
+  const team = e.enemy ? rivalInkOf(e.g) : e.g.rank === 'veteranus' ? myInk() : myLight();
   const sc0 = 0.68 * (S / 64); // 초상 크기에 비례 (상세 페이지의 큰 초상은 2배 이상)
   const ENTER = 1.1; const el = e.enter ? (performance.now() - e.enter) / 1000 : ENTER; // 걸어 들어오기: 왼쪽 밖에서 가운데까지 1.1초
   if (el < ENTER) { const k = el / ENTER, ease = 1 - Math.pow(1 - k, 2); const x = -30 * sc0 + (W / 2 - 2 + 30 * sc0) * ease; const walk = walkSkeleton(el * 9, 1);

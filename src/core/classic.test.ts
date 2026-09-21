@@ -19,7 +19,7 @@ test('짝 매칭 — 한 사람은 한 자리', () => {
 test('정식 대결 계약은 생성 시점에 우리 로스터로 채울 수 있고, 상대는 주문한 짝이다', () => {
   let seen = 0;
   for (let seed = 1; seed <= 60; seed++) {
-    const st = newGame(seed); resetContractIds();
+    const st = newGame(seed); resetContractIds(); for (const g of st.roster) g.rank = 'veteranus'; /* 시작 검투사는 티로 둘이라 등급 2·3 정식 대결이 안 나온다 — 시드 운에 기대지 않게 베테라누스로 */
     const cs = offerContracts(new Rng(seed * 7), 3, 60, st.rivals, st.roster);
     for (const c of cs) { if (!c.classic) continue; seen++;
       assert.equal(c.enemy.length, c.size); assert.ok(canFulfill(st, c), `seed ${seed} 채울 수 없는 정식 대결`);

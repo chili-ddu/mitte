@@ -1,5 +1,5 @@
 // 시즌 정산·후계·게임 종료 화면
-import { S } from './state.js';
+import { S, randomColor } from './state.js';
 import { ACTION_KO, TRAIN_KO, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
@@ -89,5 +89,5 @@ export function renderOver() {
     h('div', { class: 'grave' }, S.st.graveyard.length ? '묘비: ' + S.st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ') : '사망자 없음'),
     S.st.lineageLog?.length ? h('div', { class: 'grave' }, '역대 라니스타: ' + S.st.lineageLog.join(' → ') + ` → ${S.st.lanista.name}`) : null,
     h('div', { class: 'log', style: 'margin-top:8px;max-height:300px' }, S.st.history.join('\n')),
-    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.setup = { color: S.st.color ?? 'caeruleum' }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임')));
+    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.setup = { color: randomColor() }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임')));
 }

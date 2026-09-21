@@ -8,12 +8,12 @@ import { CONFIG } from './config.js';
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['마테르누스', 14, 2], ['파두스', 15, 3]] /* 2026-09-21 성장 모델: 현재치 = 유형 × 서열 × 시작 보정, 굴림 없음 */);
-  assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['veteranus', 3, 3], ['veteranus', 6, 7]], '시작 검투사도 일반 검투사 — 3승 이상에 몇 패 (2026-09-17)');
-  assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.138);
-  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.049, 0.218]);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['파트로클루스', 14, 7], ['파두스', 14, 2]] /* 2026-09-21 서열 배율 삭제·나이만큼 자란 몸·시작 보정 삭제, 파밀리아 색 굴림으로 난수 이동 */);
+  assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['tiro', 0, 0], ['tiro', 0, 0]], '시작 검투사는 제일 어린 티로, 전적 없음 (2026-09-21 사용자)');
+  assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.336);
+  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.486, 0.013]);
   assert.equal(st.contracts.length, 4);
-  assert.equal(score(st), 31560); /* 2026-09-21 성장 모델 */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
+  assert.equal(score(st), 28270); /* 2026-09-21 값 기준점 113·파밀리아 색 굴림 */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 

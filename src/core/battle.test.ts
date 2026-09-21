@@ -9,9 +9,9 @@ import { CONFIG } from './config.js';
 
 // 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-21 성장 모델(docs/09 §7): 초기 굴림 없음 · 잠재치 굴림 — 난수 소비가 바뀐다 뒤 다시 기록
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
-1: { winner: 'A', dur: 18.1, frames: 183, events: 27 },
-  7: { winner: 'A', dur: 6.6, frames: 68, events: 9 },
-  42: { winner: 'B', dur: 21.1, frames: 213, events: 24 },
+1: { winner: 'B', dur: 14.1, frames: 143, events: 19 },
+  7: { winner: 'A', dur: 8, frames: 82, events: 12 },
+  42: { winner: 'B', dur: 13.9, frames: 141, events: 21 },
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };
 

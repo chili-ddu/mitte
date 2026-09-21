@@ -1,5 +1,5 @@
 // 진입점: 부트스트랩(무대·저장·초기 상태)·render() 분배·헤더 아래 서판 토글·탭 바
-import { S, TEAM_COLORS } from './state.js';
+import { S, TEAM_COLORS, randomColor } from './state.js';
 import { sfx, unlockAudio } from './sound.js';
 
 import { available, deserialize, newGame, palusTrainees, serialize, fight, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
@@ -98,7 +98,7 @@ S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신
 S.gladSel = null; // 검투사 시트에 보이는 검투사 id
  // 검투사 시트에 보이는 검투사 id
 S.detailSwipe = null;
-S.setup = saved ? null : { color: 'caeruleum' }; // 저장이 없으면 새 게임 설정부터
+S.setup = saved ? null : { color: randomColor() }; // 저장이 없으면 새 게임 설정부터
 S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
  // solo: 장면에서 바로 연 확인 페이지 (밑에 상세 없음, 닫으면 장면으로) // confirm: 매각·내보내기·구매는 오른쪽으로 한 번 더 넘어가는 확인 페이지
 S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예

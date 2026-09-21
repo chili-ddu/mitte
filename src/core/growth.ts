@@ -23,7 +23,7 @@ export const AGE_BAND_KO: Record<AgeBand, string> = { young: '청년', prime: '�
 
 export function rollGrowth(rng: Rng): Growth {
   const r = rng.next(); const C = G().curveRate; const curve: GrowthCurve = r < C.early ? 'early' : r < C.early + C.late ? 'late' : r < C.early + C.late + C.second ? 'second' : 'normal';
-  const g: Growth = { curve };
+  const g: Growth = { curve, curveKnown: G().revealCurveAfter === 0, traitKnown: G().revealCurveAfter === 0 }; // 공개 설정이면 태어날 때부터 안다
   if (rng.chance(G().traitP)) { g.trait = rng.pick(['one', 'field', 'pupil', 'even'] as GrowthTrait[]); if (g.trait === 'one') g.one = rng.pick(GROW_STATS); }
   return g;
 }
@@ -33,7 +33,7 @@ export function rollCaps(rng: Rng, type: Gladiator['type'], base: Stats, age: nu
   const pool = CONFIG.growth[classKey(type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 };
   const out = {} as Record<GrowStat, number>;
   for (const k of GROW_STATS) { const tilt = growth.trait === 'even' ? 1 : 0.85 + (pool[k] / 100) * 0.6; const one = growth.trait === 'one' ? (growth.one === k ? P.oneCap : P.oneOtherCap) : 1; const even = growth.trait === 'even' ? P.evenCap : 1;
-    out[k] = Math.max(base[k], Math.round(typeBase[k] * pot * ageK * P.curveCap[growth.curve] * tilt * one * even)); }
+    const floor = Math.round(base[k] * P.minRoom[ageBand(age)]); out[k] = Math.max(base[k], floor, Math.round(typeBase[k] * pot * ageK * P.curveCap[growth.curve] * tilt * one * even)); } // 최소 여유: 나이대별로 현재치 위를 남긴다
   return out;
 }
 // 훈련 한 번의 상승 배율 (기본치 × 이것). 나이대·곡선·결·자질
@@ -57,3 +57,11 @@ export function merchantLine(g: Gladiator): string {
 }
 // 독토르의 판단: 밝혀진 곡선·결
 export function growthKo(g: Gladiator): string[] { const gr = g.growth; if (!gr) return []; const out: string[] = []; if (gr.curveKnown) out.push(CURVE_KO[gr.curve]); if (gr.trait && gr.traitKnown) out.push(gr.trait === 'one' && gr.one ? `한 우물(${({ hp: '체력', atk: '공격', def: '방어', hand: '손놀림' } as Record<GrowStat, string>)[gr.one]})` : TRAIT_KO[gr.trait]); return out; }
+
+// 훈련·출전 성장의 단위: 소수점을 prog 에 쌓고 1이 차면 base 가 오른다. 상한에 닿으면 더 안 쌓인다. 돌아온 것 = 실제로 오른 정수
+export function addProgress(g: Gladiator, k: GrowStat, amount: number): number {
+  if (amount <= 0) return 0; const cap = capOf(g, k); if (g.base[k] >= cap) { return 0; }
+  const p = (g.prog ??= { hp: 0, atk: 0, def: 0, hand: 0 }); p[k] += amount; let up = Math.floor(p[k]); p[k] -= up;
+  if (g.base[k] + up > cap) { up = cap - g.base[k]; p[k] = 0; } g.base[k] += up; if (g.base[k] >= cap) p[k] = 0; return up;
+}
+export const progOf = (g: Gladiator, k: GrowStat): number => g.prog?.[k] ?? 0;

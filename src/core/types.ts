@@ -46,7 +46,8 @@ export interface Gladiator {
   revenged?: number;    // 복수 성공 횟수
   dictata?: string[];     // 익힌 숙련 딕타타 id (최대 셋, docs/09 2-α)
   growth?: { curve: 'normal' | 'early' | 'late' | 'second'; trait?: 'one' | 'field' | 'pupil' | 'even'; one?: 'hp' | 'atk' | 'def' | 'hand'; curveKnown?: boolean; traitKnown?: boolean; trainings?: number; secondDone?: boolean }; // 성장형 (docs/09 §7)
-  cap?: { hp: number; atk: number; def: number; hand: number }; // 잠재치(상한) — 감춰져 있다가 닿으면 굵게
+  cap?: { hp: number; atk: number; def: number; hand: number }; // 잠재치(상한) — 닿으면 굵게
+  prog?: { hp: number; atk: number; def: number; hand: number }; // 능력치 밑에 쌓인 소수점 (훈련 0.2 씩, 1이 차면 +1 — 2026-09-21 사용자)
   career?: Record<string, number>; // 행동 누적 (경기마다 UnitStats 를 더한다 — 숙련 딕타타 문턱의 재료, docs/09 2-α)
   honor?: number;       // 명예(인기) 0~100: 승리·전통 짝·화관으로 오르고 패배로 조금 깎임. 미시오 생존·대여료에 반영
   status?: 'slave' | 'rudiarius' | 'doctor'; // 노예(기본) / 루디스를 받은 자유민 (급료 받고 출전) / 교관 (출전 안 함, 같은 유형 훈련 강화)
