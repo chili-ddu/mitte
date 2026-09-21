@@ -1,5 +1,5 @@
 // 진입점: 부트스트랩(무대·저장·초기 상태)·render() 분배·헤더 아래 서판 토글·탭 바
-import { S, TEAM_COLORS, randomColor } from './state.js';
+import { S, randomColor } from './state.js';
 import { sfx, unlockAudio } from './sound.js';
 
 import { available, deserialize, newGame, palusTrainees, serialize, fight, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
@@ -186,18 +186,9 @@ function renderScreen() {
     h('p', {}, '검투사는 지고도 살 수 있다.'), h('p', {}, '관중이 미테!를 외치게 하라.'),
     h('p', { class: 'hint' }, '검투사를 사들이고, 시설을 키우고, 계약에 맞춰 내보내라. 명예와 호감도가 높을수록 관중은 살려 달라 외친다.'),
     h('button', { class: 'primary', onclick: () => { unlockAudio(); sfx.chant(3); sfx.cheer(0.8); S.showIntro = false; localStorage.setItem('lanista-intro', '1'); render(); } }, '입장'))));
-  if (S.setup && !S.showIntro) { // 새 게임 설정: 파밀리아 색만 고른다. 검투사 둘은 물려받는 것이지 고르는 것이 아니다 (2026-09-18 사용자: 유형 선택 제거)
-    const st = S.setup;
-    const swatches: HTMLElement[] = [];
-    const sync = () => swatches.forEach((b, i) => b.classList.toggle('on', TEAM_COLORS[i].id === st.color)); // 고를 때마다 화면을 다시 그리지 않는다 (깜박임)
-    for (const c of TEAM_COLORS) { const b = h('button', { class: 'tpick', title: c.ko, style: `background:${c.ink}`, onclick: () => { st.color = c.id; sfx.step(); sync(); } }); swatches.push(b); }
-    const go = h('button', { class: 'primary', onclick: () => { const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
-      S.st = newGame(seed, { color: st.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); } }, '문을 연다');
-    sync();
-    app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox setup' },
-      h('div', { class: 'title' }, '파밀리아를 꾸린다'),
-      h('p', { class: 'hint' }, '우리 파밀리아의 색을 고르세요. 검투사 둘은 전임 라니스타에게서 물려받습니다.'),
-      h('div', { class: 'colors' }, ...swatches), go)));
+  if (S.setup && !S.showIntro) { // 새 게임: 색은 랜덤 배정, 검투사 둘은 물려받는다 (2026-09-21 사용자: 색 고르기 창을 없앴다). S.setup 은 '새 게임을 시작하라'는 표시로만 남는다
+    const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
+    S.st = newGame(seed, { color: S.setup.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); return;
   }
   if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
     const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);
