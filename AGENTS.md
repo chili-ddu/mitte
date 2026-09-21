@@ -8,7 +8,7 @@ AI 에이전트(Claude Code · Codex CLI)가 이 저장소에서 일할 때의 �
 
 ```bash
 npx vite              # 웹 (http://localhost:5173, 주소 뒤 #42 로 시드 고정, ?debug 로 디버그 버튼)
-#   전투만 보기: ?debug&fight=eques,retiarius:murmillo,thraex#42 — 우리:상대 유형(쉼표, ? 는 무작위). 저장 안 건드림, 결과 화면의 '다시'로 시드 +1
+#   전투만 보기: ?debug&fight=eques,retiarius:murmillo,thraex#42 — 우리:상대 유형(쉼표, ? 는 무작위, flamma 같은 전설 id 는 그 인물). 저장 안 건드림, 결과 화면의 '다시'로 시드 +1
 npm run typecheck     # 변경 후 반드시
 npm run sim -- 1000   # 봇 전략별 밸런스 시뮬레이션 (둘째 인자 = 시즌 수)
 npm run traits:gain   # 편성 특성 기여: 같은 유형 N명 vs 다른 유형 N명 (없음/1단계 고정/그대로)

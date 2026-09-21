@@ -13,7 +13,7 @@ test('새 게임은 시드대로 재현된다 (골든)', () => {
   assert.equal(+(st.formTeam ?? 0).toFixed(3), -0.336);
   assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.486, 0.013]);
   assert.equal(st.contracts.length, 4);
-  assert.equal(score(st), 28270); /* 2026-09-21 값 기준점 113·파밀리아 색 굴림 */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
+  assert.equal(score(st), 28935); /* 2026-09-22 자질이 처음부터 값에 든다 (28270 → ) */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 

@@ -1008,4 +1008,5 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .sline.capped .v { font-weight:800; }
 .tile.capped b { font-weight:900; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:2px; }
 .sline.rec .grown { margin-left:6px; font-size:9px; padding:0 4px; border-radius:4px; background:#3a2412; color:#f3ead0; font-weight:700; }
+.sline.rec .talent.t1 { background:#6b4a22; } .sline.rec .talent.t2 { background:#9b2c1c; } .sline.rec .talent.t3 { background:#b8860b; color:#3a2412; } /* 자질: 재능 흙빛 · 비범 주사 · 천부 황금 */
 .tile.growth b { font-size:11px; }

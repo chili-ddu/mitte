@@ -28,14 +28,16 @@ export function rollGrowth(rng: Rng): Growth {
   return g;
 }
 // 상한: 유형 기본치 × 잠재 굴림 × 나이 계수 × 곡선 상한 × 결(한 우물) × 클래스 풀 기울기. 현재치보다 낮으면 현재치(더 안 자란다)
-export function rollCaps(rng: Rng, type: Gladiator['type'], base: Stats, age: number, growth: Growth, typeBase: Stats): Record<GrowStat, number> {
-  const P = G(); const pot = rng.range(P.potential[0], P.potential[1]); const A = P.age; const ageK = A.capAtOld + (1 - A.capAtOld) * Math.max(0, Math.min(1, (A.capFullTo - age) / (A.capFullTo - A.youngFrom))) ; // 어릴수록 위가 넓다
+export function rollCaps(rng: Rng, type: Gladiator['type'], base: Stats, age: number, growth: Growth, typeBase: Stats, talent = 0, potFixed?: number): Record<GrowStat, number> {
+  const P = G(); const pot = (potFixed ?? rng.range(P.potential[0], P.potential[1])) * (P.talentCap[talent] ?? 1); /* 전설은 잠재가 고정 (굴림은 소비하지 않는다) */ /* 자질이 상한도 조금 올린다 (2026-09-22) */ const A = P.age; const ageK = A.capAtOld + (1 - A.capAtOld) * Math.max(0, Math.min(1, (A.capFullTo - age) / (A.capFullTo - A.youngFrom))) ; // 어릴수록 위가 넓다
   const pool = CONFIG.growth[classKey(type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 };
   const out = {} as Record<GrowStat, number>;
   for (const k of GROW_STATS) { const tilt = growth.trait === 'even' ? 1 : 0.85 + (pool[k] / 100) * 0.6; const one = growth.trait === 'one' ? (growth.one === k ? P.oneCap : P.oneOtherCap) : 1; const even = growth.trait === 'even' ? P.evenCap : 1;
     const floor = Math.round(base[k] * P.minRoom[ageBand(age)]); out[k] = Math.max(base[k], floor, Math.round(typeBase[k] * pot * ageK * P.curveCap[growth.curve] * tilt * one * even)); } // 최소 여유: 나이대별로 현재치 위를 남긴다
   return out;
 }
+// 자질이 바뀌면(깨우침·자유민 보정) 상한도 그 비율만큼 (현재치 아래로는 안 내려간다)
+export function retalentCaps(g: Gladiator, from: number, to: number) { if (!g.cap || from === to) return; const P = G(); const r = (P.talentCap[to] ?? 1) / (P.talentCap[from] ?? 1); for (const k of GROW_STATS) g.cap[k] = Math.max(g.base[k], Math.round(g.cap[k] * r)); }
 // 훈련 한 번의 상승 배율 (기본치 × 이것). 나이대·곡선·결·자질
 export function growthSpeed(g: Gladiator, stat: GrowStat, hasDoctor: boolean): number {
   const P = G(); const gr = g.growth; if (!gr) return 1;

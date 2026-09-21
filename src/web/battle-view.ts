@@ -8,6 +8,7 @@ import { fansOf, formLabel } from '../core/gladiator.js';
 import { equipOf } from '../core/equipment.js';
 import { reachOf as reachRule } from '../core/classes.js';
 import { DICTATA_NAME } from '../core/dictata.js';
+import { drawLegendBurst, drawLegendBanner } from './legend-fx.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
@@ -290,6 +291,7 @@ export function renderBattle() {
   const shouts: { text: string; t: number; x: number }[] = [];
   let armedEi = -1; // 미리 줌인을 건 이벤트 인덱스
   let holdUntil = -1; // 줌 유지(슬로모션) 끝
+  const bursts: { legend: string; id: number; t0: number; seed: number }[] = []; const lastBurst: Record<number, number> = {}; const BURST_LIFE = 2.4; // 전설의 순간 (legend-fx.ts): 인물마다 다른 연출, 같은 사람은 5초에 한 번
   let zoomOutDur = 1.2;
   const lastCam = { cx: 0, z: 1 }; // 방금 그린 카메라
   const audible = (x: number) => Math.abs((x - lastCam.cx) * lastCam.z) < W / 2 + 60; // 효과음은 그 일이 화면에 보일 때만 (2026-09-17 규칙)
@@ -363,6 +365,7 @@ export function renderBattle() {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
       const e = r.events[ei++];
+      if (e.kind === 'dictata' && e.dictata?.startsWith('L_')) { if (ct >= (lastBurst[e.actor] ?? -9) + 5) { lastBurst[e.actor] = ct; const p0 = posAt(ct)[e.actor]; bursts.push({ legend: e.dictata.slice(2), id: e.actor, t0: ct, seed: e.actor * 31 + Math.floor(ct * 10) }); slowUntil = Math.max(slowUntil, ct + 1.0); zoomAt = { x: p0.x, y: p0.y - 10 }; zoomStart = ct; holdUntil = Math.max(holdUntil, ct + 1.1); zoomOutDur = 0.9; shakeStart = ct; shakeUntil = ct + 0.5; shakeAmp = Math.max(shakeAmp, 4); crowdCheer = 1; rouse('cheer', 1, 1.8); sfx.fanfare(); sfx.cheer(1); shouts.length = 0; shouts.push({ text: `${byId[e.actor].g.name}!`, t: 1.8, x: p0.x }); } continue; } /* 전설의 순간: 슬로모션·줌·흔들림·팡파르·함성 (2026-09-22) */
       if (e.kind === 'dictata') { flash.push({ id: e.actor, t: 1.3, text: DICTATA_NAME(e.dictata ?? ''), color: '#c58a1a' }); if (e.dictata === 'shield_up') slowUntil = Math.max(slowUntil, ct + 0.3); if (e.dictata === 'deflect' || e.dictata === 'slip') fxAt(e.actor, 'ghost', 0.45, ct); else if (e.dictata === 'shield_up') fxAt(e.actor, 'ring', 0.5, ct, { y: posAt(ct)[e.actor].y + 34 }); else fxAt(e.actor, 'shock', 0.3, ct); continue; } /* 공격이 아닌 딕타타(가슴판·흘리기·빠지기·방패 세우기): 이름만 띄운다 */
       if (e.kind === 'shove') { flash.push({ id: e.actor, t: 1.1, text: DICTATA_NAME('shove'), color: '#c58a1a' }); const p0 = posAt(ct)[e.actor]; const d = face[e.actor]; fxAt(e.actor, 'shock', 0.35, ct, { x: p0.x + d * 22 }); if (e.target != null) { const pt = posAt(ct)[e.target]; fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.5, dir: d, seed: e.actor }); } if (audible(p0.x)) sfx.block(); continue; } // 방패 앞 충격파 + 상대 발밑 먼지 /* 채찍 소리는 훈련소의 것이라 전투 기술에서는 쓰지 않는다 */
       if (e.kind === 'stumble') { const trip = !!e.trip; flash.push({ id: e.actor, t: trip ? 1.8 : 1.3, text: trip ? '넘어졌다!' : '헛디딤!', color: trip ? '#9b1f14' : '#6b4a22' });
@@ -647,8 +650,10 @@ export function renderBattle() {
         else if (f.kind === 'trail' && cur) { ctx.globalAlpha = 0.55 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const rr = 4 + i * 3 + k2 * 6; ctx.beginPath(); ctx.arc(cur.x - f.dir * (14 + i * 14), cur.y + 34 - i * 1.5, rr, 0, Math.PI * 2); ctx.stroke(); } } }
       ctx.restore();
     }
+    for (let i = bursts.length - 1; i >= 0; i--) { const b = bursts[i]; const k = (ct - b.t0) / BURST_LIFE; if (k >= 1) { bursts.splice(i, 1); continue; } if (k < 0) continue; const u = byId[b.id]; const cur = pos[b.id]; if (!u || !cur) continue; drawLegendBurst(ctx, { legend: b.legend, type: u.g.type, x: cur.x, y: cur.y, k, face: face[b.id], seed: b.seed, t: ct, team: u.side === 'A' ? myInk() : foe }); } /* 전설의 순간 연출 (검투사 위, 글자 아래) */
     { const seen: Record<number, number> = {}; for (const f of flash) { const k = seen[f.id] = (seen[f.id] ?? 0) + 1; /* 같은 검투사의 글자가 겹치지 않게 한 줄씩 위로 (딕타타·치명타·연속이 한 타에 같이 뜬다 — 2026-09-19) */ ctx.fillStyle = f.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.text, pos[f.id].x + 30, pos[f.id].y - 14 - (1 - Math.min(1, f.t)) * 14 - Math.max(0, f.t - 1) * 30 - (k - 1) * 15); } }
     ctx.restore();
+    for (const b of bursts) { const k = (ct - b.t0) / BURST_LIFE; if (k >= 0 && k < 1) { const u = byId[b.id]; drawLegendBanner(ctx, W, H, u.g.name, DICTATA_NAME(`L_${b.legend}`), k); } } /* 전설 띠: 카메라 무관 */
     // HUD: 함성 (카메라 무관), 준비 단계 안내
     for (let k = shouts.length - 1; k >= 0; k--) {
       const sh = shouts[k]; sh.t -= dt; if (sh.t <= 0) { shouts.splice(k, 1); continue; }

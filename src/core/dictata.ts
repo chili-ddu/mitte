@@ -38,7 +38,7 @@ export function basicDictataOf(type: GType): DictataDef[] {
 }
 export const hasDictata = (type: GType, id: DictataId) => basicDictataOf(type).some(d => d.id === id);
 export const DICTATA_NAME = (id: string): string => DICTATA_BY_ID[id as DictataId]?.name ?? MASTERY_NAME(id);
-const MASTERY_NAME = (id: string): string => { const m = MASTERY.find(x => x.id === id); if (m) return m.name; const alias: Record<string, string> = { poke_follow: '되찌르기', shove_follow: '밀고 찌르기', spear_throw: '창 던지기', bare_back: '되돌아 치기', small_riposte: '옆걸음 되치기', block_strike: '되치기', follow: '연계', riposte_follow: '반달 날 두 번', sweep: '휩쓸기', stumble: '헛디딤' }; return alias[id] ?? id; };
+const MASTERY_NAME = (id: string): string => { const m = MASTERY_BY_ID[id]; if (m) return m.name; const alias: Record<string, string> = { poke_follow: '되찌르기', shove_follow: '밀고 찌르기', spear_throw: '창 던지기', bare_back: '되돌아 치기', small_riposte: '옆걸음 되치기', block_strike: '되치기', follow: '연계', riposte_follow: '반달 날 두 번', sweep: '휩쓸기', stumble: '헛디딤' }; return alias[id] ?? id; };
 
 // ── 숙련 딕타타 (docs/09 2-α, 2026-09-21): 행동 누적 문턱을 넘고 같은 클래스 독토르가 있으면 익힌다. 자리 셋, 먼저 넘은 순서, 한 번 익히면 안 바뀐다.
 // 후보는 네 층(주장비·보조장비·클래스·유형)에 셋씩 — 층 안의 순서가 곧 문턱 등급이고 층마다 엇갈린다(주장비 4·12·20 · 유형 7·13·21 · 보조 10·15·22 · 클래스 12·18·24 경기어치, 2026-09-21 `_rate` 측정의 경기당 누적치 × 경기 수). 효과는 아래 원시 손잡이의 조합으로 battle.ts 가 읽는다
@@ -78,7 +78,7 @@ export interface MasteryEffect {
   throwOnce?: number;                          // 경기 한 번, 멀리서 창을 던진다 (공 ×)
   mountedRange?: true;                         // 말 위 돌진이 사거리 2 에서 시작
 }
-export type MasteryLayer = 'main' | 'off' | 'class' | 'type';
+export type MasteryLayer = 'main' | 'off' | 'class' | 'type' | 'legend'; // legend: 전설 검투사의 고유 딕타타 (owner = 전설 id, 배우지 않고 타고난다, 자리 안 차지함)
 export interface MasteryDef { id: string; name: string; layer: MasteryLayer; owner: string; cond: { key: string; n: number; ko: string }; ko: string; eff: MasteryEffect }
 const M = (id: string, name: string, layer: MasteryLayer, owner: string, key: string, n: number, condKo: string, ko: string, eff: MasteryEffect): MasteryDef => ({ id, name, layer, owner, cond: { key, n, ko: condKo }, ko, eff });
 export const MASTERY: MasteryDef[] = [
@@ -156,11 +156,26 @@ export const MASTERY: MasteryDef[] = [
   M('t_laq_trip', '발 걸기', 'type', 'laquearius', 'd:lasso', 17, '올가미 적중 17', '풀릴 때 넘어뜨린다', { lassoTrip: 0.3 }),
   M('t_laq_twice', '두 번 감기', 'type', 'laquearius', 'misses', 8, '올가미 빗나감 8', '묶는 시간 ×1.5', { lassoSecMul: 1.5 }),
 ];
-export const MASTERY_BY_ID: Record<string, MasteryDef> = Object.fromEntries(MASTERY.map(m => [m.id, m]));
+// 전설의 고유 딕타타 (2026-09-22 사용자: 전투 효과만). 기존 손잡이를 둘씩 묶어 세게 — 문턱 없음
+const LG = (id: string, name: string, ko: string, eff: MasteryEffect): MasteryDef => ({ id: `L_${id}`, name, layer: 'legend', owner: id, cond: { key: 'legend', n: 0, ko: '타고남' }, ko, eff });
+export const LEGEND_MASTERY: MasteryDef[] = [
+  LG('flamma', '불꽃', 'HP 25% 아래에서 심판이 한 번 멈추고, 지친 몸을 6초 무시한다', { secondWind: true, staminaIgnore: 6 }),
+  LG('spiculus', '황제의 방패', 'HP 50% 아래 첫 진입에 3초 동안 모든 타격을 막고, 방패 세우기가 두 번, 막은 직후 30% 로 되친다(×0.8)', { shieldWall: { at: 0.5, sec: 3 }, shieldUpTwice: true, onBlockStrike: { p: 0.3, mult: 0.8 } }),
+  LG('celadus', '함성', '허초 ×1.5, 허초 뒤 50% 로 한 번 더 베고(×1.0), 같은 틱이면 먼저 친다', { pMul: ['feint', 1.5], afterHit: { p: 0.5, mult: 1.0, when: 'feint' }, firstStrike: true }),
+  LG('crescens', '의사의 손', '그물 ×1.5, 빗나간 그물을 거둬 한 번 더, 거리에서도 던지고, 묶인 상대에 30% 로 한 타 더', { pMul: ['net', 1.5], netRecover: true, farNet: true, afterHit: { p: 0.3, mult: 1.0, when: 'bound' } }),
+  LG('priscus', '버티는 자', '넘어지지 않고, HP 25% 아래에서 심판이 한 번 멈춘다', { noTrip: true, secondWind: true }),
+  LG('verus', '진실의 창', '경기 한 번 멀리서 창을 던지고(×1.2), 길목 찌르기 간격 ×0.8', { throwOnce: 1.2, pokeGapMul: 0.8 }), /* 1.5·0.6 은 같은 유형 상대 96% */
+  LG('tetraites', '유리잔의 기수', '상대가 넘어지거나 묶이면 돌진을 다시 장전, 두 걸음 거리에서도 돌진, 말 위 돌진은 사거리 2 에서, 돌진 뒤 25% 로 한 타 더', { recharge: true, shortCharge: true, mountedRange: true, afterHit: { p: 0.25, mult: 0.8, when: 'charge' } }),
+  LG('hermes', '세 가지 무기', '연속이 두 번까지, 치명타 ×1.3', { comboTwice: true, critMul: 1.3 }),
+  LG('columbus', '비둘기', '맞는 순간 15% 로 완전히 피하고, 이탈이 ×1.3 빠르다', { dodge: { p: 0.15 }, retreatMul: 1.3 }),
+  LG('prudens', '신중', '올가미 ×1.5 오래 묶고, 묶은 상대를 끌어당기고, 풀릴 때 70% 로 넘어뜨리고, 묶인 상대에 30% 로 한 타 더', { lassoSecMul: 1.5, lassoPull: true, lassoTrip: 0.7, afterHit: { p: 0.3, mult: 1.0, when: 'bound' } }),
+];
+export const MASTERY_BY_ID: Record<string, MasteryDef> = Object.fromEntries([...MASTERY, ...LEGEND_MASTERY].map(m => [m.id, m]));
 export const MASTERY_SLOTS = 3;
 // 이 유형이 익힐 수 있는 후보 (네 층)
 export function masteryCandidates(type: GType): MasteryDef[] { const c = classOf(type); const ck = `${c.off}+${c.main}`; return MASTERY.filter(m => (m.layer === 'main' && m.owner === c.main) || (m.layer === 'off' && m.owner === c.off) || (m.layer === 'class' && m.owner === ck) || (m.layer === 'type' && m.owner === type)); }
-export const masteryOf = (g: { dictata?: string[]; type: GType }): MasteryDef[] => (g.dictata ?? []).map(id => MASTERY_BY_ID[id]).filter((m): m is MasteryDef => !!m && masteryCandidates(g.type).includes(m)); // 유형이 바뀌면 안 맞는 층은 잠든다
+export const masteryOf = (g: { dictata?: string[]; type: GType; legend?: string }): MasteryDef[] => (g.dictata ?? []).map(id => MASTERY_BY_ID[id]).filter((m): m is MasteryDef => !!m && (m.layer === 'legend' ? m.owner === g.legend : masteryCandidates(g.type).includes(m)));
+export const masterySlotsUsed = (g: { dictata?: string[] }) => (g.dictata ?? []).filter(id => MASTERY_BY_ID[id]?.layer !== 'legend').length; // 전설의 고유 딕타타는 자리를 안 차지한다 // 유형이 바뀌면 안 맞는 층은 잠든다
 // 경력 누적으로 문턱을 넘은 후보 (아직 안 익힌 것, 이름이 같은 것은 하나만 — 후보끼리도, Codex 리뷰)
 export function masteryReady(g: { dictata?: string[]; career?: Record<string, number>; type: GType }): MasteryDef[] {
   const have = new Set(g.dictata ?? []); const names = new Set((g.dictata ?? []).map(id => MASTERY_BY_ID[id]?.name)); const out: MasteryDef[] = [];

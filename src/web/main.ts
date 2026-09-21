@@ -1,5 +1,6 @@
 // 진입점: 부트스트랩(무대·저장·초기 상태)·render() 분배·헤더 아래 서판 토글·탭 바
 import { S, randomColor } from './state.js';
+import { LEGEND_BY_ID } from '../core/legends.js';
 import { sfx, unlockAudio } from './sound.js';
 
 import { available, deserialize, newGame, palusTrainees, serialize, fight, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
@@ -57,11 +58,12 @@ export const FIGHT_PARAM = DEBUG ? new URLSearchParams(location.search).get('fig
 export const DEBUG_SEED = () => Number(location.hash.slice(1)) || 1;
 export function debugFight(spec: string) {
   const seed = DEBUG_SEED(); const rng = new Rng(seed * 7919 + 1);
-  const parse = (s: string): GType[] => s.split(',').map(x => x.trim()).filter(Boolean).map(x => (x === '?' ? rng.pick(TYPES) : x) as GType).filter(t => TYPES.includes(t));
+  const parse = (s: string): (GType | `L:${string}`)[] => s.split(',').map(x => x.trim()).filter(Boolean).map(x => (x === '?' ? rng.pick(TYPES) : LEGEND_BY_ID[x] ? `L:${x}` : x) as GType | `L:${string}`).filter(t => TYPES.includes(t as GType) || String(t).startsWith('L:')); /* 전설 id(flamma …)를 쓰면 그 인물로 (2026-09-22) */
+  const mk = (r: Rng, t: GType | `L:${string}`) => String(t).startsWith('L:') ? makeGladiator(r, 'veteranus', { season: 3, legend: String(t).slice(2) }) : makeGladiator(r, 'veteranus', { season: 3, type: t as GType });
   const [mineS, theirsS = '?'] = spec.split(':'); const mine = parse(mineS), theirs = parse(theirsS);
   if (!mine.length || !theirs.length) return false;
-  const st = newGame(seed); st.roster = mine.map((t, i) => { const g = makeGladiator(new Rng(seed * 31 + i), 'veteranus', { season: 3, type: t }); g.boughtSeason = 1; return g; });
-  const enemy = theirs.map((t, i) => makeGladiator(new Rng(seed * 53 + i), 'veteranus', { season: 3, type: t }));
+  const st = newGame(seed); st.roster = mine.map((t, i) => { const g = mk(new Rng(seed * 31 + i), t); g.boughtSeason = 1; return g; });
+  const enemy = theirs.map((t, i) => mk(new Rng(seed * 53 + i), t));
   const size = Math.min(3, Math.max(mine.length, theirs.length)) as 1 | 2 | 3;
   const c = { id: 9999, tier: 1 as const, venue: '디버그 경기장', host: HOSTS_BY_TIER[1][0], needVeterans: 0, size, enemy, enemyPreview: enemy.map(e => e.type), accepted: [] as never[] };
   st.contracts = [c]; S.st = st; S.resumed = false; S.showIntro = false; S.setup = null; S.assign = {}; S.trainPlan = {};
@@ -159,7 +161,7 @@ function renderScreen() {
   const curKey = S.cellsOpen ? 'cells' : S.sheet; const stillOpen = !!oldPanel && oldKey === curKey; // 같은 시트가 열린 채 다시 그리는 것이면 내려오는 모션을 되풀이하지 않는다 (팔루스·침상 누르면 켈라가 두 번 내려오던 것)
   if (oldPanel && S.phase === 'manage' && oldKey !== curKey) { /* 켈라도 시트의 하나(key-cells) */ oldPanel.classList.add('closing'); stillClosing.push(oldPanel); window.setTimeout(() => oldPanel.remove(), 380); }
   for (const n of stillClosing) app.append(n);
-  const SCENE_KEYS = ['facilities', 'doctors', 'rivals', 'news', 'market', 'applicants', 'chronicle'] as const; type SceneKey = typeof SCENE_KEYS[number];
+  const SCENE_KEYS = ['facilities', 'doctors', 'rivals', 'news', 'market', 'yard', 'medic', 'applicants', 'chronicle'] as const; type SceneKey = typeof SCENE_KEYS[number];
   if (S.sheet && S.phase === 'manage' && (SCENE_KEYS as readonly string[]).includes(S.sheet)) { // 준비 화면: 모달 대신 장면 안에서 켈라처럼 올라오는 패널. 왼쪽 토글로 오간다
     const key = S.sheet as SceneKey; const body = renderSheetBody(); const nodes = body.filter((n): n is Node => !!n);
     let h2: Element | null = null; for (const n of [...nodes].reverse()) { if (n instanceof HTMLElement) { h2 = n.tagName === 'H2' ? n : n.querySelector('h2'); if (h2) break; } }
@@ -206,7 +208,7 @@ function renderScreen() {
   if (S.phase === 'plan') { app.append(renderPlan()); return; }
   if (S.phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
   if (S.st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
-  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; S.detail = null; S.shownDetail = null; } render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }])); app.append(town);
+  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; S.detail = null; S.shownDetail = null; } render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }, ...(S.view === 'market' ? [{ key: 'market' as const, icon: 'place' as const, title: '상인' }] : S.view === 'yard' ? [{ key: 'yard' as const, icon: 'place' as const, title: '훈련' }] : S.view === 'medic' ? [{ key: 'medic' as const, icon: 'place' as const, title: '의무실' }] : [])])); app.append(town); /* 장소 서판: 그 장소의 안내·버튼(상인 다시 부르기·훈련 추천 배치·침상). 2026-09-22 사용자: 시트가 있는데 여는 길이 없었다 */
     if (S.cellsOpen && S.cellsCanvas) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
       const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자의 방을 누르세요` : S.palusMode ? `팔루스 배정 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 방을 누르면 세우고, 다시 누르면 내려옵니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
       app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; S.detail = null; S.shownDetail = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, S.cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
@@ -221,10 +223,11 @@ function renderScreen() {
 }
 // ── 탭 바 (화면 아래 고정): 왼쪽은 준비 → 편성 → 전투 단계, 오른쪽은 시트를 여닫는 아이콘 토글(현황 배지). 시트는 화면 위에 여는 상세
 type StageItem = { label: string; on?: boolean; primary?: boolean; disabled?: boolean; onclick?: () => void };
-type ToolItem = { key?: 'doctors' | 'rivals' | 'events' | 'facilities'; icon: ToolIcon; title: string; badge?: number; on?: boolean; onclick?: () => void }; // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
+type ToolItem = { key?: 'doctors' | 'rivals' | 'events' | 'facilities' | 'market' | 'yard' | 'medic'; icon: ToolIcon; title: string; badge?: number; on?: boolean; onclick?: () => void }; // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
  // key 가 없으면 on/onclick 으로 직접 토글 (켈라)
-type ToolIcon = 'roster' | 'doctors' | 'rivals' | 'events' | 'cells' | 'facilities';
-const TOOL_SVG: Record<ToolIcon, string> = { // Lucide 아이콘 (ISC): swords · graduation-cap(교관) · users · calendar-days
+type ToolIcon = 'roster' | 'doctors' | 'rivals' | 'events' | 'cells' | 'facilities' | 'place';
+const TOOL_SVG: Record<ToolIcon, string> = { // Lucide 아이콘 (ISC): swords · graduation-cap(교관) · users · calendar-days · scroll-text(장소 서판)
+  place: '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
   roster: '<path d="m14.5 17.5 3 3"/><path d="m21 3-9 9"/><path d="M6 21 21 6"/><path d="M3 6l3 3"/><path d="m2.5 21.5 3-3"/><path d="M14 21l-3-3"/><path d="M10 6.5 3.5 13"/>',
   doctors: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
   rivals: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',

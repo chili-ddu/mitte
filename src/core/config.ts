@@ -137,10 +137,11 @@ export const CONFIG = {
   // 도전 계약(docs/10): 파밀리아가 우리를 지목하거나(in) 우리가 건다(out). 상한 없음, 상금 ×1.5, 호감도 +2, 필수 배정. 거절은 벌점 없이 그쪽 기세 +1
   challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, acceptBase: 0.55, acceptMood: 0.15, acceptWeak: -0.3, acceptStrong: 0.2, maxPerSeason: 2 },
   mastery: { slots: 3, needDoctor: true, rivalVetP: 0.1 },
+  legend: { p: 0.75 },                                                       // 2026-09-22 사용자: 천부가 곧 전설은 아니다 — 천부(2%) 중 이 확률로 고정 인물(그 유형이 비어 있을 때). 나머지는 그냥 천부
   // 성장 모델(2026-09-21 docs/09 §7): 초기 굴림 없음 — 현재치 = 유형 기본 × 서열(rankMul), 개체 차이는 잠재치·나이·성장형(곡선 넷 × 결 넷)·자질
   growthModel: {
     grownByAge: { from: 18, to: 30, max: 0.6 },                            // 2026-09-21 사용자: 서열 배율(티로 .85·베테 1.0) 삭제 — 나이만큼 상한 쪽으로 이미 자라 있다 (18세 0% → 30세 85%). 베테라누스가 센 건 서열이 아니라 그동안 자란 만큼
-    potential: [1.15, 1.55] as const,                                      // 잠재 굴림: 상한 = 기본 × 이것 × 나이 계수 × 곡선 상한
+    potential: [1.35, 1.85] as const,                                      // 잠재 굴림: 상한 = 기본 × 이것 × 나이 계수 × 곡선 상한. 2026-09-21 사용자: 1.15~1.55 는 24번 훈련해도 공 +3 — 여유를 공 +11·방 +4·체 +75 로 (18세→24세 공 +5)
     age: { youngFrom: 18, capFullTo: 25, capAtOld: 0.85, youngTo: 23, primeTo: 29 }, // 25세까지 위가 다 열리고 30세엔 0.85 (0.7 은 봇이 사는 베테라누스가 거의 안 자라 으뜸 1.11배 — 09-21) · 청년 ≤23 · 장년 ≤29 · 노년 30~
     curveRate: { early: 0.2, late: 0.2, second: 0.1 },                      // 나머지 평범 50%
     curveCap: { normal: 1.0, early: 1.08, late: 1.17, second: 1.0 } as Record<'normal' | 'early' | 'late' | 'second', number>,
@@ -148,7 +149,8 @@ export const CONFIG = {
     secondAt: 30, secondBoost: 1.15,                                       // 늦바람: 서른에 상한 +15%
     traitP: 0.4, oneCap: 1.5, oneOtherCap: 0.6, oneSpeed: 1.8, oneOtherSpeed: 0.6, fieldTrainMul: 0.6, fieldGain: 1, pupilWith: 1.6, pupilWithout: 0.7, evenCap: 1.1,
     talentMul: [1, 1.3, 1.6, 2.0] as readonly number[],                     // 자질은 크기 배율 (전엔 +1 추가 확률)
-    step: 0.15, hpStep: 0.3,                                               // 2026-09-21 사용자: 나이로 맞춤 — 18세 티로를 매 시즌 세우면(독토르 없이) 상한 도달률 24세 70%·30세 95%·34세 98%. 훈련 한 번 (2 × 0.15 =) 0.3, 체력 약 +3. 0.1 이면 34세 85%, 0.2 면 30세에 다 참
+    talentCap: [1, 1.05, 1.1, 1.15] as readonly number[],                   // 2026-09-22 사용자: 자질이 상한도 조금 올린다 (속도 두 배인 천부에 상한까지 크게 주면 너무 벌어져 작게)
+    step: 0.25, hpStep: 0.5,                                               // 2026-09-21 사용자: 나이로 맞춤 — 18세 티로를 매 시즌 세우면(독토르 없이) 상한 도달률 24세 71%·30세 97%·34세 99%. 훈련 한 번 (2 × 0.25 =) 0.5, 체력 약 +5. 잠재를 넓히며 0.15 → 0.25
     revealCurveAfter: 0,                                                   // 2026-09-21 사용자: 처음부터 모두 공개 (0 = 태어날 때부터 안다)
     minRoom: { young: 1.2, prime: 1.08, old: 1.0 } as Record<'young' | 'prime' | 'old', number>, // 상한의 최소 여유: 청년은 현재치 ×1.2 는 남긴다 — 장년까지 첫 시즌에 '다 컸다'가 나오지 않게 (09-21 사용자 지적)
   }, // 숙련 딕타타(docs/09 2-α): 자리 셋, 같은 클래스 독토르가 있어야 익힌다. 상대 베테라누스는 승수마다 이 확률로 하나씩(최대 둘)

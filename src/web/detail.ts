@@ -17,7 +17,9 @@ import { assignedTo, planOf } from './plan.js';
 import { canPayFac } from './sheets.js';
 import { gladCard, CARD_PORTRAIT, emptySlots } from './gcard.js';
 import { masteryOf, masteryCandidates } from '../core/dictata.js';
-import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO, progOf } from '../core/growth.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
+import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO, progOf } from '../core/growth.js';
+import { talentOf, TALENT_KO } from '../core/talent.js';
+import { LEGEND_BY_ID, legendGen } from '../core/legends.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
 export const ORIGIN_SHORT: Record<string, string> = { captive: '포로', damnatus: '죄수', auctoratus: '자유민 계약' };
 function originBadge(g: Gladiator): Node | null {
@@ -226,6 +228,8 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
       return dsec('growth', '성장',
         h('div', { class: 'line' }, `나이대: ${AGE_BAND_KO[ageBand(g.age ?? 24)]} — ${ageBand(g.age ?? 24) === 'young' ? '빨리 크고 위가 넓다' : ageBand(g.age ?? 24) === 'prime' ? '보통으로 자란다' : '더디고 곧 노쇠한다'}`),
         h('div', { class: 'line' }, `성장형: ${known.length ? known.join(' · ') : '평범'}${kind === 'market' ? ` — 상인: "${merchantLine(g)}"` : ''}`),
+        g.legend ? h('div', { class: 'line' }, `전설: ${legendGen(g.legend, S.st.graveyard, S.st.hall?.map(x => x.name) ?? [])}대 ${g.name} — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}${LEGEND_BY_ID[g.legend]?.real ? ' (실제 기록)' : ''}. 이름·유형·성장형·잠재·딕타타가 정해져 있다`) : null, /* 전설 (2026-09-22) */
+        h('div', { class: 'line' }, `자질: ${TALENT_KO[talentOf(g)]} — 성장 속도 ×${CONFIG.growthModel.talentMul[talentOf(g)]}, 상한 ×${CONFIG.growthModel.talentCap[talentOf(g)]}${talentOf(g) < 3 ? ' (명예 30 넘는 독토르의 가르침이나 경기 계기로 한 단계 오를 수 있다)' : ''}`), /* 2026-09-22 사용자: 자질 공개 */
         h('div', { class: 'line' }, fullyGrown(g) ? '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' : capped.length ? `상한에 닿음: ${capped.map(k => KO[k]).join(' · ')} — 나머지는 더 자란다` : '아직 상한에 닿은 능력치가 없다')); })(), /* 성장은 별도 절 (2026-09-21 사용자) */
     // (기술 칸은 초상 오른쪽 칩으로 옮김)
     statusBits.length ? dsec('status', '상태', ...statusBits.map(t => h('div', { class: 'line' }, t))) : null,

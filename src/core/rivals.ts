@@ -36,29 +36,29 @@ const VET_P: Record<RivalProfile, number> = { local: 0.35, major: 0.6, grand: 0.
 const ORD = ['', ' 세쿤두스', ' 테르티우스', ' 콰르투스', ' 퀸투스'];
 const RV = () => CONFIG.rivals;
 function pickType(rng: Rng, focus: string): GType { const pool = TYPES.filter(t => classKey(t) === focus); return pool.length && rng.chance(RV().focusP) ? rng.pick(pool) : rng.pick(TYPES); }
-function makeMember(rng: Rng, season: number, roster: Gladiator[], rank: 'tiro' | 'veteranus', focus: string): Gladiator {
-  const g = makeGladiator(rng, rank, { season, type: pickType(rng, focus) });
+function makeMember(rng: Rng, season: number, roster: Gladiator[], rank: 'tiro' | 'veteranus', focus: string, taken?: Set<string>): Gladiator {
+  const g = makeGladiator(rng, rank, { season, type: pickType(rng, focus), taken });
   if (rank === 'veteranus') { g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2));
     const cand = masteryCandidates(g.type); const n = Math.min(2, Math.floor(g.wins / 3)); for (let k = 0; k < n; k++) if (rng.chance(CONFIG.mastery.rivalVetP)) { const pick = rng.pick(cand.filter(m => !(g.dictata ?? []).includes(m.id))); if (pick) (g.dictata ??= []).push(pick.id); } } // 상대 베테라누스도 승수만큼 익힌 것이 있다
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
 }
-function makeRival(rng: Rng, season: number, def: typeof RIVAL_DEFS[number], used: (string | undefined)[] = []): Rival {
-  const r: Gladiator[] = []; for (let k = 0; k < ROSTER_SIZE; k++) r.push(makeMember(rng, season, r, rng.chance(VET_P[def.profile]) ? 'veteranus' : 'tiro', def.focus));
+function makeRival(rng: Rng, season: number, def: typeof RIVAL_DEFS[number], used: (string | undefined)[] = [], taken?: Set<string>): Rival {
+  const r: Gladiator[] = []; for (let k = 0; k < ROSTER_SIZE; k++) r.push(makeMember(rng, season, r, rng.chance(VET_P[def.profile]) ? 'veteranus' : 'tiro', def.focus, taken));
   return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season, mood: 0, purse: RV().purseStart[def.profile], focus: def.focus, color: pickColor(rng, used) };
 }
 // 새 게임: 호감도 조건을 채운 파밀리아만 (처음엔 지방 둘)
-export function makeRivals(rng: Rng, season = 1, fame = 0, myColor?: string): Rival[] { const out: Rival[] = []; for (const d of RIVAL_DEFS) if (fame >= d.fameReq) out.push(makeRival(rng, season, d, [myColor, ...out.map(r => r.color)])); return out; }
+export function makeRivals(rng: Rng, season = 1, fame = 0, myColor?: string, taken?: Set<string>): Rival[] { const out: Rival[] = []; for (const d of RIVAL_DEFS) if (fame >= d.fameReq) out.push(makeRival(rng, season, d, [myColor, ...out.map(r => r.color)], taken)); return out; }
 // 시즌 시작: 호감도가 조건에 이르면 큰 루두스가 이 지방에 나타난다. 돌아온 목록 = 이번에 나타난 파밀리아
-export function arriveRivals(rng: Rng, rivals: Rival[], season: number, fame: number, myColor?: string): Rival[] {
+export function arriveRivals(rng: Rng, rivals: Rival[], season: number, fame: number, myColor?: string, taken?: Set<string>): Rival[] {
   const out: Rival[] = [];
-  for (const d of RIVAL_DEFS) { if (fame >= d.fameReq && !rivals.some(r => r.id === d.id)) { const r = makeRival(rng, season, d, [myColor, ...rivals.map(x => x.color)]); rivals.push(r); out.push(r); } }
+  for (const d of RIVAL_DEFS) { if (fame >= d.fameReq && !rivals.some(r => r.id === d.id)) { const r = makeRival(rng, season, d, [myColor, ...rivals.map(x => x.color)], taken); rivals.push(r); out.push(r); } }
   return out;
 }
 export const rivalDef = (r: Rival) => RIVAL_DEFS.find(d => d.id === r.id);
 export const bumpMood = (r: Rival, d: number) => { r.mood = Math.max(RV().moodMin, Math.min(RV().moodMax, (r.mood ?? 0) + d)); };
 // 시즌마다 살림: 부상 회복, 나이, 보이지 않는 다른 경기(금고 ±, 드물게 사망), 금고로 훈련·보충. 돌아온 목록 = 포룸에 실을 소식
-export function replenishRivals(rng: Rng, rivals: Rival[], season: number): string[] {
+export function replenishRivals(rng: Rng, rivals: Rival[], season: number, taken?: Set<string>): string[] {
   const news: string[] = []; const C = RV();
   for (const r of rivals) {
     for (const g of r.roster) { if (g.injured > 0) g.injured--; if ((season - 1) % 4 === 0) g.age = (g.age ?? 22) + 1; }
@@ -67,7 +67,7 @@ export function replenishRivals(rng: Rng, rivals: Rival[], season: number): stri
     // 훈련: 금고가 있으면 둘 — 자기 클래스 풀로
     for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); const stat = pickTrainStat(rng, g); if (g.base[stat] < capOf(g, stat)) addProgress(g, stat, (stat === 'hp' ? C.trainHp * CONFIG.growthModel.hpStep : C.trainGain * CONFIG.growthModel.step) * growthSpeed(g, stat, true)); /* 파밀리아는 독토르가 늘 있는 집 — 같은 성장 모델, 상한까지 */ r.purse -= C.trainCost; }
     // 보충: 금고가 허락하는 만큼. 기세가 좋으면 베테라누스
-    while (r.roster.length < ROSTER_SIZE) { const vet = (r.mood ?? 0) > 0 && r.purse >= C.buyVet; const cost = vet ? C.buyVet : C.buyTiro; if (r.purse < cost) break; r.purse -= cost; r.roster.push(makeMember(rng, season, r.roster, vet ? 'veteranus' : 'tiro', r.focus)); }
+    while (r.roster.length < ROSTER_SIZE) { const vet = (r.mood ?? 0) > 0 && r.purse >= C.buyVet; const cost = vet ? C.buyVet : C.buyTiro; if (r.purse < cost) break; r.purse -= cost; r.roster.push(makeMember(rng, season, r.roster, vet ? 'veteranus' : 'tiro', r.focus, taken)); }
   }
   return news;
 }

@@ -5,6 +5,8 @@ import { h, sq } from './dom.js';
 import { CONFIG } from '../core/config.js';
 import { masteryOf } from '../core/dictata.js';
 import { atCap, fullyGrown } from '../core/growth.js';
+import { talentOf, TALENT_KO } from '../core/talent.js';
+import { LEGEND_BY_ID } from '../core/legends.js';
 import { portrait } from './portrait.js';
 import { effectiveStats, powerOf, powerNow, hpParts, LINEAGE_KO } from '../core/gladiator.js';
 import { overworkChance } from '../core/game.js';
@@ -74,7 +76,7 @@ const statLines = (g: Gladiator, foes: Gladiator[] = []) => { const e = effectiv
   pwLine.append(vEl, h('em', { class: 'tr' }, d > 0 ? '▲' : d < 0 ? '▼' : '\u00a0'));
   if (rolling) rollTo(pwLine, vEl, prev!, pw, d); // 상성이 붙으면 숫자가 굴러가고 색이 서서히 물든다 /* 화살표는 줄 맨 오른쪽에 못 박는다 — 숫자가 길어져도 자리가 안 흔들린다 (2026-09-17 사용자) */ /* 오름·내림은 화살표와 글자 색으로. 화살표가 없어도 자리는 비워 둔다 (2026-09-17 사용자) */
   return [stat('ATK', e.atk, b.atk, atCap(g, 'atk')), stat('DEF', e.def, b.def, atCap(g, 'def')),
-    h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`), fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null), pwLine]; };
+    h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`), fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null, g.legend ? h('span', { class: 'grown talent t3', title: `전설 — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}\n천부: 성장 속도 ×${CONFIG.growthModel.talentMul[3]}, 상한 ×${CONFIG.growthModel.talentCap[3]}. 고유 딕타타를 타고났다` }, '전설') : talentOf(g) > 0 ? h('span', { class: `grown talent t${talentOf(g)}`, title: `자질 ${TALENT_KO[talentOf(g)]} — 성장 속도 ×${CONFIG.growthModel.talentMul[talentOf(g)]}, 상한 ×${CONFIG.growthModel.talentCap[talentOf(g)]}` }, TALENT_KO[talentOf(g)]) : null), pwLine]; }; /* 자질 표식 (2026-09-22 사용자: 처음부터 공개) */
 const SKILL_ROWS = 3; // 기술 칩 자리: 기술 개념은 2026-09-18 뺐다(유형 정리 때 유형 기술 하나로 돌아올 자리). 빈 자리 셋을 그대로 잡아 카드 높이가 흔들리지 않게
 export const emptySlots = (n = SKILL_ROWS) => Array.from({ length: n }, () => h('span', { class: 'badge empty lock' }));
 const skillChips = (g: Gladiator) => { const have = masteryOf(g); return [...have.map(m => h('span', { class: 'badge skill', title: `${m.name}: ${m.ko} (${m.cond.ko})` }, m.name)), ...emptySlots(Math.max(0, SKILL_ROWS - have.length))]; }; /* 익힌 숙련 딕타타 (docs/09 2-α) — 빈 자리는 잠금 */

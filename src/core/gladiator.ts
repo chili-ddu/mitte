@@ -7,6 +7,7 @@ import { TYPE_MATCHUP } from './matchup-table.js';
 import { matchupOwner } from './matchup.js';
 import { epithetMods } from './epithets.js';
 import { rollTalent, talentOf, TALENT_PRICE_MUL } from './talent.js';
+import { legendOfType, LEGEND_BY_ID, type Legend } from './legends.js';
 import namesJson from '../../data/names.json' with { type: 'json' };
 
 // spd = 걸음(유형 고정) · hand = 손놀림 기본치(굴리고 자란다). 사거리는 classes.ts (2026-09-20)
@@ -34,17 +35,20 @@ export function resetIds() { nextId = 1; }
 export function peekNextId() { return nextId; }
 export function setNextId(n: number) { nextId = n; }
 
-export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number; age?: number } = {}): Gladiator {
-  const type = opts.type ?? rng.pick(TYPES);
+export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number; age?: number; taken?: Set<string>; legend?: string } = {}): Gladiator { /* legend: 디버그용 — 이 전설을 강제로 */ /* taken: 살아 있는 전설 id — 넘기면 천부가 전설로 나올 수 있고, 꺼낸 전설은 여기에 더한다. 안 넘기면(시작 검투사·타지 검투사·측정) 천부는 비범으로 내린다 */
+  const type = opts.legend ? LEGEND_BY_ID[opts.legend].type : opts.type ?? rng.pick(TYPES);
   const lineage = opts.lineage ?? rng.pick(LINEAGES_1ST);
   const pool = (namesJson as Record<string, { ko: string }[]>)[lineage];
   const name = rng.pick(pool).ko;
-  const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; const age = opts.age ?? rng.int(a0, a1); // 나이가 곧 자란 정도 (2026-09-21)
+  const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; let age = opts.age ?? rng.int(a0, a1); // 나이가 곧 자란 정도 (2026-09-21)
   const s = TYPE_STATS[type]; /* 서열 배율 없음 (2026-09-21): 현재치는 유형 기본에서 나이만큼 상한 쪽으로 자라 있다 */
   const base: Stats = { hp: s.hp, atk: s.atk, def: s.def, spd: s.spd, hand: s.hand };
   const wins = rank === 'veteranus' ? rng.int(3, 6) : 0;
   const g: Gladiator = { id: nextId++, name, lineage, type, rank, base, fights: wins + rng.int(0, 2), wins, missios: 0, injured: 0, buyPrice: 0, alive: true, age, scaeva: rng.chance(0.1) || undefined }; // 왼손잡이 10% (비문에 따로 표기될 만큼 귀했다)
-  g.talent = rollTalent(rng); g.growth = rollGrowth(rng); g.cap = rollCaps(rng, type, base, age, g.growth, s);
+  g.talent = rollTalent(rng); g.talentKnown = true; /* 2026-09-22 사용자: 자질도 처음부터 보인다 (성장형·상한과 같이) — 값에도 처음부터 들어간다 */ g.growth = rollGrowth(rng);
+  let legend: Legend | undefined; if (opts.legend) { legend = LEGEND_BY_ID[opts.legend]; g.talent = 3; } else if (g.talent === 3) { const l = legendOfType(type); if (l && opts.taken && !opts.taken.has(l.id) && rng.chance(CONFIG.legend.p)) { legend = l; opts.taken.add(l.id); } } /* 천부 중 확률로 전설 (2026-09-22 사용자): 그 유형의 인물이 비어 있어야 한다. 아니면 그냥 천부 */
+  if (legend) { g.legend = legend.id; g.name = legend.name; age = legend.age; g.age = age; g.growth = { ...legend.growth }; g.dictata = [legend.dictata]; g.scaeva = undefined; }
+  g.cap = rollCaps(rng, type, base, age, g.growth, s, g.talent, legend?.pot);
   { const A = CONFIG.growthModel.grownByAge; const f = A.max * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); for (const k of ['hp', 'atk', 'def', 'hand'] as const) g.base[k] = Math.min(g.cap[k], g.base[k] + Math.round((g.cap[k] - g.base[k]) * f * rng.range(0.85, 1.15))); } // 나이만큼 자라 있다 (±15% 흔들림)
   g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
 }
@@ -80,7 +84,7 @@ export function rentFee(g: Gladiator, tier: number): number {
 }
 // 검투사의 값: (전력 − 85) × 85 + 베테라누스 1,200 + 명예 × 15, 50 단위, 최소 1,000
 export function ageMul(g: Gladiator): number { const P = CONFIG.statRoll.agePrice; return Math.max(P.min, 1 - Math.max(0, (g.age ?? 22) - P.from) * P.per); }
-export function valueOf(g: Gladiator): number { const pw = powerOf({ ...g, fatigue: 0 }); const O = CONFIG.origins; const origin = g.origin === 'captive' ? O.captive.price : g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' ? O.damnatus.price : 1; return Math.max(1000, Math.round(((pw - CONFIG.priceBase) * 85 + (g.rank === 'veteranus' ? 1200 : 0) + (g.honor ?? 0) * 15) * origin * (g.talentKnown ? TALENT_PRICE_MUL[talentOf(g)] : 1) * ageMul(g) / 50) * 50); } // 자질은 밝혀진 뒤에만 값에 (시장에서는 상인도 모른다: 값으로 새지 않는다). 나이 24세 넘기면 해마다 −4% // 자질은 밝혀진 뒤(재능 +15%, 비범 +40%, 천부 +80%) // 값 = 전투력 + 계급 프리미엄(베테라누스는 대여료가 2.5배) + 명예(대여료 가산). 출신 할인(포로·죄수)은 값 자체에: 사고팔 때 같은 기준
+export function valueOf(g: Gladiator): number { const pw = powerOf({ ...g, fatigue: 0 }); const O = CONFIG.origins; const origin = g.origin === 'captive' ? O.captive.price : g.origin === 'damnatus' && (g.status ?? 'slave') === 'slave' ? O.damnatus.price : 1; return Math.max(1000, Math.round(((pw - CONFIG.priceBase) * 85 + (g.rank === 'veteranus' ? 1200 : 0) + (g.honor ?? 0) * 15) * origin * TALENT_PRICE_MUL[talentOf(g)] * ageMul(g) / 50) * 50); } // 자질은 밝혀진 뒤에만 값에 (시장에서는 상인도 모른다: 값으로 새지 않는다). 나이 24세 넘기면 해마다 −4% // 자질은 밝혀진 뒤(재능 +15%, 비범 +40%, 천부 +80%) // 값 = 전투력 + 계급 프리미엄(베테라누스는 대여료가 2.5배) + 명예(대여료 가산). 출신 할인(포로·죄수)은 값 자체에: 사고팔 때 같은 기준
 // 매각가: 지금 능력치·승수로 다시 매긴 값의 일부. 키워서 값이 오르면 구매가보다 비싸게 팔 수 있다
 export function sellPrice(g: Gladiator): number { return Math.round(valueOf(g) * CONFIG.sellBase); }
 export function maybePromote(g: Gladiator): boolean {

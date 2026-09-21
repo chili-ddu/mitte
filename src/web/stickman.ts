@@ -478,6 +478,11 @@ function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, 
   for (const a of L.accessories) {
     ctx.save();
     switch (a) {
+      case 'legend': // 전설: 투구 위 황금 띠와 뒤로 흐르는 붉은 술 — 이름을 물려받은 사람 (2026-09-22)
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.1; ctx.beginPath(); ctx.arc(hx, hy, r + 1.2, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+        ctx.strokeStyle = '#a8321f'; ctx.lineWidth *= 0.9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(hx, hy - r - 1.5); ctx.quadraticCurveTo(hx - r * 1.4, hy - r * 1.9, hx - r * 2.2, hy - r * 0.6); ctx.stroke();
+        ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.arc(hx, hy - r - 1.5, 1.6, 0, Math.PI * 2); ctx.fill();
+        break;
       case 'laurel': // 월계관: 초록 잎사귀 + 금빛 띠
         ctx.strokeStyle = '#3b7a2c'; ctx.fillStyle = '#4f9a3a'; ctx.lineWidth *= 0.8;
         ctx.beginPath(); ctx.arc(hx, hy, r + 1.5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();

@@ -28,7 +28,7 @@ export interface Gladiator {
   contractUntil?: number; // 자유민 계약 만료 시즌 (auctoratus·재계약)
   age?: number;         // 나이. 봄마다 +1. 31세부터 속도, 33세부터 공·방이 서서히 줄어든다
   talent?: 0 | 1 | 2 | 3; // 자질: 평범·재능·비범·천부 (성장 가중치. 능력치 자체는 아님)
-  talentKnown?: boolean;  // 자질이 밝혀졌는가 (첫 훈련·첫 경기 뒤). 시장에서는 알 수 없고 값에도 들어가지 않는다
+  talentKnown?: boolean;  // (2026-09-22 부터 항상 true — 자질은 처음부터 보이고 값에 든다. 옛 저장 호환용 필드)
   lastMissio?: boolean;   // 직전 경기에서 미시오로 살아남음 (다음 경기 승리 = 깨우침 계기)
   epithets?: string[];  // 별칭 id 목록 (core/epithets.ts)
   streak?: number;      // 현재 연승
@@ -44,7 +44,8 @@ export interface Gladiator {
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
   revenged?: number;    // 복수 성공 횟수
-  dictata?: string[];     // 익힌 숙련 딕타타 id (최대 셋, docs/09 2-α)
+  dictata?: string[];     // 익힌 숙련 딕타타 id (최대 셋, docs/09 2-α). 전설의 고유 딕타타(L_*)는 자리를 안 차지한다
+  legend?: string;        // 전설 검투사 id (core/legends.ts) — 천부 자질은 곧 고유 인물 (2026-09-22)
   growth?: { curve: 'normal' | 'early' | 'late' | 'second'; trait?: 'one' | 'field' | 'pupil' | 'even'; one?: 'hp' | 'atk' | 'def' | 'hand'; curveKnown?: boolean; traitKnown?: boolean; trainings?: number; secondDone?: boolean }; // 성장형 (docs/09 §7)
   cap?: { hp: number; atk: number; def: number; hand: number }; // 잠재치(상한) — 닿으면 굵게
   prog?: { hp: number; atk: number; def: number; hand: number }; // 능력치 밑에 쌓인 소수점 (훈련 0.2 씩, 1이 차면 +1 — 2026-09-21 사용자)
