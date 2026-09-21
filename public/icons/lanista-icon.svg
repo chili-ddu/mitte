@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="미테! 아이콘">
+  <rect width="512" height="512" rx="96" fill="#efe1bd"/>
+  <path d="M142 138c32-58 196-58 228 0 25 45 27 198-24 245-42 38-138 38-180 0-51-47-49-200-24-245Z" fill="#3a2412"/>
+  <path d="M173 164c25-39 141-39 166 0 18 28 18 158-17 193-31 31-101 31-132 0-35-35-35-165-17-193Z" fill="#c8954d"/>
+  <path d="M175 182c29-48 133-48 162 0-18-10-49-18-81-18s-63 8-81 18Z" fill="#f0cf86"/>
+  <path d="M176 220h160" stroke="#3a2412" stroke-width="24" stroke-linecap="round"/>
+  <path d="M171 228l61 27" stroke="#3a2412" stroke-width="18" stroke-linecap="round"/>
+  <path d="M341 228l-61 27" stroke="#3a2412" stroke-width="18" stroke-linecap="round"/>
+  <path d="M256 214v165" stroke="#3a2412" stroke-width="20" stroke-linecap="round"/>
+  <path d="M209 286c20 14 74 14 94 0" fill="none" stroke="#3a2412" stroke-width="16" stroke-linecap="round"/>
+  <path d="M151 133c58-35 152-44 210 0" fill="none" stroke="#9b2c1c" stroke-width="34" stroke-linecap="round"/>
+  <path d="M166 109c50-23 130-29 180 0" fill="none" stroke="#b7652d" stroke-width="13" stroke-linecap="round"/>
+  <path d="M121 374c60 43 210 43 270 0" fill="none" stroke="#7a1f16" stroke-width="17" stroke-linecap="round" opacity=".75"/>
+</svg>
