@@ -400,7 +400,7 @@ export function renderBattle() {
         play(tid, e.downed ? (woundOf(tid) || !isFinal ? deathClipFor(byId[aid].g.type) : 'yield') : e.blocked && hasBigShield(loadoutFor(tgtType)) ? 'block' : 'hit', ct + hitDelay); // 경기를 끝내는 마지막 쓰러짐만 항복 자세(무릎·검지). 단체전에서 먼저 쓰러진 자와 상처로 죽는 자는 눕는다
         if (e.downed && isFinal && !woundOf(tid)) yielded.add(tid);
         if (e.downed) addWall(`${byId[aid].g.name.replace('(적)', '')} V`, true); // 이긴 자의 이름과 V(vicit)
-        if (e.downed && isFinal && !woundOf(tid)) { const pw = posAt(ct)[tid]; fx.push({ kind: 'sandwall', x: pw.x, y: pw.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); } // 항복으로 끝나도 먼지는 인다
+        /* 마지막 일격의 먼지 장막(sandwall)은 뺐다 — 2026-09-22 사용자: 쓰러질 때 흙먼지가 장면을 가린다 */
         if (audible(posAt(ct)[tid]?.x ?? 0)) { if (e.downed) sfx.down(); else if (e.blocked) sfx.block(); else if (e.crit) sfx.crit(); else sfx.hit(!!(e.counter || e.charge || e.combo)); } // 화면 밖의 타격은 들리지 않는다
         const stack = flash.filter(f => f.id === tid).length;
         flash.push({ id: tid, t: 1 + stack * 0.35, text: `-${e.dmg}${e.counter ? '!' : ''}${e.charge ? ' 돌진' : ''}${e.combo ? ' 연속' : ''}${e.blocked ? ' 방패' : ''}${e.net ? ' 그물' : ''}`, color: e.counter ? '#9b2c1c' : e.blocked ? '#2c4f9b' : '#2b1d0e' });
@@ -427,7 +427,6 @@ export function renderBattle() {
         if (e.open) flash.push({ id: tid, t: 1.3, text: '빈틈!', color: '#9b1f14' });
         if (e.downed && woundOf(tid)) { // 그 자리에서 숨이 끊기는 타격: 무기에 맞춰 마지막 장면을 길게 눌러 준다
           const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6);
-          if (isFinal) fx.push({ kind: 'sandwall', x: pt.x, y: pt.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); // 먼지가 확 일고, 가라앉으면 승자만 서 있다 shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
           bleed(pt.x, pt.y - (cut ? 16 : 6), pa.x <= pt.x ? 1 : -1, 30, 2.2); flash.push({ id: tid, t: 2, text: cut ? '목을 베었다' : '심장을 꿰뚫었다', color: '#9b1f14' }); }
         else if (e.downed && e.riposte) { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
         if (e.downed && !woundOf(tid)) { rouse('gasp', 1, 1.5); shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); } else if (e.downed) { rouse('hush', 0.7, 1.4); shout('…', pt.x); } // 상처로 숨지면 관중은 말을 잃는다
