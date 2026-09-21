@@ -261,7 +261,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         // ── 맞은 직후: 맨몸 빠지기 · 스키소르 팔 칼날 되치기
         if (target.d.has('slip') && rng.chance(pOf(target, 'slip', D.slip.p))) { target.retreatUntil = t + D.slip.retreat; target.holdUntil = t; u.cooldown += D.slip.delay; used(target, 'slip'); ev({ kind: 'dictata', actor: target.g.id, target: u.g.id, dictata: 'slip' }); follow(target, u, 'deflect'); break; } // 빠지면 연속 공격도 끊긴다
         if (deflected && target.d.has('deflect') && follow(target, u, 'deflect')) break; // 옆걸음 되치기
-        if (target.d.has('arm_riposte') && u.hp > 0 && rng.chance(pOf(target, 'arm_riposte', D.armRiposte.p))) { used(target, 'arm_riposte');
+        if (target.d.has('arm_riposte') && !combo && u.hp > 0 && rng.chance(pOf(target, 'arm_riposte', D.armRiposte.p))) { used(target, 'arm_riposte'); /* 첫 타에만 — 연속 공격마다 걸리면 쌍검 상대 .73 (09-21 상성표) */
           const rd = Math.max(1, Math.round(target.atk * D.armRiposte.mult * rng.range(0.85, 1.15) - u.def)); u.hp -= rd; u.lastAttacker = target.g.id; u.holdUntil = Math.max(u.holdUntil, t + 0.3); target.s.dmgDealt += rd; u.s.dmgTaken += rd;
           ev({ kind: 'attack', actor: target.g.id, target: u.g.id, dmg: rd, targetHp: Math.max(0, u.hp), counter: true, net: false, blocked: false, combo: false, charge: false, crit: false, downed: u.hp <= 0, riposte: true, dictata: 'arm_riposte' });
           log.push(`${fmt(t)} ${target.g.name} 팔 칼날 되치기 → ${u.g.name} ${rd}${u.hp <= 0 ? ' 쓰러짐' : ''}`); if (u.hp <= 0) { target.s.kills++; break; }
