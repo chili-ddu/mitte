@@ -1,30 +1,32 @@
 import type { Gladiator, GType, Lineage, Rank, Stats } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
+import { classKey } from './classes.js';
 import { TYPE_MATCHUP } from './matchup-table.js';
 import { matchupOwner } from './matchup.js';
 import { epithetMods } from './epithets.js';
-import { SKILL_WORTH } from './skills.js';
 import { rollTalent, talentOf, TALENT_PRICE_MUL } from './talent.js';
 import namesJson from '../../data/names.json' with { type: 'json' };
 
-// range 는 전투에서 장비(equipment.ts)로 다시 계산된다. 여기 값은 표시용
+// spd = 걸음(유형 고정) · hand = 손놀림 기본치(굴리고 자란다). 사거리는 classes.ts (2026-09-20)
 export const TYPE_STATS: Record<GType, Stats> = {
-  murmillo:  { hp: 120, atk: 14, def: 8, spd: 3, range: 1 },
-  secutor:   { hp: 110, atk: 14, def: 7, spd: 5, range: 1 },
-  thraex:    { hp: 95,  atk: 17, def: 4, spd: 6, range: 1 },
-  retiarius: { hp: 95,  atk: 15, def: 2, spd: 8, range: 2 },
-  hoplomachus: { hp: 100, atk: 15, def: 5, spd: 5, range: 2 },
-  provocator:  { hp: 115, atk: 14, def: 7, spd: 4, range: 1 },
-  eques:       { hp: 95,  atk: 15, def: 4, spd: 8, range: 2 },
-  dimachaerus: { hp: 95,  atk: 17, def: 3, spd: 7, range: 1 },
+  murmillo:  { hp: 120, atk: 14, def: 8, spd: 3, hand: 3 },
+  secutor:   { hp: 110, atk: 14, def: 7, spd: 5, hand: 5 },
+  thraex:    { hp: 95,  atk: 17, def: 4, spd: 6, hand: 6 },
+  retiarius: { hp: 95,  atk: 15, def: 2, spd: 8, hand: 8 },
+  hoplomachus: { hp: 100, atk: 15, def: 5, spd: 5, hand: 5 },
+  provocator:  { hp: 115, atk: 14, def: 7, spd: 4, hand: 4 },
+  eques:       { hp: 95,  atk: 15, def: 4, spd: 8, hand: 8 },
+  dimachaerus: { hp: 95,  atk: 17, def: 3, spd: 7, hand: 7 },
+  scissor:     { hp: 105, atk: 16, def: 4, spd: 6, hand: 6 }, // 세쿠토르 변형: 방패 대신 왼팔 관 끝의 반달 날 (부조·모자이크)
+  laquearius:  { hp: 95,  atk: 14, def: 2, spd: 8, hand: 8 }, // 레티아리우스 변형: 그물 대신 올가미 (이시도루스)
 };
-export const TYPE_KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스' };
+export const TYPE_KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스', scissor: '스키소르', laquearius: '라쿠에아리우스' };
 export const LINEAGE_KO: Record<Lineage, string> = { nature: '자연', victory: '승리', myth: '신화', nickname: '별명', place: '지명' };
 
 // 계보 다섯 모두 (2026-09-18 사용자: 그동안 자연·승리 둘만 뽑아 신화·별명·지명 이름 60개와 그 무늬가 한 번도 나오지 않았다)
 const LINEAGES_1ST: Lineage[] = ['nature', 'victory', 'myth', 'nickname', 'place'];
-export const TYPES: GType[] = ['murmillo', 'secutor', 'thraex', 'retiarius', 'hoplomachus', 'provocator', 'eques', 'dimachaerus'];
+export const TYPES: GType[] = ['murmillo', 'secutor', 'thraex', 'retiarius', 'hoplomachus', 'provocator', 'eques', 'dimachaerus', 'scissor', 'laquearius'];
 
 let nextId = 1;
 export function resetIds() { nextId = 1; }
@@ -40,24 +42,24 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
   const s = TYPE_STATS[type]; const R = CONFIG.statRoll[rank]; const A = CONFIG.statRoll.age; const ageHi = A.hiBonus * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); // 나이가 들수록 위쪽 폭이 열린다 (단련했을 수도)
   const roll = (v: number, [lo, hi]: readonly [number, number]) => Math.round(v * rng.range(lo, hi + ageHi)); // 스탯마다 범위를 따로 굴린다
   const grow = rank === 'veteranus' ? Math.min(CONFIG.statRoll.vetGrow.max, Math.floor(((opts.season ?? 1) - 1) / CONFIG.statRoll.vetGrow.every)) : 0; // 베테라누스 시즌 단련
-  const base: Stats = { hp: roll(s.hp, R.hp), atk: roll(s.atk, R.atk) + grow, def: roll(s.def, R.def) + grow, spd: s.spd, range: s.range };
+  const base: Stats = { hp: roll(s.hp, R.hp), atk: roll(s.atk, R.atk) + grow, def: roll(s.def, R.def) + grow, spd: s.spd, hand: Math.max(1, roll(s.hand, R.hand)) }; // 걸음은 유형 고정, 손놀림은 굴린다
   const wins = rank === 'veteranus' ? rng.int(3, 6) : 0;
   const g: Gladiator = { id: nextId++, name, lineage, type, rank, base, fights: wins + rng.int(0, 2), wins, missios: 0, injured: 0, buyPrice: 0, alive: true, age, scaeva: rng.chance(0.1) || undefined }; // 왼손잡이 10% (비문에 따로 표기될 만큼 귀했다)
   g.talent = rollTalent(rng); g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
 }
 
 export function effectiveStats(g: Gladiator): Stats {
-  const grow = 1 + g.wins * 0.02;
+  const grow = 1; // 승수 성장(+2%/승)은 2026-09-20 뺐다 — 능력치는 훈련으로만 자라고, 경기 경험은 숙련 딕타타로 간다(docs/09). 승수는 신분·명예·값에만
   const pen = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat; // 피로(첫 1점 무료) + 노쇠
   const E = epithetMods(g); // 별칭
-  return { hp: Math.max(1, Math.round(g.base.hp * grow * E.hp) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow * E.atk) - pen), def: Math.max(0, Math.round(g.base.def * grow * E.def) - pen), spd: Math.max(1, g.base.spd - agePenalty(g).spd), range: g.base.range };
+  return { hp: Math.max(1, Math.round(g.base.hp * grow * E.hp) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow * E.atk) - pen), def: Math.max(0, Math.round(g.base.def * grow * E.def) - pen), spd: Math.max(1, g.base.spd - agePenalty(g).spd), hand: Math.max(1, Math.round(g.base.hand * grow) - agePenalty(g).spd) }; // 손놀림도 승수로 자라고 노쇠로 무뎌진다
 }
 // 노쇠: 31세부터 3년마다 속도 −1, 33세부터 2년마다 공·방 −1
 // 체력 한 줄을 이루는 몫들 — 화면의 체력바가 이 값으로 초록(기본)·연초록(보너스)·붉은(패널티)을 칠한다 (2026-09-17 사용자)
 export interface HpParts { base: number; bonus: number; pen: number; total: number }
 export function hpParts(g: Gladiator, kitchen = 0): HpParts {
   const base = g.base.hp;
-  const grown = Math.round(base * (1 + g.wins * 0.02) * epithetMods(g).hp) - base; // 승수 성장 + 예명('흉터'는 음수)
+  const grown = Math.round(base * epithetMods(g).hp) - base; // 예명('흉터'는 음수) — 승수 성장은 2026-09-20 뺐다
   const wear = (Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat) * CONFIG.hpPenPerStat; // 피로 + 노쇠
   const form = formMod(g).hp; // 이번 시즌 몸 상태
   const bonus = Math.max(0, grown) + kitchen + Math.max(0, form);
@@ -95,8 +97,8 @@ export const formMod = (g: Gladiator) => { const f = g.form ?? 0; return { atk: 
 export const formLabel = (g: Gladiator): '가벼움' | '무거움' | null => { const f = g.form ?? 0; return f >= CONFIG.form.tell ? '가벼움' : f <= -CONFIG.form.tell ? '무거움' : null; };
 export const formTip = (g: Gladiator) => { const m = formMod(g), l = formLabel(g); return `이번 철 몸 상태: ${l === '가벼움' ? '가볍다' : l === '무거움' ? '무겁다' : '보통'} — 체력 ${m.hp >= 0 ? '+' : ''}${m.hp} · 공 ${m.atk >= 0 ? '+' : ''}${m.atk} · 방 ${m.def >= 0 ? '+' : ''}${m.def}. 철마다 다시 정해진다`; };
 export function powerOf(g: Gladiator): number {
-  const b = g.base; const skills = (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
-  return b.hp * 0.44 + b.atk * 4.5 + b.def * 3 + b.spd * 1.35 + skills + (CONFIG.typePower[g.type] ?? 0) - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5; // 유형 보정: 같은 전력이면 실제로 호각이도록
+  const b = g.base;
+  const W = CONFIG.power; return b.hp * W.hp + b.atk * W.atk + b.def * W.def + b.spd * W.spd + b.hand * W.hand + (CONFIG.typePower[g.type] ?? 0) - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5; // 유형 보정: 같은 전력이면 실제로 호각이도록
 }
 // 화면에 보여 줄 전력: 규칙이 쓰는 powerOf 와 같은 저울이되 **지금 몸**으로 잰다(승수 성장·예명·노쇠·피로·몸 상태).
 // powerOf 는 타고난 값으로 재므로 계약 난이도·값 계산은 그대로 두고, 카드의 ± 만 이 차이를 보여 준다 (2026-09-17 사용자)
@@ -109,9 +111,15 @@ export function matchupFactor(g: Gladiator, foes: Gladiator[] = []): number {
 }
 export function powerNow(g: Gladiator, foes: Gladiator[] = []): number {
   const e = effectiveStats(g), f = formMod(g);
-  const skills = (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
-  const raw = (e.hp + f.hp) * 0.44 + (e.atk + f.atk) * 4.5 + (e.def + f.def) * 3 + e.spd * 1.35 + skills + (CONFIG.typePower[g.type] ?? 0);
+  const W = CONFIG.power; const raw = (e.hp + f.hp) * W.hp + (e.atk + f.atk) * W.atk + (e.def + f.def) * W.def + e.spd * W.spd + e.hand * W.hand + (CONFIG.typePower[g.type] ?? 0);
   return raw * matchupFactor(g, foes); // 마주 설 상대가 정해졌으면 상성만큼 오르내린다
 }
 
 export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);
+
+// 프리무스 팔루스: 같은 유형 안의 1등 (승수 8·명예 20). 비문의 서열 호칭 — 기술 슬롯 수로 쓰던 것은 2026-09-18 기술 개념과 함께 뺐고 호칭만 남는다
+export const isPrimusPalus = (g: Gladiator) => g.rank === 'veteranus' && g.wins >= 8 && (g.honor ?? 0) >= 20;
+
+// 팔루스에 선 검투사가 무엇을 단련할지: 클래스 성장 풀의 가중치로 뽑는다 (2026-09-20 docs/09). 상대 파밀리아도 같은 풀로 훈련한다
+export type TrainStat = 'atk' | 'def' | 'hp' | 'hand';
+export function pickTrainStat(rng: Rng, g: Gladiator): TrainStat { const w = CONFIG.growth[classKey(g.type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 }; const keys: TrainStat[] = ['atk', 'def', 'hp', 'hand']; const total = keys.reduce((a, k) => a + w[k], 0); let r = rng.next() * total; for (const k of keys) { r -= w[k]; if (r <= 0) return k; } return 'atk'; }

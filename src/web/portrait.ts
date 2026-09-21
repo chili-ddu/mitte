@@ -9,7 +9,7 @@ import { drawTalkScene } from './detail.js';
 
 // 계보 색: 카드 배경 무늬(style.css 의 .linbg)와 같은 안료. 스틱맨 뒤 흙에도 이 색이 돈다 (2026-09-17 사용자)
 export const LINEAGE_COLOR: Record<string, string> = { nature: '#2f6a22', victory: '#b08a3a', myth: '#7a2a6a', nickname: '#4a5a78', place: '#7a4a3a' };
-export const TYPE_COLOR: Record<GType, string> = { murmillo: '#2c4f9b', secutor: '#1f7a6d', thraex: '#9b2c1c', retiarius: '#c58a1a', hoplomachus: '#5a7a2c', provocator: '#6b4a8a', eques: '#b5651d', dimachaerus: '#4a4a4a' };
+export const TYPE_COLOR: Record<GType, string> = { murmillo: '#2c4f9b', secutor: '#1f7a6d', thraex: '#9b2c1c', retiarius: '#c58a1a', hoplomachus: '#5a7a2c', provocator: '#6b4a8a', eques: '#b5651d', dimachaerus: '#4a4a4a', scissor: '#2f6f8f', laquearius: '#a3652a' };
 // 24x24 좌표계의 무기 도형. 카드(SVG)와 전투 화면(Canvas Path2D)이 공유
 const TYPE_GLYPH: Record<GType, string[]> = {
   murmillo:  ['M5 4h8v11l-4 4-4-4z', 'M18 3v13', 'M15.5 16h5'],                 // 큰 방패 + 글라디우스
@@ -20,6 +20,8 @@ const TYPE_GLYPH: Record<GType, string[]> = {
   provocator:  ['M6 5h9v9l-4.5 4L6 14z', 'M18 4v14', 'M15.5 17h5'],                 // 중형 방패 + 글라디우스
   eques:       ['M16 21V4', 'M14 6l2-3 2 3', 'M7 14a3.5 3.5 0 1 0 0 .01', 'M4 4c2 1 3 3 2 6'], // 창 + 둥근 방패 + 깃털
   dimachaerus: ['M6 20c-1-7 3-13 10-15', 'M18 20c1-7-3-13-10-15'],                  // 시카 둘 교차
+  scissor:     ['M17 3v14', 'M14.5 17h5', 'M6 6v8', 'M6 14c0 4 3 5 5 3'],            // 글라디우스 + 팔 관 끝의 반달 날
+  laquearius:  ['M9 21V4', 'M7 6l2-3 2 3', 'M17 12a3.5 3.5 0 1 0 0 .01', 'M17 15.5v5'], // 창 + 올가미 고리
 };
 export function glyphSvg(t: GType, size = 22) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

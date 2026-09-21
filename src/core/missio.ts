@@ -1,17 +1,14 @@
 import type { Gladiator, HostKind } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import type { Synergies } from './synergy.js';
 import { epithetMods } from './epithets.js';
 import { HOST } from './hosts.js';
 
 export type Fate = 'unharmed' | 'injured' | 'dead';
 
-export function survivalChance(g: Gladiator, fame: number, host: HostKind, syn: Synergies, classic = false, extra = 0): number {
+export function survivalChance(g: Gladiator, fame: number, host: HostKind, classic = false, extra = 0): number {
   const m = CONFIG.missio;
   let p = m.base + fame * m.perFame + Math.min(g.wins, m.maxWins) * m.perWin + HOST[host].missio;
-  if (syn.victory2) p += m.victorySynergy;
-  if (syn.myth2) p += CONFIG.synergy.mythMissio; // 신화×2: 관중이 이름에 홀린다
   if (classic) p += m.classic; // 전통 짝: 관중이 좋은 경기를 봤다
   p += (g.honor ?? 0) * CONFIG.honor.missioPer; // 인기 있는 검투사는 관중이 살려 달라 외친다
   p += extra; // 봉헌 등
@@ -22,8 +19,8 @@ export function survivalChance(g: Gladiator, fame: number, host: HostKind, syn: 
 }
 
 // 패배 측 쓰러진 검투사
-export function judgeLoser(rng: Rng, g: Gladiator, fame: number, host: HostKind, syn: Synergies, classic = false, extra = 0, injuryChance: number = CONFIG.missio.injuryChance): { fate: Fate; p: number } { // injuryChance: 내 검투사는 의술 단계로 내려간다
-  const p = survivalChance(g, fame, host, syn, classic, extra);
+export function judgeLoser(rng: Rng, g: Gladiator, fame: number, host: HostKind, classic = false, extra = 0, injuryChance: number = CONFIG.missio.injuryChance): { fate: Fate; p: number } { // injuryChance: 내 검투사는 의술 단계로 내려간다
+  const p = survivalChance(g, fame, host, classic, extra);
   if (!rng.chance(p)) return { fate: 'dead', p };
   return { fate: rng.chance(injuryChance) ? 'injured' : 'unharmed', p };
 }

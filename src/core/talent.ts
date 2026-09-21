@@ -5,7 +5,6 @@ export type Talent = 0 | 1 | 2 | 3;
 export const TALENT_KO = ['평범', '재능', '비범', '천부'] as const;
 export const TALENT_RATE = [0.60, 0.28, 0.10, 0.02] as const;
 export const TALENT_TRAIN_BONUS = [0, 0.35, 0.55, 0.70] as const;   // 훈련 때 +1이 더 붙을 확률
-export const TALENT_SKILL_MUL = [1, 1.5, 1.8, 2.0] as const;        // 경기 경험으로 기술을 깨칠 확률 배율
 export const TALENT_PRICE_MUL = [1, 1.15, 1.4, 1.8] as const;       // 밝혀진 뒤 값에 반영
 export const AWAKEN_CHANCE = 0.12;                                   // 계기마다 한 단계 오를 확률
 export function rollTalent(rng: Rng, shift = 0): Talent { const r = rng.next(); let t: Talent = r < TALENT_RATE[3] ? 3 : r < TALENT_RATE[3] + TALENT_RATE[2] ? 2 : r < 1 - TALENT_RATE[0] ? 1 : 0; if (shift > 0 && t < 3 && rng.chance(shift)) t = (t + 1) as Talent; return t; } // shift: 한 단계 위로 오를 확률 (자유민 지원자·강한 파밀리아 출신)

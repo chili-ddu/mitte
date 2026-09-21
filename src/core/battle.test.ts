@@ -7,11 +7,11 @@ import { battle } from './battle.js';
 import { makeGladiator, resetIds } from './gladiator.js';
 import { CONFIG } from './config.js';
 
-// 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-17 유형 균형 개편(매 타 방패 막기·시카 방패 넘기·그물 빗나감·다리 노리기·무기 받아넘기기·창 길목 찌르기·방패 밀어붙이기·전력 가중치 재측정·넘어짐·무기 떨구기) 뒤 다시 기록
+// 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-20 능력치 정리(docs/09): 손놀림·걸음 분리, 사거리 삭제 — 난수 소비가 바뀐다 뒤 다시 기록
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
-  1: { winner: 'A', dur: 6.4, frames: 66, events: 9 },
-  7: { winner: 'A', dur: 6.6, frames: 68, events: 10 },
-  42: { winner: 'B', dur: 24.6, frames: 248, events: 26 },
+1: { winner: 'A', dur: 11.8, frames: 120, events: 21 },
+  7: { winner: 'A', dur: 10.1, frames: 103, events: 15 },
+  42: { winner: 'B', dur: 22.3, frames: 225, events: 27 },
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };
 

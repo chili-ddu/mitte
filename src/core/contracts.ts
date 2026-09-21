@@ -2,7 +2,8 @@ import type { Contract, GType, HostKind, Gladiator } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator } from './gladiator.js';
-import { pickEnemies, type Rival } from './rivals.js';
+import { pickEnemies, pickElite, type Rival } from './rivals.js';
+import { partnersOf } from './classic.js';
 import { teamPower, powerOf } from './gladiator.js';
 
 const VENUES: Record<number, string[]> = {
@@ -43,15 +44,23 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     const cap = CONFIG.tierPowerCap[tier]; // 등급별 상대 전력 상한: 시골 경기장에 단련된 베테라누스는 나오지 않는다. 내 편은 제한 없음 // 상한: 등급별 고정값과 내 으뜸 검투사의 비율 중 큰 쪽 // 등급별 상대 전력 상한: 시골 경기장에 단련된 베테라누스는 나오지 않는다. 내 편은 제한 없음
     const fits = (g: Gladiator) => powerOf(g) <= cap;
     const size: 1 | 2 | 3 = tier === 1 ? rng.pick([1, 1, 1, 1, 2, 2] as const) : tier === 2 ? rng.pick([1, 1, 2, 2, 3] as const) : rng.pick([2, 3, 3] as const); // 고증: 무누스의 기본은 1대1 결투(파리아). 집단전은 대형 경기에만
-    // 상대: 파밀리아 중 하나에서 뽑는다 (맞는 조합이 없으면 타지 라니스타의 검투사)
+    const capped = (make: () => Gladiator, type?: GType) => { for (let k = 0; k < 12; k++) { const g = make(); if (fits(g)) return g; } for (let k = 0; k < 12; k++) { const g = makeGladiator(rng, 'tiro', { season, type }); if (fits(g)) return g; } return make(); }; /* 정식 대결은 유형을 지켜야 하므로 티로 대체도 같은 유형으로 */ // 상한 안에 드는 검투사가 나올 때까지 (베테라누스가 안 들어가면 티로로)
+    // 정식 대결(2026-09-18): 주최자가 짝을 주문한다. 우리 로스터에서 유형을 고르고 그 짝을 상대로 세운다 — 생성 시점엔 늘 채울 수 있다 (docs/08 4-6·10-1 ⑧)
+    const classic = mine.length >= size && rng.chance(CONFIG.classicContract.chance[tier] ?? 0);
+    const wantEnemy: GType[] = []; if (classic) { const pool = [...mine].sort(() => rng.next() - 0.5).slice(0, size); for (const g of pool) wantEnemy.push(rng.pick(partnersOf(g.type))); }
     let rivalId: number | undefined; let enemy: Gladiator[] | null = null;
     const diff = dist[i]; const target = ref * size * DIFF_RATIO()[diff];
-    if (rivals.length) {
+    if (classic && rivals.length) { // 주문한 유형이 있는 파밀리아에서 먼저 — 없으면 타지 라니스타에게서 빌려 온다 (지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
+      let bd = Infinity; for (const rv of rivals) { const rest = rv.roster.filter(g => g.alive && g.injured === 0 && fits(g)).sort(() => rng.next() - 0.5); const pick: Gladiator[] = [];
+        for (const w of wantEnemy) { const k = rest.findIndex(g => g.type === w); if (k < 0) break; pick.push(rest[k]); rest.splice(k, 1); }
+        if (pick.length === size) { const d = Math.abs(teamPower(pick) - target); if (d < bd) { bd = d; enemy = pick; rivalId = rv.id; } } } // 주문한 유형을 다 갖춘 파밀리아 중 목표 전력에 가장 가까운 쪽
+    }
+    else if (rivals.length) {
       if (ref > 0) { let bd = Infinity; for (const rv of rivals) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0 && fits(g)), size, target); if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
         if (enemy && bd > target * 0.15) { enemy = null; rivalId = undefined; } } // 목표에 가장 가까운 파밀리아 조합. 15% 넘게 벗어나면 파밀리아 밖에서 (주최자가 다른 라니스타에게서 빌려 온 검투사 — 고증: 지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
       else { const order = [...rivals].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy && enemy.every(fits)) { rivalId = rv.id; break; } enemy = null; } }
     }
-    const capped = (make: () => Gladiator) => { for (let k = 0; k < 12; k++) { const g = make(); if (fits(g)) return g; } for (let k = 0; k < 12; k++) { const g = makeGladiator(rng, 'tiro', { season }); if (fits(g)) return g; } return make(); }; // 상한 안에 드는 검투사가 나올 때까지 (베테라누스가 안 들어가면 티로로)
+    if (!enemy && classic) enemy = wantEnemy.map(w => capped(() => makeGladiator(rng, diff === 'strong' ? 'veteranus' : diff === 'even' ? (rng.chance(0.5) ? 'veteranus' : 'tiro') : 'tiro', { season, type: w }), w)); // 주문한 유형 그대로
     if (!enemy) enemy = Array.from({ length: size }, () => capped(() => { // 타지 라니스타의 검투사: 서열로만 난이도를 맞춘다 (약 = 형 선고자 티로 · 중 = 티로/베테라누스 반반 · 강 = 베테라누스). 능력치를 따로 깎거나 올리지 않는다. 등급 상한 안에서
       if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
       if (diff === 'strong') return makeGladiator(rng, 'veteranus', { season });
@@ -59,9 +68,17 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
       const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
     }));
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
-    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier === 3 ? size : tier === 2 ? 1 : 0, /* 등급 3(로마)은 티로를 세우지 않는다 — 리벨루스에 이름을 파는 경기다 (2026-09-17 사용자) */ powerCap: Number.isFinite(cap) ? cap : undefined, size, enemy, enemyPreview, rivalId, clauses: offerClauses(rng, host, tier), accepted: [] });
+    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier === 3 ? size : tier === 2 ? 1 : 0, /* 등급 3(로마)은 티로를 세우지 않는다 — 리벨루스에 이름을 파는 경기다 (2026-09-17 사용자) */ powerCap: Number.isFinite(cap) ? cap : undefined, size, enemy, enemyPreview, rivalId, classic: classic || undefined, clauses: offerClauses(rng, host, tier), accepted: [] });
   }
   // 매 시즌 등급 1 계약이 최소 하나는 있어야 한다 (베테라누스 없는 루두스가 한 시즌을 날리지 않도록)
   if (!out.some(c => c.tier === 1)) { out[0].tier = 1; out[0].venue = rng.pick(VENUES[1]); out[0].needVeterans = 0; } // (등급을 내려도 상대·상한은 그대로: 이미 뽑힌 상대를 다시 뽑지 않는다)
   return out;
 }
+
+// 도전 계약(docs/10): 파밀리아가 간판·정예를 세운다. 우리 전력과 무관하고 상한이 없다. tier 는 파밀리아의 격
+export function makeChallenge(rng: Rng, season: number, rival: Rival, dir: 'in' | 'out', size: 1 | 2 | 3): Contract | null {
+  const enemy = pickElite(rival, size); if (!enemy) return null;
+  const tier: 1 | 2 | 3 = rival.profile === 'grand' ? 3 : rival.profile === 'major' ? 2 : 1;
+  return { id: cid++, tier, venue: rng.pick(VENUES[tier]), host: rng.pick(HOSTS_BY_TIER[tier]), needVeterans: 0, size, enemy, enemyPreview: enemy.map(e => e.type), rivalId: rival.id, challenge: dir, clauses: [], accepted: [] };
+}
+export const challengeSize = (rival: Rival): 1 | 2 | 3 => ((rival.mood ?? 0) >= 2 ? 3 : (rival.mood ?? 0) >= 1 ? 2 : 1); // 기세가 좋을수록 큰 판을 건다 (간판 1대1이 기본)

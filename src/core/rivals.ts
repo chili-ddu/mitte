@@ -1,37 +1,45 @@
 // 상대 파밀리아: 시즌을 넘어 유지되는 경쟁 검투사단. 계약의 상대는 여기서 뽑히고, 그들도 전적·부상·사망·명예가 쌓인다
-import type { Gladiator } from './types.js';
+// 2026-09-20(docs/10): 시즌 수로 세지지 않는다. 금고(purse)·기세(mood)·즐겨 사는 무장(focus)으로 자기 살림을 하고, 자기 경기 결과로 자란다
+import type { Gladiator, GType } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { makeGladiator } from './gladiator.js';
-import { eligibleSkills } from './skills.js';
+import { makeGladiator, pickTrainStat, powerOf, TYPES } from './gladiator.js';
+import { classKey } from './classes.js';
 
 export type RivalProfile = 'local' | 'major' | 'grand'; // 지방 파밀리아 · 큰 루두스 · 최대 루두스
-export interface Rival { id: number; name: string; roster: Gladiator[]; vsMe?: { wins: number; losses: number; draws: number }; profile?: RivalProfile; since?: number } // vsMe: 그 파밀리아가 나를 상대로 거둔 전적 · since: 나타난 시즌
+export interface Rival {
+  id: number; name: string; roster: Gladiator[];
+  vsMe?: { wins: number; losses: number; draws: number }; // 그 파밀리아가 나를 상대로 거둔 전적
+  profile?: RivalProfile; since?: number;                  // 나타난 시즌
+  mood: number;            // 기세 −2~+2: 이기면 오르고 간판이 죽으면 떨어진다. 도전장을 낼지, 베테라누스를 살지 정한다
+  purse: number;           // 금고: 검투사를 사고 훈련시킬 돈. 자기 경기 결과로 ±
+  focus: string;           // 즐겨 사는 클래스 (classKey)
+  revengeDue?: number;     // 이 시즌에 복수 도전장을 낸다
+  silentUntil?: number;    // 간판이 죽어 이 시즌까지 도전장을 안 낸다
+  refused?: number;        // 우리가 이 파밀리아의 도전장을 거절한 횟수
+}
 // 고증: 카푸아의 율리우스 루두스(카이사르), 네로의 루두스는 지방 파밀리아보다 훨씬 컸다. 폼페이 경기 광고의 주최자 암플리아투스 가문
-// 처음엔 비등한 지방 파밀리아 둘만 있고, 호감도가 오르면 큰 루두스가 이 지방에 나타난다
-export const RIVAL_DEFS: { id: number; name: string; profile: RivalProfile; fameReq: number; desc: string }[] = [
-  { id: 2, name: '암플리아투스 파밀리아', profile: 'local', fameReq: 0, desc: '폼페이의 지방 파밀리아' },
-  { id: 4, name: '스카이바 파밀리아', profile: 'local', fameReq: 0, desc: '이웃 도시의 지방 파밀리아' },
-  { id: 3, name: '네로니아누스 루두스', profile: 'major', fameReq: 40, desc: '황실 소유의 큰 루두스. 베테라누스가 많다' },
-  { id: 1, name: '율리우스 파밀리아', profile: 'grand', fameReq: 60, desc: '카푸아의 최대 루두스. 로마 경기의 단골' },
+// 처음엔 비등한 지방 파밀리아 둘만 있고, 호감도가 오르면 큰 루두스가 이 지방에 나타난다. 프로필은 성장이 아니라 밑천(금고)의 차이
+export const RIVAL_DEFS: { id: number; name: string; profile: RivalProfile; fameReq: number; desc: string; focus: string }[] = [
+  { id: 2, name: '암플리아투스 파밀리아', profile: 'local', fameReq: 0, desc: '폼페이의 지방 파밀리아. 큰 방패를 즐겨 산다', focus: 'bigShield+gladius' },
+  { id: 4, name: '스카이바 파밀리아', profile: 'local', fameReq: 0, desc: '이웃 도시의 지방 파밀리아. 곡도를 즐겨 산다', focus: 'smallShield+sica' },
+  { id: 3, name: '네로니아누스 루두스', profile: 'major', fameReq: 40, desc: '황실 소유의 큰 루두스. 베테라누스가 많고 창을 즐겨 산다', focus: 'smallShield+spear' },
+  { id: 1, name: '율리우스 파밀리아', profile: 'grand', fameReq: 60, desc: '카푸아의 최대 루두스. 로마 경기의 단골. 그물을 즐겨 산다', focus: 'bare+spear' },
 ];
 const ROSTER_SIZE = 6;
-const PROFILE = { local: { vet: 0, grow: 0, skills: 0 }, major: { vet: 0.35, grow: 1, skills: 1 }, grand: { vet: 0.6, grow: 2, skills: 1 } }; // 서열 확률 가산 · 공방 가산 · 기술 가산
-
-function strengthAt(season: number, fame = 0) { void fame; return 0.75 + season * 0.03; } /* 내 호감도에 따른 가산은 뺐다 — 계약 생성기가 목표 전력으로 정규화해 효과가 없었다 (난이도는 CONFIG.contractDiff 의 이름값 가산으로) */ // 시즌 + 내 명성(50 위로 1점당 0.4%): 이름난 루두스에는 강한 파밀리아가 붙는다
+const VET_P: Record<RivalProfile, number> = { local: 0.35, major: 0.6, grand: 0.8 }; // 처음 명단의 베테라누스 비율 (밑천)
 const ORD = ['', ' 세쿤두스', ' 테르티우스', ' 콰르투스', ' 퀸투스'];
-function makeMember(rng: Rng, season: number, roster: Gladiator[] = [], profile: RivalProfile = 'local', fame = 0): Gladiator {
-  const P = PROFILE[profile]; const s = strengthAt(season, fame); const rank = rng.chance(Math.min(0.95, s - 0.6 + P.vet)) ? 'veteranus' : 'tiro';
-  const g = makeGladiator(rng, rank, { season }); if (rank === 'veteranus' && P.grow) { g.base.atk += P.grow; g.base.def += P.grow; }
-  // 상대도 시즌을 거치며 훈련한다: 베테라누스 시즌 단련은 makeGladiator(statRoll.vetGrow)에서, 승수·명예도 쌓인 채로 온다 (내 검투사만 자라면 후반 승률이 70%를 넘는다)
+const RV = () => CONFIG.rivals;
+function pickType(rng: Rng, focus: string): GType { const pool = TYPES.filter(t => classKey(t) === focus); return pool.length && rng.chance(RV().focusP) ? rng.pick(pool) : rng.pick(TYPES); }
+function makeMember(rng: Rng, season: number, roster: Gladiator[], rank: 'tiro' | 'veteranus', focus: string): Gladiator {
+  const g = makeGladiator(rng, rank, { season, type: pickType(rng, focus) });
   if (rank === 'veteranus') { g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
-  if (rank === 'veteranus') { const n = rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1]) + P.skills; for (let k = 0; k < n; k++) { const e = eligibleSkills(g); if (!e.length) break; (g.skills ??= []).push(rng.pick(e).id); } } // 상대 베테라누스도 기술을 1~2개 가진다
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
 }
 function makeRival(rng: Rng, season: number, def: typeof RIVAL_DEFS[number]): Rival {
-  const r: Gladiator[] = []; for (let k = 0; k < ROSTER_SIZE; k++) r.push(makeMember(rng, season, r, def.profile));
-  return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season };
+  const r: Gladiator[] = []; for (let k = 0; k < ROSTER_SIZE; k++) r.push(makeMember(rng, season, r, rng.chance(VET_P[def.profile]) ? 'veteranus' : 'tiro', def.focus));
+  return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season, mood: 0, purse: RV().purseStart[def.profile], focus: def.focus };
 }
 // 새 게임: 호감도 조건을 채운 파밀리아만 (처음엔 지방 둘)
 export function makeRivals(rng: Rng, season = 1, fame = 0): Rival[] { return RIVAL_DEFS.filter(d => fame >= d.fameReq).map(d => makeRival(rng, season, d)); }
@@ -42,12 +50,20 @@ export function arriveRivals(rng: Rng, rivals: Rival[], season: number, fame: nu
   return out;
 }
 export const rivalDef = (r: Rival) => RIVAL_DEFS.find(d => d.id === r.id);
-// 시즌마다: 부상 회복, 빈자리 보충, 봄에는 나이
-export function replenishRivals(rng: Rng, rivals: Rival[], season: number, fame = 0) {
+export const bumpMood = (r: Rival, d: number) => { r.mood = Math.max(RV().moodMin, Math.min(RV().moodMax, (r.mood ?? 0) + d)); };
+// 시즌마다 살림: 부상 회복, 나이, 보이지 않는 다른 경기(금고 ±, 드물게 사망), 금고로 훈련·보충. 돌아온 목록 = 포룸에 실을 소식
+export function replenishRivals(rng: Rng, rivals: Rival[], season: number): string[] {
+  const news: string[] = []; const C = RV();
   for (const r of rivals) {
     for (const g of r.roster) { if (g.injured > 0) g.injured--; if ((season - 1) % 4 === 0) g.age = (g.age ?? 22) + 1; }
-    while (r.roster.length < ROSTER_SIZE) r.roster.push(makeMember(rng, season, r.roster, r.profile ?? 'local', fame));
+    // 보이지 않는 다른 경기: 우리가 없어도 세상이 돈다
+    if (rng.chance(C.otherGames.winP)) { r.purse += C.purseWin; } else { r.purse += C.purseLose; if (rng.chance(C.otherGames.deathP / C.otherGames.winP)) { const alive = r.roster.filter(g => g.alive); if (alive.length > 2) { const dead = rng.pick(alive); r.roster = r.roster.filter(g => g !== dead); bumpMood(r, dead === rivalStar(r) ? -2 : -1); news.push(`${r.name}의 ${dead.name}${dead === rivalStar(r) ? '(간판)' : ''}이(가) 다른 경기에서 쓰러졌다`); } } }
+    // 훈련: 금고가 있으면 둘 — 자기 클래스 풀로
+    for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); const stat = pickTrainStat(rng, g); g.base[stat] += stat === 'hp' ? C.trainHp : C.trainGain; /* 파밀리아는 독토르가 늘 있는 집이라 우리 기본치(2)보다 한 점 더 */ r.purse -= C.trainCost; }
+    // 보충: 금고가 허락하는 만큼. 기세가 좋으면 베테라누스
+    while (r.roster.length < ROSTER_SIZE) { const vet = (r.mood ?? 0) > 0 && r.purse >= C.buyVet; const cost = vet ? C.buyVet : C.buyTiro; if (r.purse < cost) break; r.purse -= cost; r.roster.push(makeMember(rng, season, r.roster, vet ? 'veteranus' : 'tiro', r.focus)); }
   }
+  return news;
 }
 // 출전 가능한 검투사에서 size 명을 고른다 (부족하면 null)
 export function pickEnemies(rng: Rng, rival: Rival, size: number): Gladiator[] | null {
@@ -57,9 +73,21 @@ export function pickEnemies(rng: Rng, rival: Rival, size: number): Gladiator[] |
   for (let i = 0; i < size; i++) { const k = rng.int(0, rest.length - 1); out.push(rest[k]); rest.splice(k, 1); }
   return out;
 }
+// 도전 계약의 상대: 간판 + 명예 순 정예 (부상 아닌 사람만)
+export function pickElite(rival: Rival, size: number): Gladiator[] | null {
+  const pool = rival.roster.filter(g => g.alive && g.injured === 0).sort((a, b) => ((b.honor ?? 0) - (a.honor ?? 0)) || (b.wins - a.wins) || (powerOf(b) - powerOf(a)));
+  return pool.length >= size ? pool.slice(0, size) : null;
+}
 export function rivalOf(rivals: Rival[], id?: number): Rival | undefined { return rivals.find(r => r.id === id); }
 export function memberById(rivals: Rival[], id: number): { rival: Rival; g: Gladiator } | undefined { for (const r of rivals) { const g = r.roster.find(x => x.id === id); if (g) return { rival: r, g }; } return undefined; }
 export const GRUDGE = CONFIG.grudge;
 // 간판 검투사: 명예가 가장 높은(같으면 승수) 검투사
 export function rivalStar(r: Rival): Gladiator | undefined { return [...r.roster].filter(g => g.alive).sort((a, b) => ((b.honor ?? 0) - (a.honor ?? 0)) || (b.wins - a.wins))[0]; }
 export function recordVsMe(r: Rival): string { const v = r.vsMe ?? { wins: 0, losses: 0, draws: 0 }; const total = v.wins + v.losses + v.draws; return total ? `${total}전 ${v.losses}승 ${v.wins}패${v.draws ? ` ${v.draws}무` : ''}` : '첫 대결'; } // 내 기준 (내 승/패)
+// 우리와 견주기: 양쪽 상위 셋 평균 전력. 'strong' = 그쪽이 세다
+export function compareRival(r: Rival, mine: Gladiator[]): 'strong' | 'even' | 'weak' {
+  const n = Math.max(1, Math.min(3, mine.filter(g => g.alive).length)); /* 우리 인원만큼만 견준다 — 둘뿐인 첫 시즌에 여섯 명 파밀리아가 다 '세다'로 나오지 않게 (2026-09-21) */
+  const top = (gs: Gladiator[]) => { const p = gs.filter(g => g.alive).map(powerOf).sort((a, b) => b - a).slice(0, n); return p.length ? p.reduce((a, b) => a + b, 0) / p.length : 0; };
+  const a = top(r.roster), b = top(mine); if (!b) return 'strong'; const k = a / b; return k >= 1.08 ? 'strong' : k <= 0.92 ? 'weak' : 'even';
+}
+export const COMPARE_KO: Record<'strong' | 'even' | 'weak', string> = { strong: '우리보다 세다', even: '우리와 비슷하다', weak: '우리보다 약하다' };

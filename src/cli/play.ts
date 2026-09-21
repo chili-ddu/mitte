@@ -4,7 +4,7 @@ import { stdin, stdout } from 'node:process';
 import { newGame, available, buy, sell, heal, fight, refuseAll, endSeason, validTeam, score, seasonName, type GameState } from '../core/game.js';
 import { label, sellPrice, rentFee, TYPE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
-import { computeSynergies, describeSynergies } from '../core/synergy.js';
+import { traitLevelsOf, describeTraits } from '../core/traits.js';
 import { survivalChance } from '../core/missio.js';
 import { CONFIG } from '../core/config.js';
 import type { Gladiator } from '../core/types.js';
@@ -53,9 +53,8 @@ async function contractPhase(st: GameState) {
     const sel = (await ask(`${c.size}명 선택 (예: 0 1 2) > `)).trim().split(/\s+/).map(Number);
     const team = sel.map(i => pool[i]).filter(Boolean) as Gladiator[];
     const err = validTeam(st, c, team); if (err) { console.log(err); continue; }
-    const syn = computeSynergies(team);
-    console.log(`시너지: ${describeSynergies(syn).join(', ') || '없음'}`);
-    console.log(`패배 시 생존 확률: ${team.map(g => `${g.name} ${(survivalChance(g, st.fame, c.host, syn) * 100).toFixed(0)}%`).join(', ')}`);
+    console.log(`특성(편성): ${describeTraits(traitLevelsOf(team)).join(', ') || '없음'} / 상대: ${describeTraits(traitLevelsOf(c.enemy)).join(', ') || '없음'}`);
+    console.log(`패배 시 생존 확률: ${team.map(g => `${g.name} ${(survivalChance(g, st.fame, c.host) * 100).toFixed(0)}%`).join(', ')}`);
     if ((await ask('출전? (y/n) > ')).trim() !== 'y') continue;
     const r = fight(st, c, team);
     console.log(`\n=== ${c.venue} ===`);

@@ -7,7 +7,6 @@ import { CONFIG } from '../core/config.js';
 import { sfx } from './sound.js';
 import { FANS_STAR } from '../core/hosts.js';
 import { drawGearRack, drawStickman, type Skeleton } from './stickman.js';
-import { skillsOf } from '../core/skills.js';
 import { accessoriesOf } from '../core/epithets.js';
 import { h, helpBtn } from './dom.js';
 import { render } from './main.js';
@@ -61,9 +60,6 @@ function drawCellDecor(ctx: CanvasRenderingContext2D, r: { x: number; y: number;
     // 루디스 (자유민): 벽에 가로로 걸린 나무 검 + 붉은 띠
     if (g.status === 'rudiarius') { const rx = r.w * 0.5, ry = r.h * 0.38; ctx.strokeStyle = wood; ctx.lineWidth = 3 * sc; ctx.beginPath(); ctx.moveTo(rx - 16 * sc, ry); ctx.lineTo(rx + 14 * sc, ry); ctx.stroke(); ctx.lineWidth = 2 * sc; ctx.beginPath(); ctx.moveTo(rx + 2 * sc, ry - 5 * sc); ctx.lineTo(rx + 2 * sc, ry + 5 * sc); ctx.stroke(); ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 1.5 * sc; ctx.beginPath(); ctx.moveTo(rx + 12 * sc, ry - 4 * sc); ctx.lineTo(rx + 8 * sc, ry + 6 * sc); ctx.stroke(); }
   } else {
-    // 목검 걸이 (기술 수만큼, 오른쪽 아래): 세워 둔 목검들
-    const sk = skillsOf(g).length;
-    for (let i = 0; i < sk; i++) { const bx = r.w - 50 * sc - i * 6 * sc, by = r.h - 7; ctx.strokeStyle = wood; ctx.lineWidth = 2.2 * sc; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 3 * sc, by - 22 * sc); ctx.stroke(); ctx.lineWidth = 1.6 * sc; ctx.beginPath(); ctx.moveTo(bx + 0.4 * sc - 3 * sc, by - 4 * sc); ctx.lineTo(bx + 0.4 * sc + 3.5 * sc, by - 5 * sc); ctx.stroke(); }
     // 지팡이 (독토르): 왼쪽 벽에 기대 세움
     if (g.status === 'doctor') { ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 2.4 * sc; ctx.beginPath(); ctx.moveTo(10 * sc, r.h - 7); ctx.lineTo(14 * sc, r.h - 7 - 34 * sc); ctx.stroke(); }
     // 붕대 (부상): 바닥의 붕대 뭉치(핏자국) + 벽에 기댄 목발

@@ -1,18 +1,18 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable, trainCap } from '../core/game.js';
-import { learnSkill, skillsOf } from '../core/skills.js';
+import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, pickTrainStat, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee } from '../core/game.js';
 import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
 import { upkeepOf, type Facility } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
-import { computeSynergies, describeSynergies } from '../core/synergy.js';
+import { countTraits, TYPE_TRAITS } from '../core/traits.js';
+import { isClassicPair } from '../core/classic.js';
 
 export type Bot = (st: GameState, onFight?: (r: FightReport) => void) => void;
 
 function power(g: Gladiator) { return g.base.hp / 10 + g.base.atk + g.base.def + g.wins * 2; }
 
-function pickTeam(st: GameState, c: Contract, strategy: 'strong' | 'synergy'): Gladiator[] | null {
+function pickTeam(st: GameState, c: Contract): Gladiator[] | null {
   const pool = available(st).filter(g => (g.fatigue ?? 0) < 2); // 피로 2 이상은 쉬게 한다
   if (pool.length < c.size) return null;
   const scoreOf = (g: Gladiator) => {
@@ -24,22 +24,31 @@ function pickTeam(st: GameState, c: Contract, strategy: 'strong' | 'synergy'): G
   const vets = sorted.filter(g => g.rank === 'veteranus');
   if (vets.length < c.needVeterans) return null;
   const team: Gladiator[] = [];
-  for (const v of vets.slice(0, c.needVeterans)) team.push(v);
-  for (const g of sorted) { if (team.length >= c.size) break; if (!team.includes(g)) team.push(g); }
+  if (c.classic) { // 정식 대결: 상대마다 짝이 되는 유형을, 센 순서로 (베테라누스 요건은 validTeam 이 거른다)
+    const rest = [...sorted]; for (const e of c.enemy) { const k = rest.findIndex(g => isClassicPair(g.type, e.type)); if (k < 0) return null; team.push(rest[k]); rest.splice(k, 1); }
+  } else {
+    for (const v of vets.slice(0, c.needVeterans)) team.push(v);
+    if (c.size >= 2) { // 2인 이상: 센 후보 6명 안에서 전력 합 + 같은 특성 보너스(둘째 사람부터 한 명당 +6)가 가장 큰 조합 — 특성은 편성에서 센다 (2026-09-18)
+      const cand = sorted.filter(g => !team.includes(g)).slice(0, 6); let best: Gladiator[] | null = null, bs = -Infinity;
+      const rec = (start: number, cur: Gladiator[]) => { if (team.length + cur.length === c.size) { const all = [...team, ...cur]; const cnt = countTraits(all).trait; const mx = Math.max(...Object.values(cnt)); const sc = all.reduce((a, g) => a + scoreOf(g), 0) + (mx - 1) * 6; if (sc > bs) { bs = sc; best = [...cur]; } return; } for (let i = start; i < cand.length; i++) { cur.push(cand[i]); rec(i + 1, cur); cur.pop(); } };
+      rec(0, []); if (best) team.push(...(best as Gladiator[]));
+    }
+    for (const g of sorted) { if (team.length >= c.size) break; if (!team.includes(g)) team.push(g); }
+  }
   // 상대가 확연히 강하면 받지 않는다 (밸런스 시뮬용: 실제 플레이어는 공개 정보로 가늠)
   const mine = team.reduce((a, g) => a + power(g), 0) / team.length, theirs = c.enemy.reduce((a, g) => a + power(g), 0) / c.enemy.length;
   if (mine < theirs * 0.7) return null;
-  if (strategy === 'synergy' && team.length >= 2) { // 시너지가 더 많이 나오는 조합으로 교체 시도
-    for (const g of sorted) { if (team.includes(g)) continue; for (let k = team.length - 1; k >= 0; k--) { const alt = [...team]; alt[k] = g; if (describeSynergies(computeSynergies(alt)).length > describeSynergies(computeSynergies(team)).length && !validTeam(st, c, alt)) { team.splice(0, team.length, ...alt); break; } } }
-  }
   return validTeam(st, c, team) ? null : team;
 }
 
-function buyPolicy(st: GameState, mode: 'cheap' | 'vets' | 'balanced', reserve: number) {
-  const list = [...st.market].sort((a, b) => mode === 'cheap' ? a.buyPrice - b.buyPrice : mode === 'vets' ? b.buyPrice - a.buyPrice : power(b) / b.buyPrice - power(a) / a.buyPrice);
+// 특성 몰기: 파밀리아에서 이미 가장 많은 특성에 합류하는 매물을 먼저 산다 (특성은 로스터에서 세므로 구매가 곧 특성 단계 — docs/08 R4)
+function traitScore(st: GameState, g: Gladiator) { const c = countTraits(st.roster); return TYPE_TRAITS[g.type].reduce((a, t) => a + c.trait[t], 0) + c.lineage[g.lineage]; }
+function buyPolicy(st: GameState, mode: 'cheap' | 'vets' | 'balanced' | 'trait', reserve: number, cap = 6) {
+  if (mode === 'trait' && st.roster.length < Math.min(cap, rosterCap(st)) && st.money - CONFIG.market.reroll.cost >= reserve + 3000) { const c = countTraits(st.roster).trait; const top = (Object.keys(c) as (keyof typeof c)[]).sort((a, b) => c[b] - c[a])[0]; if (!st.market.some(g => TYPE_TRAITS[g.type].includes(top) && st.money - g.buyPrice >= reserve)) rerollMarket(st); } // 특성 몰기: 판매대에 우리가 가장 많이 모은 특성이 없으면 상인을 다시 부른다 (2026-09-18 3단계)
+  const list = [...st.market].sort((a, b) => mode === 'cheap' ? a.buyPrice - b.buyPrice : mode === 'vets' ? b.buyPrice - a.buyPrice : mode === 'trait' ? (traitScore(st, b) - traitScore(st, a)) || (power(b) / b.buyPrice - power(a) / a.buyPrice) : power(b) / b.buyPrice - power(a) / a.buyPrice);
   for (const g of list) {
     if (mode === 'vets' && g.rank !== 'veteranus' && available(st).length >= 3) continue;
-    if (st.roster.length >= Math.min(6, rosterCap(st))) break;
+    if (st.roster.length >= Math.min(cap, rosterCap(st))) break;
     if (st.money - g.buyPrice < reserve) continue;
     if (canBuy(st, g)) buy(st, g);
   }
@@ -59,25 +68,28 @@ function upgradePolicy(st: GameState, reserve: number) {
 }
 function healAll(st: GameState) { for (const g of st.roster) if (g.injured > 0 && st.money > CONFIG.healCost + 2000) heal(st, g); }
 
-function makeBot(buyMode: 'cheap' | 'vets' | 'balanced', team: 'strong' | 'synergy', accept: (c: Contract) => boolean): Bot {
+function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: Contract) => boolean, cellsTo = 6): Bot { // cellsTo: 켈라를 몇 칸까지 늘리나 (특성 몰기는 15 — 6명 3단계를 보려고)
   return (st, onFight) => {
     while (!st.over && st.season <= CONFIG.simSeasons) { // 시즌 제한이 없으므로 시뮬은 고정 길이
       const reserve = st.roster.length * CONFIG.upkeepPerGladiator * 2;
-      { const c = upgradeCost(st, 'cells'); if (c != null && st.roster.length >= rosterCap(st) && rosterCap(st) < 6 && st.money > c + reserve + 4000) upgrade(st, 'cells'); } // 감방이 차면 증축
+      { const c = upgradeCost(st, 'cells'); if (c != null && st.roster.length >= rosterCap(st) && rosterCap(st) < cellsTo && st.money > c + reserve + 4000) upgrade(st, 'cells'); } // 감방이 차면 증축
       upgradePolicy(st, reserve); // 남는 돈은 시설로 (사람 플레이어처럼): 팔루스 → 의술 → 숙소 질 → 조리장 → 침상 → 약재 → 훈련 시설
-      buyPolicy(st, buyMode, reserve);
+      buyPolicy(st, buyMode, reserve, cellsTo);
       healAll(st);
-      { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 기술을 배울 조건이면 기술, 아니면 낮은 능력치
-        if (skillTrainable(st, g)) { const r = doSkillTrain(st, g); if (r?.ok) learnSkill(g, r.id, skillsOf(g)[0]); } else train(st, g, g.base.atk <= g.base.def ? 'atk' : 'def'); slots--; } }
-      const cs = [...st.contracts].sort((a, b) => b.tier - a.tier);
-      let fought = false;
+      { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 낮은 능력치를 단련
+        train(st, g, pickTrainStat(st.rng, g)); slots--; } }
+      { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || !canSendChallenge(st, rv) || st.money < challengeFee(st, rv) + reserve) continue; if (best >= power(star) * 1.05) { sendChallenge(st, rv); break; } } } // 도전을 건다: 우리 으뜸이 간판보다 5% 세면 (시즌당 하나)
+      for (const c of [...st.pendingChallenges]) { const rv = rivalOf(st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined; const best = Math.max(0, ...available(st).map(power)); if (star && best >= power(star) * 0.9 && !acceptChallenge(st, c)) continue; declineChallenge(st, c); } // 도전장: 우리 으뜸이 간판의 90% 이상이면 받는다
+      const cs = [...st.contracts].sort((a, b) => (b.challenge ? 1 : 0) - (a.challenge ? 1 : 0) || b.tier - a.tier); // 도전 계약부터 (받았으면 반드시 세운다)
+      let fought = false; const fightedIds = new Set<number>();
       for (const c of cs) {
         if (!accept(c)) continue;
-        const t = pickTeam(st, c, team);
+        const t = pickTeam(st, c);
         if (!t) continue;
         if (HOST[c.host].bet) { const mine = t.reduce((a, g) => a + power(g), 0) / t.length, theirs = c.enemy.reduce((a, g) => a + power(g), 0) / c.enemy.length; c.bet = mine > theirs * 1.15; } // 우세하면 내기를 받는다
-        const r = fight(st, c, t); onFight?.(r); fought = true; // 검투사는 시즌당 1회 출전이므로 사실상 인원이 허락하는 만큼
+        const r = fight(st, c, t); onFight?.(r); fought = true; fightedIds.add(c.id); // 검투사는 시즌당 1회 출전이므로 사실상 인원이 허락하는 만큼
       }
+      forfeitChallenges(st, st.contracts.filter(c => c.challenge && !fightedIds.has(c.id))); // 받아 놓고 못 세운 도전은 벌을 받는다
       if (!fought) refuseAll(st);
       endSeason(st);
     }
@@ -85,9 +97,10 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced', team: 'strong' | 'syner
 }
 
 export const BOTS: Record<string, Bot> = {
-  '싼놈모으기': makeBot('cheap', 'strong', () => true),
-  '베테만': makeBot('vets', 'strong', () => true),
-  '가성비+시너지': makeBot('balanced', 'synergy', () => true),
-  '안전제일(등급1만)': makeBot('balanced', 'synergy', c => c.tier === 1 && c.host !== 'mourner'),
-  '피계약만': makeBot('cheap', 'strong', c => c.host === 'mourner'),
+  '싼놈모으기': makeBot('cheap', () => true),
+  '베테만': makeBot('vets', () => true),
+  '가성비': makeBot('balanced', () => true), // (구) 가성비+시너지 — 시너지는 2026-09-18 특성으로 바뀌어 편성 조합이 아니라 구매의 문제가 됐다
+  '특성몰기(15칸)': makeBot('trait', () => true, 15), // 같은 특성을 사 모으고 켈라를 15칸까지 — 특성 2·3단계를 재는 봇
+  '안전제일(등급1만)': makeBot('balanced', c => c.tier === 1 && c.host !== 'mourner'),
+  '피계약만': makeBot('cheap', c => c.host === 'mourner'),
 };

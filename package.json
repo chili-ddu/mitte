@@ -12,9 +12,12 @@
     "curve": "tsx src/cli/curve.ts",
     "test": "node --import tsx --test src/core/*.test.ts",
     "matrix": "tsx src/cli/matrix.ts",
+    "traits:gain": "tsx src/cli/traits-gain.ts",
+    "stat:worth": "tsx src/cli/stat-worth.ts",
+    "growth": "tsx src/cli/growth.ts",
     "dev": "vite --host",
     "build:watch": "vite build --watch",
-    "matchup:table": "tsx src/cli/matchup-table.ts 600 > src/core/matchup-table.ts"
+    "matchup:table": "tsx src/cli/matchup-table.ts 600 > /tmp/matchup-table.ts && mv /tmp/matchup-table.ts src/core/matchup-table.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",

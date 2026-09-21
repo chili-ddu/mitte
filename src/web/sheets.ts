@@ -1,17 +1,19 @@
 // 시트(시설·독토르·파밀리아·소식·지원자·규칙)와 대시보드 항목
 import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드 한 종류 (2026-09-17 사용자) */
 import { S } from './state.js';
-import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, healCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf } from '../core/game.js';
+import { TYPE_TRAITS, TRAIT_KO } from '../core/traits.js';
+import { basicDictataOf } from '../core/dictata.js';
+import { COMPARE_KO } from '../core/rivals.js';
+import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, healCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollMarket, canReroll, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge } from '../core/game.js';
 import { type Gladiator } from '../core/types.js';
-import { LINEAGE_KO, TYPE_KO } from '../core/gladiator.js';
+import { LINEAGE_KO, TYPE_KO, TYPES } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
-import { SKILLS, SKILL_NAME, skillsOf } from '../core/skills.js';
 import { EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
 import { setSoundEnabled, sfx, soundEnabled, unlockAudio } from './sound.js';
 import { rivalDef } from '../core/rivals.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { View, clearSave, render } from './main.js';
-import { ask, h, helpBtn, hintSpan, sq, tell } from './dom.js';
+import { ask, h, helpBtn, hintSpan, sq, tell, toast } from './dom.js';
 import { gladRow, gladSheet } from './detail.js';
 import { cellPanel } from './cells.js';
 import { TYPE_COLOR, glyphSvg, portrait } from './portrait.js';
@@ -22,7 +24,7 @@ function closeSheet() {
   ov.classList.add('closing'); window.setTimeout(() => { S.sheet = null; render(); }, 300);
 }
 export function renderSheetBody(): (Node | null)[] {
-  return S.sheet === 'help' ? [h('h2', {}, '시너지 · 규칙'), renderHelp()]
+  return S.sheet === 'help' ? [h('h2', {}, '특성 · 규칙'), renderHelp()]
     : S.sheet === 'glad' ? [gladSheet()]
     : S.sheet === 'facilities' ? [facilitiesPanel()]
     : S.sheet === 'doctors' ? [doctorsPanel()]
@@ -60,7 +62,6 @@ function doctorsPanel(): Node {
     return gladCard(d, { size: CARD_PORTRAIT, cls: 'full',
       nameExtra: [], /* '독토르' 칩은 뺐다 — 시트 제목이 이미 말하고 초상이 훈련 막대를 들었다 (2026-09-17 사용자) */
       rows: [h('span', {}, `${TYPE_KO[d.type]} · ${d.age ?? '?'}세 · 기준 공 ${d.base.atk} · 방 ${d.base.def} · 급료 ${CONFIG.doctorSalary}/시즌`),
-        h('span', {}, `가르칠 기술: ${skillsOf(d).length ? skillsOf(d).map(SKILL_NAME).join('·') : '없음 (현역 때 익힌 기술이 없다)'}`),
         h('span', {}, pupils.length ? '제자: ' + pupils.map(g => `${g.name} (공 +${trainGain(S.st, g, 'atk') - 1 - gymBonus(S.st)}·방 +${trainGain(S.st, g, 'def') - 1 - gymBonus(S.st)})`).join(', ') : `같은 유형(${TYPE_KO[d.type]}) 제자가 없습니다`)],
       acts: [h('button', { onclick: () => { backToArena(S.st, d); render(); } }, '다시 출전'),
         h('button', { onclick: () => { void ask(`${d.name} 을(를) 루두스에서 내보냅니까?`, { ok: '내보내기' }).then(ok => { if (ok) { release(S.st, d); render(); } }); } }, '내보내기')] }); };
@@ -83,7 +84,7 @@ function chroniclePanel(): Node {
   const lanistas = [...(S.st.lineageLog ?? []).map(l => h('div', { class: 'drow' }, h('span', { class: 'meta' }, '⚖'), ' ', h('span', {}, l))), h('div', { class: 'drow sel' }, h('span', { class: 'meta' }, '⚖'), ' ', h('b', {}, S.st.lanista.name), h('span', { class: 'meta' }, ` ${S.st.lanista.age}세 · ${S.st.lanista.since}번째 시즌부터 · ${S.st.lanista.trait === 'doctor' ? '전직 독토르' : S.st.lanista.trait === 'freedman' ? '해방노예' : '창업자'}`))];
   return h('div', { class: 'panel' }, h('h2', {}, '연대기', helpBtn('연대기', '루두스의 역사입니다. 역대 라니스타는 은퇴·사망으로 물려준 순서, 명예의 전당은 루디스(나무 검)로 자유를 얻은 검투사, 묘비는 경기장에서 죽은 검투사입니다. 폼페이 낙서와 묘비처럼 이름·전적·별칭이 남습니다.')),
     sec('역대 라니스타', `${(S.st.lineageLog?.length ?? 0) + 1}대`, lanistas),
-    sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; }), ...(e.skills ?? []).map(id => h('span', { class: 'badge skill', style: 'margin-left:4px' }, SKILL_NAME(id)))))),
+    sec('명예의 전당', `루디스 ${hall.length}`, hall.map(e => h('div', { class: 'drow' }, sq(e.type), ' ', h('b', {}, e.name), h('span', { class: 'meta' }, ` ${TYPE_KO[e.type]} · ${e.wins}승/${e.fights}전 · 명예 ${e.honor} · ${seasonName(e.season)}${e.how === 'damnatus' ? ' · 형기 만료' : e.how === 'refused' ? ' · 루디스 거절' : ''}`), ...e.epithets.map(id => { const ep = EPITHET_BY_ID[id as EpithetId]; return ep ? h('span', { class: 'badge epithet', style: 'margin-left:4px' }, ep.name) : null; })))),
     sec('묘비', `${dead.length}명`, dead.map(g => h('div', { class: 'drow' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전${g.age ? ` · ${g.age}세` : ''} — 관중은 침묵했다`)))),
     sec('연혁', `특별한 일 ${log.length}건`, log.map(l => h('div', { class: 'meta', style: 'padding:2px 0' }, l))));
 }
@@ -91,7 +92,7 @@ function menuPanel(): Node {
   return h('div', {}, h('div', { class: 'menulist' },
     canRetire(S.st) && !S.st.pendingSuccession && S.phase === 'manage' ? h('button', { title: `${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발적으로 물러나 후계자에게 넘길 수 있습니다`, onclick: () => { void ask(`${S.st.lanista.name} (${S.st.lanista.age}세) 이(가) 은퇴하고 후계자를 정합니까?`, { ok: '은퇴' }).then(ok => { if (ok) { S.sheet = null; retire(S.st); render(); } }); } }, `은퇴 (${S.st.lanista.age}세, 후계자에게 넘김)`) : null,
     h('label', { class: 'toggle' }, h('span', { class: 'grow' }, '효과음'), h('input', { type: 'checkbox', checked: soundEnabled() ? 'checked' : undefined, onchange: (e: Event) => { setSoundEnabled((e.target as HTMLInputElement).checked); if (soundEnabled()) { unlockAudio(); sfx.coin(); } render(); } }), h('span', { class: 'knob' })), // 켜짐/꺼짐이 한눈에 보이는 스위치
-    h('button', { onclick: () => { S.sheet = 'help'; render(); } }, '시너지 · 규칙'),
+    h('button', { onclick: () => { S.sheet = 'help'; render(); } }, '특성 · 규칙'),
     h('button', { onclick: () => { // 저장을 파일로 내려받기 (다른 기기·브라우저에서 이어가기)
       const blob = new Blob([JSON.stringify(serialize(S.st))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mitte-save-${S.st.lanista.name.split(' ').pop()}-${S.st.season}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } }, '저장 파일로 내려받기'),
     h('button', { onclick: () => { const inp = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
@@ -145,6 +146,8 @@ function rivalsPanel(): Node {
           h('div', { class: 'rvinfo' }, /* 왼쪽: 파밀리아 정보 (2026-09-17 사용자) */
             h('div', { class: 'rvname' }, h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}`, title: rivalDef(rv)?.desc ?? '' }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), inContracts ? h('span', { class: 'badge revenge' }, `이번 시즌 계약 ${inContracts}`) : null),
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
+            (() => { const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const mood = rv.mood ?? 0; return h('div', { class: `meta rvmood ${cmp}` }, h('b', {}, COMPARE_KO[cmp]), h('span', { class: 'flames', title: `기세 ${mood > 0 ? '+' : ''}${mood}: 이기면 오르고 간판이 죽으면 떨어진다. 높을수록 큰 도전장을 낸다` }, ' ' + (mood > 0 ? '🔥'.repeat(mood) : mood < 0 ? '🌫'.repeat(-mood) : '—')), rv.refused ? h('span', { class: 'hint' }, ` · 우리가 피한 도전 ${rv.refused}`) : null); })(), /* 세다/비슷/약하다 + 기세 (docs/10) */
+            S.phase === 'manage' ? (() => { const ok = canSendChallenge(S.st, rv); const fee = challengeFee(S.st, rv); const already = S.st.contracts.find(c => c.challenge && c.rivalId === rv.id); return h('div', { class: 'meta' }, already ? h('span', { class: 'hint' }, `이번 시즌 ${already.challenge === 'out' ? '우리가 건 도전' : '그들의 도전장'} — ${already.venue}`) : h('button', { class: 'small', disabled: !ok, title: S.st.challengeSent != null ? '이번 시즌 도전장은 하나뿐' : `섭외비 ${fee.toLocaleString()} HS. 상대가 받으면 간판이 나온다 — 우리 전력에 맞추지 않는다. 받아 놓고 안 나가면 기세 +2·호감도 −2`, onclick: () => { const r = sendChallenge(S.st, rv); sfx.coin(); toast(r.text, r.accepted ? 'good' : undefined); render(); } }, `도전장을 보낸다 ${fee.toLocaleString()}`)); })() : null,
             h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`)))),
           h('div', { class: `rvstar${named ? '' : ' none'}` }, /* 오른쪽: 간판 검투사 카드 */
             h('div', { class: 'rvcap' }, '간판 검투사'),
@@ -152,37 +155,33 @@ function rivalsPanel(): Node {
               : h('div', { class: 'meta rvempty' }, '아직 이름난 검투사가 없다')));
         })));
 }
-// ── 도움말: 장비 규칙 + 시너지 효과 + 전투·미시오·경제 규칙 (상성은 제거됨) (수치는 config/equipment/synergy 와 동기화)
+// ── 도움말: 장비 규칙 + 특성 효과 + 전투·미시오·경제 규칙 (상성은 제거됨) (수치는 config/equipment/synergy 와 동기화)
 function renderHelp(): Node {
   const row = (title: string, body: string) => h('div', { class: 'hrow' }, h('b', {}, title), h('span', {}, body));
   const sec = (title: string, ...kids: (Node | null)[]) => h('div', { class: 'hsec' }, h('h3', {}, title), ...kids);
   const M = CONFIG.missio;
   return h('div', { class: 'help' },
-    sec('장비 (유형 = 장비 실루엣)',
-      row('무르밀로', '글라디우스 + 큰 방패(스쿠툼). 첫 타격을 반으로 막는다. 신중하게 접근.'),
-      row('세쿠토르', '글라디우스 + 큰 방패 + 매끈한 투구. 첫 타격 반감, 치명타를 30% 덜 맞음. 공격적으로 추격.'),
-      row('트라엑스', '시카(곡도) + 작은 방패(파르물라). 시카는 방패 너머로 찍어 상대 방어 30%를 무시. 견제하며 접근.'),
-      row('레티아리우스', '삼지창 + 그물. 긴 사거리로 거리를 두고 싸움. 첫 공격에 그물을 던져 1.2초 속박. 투구가 없어 치명타를 60% 더 맞음.'),
-      row('호플로마쿠스', '창 + 둥근 청동 방패(파르마) + 단검. 창의 긴 사거리로 찌르고, 둥근 방패는 첫 타격 25% 감소. 무르밀로의 전통 짝.'),
-      row('프로보카토르', '글라디우스 + 중형 방패 + 가슴판. 중형 방패 첫 타격 40% 감소, 가슴판 덕에 치명타 20% 덜 맞음. 프로보카토르끼리 붙는 것이 전통.'),
-      row('에퀘스', '창 + 둥근 방패, 챙 투구에 깃털, 튜닉 차림. 원래 말을 타고 시작하던 유형이라 빠르게 돌진해 먼저 친다. 에퀘스끼리 붙는 것이 전통.'),
-      row('디마카에루스', '시카 두 자루, 방패 없음. 연속 공격 +15%, 대신 치명타를 30% 더 맞음. 호플로마쿠스 또는 같은 디마카에루스와 짝.')),
-    sec('시너지 (같은 팀 3명 조합)',
-      row('방패벽', '큰 방패 2명 이상 → 큰 방패 든 검투사 방어 +3.'),
-      row('사냥조', '레티아리우스 + 세쿠토르 → 세쿠토르가 그물에 걸린 적을 노리고, 속박된 적에게 피해 ×1.5.'),
-      row('경중 조합', '큰 방패 + 작은 방패 → 팀 전체가 받는 피해 −8%.'),
-      row('자연 계열 ×2 / ×3', '×2: 공격 +8%. ×3: 첫 타격에 상대가 0.8초 기세에 눌린다.'),
-      row('전통 짝', `무르밀로–트라엑스, 레티아리우스–세쿠토르처럼 로마인이 좋아한 대결 조합. 내 팀과 상대가 전부 짝지어지면 승리 시 호감도 +${CONFIG.fameDelta.classicWin}, 패배 시 미시오 +${Math.round(CONFIG.missio.classic * 100)}%.`),
-      row('승리 계열 ×2 / ×3', `×2: 미시오(패자 생존) 확률 +${Math.round(M.victorySynergy * 100)}%. ×3: 시간 초과 무승부 때 승리 판정.`)),
-    sec('기술 (배워서 익히는 동작)',
-      row('배우기', `경기 경험(조건을 채우면 ${Math.round(CONFIG.skills.expChance * 100)}%)이나 편성의 '기술 훈련'(같은 유형 독토르 ${Math.round(CONFIG.skills.trainChance * 100)}%, 훈련 시설 ${CONFIG.skills.gymLevel}단계부터 독학 ${Math.round(CONFIG.skills.gymChance * 100)}%)으로 배울 기회가 생기고, 카드에서 배울지 정한다. 슬롯은 티로 1, 베테라누스 2, 프리무스 팔루스(승수 8·명예 20) 3. 상대 베테라누스도 1~2개 가진다.`),
-      row('숙련', `발동할 때마다 확률 +${Math.round(0.02 * 100)}% (최대 +15%). 독토르가 되면 아는 기술을 제자에게 가르친다.`),
-      ...SKILLS.map(sk => row(sk.name, `${sk.types === 'all' ? '공용' : sk.types.map(t => TYPE_KO[t]).join('·')} · 기본 ${Math.round(sk.base * 100)}% · ${sk.desc} (${sk.learn})`))),
+    sec('유형 (열 — 장비 수치 둘과 딕타타 셋으로 갈린다)',
+      row('갈리는 것', '능력치·속도·접근 방식 · 장비 수치 둘(사거리·막기) · 딕타타 셋 · 편성 특성 · 계보. 투구·받아넘기기·방패 닳음·다리 노리기·무기 놓침은 없다 (2026-09-18 docs/09).'),
+      row('접근 방식', '무르밀로·호플로마쿠스·프로보카토르는 옆걸음으로 신중하게, 세쿠토르·에퀘스·스키소르는 곧장 돌진, 트라엑스·디마카에루스는 지그재그, 레티아리우스·라쿠에아리우스는 거리를 두려 한다.'),
+      row('장비 수치', `사거리: 창·삼지창 2, 나머지 1 (사거리 2 는 ${CONFIG.gear.reach[2]}px 에서 닿는다). 막기: 큰방패 ${Math.round(CONFIG.gear.block.bigShield * 100)}% · 작은방패 ${Math.round(CONFIG.gear.block.smallShield * 100)}% · 맨몸 0% — 막으면 피해 −${Math.round(CONFIG.gear.blockCut * 100)}%. 닳지 않는다.`)),
+    sec('딕타타 (팔루스에서 익힌 규정 동작 — 주장비·보조장비·유형 하나씩, 유형이면 곧 안다)',
+      ...TYPES.map(t => row(TYPE_KO[t], basicDictataOf(t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
+    sec('특성 (편성에서 센다 — 같이 나가는 검투사 중 같은 특성이 1·2·3명이면 1·2·3단계, 그 특성을 가진 사람에게만 걸린다. 상대 팀도 똑같이)',
+      row('유형 → 특성', TYPES.map(t => `${TYPE_KO[t]}: ${TYPE_TRAITS[t].map(x => TRAIT_KO[x]).join('·')}`).join(' / ')),
+      row('큰방패', `방어 +${CONFIG.traits.bigShield.def[0]} → (자리) → +${CONFIG.traits.bigShield.def[2]} — 밀어붙이기·닳지 않음은 장비 규칙과 함께 뺐다`),
+      row('작은방패', `걸음 +${CONFIG.traits.smallShield.spd[0]} → (자리) → +${CONFIG.traits.smallShield.spd[2]}`),
+      row('맨몸', `연속 공격 +${Math.round(CONFIG.traits.bare.combo[0] * 100)}%p → +${Math.round(CONFIG.traits.bare.combo[1] * 100)}%p · 빈틈 강타 ×${CONFIG.traits.bare.open[1]} · 넘어짐 −${Math.round((1 - CONFIG.traits.bare.bound[1]) * 100)}% → +${Math.round(CONFIG.traits.bare.combo[2] * 100)}%p · ×${CONFIG.traits.bare.open[2]} · −${Math.round((1 - CONFIG.traits.bare.bound[2]) * 100)}%`),
+      row('글라디우스', `치명타 +${Math.round(CONFIG.traits.gladius.crit[0] * 100)}%p → +${Math.round(CONFIG.traits.gladius.crit[1] * 100)}%p → +${Math.round(CONFIG.traits.gladius.crit[2] * 100)}%p`),
+      row('곡도', `피해 ×${CONFIG.traits.sica.atk[0]} → ×${CONFIG.traits.sica.atk[1]} → ×${CONFIG.traits.sica.atk[2]}`),
+      row('창', `돌진 ×${CONFIG.traits.spear.charge[0]} → ×${CONFIG.traits.spear.charge[1]} → ×${CONFIG.traits.spear.charge[2]} (자리표시 — 사거리가 돌아오면 바뀐다)`),
+      row('계보 (이름의 갈래, 같은 계보가 모이면)', `자연: 공격 +${Math.round((CONFIG.traits.nature.atk[0] - 1) * 100)}% → 첫 공격에 붙듦 → +${Math.round((CONFIG.traits.nature.atk[2] - 1) * 100)}% / 승리: 30% 아래 받는 피해 −${Math.round(CONFIG.traits.victory.lowCut[0] * 100)}% → 15% 아래 상대에 ×${CONFIG.traits.victory.finish[1]} → −${Math.round(CONFIG.traits.victory.lowCut[2] * 100)}% / 신화: 돌진 ×${CONFIG.traits.myth.charge[0]} → 치명타 배율 ×${CONFIG.traits.myth.critMult[1]} → 돌진 ×${CONFIG.traits.myth.charge[2]} / 별명: 헛디딤 ×${CONFIG.traits.nickname.stumble[0]} → ×${CONFIG.traits.nickname.stumble[1]} → ×${CONFIG.traits.nickname.stumble[2]} / 지명: 숨 +${CONFIG.traits.place.staminaMax[0]} → 지침 문턱 ${CONFIG.traits.place.windedAt[0]}→${CONFIG.traits.place.windedAt[1]} → 숨 회복 ×${CONFIG.traits.place.regen[2]}`),
+      row('정식 대결', `무르밀로–트라엑스, 레티아리우스–세쿠토르처럼 로마인이 좋아한 짝. 주최자가 짝을 주문한 계약('정식 대결' 칩)에서는 상대마다 짝이 되는 유형을 세워야 성립한다 — 못 세우면 그 계약은 나가지 못하지만 벌점은 없다. 성립하면 상금 ×${CONFIG.classicContract.prize}, 승리 시 호감도 +${CONFIG.fameDelta.classicWin}, 패배 시 미시오 +${Math.round(CONFIG.missio.classic * 100)}%, 명예 +${CONFIG.honor.classic}.`)),
     sec('전투',
       row('연속 공격', `${Math.round(CONFIG.combo.base * 100)}% + 속도×${CONFIG.combo.perSpd * 100}% 로 한 번 더 친다.`),
       row('치명타', `${Math.round(CONFIG.crit.base * 100)}% + 속도×${CONFIG.crit.perSpd * 100}% (투구 보정). 피해 ×${CONFIG.crit.mult}, 방패 반감 무시.`),
       row('돌진', '멀리서 달려들어 치면 피해 ×1.15.'),
-      row('시간 초과', '60초가 지나면 무승부 (승리 ×3 시너지가 있으면 승리).')),
+      row('시간 초과', '60초가 지나면 무승부.')),
     sec('미시오 (패자의 목숨)',
       row('기본', `${Math.round(M.base * 100)}% + 호감도×${M.perFame * 100}% + 승수×${M.perWin * 100}% (최대 ${M.maxWins}승).`),
       row('주최자', `성격에 따라 상금·대여료·미시오·루디스가 다르다 (아래 '주최자' 절). 등급 1 경기 +${Math.round(M.tierBonus[1] * 100)}%, 등급 2 +${Math.round(M.tierBonus[2] * 100)}% (지방 주최자는 사망 배상을 꺼려 살려 주는 편).`),
@@ -221,6 +220,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   if (view === 'market') {
     const g = S.st.market.find(x => x.id === S.marketSel);
     const out: Node[] = [h('h3', {}, '노예 시장', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `매물 ${S.st.market.length}명 · 보유 ${S.st.money.toLocaleString()} HS`))];
+    const rr = rerollsLeft(S.st); out.push(item(rr > 0 ? 'idle' : 'warn', rr > 0 ? `상인을 다시 부를 수 있습니다 (이번 시즌 ${rr}번)` : '이번 시즌은 상인을 더 부를 수 없습니다', rr > 0 ? h('button', { disabled: !canReroll(S.st), title: '노예 상인은 떠돌았고, 사람을 보내 다른 상인을 불러올 수 있었다', onclick: () => { if (rerollMarket(S.st)) { sfx.coin(); S.marketSel = null; S.detail = null; toast(`상인을 다시 불렀다 — 매물 ${S.st.market.length}명`); render(); } } }, `다시 부른다 ${CONFIG.market.reroll.cost.toLocaleString()}`) : null)); /* 2026-09-18 3단계: 리로드 */
     if (!S.st.market.length) return [...out, item('idle', '이번 시즌 매물이 없습니다.')];
     const full = S.st.roster.length >= rosterCap(S.st);
     if (full) out.push(item('warn', `켈라이 가득 찼습니다 (${S.st.roster.length}/${rosterCap(S.st)}). 루두스에서 켈라을 증축하거나 검투사를 매각해야 살 수 있습니다.`));
@@ -228,7 +228,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
     if (g) { // 고른 매물의 자세한 정보 (목록은 없다: 위 판매대의 검투사를 눌러 고른다)
       const price = priceOf(S.st, g);
       out.push(gladRow(g, [h('button', { class: 'primary', disabled: S.st.money < price || full, onclick: () => { if (buy(S.st, g)) { sfx.coin(); S.marketSel = null; S.detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
-      out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 속도 ${g.base.spd} · 사거리 ${g.base.range}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
+      out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 손놀림 ${g.base.hand} · 걸음 ${g.base.spd}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
       if (S.st.money < price) out.push(item('warn', `자금이 ${(price - S.st.money).toLocaleString()} HS 부족합니다.`));
       const idx = S.st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${S.st.market.length} — 판매대의 다른 검투사를 누르면 바꿔 본다`));
     } else out.push(h('div', { class: 'card ghost' }, h('span', { class: 'hint' }, '판매대의 검투사를 누르면 자세히 보입니다')));

@@ -1,8 +1,12 @@
 // 진입점: 부트스트랩(무대·저장·초기 상태)·render() 분배·헤더 아래 서판 토글·탭 바
 import { S, TEAM_COLORS } from './state.js';
 import { sfx, unlockAudio } from './sound.js';
-import { declineSkill, isPrimusPalus, setForceProc, skillSlots, skillsOf, type SkillId } from '../core/skills.js';
-import { available, deserialize, newGame, palusTrainees, serialize, type GameState } from '../core/game.js';
+
+import { available, deserialize, newGame, palusTrainees, serialize, fight, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
+import { makeGladiator } from '../core/gladiator.js';
+import { HOSTS_BY_TIER } from '../core/hosts.js';
+import { Rng } from '../core/rng.js';
+import { renderBattle } from './battle-view.js';
 import { TYPES, TYPE_KO } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
 import { equipHandsKo } from '../core/equipment.js';
@@ -11,7 +15,7 @@ import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget, toast } 
 import { portrait, startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
-import { confirmPage, detailPage, gladSheet, skillBadges, skillOfferRows } from './detail.js';
+import { confirmPage, detailPage, gladSheet } from './detail.js';
 import { cellPanel } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
 import { renderPlan, seasonConfirmPage, seasonWarnings } from './plan.js';
@@ -39,16 +43,31 @@ document.addEventListener('pointerdown', () => unlockAudio(), { capture: true })
 const SAVE_KEY = 'lanista-save';
 export const DEBUG = /[?&]debug/.test(location.search); // 테스트용 버튼(건너뛰기·결과 보기) 표시
  // 테스트용 버튼(건너뛰기·결과 보기) 표시
-if (DEBUG && /[?&]proc/.test(location.search)) setForceProc(true); // ?debug&proc: 기술이 조건만 맞으면 반드시 발동 (연출 확인용)
- // ?debug&proc: 기술이 조건만 맞으면 반드시 발동 (연출 확인용)
 function loadSave(): GameState | null { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? deserialize(JSON.parse(raw)) : null; } catch { return null; } }
-export function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(S.st))); } catch { /* 저장 불가 환경 */ } }
+export function save() { if (FIGHT_PARAM) return; /* 디버그 전투는 저장을 건드리지 않는다 */ try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize(S.st))); } catch { /* 저장 불가 환경 */ } }
 export function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
 const saved = loadSave();
 S.st = saved ?? newGame(Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000));
 S.resumed = !!saved;
 S.showIntro = !saved && localStorage.getItem('lanista-intro') !== '1';
 S.coachOff = localStorage.getItem('lanista-coach') === '1'; // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
+// ── 전투 장면 디버그 (2026-09-19 사용자): ?debug&fight=우리:상대 — 유형을 쉼표로, '?' 는 무작위. 시드는 #N. 저장을 건드리지 않고 경기 하나만 굴려 바로 전투 장면으로 간다
+// 예: ?debug&fight=eques,retiarius:murmillo,thraex#42 · ?debug&fight=?:?  결과 화면에서 '다시 (시드 +1)' 로 반복
+export const FIGHT_PARAM = DEBUG ? new URLSearchParams(location.search).get('fight') : null;
+export const DEBUG_SEED = () => Number(location.hash.slice(1)) || 1;
+export function debugFight(spec: string) {
+  const seed = DEBUG_SEED(); const rng = new Rng(seed * 7919 + 1);
+  const parse = (s: string): GType[] => s.split(',').map(x => x.trim()).filter(Boolean).map(x => (x === '?' ? rng.pick(TYPES) : x) as GType).filter(t => TYPES.includes(t));
+  const [mineS, theirsS = '?'] = spec.split(':'); const mine = parse(mineS), theirs = parse(theirsS);
+  if (!mine.length || !theirs.length) return false;
+  const st = newGame(seed); st.roster = mine.map((t, i) => { const g = makeGladiator(new Rng(seed * 31 + i), 'veteranus', { season: 3, type: t }); g.boughtSeason = 1; return g; });
+  const enemy = theirs.map((t, i) => makeGladiator(new Rng(seed * 53 + i), 'veteranus', { season: 3, type: t }));
+  const size = Math.min(3, Math.max(mine.length, theirs.length)) as 1 | 2 | 3;
+  const c = { id: 9999, tier: 1 as const, venue: '디버그 경기장', host: HOSTS_BY_TIER[1][0], needVeterans: 0, size, enemy, enemyPreview: enemy.map(e => e.type), accepted: [] as never[] };
+  st.contracts = [c]; S.st = st; S.resumed = false; S.showIntro = false; S.setup = null; S.assign = {}; S.trainPlan = {};
+  S.queue = []; S.seasonReports = []; S.skipped = [];
+  S.report = fight(st, c, st.roster); S.seasonReports.push(S.report); S.phase = 'battle'; return true;
+}
  // 첫 실행: 제목 화면 (관중 함성과 함께)
 S.phase = 'manage';
 // 편성: 계약별 배정, 미배정 검투사의 훈련 선택
@@ -146,23 +165,16 @@ function renderScreen() {
     let h2: Element | null = null; for (const n of [...nodes].reverse()) { if (n instanceof HTMLElement) { h2 = n.tagName === 'H2' ? n : n.querySelector('h2'); if (h2) break; } }
     app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.sheet = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
   } else if (S.sheet) app.append(renderSheet());
-  if (S.phase === 'manage' && !S.showIntro && !S.st.pendingSuccession) { // 새 기술 깨침: 루두스로 돌아오면 배울지 정한다 (배우기/넘기기 중 하나로 끝낸다)
-    const learners = S.st.roster.filter(g => (g.skillOffers ?? []).length);
-    if (learners.length) { // 한 명씩 보여주고 ◀ ▶ 로 넘긴다
-      S.offerPage = Math.max(0, Math.min(S.offerPage, learners.length - 1)); const g = learners[S.offerPage];
-      app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal offers' },
-        h('h2', {}, '새 기술을 깨쳤다', helpBtn('기술 배우기', '경기 경험이나 기술 훈련으로 깨친 기술입니다. 배우면 슬롯을 하나 쓰고(티로 1 · 베테라누스 2 · 프리무스 팔루스 3), 슬롯이 차 있으면 배운 기술 중 버릴 것을 골라 바꿉니다. 넘기면 이 기회는 사라지지만 나중에 다시 깨칠 수 있습니다.')),
-        h('div', { class: 'offerbox' }, gladCard(g, { size: CARD_PORTRAIT, cls: 'full', /* 공통 검투사 카드 (2026-09-17 사용자) */
-          nameExtra: [h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스'}`)],
-          rows: [h('span', {}, `배운 기술 ${skillsOf(g).length}/${skillSlots(g)}: `, ...(skillsOf(g).length ? skillBadges(g) : ['없음']))] }),
-          ...skillOfferRows(g, render, { noDecline: true })),
-        h('div', { class: 'actions pager' },
-          h('button', { disabled: S.offerPage <= 0, onclick: () => { S.offerPage--; render(); } }, '◀'),
-          h('span', { class: 'meta' }, `${S.offerPage + 1} / ${learners.length}`),
-          h('button', { disabled: S.offerPage >= learners.length - 1, onclick: () => { S.offerPage++; render(); } }, '▶'),
-          h('span', { style: 'flex:1' }),
-          h('button', { onclick: () => { for (const id of [...(g.skillOffers ?? [])]) declineSkill(g, id as SkillId); render(); } }, '넘기기'))))); // 넘기기는 페이징 줄 오른쪽: 이 검투사의 제안을 모두 넘긴다. 여기서 끝낸다 (켈라에서 다시 정하지 않는다)
-    }
+  if (S.phase === 'manage' && !S.showIntro && !S.setup && !S.st.pendingSuccession && S.st.pendingChallenges.length) { /* 색 고르기(설정)가 떠 있으면 그 뒤로 숨지 않게 기다린다 */ // 도전장(docs/10): 계약보다 먼저 답한다 — 수락하면 필수 배정, 거절하면 그쪽 기세 +1
+    const c = S.st.pendingChallenges[0]; const rv = rivalOf(S.st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined;
+    const cannot = (() => { const a = S.st.roster.filter(g => g.alive && g.injured === 0 && g.status !== 'doctor').length; return a < c.size ? `${c.size}명을 세울 수 없다 (출전 가능 ${a}명)` : null; })();
+    app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal challenge' },
+      h('h2', {}, '도전장이 왔다'),
+      h('p', {}, h('b', {}, rv?.name ?? '파밀리아'), `이(가) 우리를 지목했다. ${c.venue}에서 `, h('span', { style: 'white-space:nowrap' }, `${c.size}대${c.size}`), '.'),
+      h('div', { class: 'offerbox' }, ...c.enemy.map(e => gladCard(e, { enemy: true, size: CARD_PORTRAIT, cls: 'full', nameExtra: [h('span', { class: 'meta' }, e === star ? ' 간판' : '')] }))),
+      h('p', { class: 'hint' }, `상대는 그 파밀리아의 간판과 정예다 — 우리 전력에 맞추지 않는다. 이기면 상금 ×${CONFIG.challenge.prize}, 호감도 +${CONFIG.challenge.fame}. 받으면 반드시 세워야 한다. 피하면 벌점은 없지만 그들이 우리를 얕본다.`),
+      cannot ? h('p', { class: 'warn' }, cannot) : null,
+      h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: !!cannot, onclick: () => { const err = acceptChallenge(S.st, c); if (err) toast(err, 'bad'); else { sfx.drum(1); toast('도전을 받았다 — 편성에서 세운다', 'good'); } save(); render(); } }, '받는다'), h('button', { onclick: () => { declineChallenge(S.st, c); save(); render(); } }, '피한다')))));
   }
   if (S.showIntro) app.append(h('div', { class: 'overlay intro' }, h('div', { class: 'introbox' },
     h('div', { class: 'title' }, '미테!'), h('div', { class: 'sub' }, '라니스타의 길'),
@@ -281,7 +293,7 @@ S.shownTablet = false; // 서판 페이지가 떠 있는지 (특약 체크로 �
 S.seasonFrom = 'plan';
 S.seasonConfirm = false;
  S.shownSeason = false;
-render();
+if (FIGHT_PARAM && debugFight(FIGHT_PARAM)) renderBattle(); else render(); /* 디버그 전투는 상태 초기화가 끝난 뒤 굴려 바로 전투 장면으로 */ /* 디버그 전투는 상태 초기화가 끝난 뒤 굴려 바로 전투 장면으로 (S.report = null 같은 초기화에 덮이지 않게) */
 
 // ── 새 배포 확인 (홈 화면에 저장해 두면 index.html 이 캐시되어 새 판이 와도 모른다)
 // 자바스크립트·CSS 는 이름에 해시가 박혀 새 이름이면 반드시 새로 받지만, 그 이름을 알려주는 index.html 이 낡으면 영영 모른다.

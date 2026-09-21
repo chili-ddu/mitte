@@ -26,6 +26,8 @@ const TYPE_LOOK: Record<GType, { helmet: Helmet; extras: Extra[]; tunic?: boolea
   provocator:  { helmet: 'visored', extras: ['manica', 'greaves', 'pectorale'] },
   eques:       { helmet: 'plumed',  extras: ['manica'], tunic: true },
   dimachaerus: { helmet: 'smooth',  extras: ['manica', 'greaves'] },
+  scissor:     { helmet: 'smooth',  extras: ['manica', 'greaves'] }, // 세쿠토르 투구 + 왼팔 관
+  laquearius:  { helmet: 'none',    extras: ['galerus'] },           // 레티아리우스 몸 + 올가미
 };
 
 export function loadoutFor(type: GType, accessories: Accessory[] = []): Loadout {
@@ -33,4 +35,4 @@ export function loadoutFor(type: GType, accessories: Accessory[] = []): Loadout 
   return { main: eq.main, off: eq.off, helmet: look.helmet, extras: [...look.extras], accessories: [...accessories], tunic: look.tunic };
 }
 export const hasBigShield = (l: Loadout) => l.off === 'scutum';
-export const hasNet = (l: Loadout) => l.off === 'net';
+export const hasNet = (l: Loadout) => l.off === 'net' || l.off === 'lasso'; // 올가미는 그물 그림을 빌린다 (2026-09-18)

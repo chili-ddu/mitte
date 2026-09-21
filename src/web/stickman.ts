@@ -176,7 +176,7 @@ export function offhandClipFor(off: OffHand): { kind: 'guard' | 'skill'; clip: C
   switch (off) {
     case 'scutum': return { kind: 'guard', clip: 'block' };
     case 'parmula': return { kind: 'guard', clip: 'block' };
-    case 'net': return { kind: 'skill', clip: 'net_throw' };
+    case 'net': case 'lasso': return { kind: 'skill', clip: 'net_throw' };
     default: return null;
   }
 }
@@ -349,7 +349,7 @@ export function drawGearRack(ctx: CanvasRenderingContext2D, who: GType | Loadout
   const sb = shieldBottom[L.off];
   if (sb != null) { ctx.save(); ctx.translate(7, -sb - 1); ctx.rotate(-0.14); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 벽에 기대 바닥에
   else if (hasNet(L)) { peg(10, -44); ctx.save(); ctx.translate(10, -43); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 못에 걸어 늘어뜨림
-  else if (L.off === 'blade') { peg(-8, -28); peg(6, -28); ctx.save(); ctx.translate(9, -26); ctx.rotate(-Math.PI / 2 + 0.9); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 두 번째 칼도 가로로
+  else if (L.off === 'blade' || L.off === 'armblade') { peg(-8, -28); peg(6, -28); ctx.save(); ctx.translate(9, -26); ctx.rotate(-Math.PI / 2 + 0.9); drawOffhand(ctx, L, 0, 0, seed, 0, false, team); ctx.restore(); } // 두 번째 칼도 가로로
   ctx.restore();
 }
 export function drawNetOverlay(ctx: CanvasRenderingContext2D, x: number, footY: number, h: number, ink = INK, t = 0) {
@@ -444,6 +444,7 @@ function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: nu
       ctx.beginPath(); ctx.rect(-6.5, -11, 13, 21); if (team) { ctx.save(); ctx.fillStyle = team; ctx.globalAlpha *= 0.85; ctx.fill(); ctx.restore(); } ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.lineTo(6.5, -3); ctx.moveTo(0, -11); ctx.lineTo(0, 10); ctx.stroke();
       break;
+    case 'armblade': // 스키소르: 팔 관 끝의 반달 날 — 시카 그림을 빌린다
     case 'blade': // 왼손 시카: 굽은 칼을 거꾸로 쥠
       ctx.save(); ctx.rotate(-0.9); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -9); ctx.quadraticCurveTo(2, -19, 10, -23); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3.5, -1); ctx.lineTo(4, -1); ctx.stroke(); ctx.restore();
       break;

@@ -1,9 +1,9 @@
-export type GType = 'murmillo' | 'secutor' | 'thraex' | 'retiarius' | 'hoplomachus' | 'provocator' | 'eques' | 'dimachaerus';
+export type GType = 'murmillo' | 'secutor' | 'thraex' | 'retiarius' | 'hoplomachus' | 'provocator' | 'eques' | 'dimachaerus' | 'scissor' | 'laquearius'; // 2026-09-18 스키소르(아르벨라스)·라쿠에아리우스 추가 (docs/09)
 export type Lineage = 'nature' | 'victory' | 'myth' | 'nickname' | 'place';
 export type Rank = 'tiro' | 'veteranus';
 export type HostKind = 'magistrate' | 'candidate' | 'miser' | 'mourner' | 'gambler' | 'imperial'; // 지방 관리(보통) · 선거 후보 · 인색한 유지 · 장례 상주 · 도박꾼 · 황제
 
-export interface Stats { hp: number; atk: number; def: number; spd: number; range: number; }
+export interface Stats { hp: number; atk: number; def: number; spd: number; hand: number; } // spd = 걸음(유형 고정: 이동·행동 순서·그물 회피) · hand = 손놀림(자란다: 공격 간격·연속·치명타). 사거리는 클래스 장비 수치(classes.ts) — 2026-09-20 docs/09
 
 export interface Gladiator {
   id: number;
@@ -31,10 +31,6 @@ export interface Gladiator {
   talentKnown?: boolean;  // 자질이 밝혀졌는가 (첫 훈련·첫 경기 뒤). 시장에서는 알 수 없고 값에도 들어가지 않는다
   lastMissio?: boolean;   // 직전 경기에서 미시오로 살아남음 (다음 경기 승리 = 깨우침 계기)
   epithets?: string[];  // 별칭 id 목록 (core/epithets.ts)
-  skills?: string[];      // 기술 id 목록 (core/skills.ts)
-  skillMastery?: Record<string, number>; // 기술별 발동 횟수 (숙련)
-  skillOffers?: string[]; // 배울 수 있게 된 기술 (플레이어가 배울지 정한다)
-  bonded?: boolean;     // 이번 시즌 동향(지명 계보 둘) 조합으로 싸웠다 — 시즌 끝 피로 −1 뒤 지움
   streak?: number;      // 현재 연승
   injuries?: number;    // 부상 생존 횟수
   soloWins?: number;    // 동료 전멸 뒤 홀로 이긴 횟수
@@ -48,6 +44,7 @@ export interface Gladiator {
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
   revenged?: number;    // 복수 성공 횟수
+  career?: Record<string, number>; // 행동 누적 (경기마다 UnitStats 를 더한다 — 숙련 딕타타 문턱의 재료, docs/09 2-α)
   honor?: number;       // 명예(인기) 0~100: 승리·전통 짝·화관으로 오르고 패배로 조금 깎임. 미시오 생존·대여료에 반영
   status?: 'slave' | 'rudiarius' | 'doctor'; // 노예(기본) / 루디스를 받은 자유민 (급료 받고 출전) / 교관 (출전 안 함, 같은 유형 훈련 강화)
   rudisSeason?: number; // 루디스를 받은 시즌
@@ -64,6 +61,8 @@ export interface Contract {
   accepted?: ClauseId[];  // 라니스타가 서명 때 받아들인 특약
   guest?: boolean;        // 초대했던 귀족이 들고 온 계약 (이기면 사례금)
   needVeterans: number;
+  challenge?: 'in' | 'out'; // 도전 계약(docs/10): in = 파밀리아가 낸 도전장, out = 우리가 건 도전. 파밀리아가 간판·정예를 세우고 상한이 없다. 수락하면 필수 배정
+  classic?: boolean;      // 주최자가 정식 대결(전통 짝)을 주문한 계약 — 짝이 되는 유형을 세워야 성립, 상금 ×1.4 (2026-09-18 docs/08 4-6)
   powerCap?: number;      // 상대 전력 상한 (경기장 등급별). 내 편은 제한 없음. 없으면 무제한 (옛 저장)
   size: 1 | 2 | 3;        // 경기 규모: 1대1 / 2대2 / 3대3
   enemy: Gladiator[];
@@ -86,7 +85,7 @@ export interface BattleUnit {
 export interface BattleEvent {
   t: number;              // 초
   turn: number;           // 표시용(초 올림)
-  kind: 'attack' | 'bound' | 'skill' | 'stumble'; // stumble: 지쳐서 헛디딤 (공격 무산, 잠시 무방비)
+  kind: 'attack' | 'bound' | 'shove' | 'stumble' | 'dictata'; // shove: 방패 밀어붙이기 (기술 발동 이벤트는 2026-09-18 기술 개념과 함께 뺐다) // stumble: 지쳐서 헛디딤 (공격 무산, 잠시 무방비)
   actor: number;          // gladiator id
   target?: number;
   dmg?: number;
@@ -105,7 +104,8 @@ export interface BattleEvent {
   parried?: boolean;      // 무기로 받아넘김
   netMiss?: boolean;      // 그물을 던졌으나 빗나감 (그물을 잃는다)
   downed?: boolean;
-  skill?: string;         // 발동한 기술 id (kind 'skill', 또는 공격에 실린 기술)
+  riposte?: boolean;      // 되치기(막거나 받아넘긴 직후의 반격)로 실린 공격
+  dictata?: string;       // 이 타격에 실린(또는 kind 'dictata' 로 따로 일어난) 딕타타 id — 화면은 이름을 띄운다
 }
 
 // 위치 스냅샷: [id, x, y, hp]
@@ -120,8 +120,10 @@ export interface BattleResult {
   turns: number;
   log: string[];
   downed: { A: Gladiator[]; B: Gladiator[] };
-  skillUses?: Record<number, Record<string, number>>; // 검투사별 기술 발동 횟수 (숙련에 반영)
-  exp?: Record<number, { blocks: number; blockedOn: number; combos: number; comboKill: boolean; netKill: boolean; charges: number; chargeKill: boolean; lowHp: boolean; meleeKill: boolean; wonAfterBlock: boolean }>; // 경험 조건 집계
   counterWin: boolean;   // (구) 상성 우위. 상성 제거 후 항상 false
   form?: Record<number, number>; // 검투사별 그날의 몸 상태 f∈[−1,1] (표시용)
+  stats: Record<number, UnitStats>; // 검투사별 행동 누적 (숙련 딕타타 문턱의 재료)
+  mounted: Record<number, number>;  // 말을 타고 들어온 검투사가 내린 시각 (에퀘스 — 화면이 그 전까지 말을 그린다)
 }
+// 한 경기의 행동 누적 (docs/09 2-α): 경기 뒤 검투사의 경력 누적치에 더한다
+export interface UnitStats { dmgDealt: number; dmgTaken: number; blocks: number; blockedOn: number; crits: number; critsTaken: number; combos: number; charges: number; chargedOn: number; kills: number; boundKills: number; misses: number; boundTimes: number; flanked: number; rangedDmg: number; inside: number; nearAllySec: number; dictata: Record<string, number> }

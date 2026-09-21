@@ -2,14 +2,13 @@ import { drawStickman, clipSkeleton, clipLength, attackClipFor, drawNetOverlay, 
 import type { GType } from '../core/types.js';
 import { attackClipForLoadout, deathClipForWeapon, offhandClipFor, comboClipForLoadout } from './stickman.js';
 import type { Loadout } from './loadout.js';
-const TYPES: GType[] = ['murmillo', 'secutor', 'thraex', 'retiarius', 'hoplomachus', 'provocator', 'eques', 'dimachaerus'];
-const KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스' };
+import { TYPES, TYPE_KO as KO } from '../core/gladiator.js'; /* 유형 목록은 한 곳에서 (2026-09-18 유형 열) */
 const POSES: Pose[] = ['idle', 'guard', 'hit', 'bound', 'kneel_down', 'fly_back', 'sit_slump'];
 // 막기는 큰 방패 유형만 (게임 룰과 동일)
 const hasBlock = (t: GType) => t === 'murmillo' || t === 'secutor' || t === 'provocator' || t === 'hoplomachus' || t === 'eques';
 // 유형별 공격 자세 열
-const ATTACK_POSES: Record<GType, Pose[]> = { murmillo: ['stab_ready', 'stab'], secutor: ['stab_ready', 'stab', 'stab_deep'], thraex: ['windup', 'attack', 'swing'], retiarius: ['net_ready', 'net_throw', 'stab_ready', 'stab'], hoplomachus: ['stab_ready', 'stab'], provocator: ['stab_ready', 'stab'], eques: ['stab_ready', 'stab'], dimachaerus: ['windup', 'attack', 'swing'] };
-const CLIPS = (t: GType): ClipName[] => [attackClipFor(t), t === 'retiarius' ? 'net_throw' : hasBlock(t) ? 'block' : 'hit', 'die_forward', 'die_back', 'die_side'];
+const ATTACK_POSES: Record<GType, Pose[]> = { murmillo: ['stab_ready', 'stab'], secutor: ['stab_ready', 'stab', 'stab_deep'], thraex: ['windup', 'attack', 'swing'], retiarius: ['net_ready', 'net_throw', 'stab_ready', 'stab'], hoplomachus: ['stab_ready', 'stab'], provocator: ['stab_ready', 'stab'], eques: ['stab_ready', 'stab'], dimachaerus: ['windup', 'attack', 'swing'], scissor: ['stab_ready', 'stab', 'swing'], laquearius: ['net_ready', 'net_throw', 'stab_ready', 'stab'] };
+const CLIPS = (t: GType): ClipName[] => [attackClipFor(t), t === 'retiarius' || t === 'laquearius' ? 'net_throw' : hasBlock(t) ? 'block' : 'hit', 'die_forward', 'die_back', 'die_side'];
 // 조합 줄: 같은 몸에 장비만 바꾼 예. 유형이 아니라 장비가 그림과 동작을 정한다
 const COMBOS: { name: string; l: Loadout }[] = [
   { name: '오른손 창 · 왼손 큰방패 · 챙투구+흉갑 (프로보카토르 느낌)', l: { main: 'spear', off: 'scutum', helmet: 'brimmed', extras: ['pectorale', 'manica'], accessories: [] } },

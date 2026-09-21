@@ -1,19 +1,19 @@
 // 게임 진행 골든 테스트: 새 게임·시즌·저장이 시드대로 재현되는가
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, score, serialize, deserialize, endSeason, available } from './game.js';
+import { newGame, score, serialize, deserialize, endSeason, available, canReroll, rerollMarket } from './game.js';
 import { formLabel, formMod } from './gladiator.js';
 import { CONFIG } from './config.js';
 
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['마르스', 14, 3], ['오리온', 12, 7]] /* 2026-09-18 계보 다섯 + 이름 200개: 같은 시드에서 뽑히는 이름만 바뀐다 — 능력치·점수는 그대로 */);
-  assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['veteranus', 3, 4], ['veteranus', 3, 5]], '시작 검투사도 일반 검투사 — 3승 이상에 몇 패 (2026-09-17)');
-  assert.equal(+(st.formTeam ?? 0).toFixed(3), 0.871);
-  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [0.822, 0.645]);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['오리온', 13, 8], ['이아쿨라토르', 14, 2]] /* 2026-09-20 파밀리아 살림(훈련·보이지 않는 경기)이 난수를 더 쓴다 */);
+  assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['veteranus', 6, 8], ['veteranus', 5, 7]], '시작 검투사도 일반 검투사 — 3승 이상에 몇 패 (2026-09-17)');
+  assert.equal(+(st.formTeam ?? 0).toFixed(3), 0.517);
+  assert.deepEqual(st.roster.map(g => +(g.form ?? 0).toFixed(3)), [-0.048, 0.732]);
   assert.equal(st.contracts.length, 2);
-  assert.equal(score(st), 29775); // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
+  assert.equal(score(st), 32540); /* 2026-09-20 도전 계약·파밀리아 살림 */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 
@@ -51,4 +51,13 @@ test('출전 가능 명단은 부상·독토르·이번 철 출전자를 뺀다'
   assert.ok(!available(st).includes(st.roster[0]));
   st.roster[0].injured = 0; st.roster[0].fought = true;
   assert.ok(!available(st).includes(st.roster[0]));
+});
+
+test('상인을 다시 부른다 — 값을 치르고 시즌당 한 번, 판매대가 바뀐다', () => {
+  const st = newGame(21); const before = st.market.map(g => g.id); const money = st.money;
+  assert.ok(canReroll(st)); assert.ok(rerollMarket(st));
+  assert.equal(st.money, money - CONFIG.market.reroll.cost);
+  assert.notDeepEqual(st.market.map(g => g.id), before);
+  assert.equal(canReroll(st), false, '시즌당 한 번'); assert.equal(rerollMarket(st), false);
+  endSeason(st); assert.ok(canReroll(st), '새 시즌이면 다시 부를 수 있다');
 });

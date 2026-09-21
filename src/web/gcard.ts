@@ -1,7 +1,6 @@
 // 검투사 카드 한 종류. 화면마다 따로 짜던 초상 묶음을 여기로 모았다 (2026-09-17 사용자: "카드는 모두 통일")
 // 순서와 밀도는 어디서나 같다 — [초상(계급·명예) | 기술 칩] / [무기 표식 + 이름] / [전적 또는 능력치 + 덧붙임]
 import type { Gladiator, Lineage } from '../core/types.js';
-import { SKILL_BY_ID, skillSlots, skillsOf } from '../core/skills.js';
 import { h, sq } from './dom.js';
 import { CONFIG } from '../core/config.js';
 import { portrait } from './portrait.js';
@@ -74,11 +73,9 @@ const statLines = (g: Gladiator, foes: Gladiator[] = []) => { const e = effectiv
   if (rolling) rollTo(pwLine, vEl, prev!, pw, d); // 상성이 붙으면 숫자가 굴러가고 색이 서서히 물든다 /* 화살표는 줄 맨 오른쪽에 못 박는다 — 숫자가 길어져도 자리가 안 흔들린다 (2026-09-17 사용자) */ /* 오름·내림은 화살표와 글자 색으로. 화살표가 없어도 자리는 비워 둔다 (2026-09-17 사용자) */
   return [stat('ATK', e.atk, b.atk), stat('DEF', e.def, b.def),
     h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`)), pwLine]; };
-const SKILL_ROWS = 3; // 기술은 셋까지 배운다 — 자리는 늘 셋을 잡아 둬 카드 높이가 흔들리지 않게 (2026-09-17 사용자)
-const skillChips = (g: Gladiator) => { const have = skillsOf(g), open = skillSlots(g), rows = Math.max(SKILL_ROWS, open);
-  return [...have.map(id => h('span', { class: 'badge skill', title: `${SKILL_BY_ID[id].name}: ${SKILL_BY_ID[id].desc}` }, SKILL_BY_ID[id].name)),
-    ...Array.from({ length: Math.max(0, open - have.length) }, () => h('span', { class: 'badge empty', title: '빈 기술 자리: 기술 훈련이나 경기 뒤 깨침으로 채운다' }, '\u00a0')),
-    ...Array.from({ length: Math.max(0, rows - Math.max(open, have.length)) }, () => h('span', { class: 'badge empty lock', title: '아직 열리지 않은 자리: 티로 1 · 베테라누스 2 · 프리무스 팔루스 3 (천부는 +1)' }, '\u00a0'))]; };
+const SKILL_ROWS = 3; // 기술 칩 자리: 기술 개념은 2026-09-18 뺐다(유형 정리 때 유형 기술 하나로 돌아올 자리). 빈 자리 셋을 그대로 잡아 카드 높이가 흔들리지 않게
+export const emptySlots = (n = SKILL_ROWS) => Array.from({ length: n }, () => h('span', { class: 'badge empty lock' }));
+const skillChips = (_g: Gladiator) => emptySlots();
 
 // 부상: 린넨 띠에 피가 배어난다. 단계가 오를수록 얼룩이 커지고 번진다 (1~3시즌, 2026-09-17 사용자)
 const woundMark = (g: Gladiator) => { const lv = Math.max(1, Math.min(3, g.injured)); const el = h('span', { class: `wound w${lv}`, title: `부상: 앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` });

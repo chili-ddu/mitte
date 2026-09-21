@@ -1,19 +1,20 @@
 // 전투 화면: 경기장 그림·재생·결과 (규칙은 core/battle.ts, 여기는 재생만)
 import { S, myInk, myLight } from './state.js';
 import { CEREMONIES, ENEMY, INK, NPC_POSES, attackClipFor, backstepSkeleton, clipLength, clipSkeleton, comboClipFor, deathClipFor, drawNetOverlay, drawNetProjectile, drawSeated, drawStickman, isDeathClip, runSkeleton, type ClipName, type Skeleton, walkSkeleton } from './stickman.js';
-import { SKILLS, SKILL_NAME, skillsOf } from '../core/skills.js';
 import { type GType, type Gladiator, type HostKind } from '../core/types.js';
 import { ARENA } from '../core/battle.js';
 import { setCrowd, sfx, startCrowd, stopCrowd } from './sound.js';
 import { fansOf, formLabel } from '../core/gladiator.js';
-import { MAIN_HAND, equipOf } from '../core/equipment.js';
+import { equipOf } from '../core/equipment.js';
+import { reachOf as reachRule } from '../core/classes.js';
+import { DICTATA_NAME } from '../core/dictata.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { hasBigShield, loadoutFor } from './loadout.js';
 import { accessoriesOf } from '../core/epithets.js';
 import { refuseRudis, rivalOf, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { ask, h, sq, eun, eul, ga } from './dom.js';
-import { DEBUG, app } from './main.js';
+import { DEBUG, FIGHT_PARAM, DEBUG_SEED, app } from './main.js';
 import { TYPE_COLOR, glyphSvg } from './portrait.js';
 import { headerEl } from './header.js';
 import { graffitiBtn, nextFight } from './plan.js';
@@ -222,9 +223,9 @@ export function renderBattle() {
   const skip = h('button', { style: DEBUG ? '' : 'display:none' }, '건너뛰기'); // 테스트용: 주소에 ?debug 가 있을 때만 보인다
   const legendShown = localStorage.getItem('lanista-legend') === '1'; localStorage.setItem('lanista-legend', '1'); // 범례는 처음 한 번만
   const lineup = h('div', { class: 'lineup overlay-lineup' }, // 누가 싸우는지: 윗줄 내 편, 아랫줄 상대, 사이 배경에 VS 문양 (유형·이름·서열·전적·공방)
-      h('div', { class: 'side mine' }, ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${skillsOf(g).length ? ` · 기술 ${skillsOf(g).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
+      h('div', { class: 'side mine' }, ...r.team.map(g => h('span', { class: 'fighter mine', title: `${g.name}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}` }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))),
       vsGraffiti(),
-      h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}${(g.skills ?? []).length ? ` · 기술 ${(g.skills ?? []).map(SKILL_NAME).join('·')}` : ''}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))));
+      h('div', { class: 'side enemy' }, ...r.contract.enemy.map(g => h('span', { class: 'fighter enemy', title: `${g.name.replace('(적)', '')}: HP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def}` }, sq(g.type), ' ', h('b', {}, g.name.replace('(적)', '')), h('span', { class: 'meta' }, ` ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 공${g.base.atk} 방${g.base.def}`)))));
   const miniSq = (g: Gladiator) => h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 14));
   const lineupTab = h('button', { class: 'lineup-tab', title: '편성 보기', onclick: () => { lineup.classList.remove('folded'); lineupTab.classList.remove('show'); } },
     ...r.team.map(miniSq), h('span', { class: 'vs-mini' }, 'vs'), ...r.contract.enemy.map(miniSq)); // 접힌 뒤엔 유형 아이콘 vs 유형 아이콘 줄. 누르면 편성이 내려온다
@@ -356,36 +357,21 @@ export function renderBattle() {
       return;
     }
   }
-  // 기술별 낙서풍 연출 (파티클). 상대 위치는 붙어 있는 상대(engaged)로
-  function skillFx(id: number, skill: string, ct: number) {
-    const p0 = posAt(ct)[id]; const d = face[id]; const tid = engaged[id]; const pt = tid != null ? posAt(ct)[tid] : null;
-    const at = (kind: FxKind, life: number, extra: Partial<{ x: number; y: number; dir: number; to: number }> = {}) => fx.push({ kind, x: p0.x, y: p0.y, t: life, life, dir: d, seed: id * 13 + Math.floor(ct * 10), id, ...extra });
-    switch (skill) {
-      case 'feint': at('ghost', 0.45); break;                                                   // 잔상이 반대쪽으로 빠진다
-      case 'shield_bash': at('shock', 0.35, { x: p0.x + d * 22 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.5, dir: d, seed: id }); break; // 방패 앞 충격파 + 상대 발밑 먼지
-      case 'riposte': at('gslash', 0.3, { x: p0.x + d * 26, y: p0.y - 4 }); break;              // 금색 역방향 베기
-      case 'twin_cut': at('dslash', 0.34, { x: p0.x + d * 26, y: p0.y - 6 }); break;            // 엇갈린 두 획
-      case 'net_recover': if (pt) at('netline', 0.55, { x: pt.x, y: pt.y - 10, to: tid }); break;  // 그물이 줄에 끌려 되돌아온다
-      case 'spear_ward': at('push', 0.3, { x: p0.x + d * 30, y: p0.y - 8 }); if (pt) fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.4, dir: d, seed: id + 1 }); break; // 창 끝에서 밀치는 직선
-      case 'stand_firm': at('ring', 0.5, { y: p0.y + 34 }); break;                              // 발밑 먼지 고리 + 굵은 윤곽
-      case 'second_wind': at('halo', 2.0); crowdCheer = 1; rouse('cheer', 1, 1.6); slowUntil = Math.max(slowUntil, ct + 0.6); sfx.cheer(0.7); break; // 심판이 경기를 멈추는 순간 — 반전의 문턱        // 심판 지팡이가 내려오고 흰 원, 초록 점
-      case 'appeal': at('cloth', 1.2); crowdCloth = Math.min(1, crowdCloth + 0.3); break;         // 손수건이 날린다
-      case 'charge_plus': at('trail', 0.45); break;                                               // 긴 먼지 자국
-    }
-  }
-  if (DEBUG) { const keyFx = (ev: KeyboardEvent) => { const k = '1234567890'.indexOf(ev.key); if (k < 0 || S.phase !== 'battle') return; const id = r.team[0].id; engaged[id] ??= r.contract.enemy[0].id; skillFx(id, SKILLS[k].id, ct); flash.push({ id, t: 1.3, text: SKILLS[k].name, color: '#c58a1a' }); }; window.addEventListener('keydown', keyFx); } // 테스트: ?debug 에서 숫자키 1~0 으로 기술 연출을 강제로 띄운다
+  // 방패 밀어붙이기·되치기 연출 (기술별 연출은 2026-09-18 기술 개념과 함께 뺐다 — 유형 기술이 돌아오면 여기서 다시 갈린다)
+  const fxAt = (id: number, kind: FxKind, life: number, ct: number, extra: Partial<{ x: number; y: number; dir: number; to: number }> = {}) => { const p0 = posAt(ct)[id]; fx.push({ kind, x: p0.x, y: p0.y, t: life, life, dir: face[id], seed: id * 13 + Math.floor(ct * 10), id, ...extra }); };
   function fireEvents(ct: number) {
     armCinematic(ct);
     while (ei < r.events.length && r.events[ei].t <= ct) {
       const e = r.events[ei++];
-      if (e.kind === 'skill') { flash.push({ id: e.actor, t: 1.3, text: SKILL_NAME(e.skill ?? ''), color: '#c58a1a' }); { const px = posAt(ct)[e.actor]?.x ?? 0; if (audible(px)) { if (e.skill === 'shield_bash') sfx.block(); else if (e.skill === 'net_recover') sfx.net(); else if (e.skill === 'second_wind') sfx.cheer(0.3); else sfx.hit(true); } } /* 채찍 소리는 훈련소의 것이라 전투 기술에서는 쓰지 않는다 */
-        skillFx(e.actor, e.skill ?? '', ct); continue; }
+      if (e.kind === 'dictata') { flash.push({ id: e.actor, t: 1.3, text: DICTATA_NAME(e.dictata ?? ''), color: '#c58a1a' }); if (e.dictata === 'shield_up') slowUntil = Math.max(slowUntil, ct + 0.3); if (e.dictata === 'deflect' || e.dictata === 'slip') fxAt(e.actor, 'ghost', 0.45, ct); else if (e.dictata === 'shield_up') fxAt(e.actor, 'ring', 0.5, ct, { y: posAt(ct)[e.actor].y + 34 }); else fxAt(e.actor, 'shock', 0.3, ct); continue; } /* 공격이 아닌 딕타타(가슴판·흘리기·빠지기·방패 세우기): 이름만 띄운다 */
+      if (e.kind === 'shove') { flash.push({ id: e.actor, t: 1.1, text: DICTATA_NAME('shove'), color: '#c58a1a' }); const p0 = posAt(ct)[e.actor]; const d = face[e.actor]; fxAt(e.actor, 'shock', 0.35, ct, { x: p0.x + d * 22 }); if (e.target != null) { const pt = posAt(ct)[e.target]; fx.push({ kind: 'dust', x: pt.x, y: pt.y + 34, t: 0.5, dir: d, seed: e.actor }); } if (audible(p0.x)) sfx.block(); continue; } // 방패 앞 충격파 + 상대 발밑 먼지 /* 채찍 소리는 훈련소의 것이라 전투 기술에서는 쓰지 않는다 */
       if (e.kind === 'stumble') { const trip = !!e.trip; flash.push({ id: e.actor, t: trip ? 1.8 : 1.3, text: trip ? '넘어졌다!' : '헛디딤!', color: trip ? '#9b1f14' : '#6b4a22' });
         if (trip) { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.7); rouse('gasp', 0.9, 1.2); const pp = posAt(ct)[e.actor]; shouts.length = 0; shouts.push({ text: '넘어졌다!', t: 1.4, x: pp.x }); } const p0 = posAt(ct)[e.actor]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[e.actor], seed: e.actor + 3 }); shout('오오…', p0.x); continue; } // 지쳐 헛디딤: 발밑 먼지
       if (e.kind !== 'attack' || e.target == null) continue;
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
-      if (e.skill === 'riposte') flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
+      if (e.riposte) { flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); fxAt(aid, 'gslash', 0.3, ct, { x: posAt(ct)[aid].x + face[aid] * 26, y: posAt(ct)[aid].y - 4 }); } // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
+      if (e.dictata && e.dictata !== 'net' && e.dictata !== 'lasso') flash.push({ id: aid, t: 1.3, text: DICTATA_NAME(e.dictata), color: '#c58a1a' }); if (e.dictata === 'dismount') { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.9); rouse('cheer', 0.9, 1.2); } /* 말에서 내려 치기: 첫 충돌은 볼거리 */ /* 타격에 실린 딕타타 이름 — 플레이어는 여기서 유형의 동작을 배운다 */
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); rouse('cheer', 0.8, 1.0); shout('우와아!', p0.x); }
       const hitDelay = hitDelayOf(e.combo);
@@ -429,7 +415,7 @@ export function renderBattle() {
         if (e.disarm && e.dropX != null && e.dropY != null) { // 무기를 놓친다: 손에서 튕겨 나가 모래에 꽂힌다
           const main = equipOf(byId[tid].g.type).main, dx = sx(e.dropX), dy = sy(e.dropY);
           fx.push({ kind: 'weaponfly', x: dx, y: dy, x2: pt.x, y2: pt.y - 18, t: 0.55, life: 0.55, dir: dx > pt.x ? 1 : -1, seed: tid, main });
-          fx.push({ kind: 'weapondown', x: dx, y: dy, t: CONFIG.disarm.sec, life: CONFIG.disarm.sec, dir: 1, seed: tid, main });
+          fx.push({ kind: 'weapondown', x: dx, y: dy, t: 1.8, life: 1.8, dir: 1, seed: tid, main });
           flash.push({ id: tid, t: 1.6, text: '무기를 놓쳤다!', color: '#9b1f14' }); addWall(byId[aid].g.name.replace('(적)', '')); slowUntil = Math.max(slowUntil, ct + 0.3); if (audible(pt.x)) sfx.block(); }
         const ratioDmg = (e.dmg ?? 0) / r.initialHp[tid];
         const pBlood = e.downed ? 1 : Math.max(0.15, Math.min(1, ratioDmg * 3.2));
@@ -440,7 +426,7 @@ export function renderBattle() {
           const cut = equipOf(byId[aid].g.type).main === 'sica'; slowUntil = Math.max(slowUntil, ct + 0.6);
           if (isFinal) fx.push({ kind: 'sandwall', x: pt.x, y: pt.y, t: 1.4, life: 1.4, dir: 1, seed: aid }); // 먼지가 확 일고, 가라앉으면 승자만 서 있다 shakeAmp = Math.max(shakeAmp, 7); shakeUntil = Math.max(shakeUntil, ct + 0.3);
           bleed(pt.x, pt.y - (cut ? 16 : 6), pa.x <= pt.x ? 1 : -1, 30, 2.2); flash.push({ id: tid, t: 2, text: cut ? '목을 베었다' : '심장을 꿰뚫었다', color: '#9b1f14' }); }
-        else if (e.downed && e.skill === 'riposte') { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
+        else if (e.downed && e.riposte) { slowUntil = Math.max(slowUntil, ct + 0.45); flash.push({ id: aid, t: 1.8, text: '되받아쳐 끝냈다', color: '#c58a1a' }); } // 막고 되치기로 끝내는 순간
         if (e.downed && !woundOf(tid)) { rouse('gasp', 1, 1.5); shout(isFinal ? '이우굴라!  이우굴라!' : '이우굴라!', pt.x); } else if (e.downed) { rouse('hush', 0.7, 1.4); shout('…', pt.x); } // 상처로 숨지면 관중은 말을 잃는다
         else if (e.crit) shout('하베트!  하베트!', pt.x);
         else if (heavy) shout('하베트!', pt.x);
@@ -585,7 +571,8 @@ export function renderBattle() {
       if (a.clip.startsWith('combo') && busy && el > 120 && el < 300) { // 연속 공격: 2타의 잔상 (60ms 전 자세를 흐리게 겹쳐 그린다)
         const gs = clipSkeleton(a.clip, el - 60); ctx.save(); ctx.globalAlpha *= 0.32;
         drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) }); ctx.restore(); }
-      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath, scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) });
+      if (ct < (r.mounted[id] ?? -1)) drawHorse(ctx, p.x + recoilDx + jx + lapDx + exitDx, p.y + 30 * SC + jy, 1.15 * SC, face[id], ct, u.side === 'A' ? myInk() : ENEMY); /* 에퀘스: 첫 돌진까지 말 위 (2026-09-18) */
+      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath - (ct < (r.mounted[id] ?? -1) ? 22 * SC : 0), scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? myInk() : ENEMY, accessories: accessoriesOf(u.g) });
       if (winded && !busy) { const bx = p.x + recoilDx + lapDx + exitDx + face[id] * 18, by = p.y - 33 + breath, drift = (ct * 10 + id) % 1; ctx.save(); ctx.globalAlpha = exitAlpha * (0.34 + Math.sin(ct * 5.5 + id) * 0.12); ctx.strokeStyle = '#6e7f9b'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; for (let k = 0; k < 2; k++) { const d = (k * 5 + drift * 3) * face[id]; ctx.beginPath(); ctx.arc(bx + d, by - k * 5, 3 + k * 1.5, face[id] > 0 ? -0.9 : Math.PI - 0.9, face[id] > 0 ? 0.9 : Math.PI + 0.9); ctx.stroke(); } ctx.restore(); } // 숨참: 막대 없이도 지친 검투사를 읽게 하는 얇은 숨결
       if (exitAlpha <= 0) { ctx.globalAlpha = 1; continue; }
       ctx.globalAlpha = exitAlpha; // 퇴장(미시오 생존·승자 퇴장) 중에는 이름표·체력바도 사람과 함께 옮겨 가며 사라진다
@@ -658,7 +645,7 @@ export function renderBattle() {
         else if (f.kind === 'trail' && cur) { ctx.globalAlpha = 0.55 * (1 - k2); ctx.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const rr = 4 + i * 3 + k2 * 6; ctx.beginPath(); ctx.arc(cur.x - f.dir * (14 + i * 14), cur.y + 34 - i * 1.5, rr, 0, Math.PI * 2); ctx.stroke(); } } }
       ctx.restore();
     }
-    for (const f of flash) { ctx.fillStyle = f.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.text, pos[f.id].x + 30, pos[f.id].y - 14 - (1 - Math.min(1, f.t)) * 14 - Math.max(0, f.t - 1) * 30); }
+    { const seen: Record<number, number> = {}; for (const f of flash) { const k = seen[f.id] = (seen[f.id] ?? 0) + 1; /* 같은 검투사의 글자가 겹치지 않게 한 줄씩 위로 (딕타타·치명타·연속이 한 타에 같이 뜬다 — 2026-09-19) */ ctx.fillStyle = f.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.text, pos[f.id].x + 30, pos[f.id].y - 14 - (1 - Math.min(1, f.t)) * 14 - Math.max(0, f.t - 1) * 30 - (k - 1) * 15); } }
     ctx.restore();
     // HUD: 함성 (카메라 무관), 준비 단계 안내
     for (let k = shouts.length - 1; k >= 0; k--) {
@@ -702,8 +689,9 @@ export function renderBattle() {
   const woundOf = (id: number) => !!(r.fates.find(f => f.g.id === id)?.wound || r.enemyFates.find(f => f.g.id === id)?.wound); // 상처로 죽는가 (판정 없이)
   const hostBonus = HOST[r.contract.host].missio;
   const lap: Record<number, { start: number; dir: 1 | -1 }> = {}; // 한 바퀴 세레모니: 달려갔다 돌아옴
-  const TEMPO_FAR = 1.45, TEMPO_NEAR = 0.85, REACH_PAD = 8; // 재생 속도: 아무도 칠 수 없는 빈 구간(다가가고 물러나는 동안)은 당기고, 칼이 닿는 구간은 규칙 속도로. 빠르기가 아니라 대비가 박진감을 만든다 (경기의 3분의 1이 빈 구간)
-  const reachOf = (g: Gladiator) => (MAIN_HAND[equipOf(g.type).main].range >= 2 ? 95 : 48) + REACH_PAD;
+  const TEMPO_FAR = 1.0, TEMPO_NEAR = 0.85, TEMPO_OPEN = 1.0, REACH_PAD = 8; // 재생 속도(2026-09-20 사용자): 빈 구간도 당기지 않는다 — 견제하며 도는 시간이 경기의 긴장이다. 첫 접근·떨어진 구간 모두 규칙 속도, 칼이 닿는 구간만 살짝 느리게, 순간(치명타·쓰러짐·그물·첫 돌진)만 슬로
+  let contacted = false; // 첫 접촉이 있었는가 — 그 전까지는 TEMPO_OPEN
+  const reachOf = (g: Gladiator) => reachRule(g.type) + REACH_PAD;
   const engagedAt = (ct2: number) => { // 지금 이 순간 누군가 칠 수 있는가 (경기장 좌표)
     let i = 0; while (i < frames.length - 2 && frames[i + 1].t <= ct2) i++;
     const f = frames[i];
@@ -714,7 +702,8 @@ export function renderBattle() {
   let ct = 0, lastReal = performance.now(), done = false, doneAt = 0, lastDtReal = 0.016, frameNo = 0;
   const anim = () => {
     const now = performance.now(); const realRaw = (now - lastReal) / 1000; const real = Math.min(0.05, realRaw); lastReal = now; lastDtReal = real;
-    let dt = real * (engagedAt(ct) ? TEMPO_NEAR : TEMPO_FAR);
+    const eng = engagedAt(ct); if (eng) contacted = true;
+    let dt = real * (eng ? TEMPO_NEAR : contacted ? TEMPO_FAR : TEMPO_OPEN);
     if (intro < INTRO_ZOOM) { intro += Math.min(0.3, realRaw); dt = 0; // 입장 동안은 경기를 멈춰 둔다
       const st2 = introSkipped ? 3 : intro < INTRO_HOLD ? 0 : intro < INTRO_LEFT ? 1 : intro < INTRO_RIGHT ? 2 : 3;
       if (st2 !== introStage) { introStage = st2; // 뚜둥 — 한쪽씩 소개하고 마지막에 가운데로
@@ -835,6 +824,18 @@ function renderResult() {
   app.prepend(headerEl()); window.scrollTo(0, 0);
   const needsChoice = r.rudis.some(g => g.status === 'rudiarius');
   const advance = () => { if (S.phase !== 'result' || S.report !== r) return; S.phase = 'battle'; nextFight(); };
+  if (FIGHT_PARAM) { const again = () => { location.hash = String(DEBUG_SEED() + 1); location.reload(); }; app.append(graffitiBtn('duel', 'ITERVM', `다시 (시드 ${DEBUG_SEED() + 1})`, again)); app.classList.add('land', 'page', 'gf'); return; } /* 디버그 전투: 정산으로 가지 않고 시드를 올려 다시 굴린다 */
   app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, advance, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', advance)); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
   if (!needsChoice) window.setTimeout(advance, flags.length ? 3200 : 2200); // 짧은 결과는 보고만 지나간다. 루디스 거절처럼 즉시 선택이 있으면 자동 넘김을 멈춘다.
+}
+
+// 말 실루엣 (낙서풍): 에퀘스가 첫 돌진까지 타고 들어온다. (x, footY) = 사람 발 위치, 사람은 22px 위로 올린다
+function drawHorse(ctx: CanvasRenderingContext2D, x: number, footY: number, sc: number, facing: 1 | -1, t: number, ink: string) {
+  ctx.save(); ctx.translate(x, footY); ctx.scale(facing * sc, sc); ctx.strokeStyle = ink; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const g = Math.sin(t * 14) * 5; // 달리는 다리
+  ctx.beginPath(); ctx.moveTo(-26, -26); ctx.quadraticCurveTo(-4, -34, 22, -28); ctx.lineTo(30, -40); ctx.lineTo(38, -36); // 몸통 → 목 → 머리
+  ctx.moveTo(30, -40); ctx.lineTo(27, -46); // 귀
+  ctx.moveTo(-26, -26); ctx.quadraticCurveTo(-34, -22, -36, -12); // 꼬리
+  ctx.moveTo(-20, -26); ctx.lineTo(-24 - g, 0); ctx.moveTo(-12, -26); ctx.lineTo(-8 + g, 0); ctx.moveTo(12, -27); ctx.lineTo(8 - g, 0); ctx.moveTo(20, -27); ctx.lineTo(24 + g, 0); // 다리 넷
+  ctx.stroke(); ctx.restore();
 }
