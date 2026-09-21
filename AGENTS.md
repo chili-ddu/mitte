@@ -14,6 +14,7 @@ npm run sim -- 1000   # 봇 전략별 밸런스 시뮬레이션 (둘째 인자 =
 npm run traits:gain   # 편성 특성 기여: 같은 유형 N명 vs 다른 유형 N명 (없음/1단계 고정/그대로)
 npm run stat:worth    # 전력식 가중치: 거울 대결에서 스탯 +1 의 승률 이득 (CONFIG.power 의 근거)
 npm run growth -- 200 가성비   # 시즌별 성장 곡선: 우리 평균·으뜸·상대 전력, 승률, 능력치 평균
+npm run mastery -- 150 0      # 숙련 딕타타 문턱: 시즌별 익힌 수, 첫째·셋째 자리가 차는 시즌 (둘째 인자 1 = 독토르 조건 켬)
 npm run curve -- 4000 1   # 전력 차별 승률 곡선 (둘째 인자 = 팀 인원). 전투 규칙·우연성을 바꾸면 sim 과 함께 본다
 npm test              # 골든 테스트 (node:test + tsx, 새 의존성 없음). 규칙을 바꾸면 여기가 먼저 깨진다
 npm run play          # 콘솔 대화형 (npm run play -- 42)

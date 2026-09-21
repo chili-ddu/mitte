@@ -2,9 +2,10 @@
 import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드 한 종류 (2026-09-17 사용자) */
 import { S } from './state.js';
 import { TYPE_TRAITS, TRAIT_KO } from '../core/traits.js';
-import { basicDictataOf } from '../core/dictata.js';
+import { basicDictataOf, masteryCandidates } from '../core/dictata.js';
 import { COMPARE_KO } from '../core/rivals.js';
-import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, healCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollMarket, canReroll, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge } from '../core/game.js';
+import { merchantLine, CURVE_KO, CURVE_DESC, TRAIT_KO as GROWTH_TRAIT_KO, TRAIT_DESC } from '../core/growth.js';
+import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, bedCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollMarket, canReroll, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge } from '../core/game.js';
 import { type Gladiator } from '../core/types.js';
 import { LINEAGE_KO, TYPE_KO, TYPES } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
@@ -167,6 +168,14 @@ function renderHelp(): Node {
       row('장비 수치', `사거리: 창·삼지창 2, 나머지 1 (사거리 2 는 ${CONFIG.gear.reach[2]}px 에서 닿는다). 막기: 큰방패 ${Math.round(CONFIG.gear.block.bigShield * 100)}% · 작은방패 ${Math.round(CONFIG.gear.block.smallShield * 100)}% · 맨몸 0% — 막으면 피해 −${Math.round(CONFIG.gear.blockCut * 100)}%. 닳지 않는다.`)),
     sec('딕타타 (팔루스에서 익힌 규정 동작 — 주장비·보조장비·유형 하나씩, 유형이면 곧 안다)',
       ...TYPES.map(t => row(TYPE_KO[t], basicDictataOf(t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
+    sec('성장 (초기 굴림 없음 — 현재치는 유형 × 서열, 개체 차이는 잠재치·나이·성장형·자질)',
+      row('나이', '청년(~23) 빠르고 위가 넓다 · 장년(24~29) 보통 · 노년(30~) 더디고 현재치가 곧 상한. 33세부터 노쇠'),
+      row('곡선', (['normal', 'early', 'late', 'second'] as const).map(c => `${CURVE_KO[c]}: ${CURVE_DESC[c]}`).join(' / ')),
+      row('결 (40%만)', (['one', 'field', 'pupil', 'even'] as const).map(t => `${GROWTH_TRAIT_KO[t]}: ${TRAIT_DESC[t]}`).join(' / ')),
+      row('상한', '감춰져 있다. 닿은 능력치는 카드에서 굵어지고, 넷 다 닿으면 \'다 컸다\'. 상인의 한 줄과 독토르의 판단(세 번째 훈련 뒤)이 힌트'),
+      row('자질', '평범 ×1 · 재능 ×1.3 · 비범 ×1.6 · 천부 ×2.0 — 성장 크기 배율')),
+    sec(`숙련 딕타타 (경기에서 행동이 문턱을 넘고, 같은 클래스 독토르가 있으면 익힌다 — 자리 ${CONFIG.mastery.slots}, 먼저 넘은 순서, 한 번 익히면 바뀌지 않는다. 카드 칩에 뜬다)`,
+      ...TYPES.map(t => row(TYPE_KO[t], masteryCandidates(t).map(m => `${m.name}(${m.cond.ko}): ${m.ko}`).join(' / ')))),
     sec('특성 (편성에서 센다 — 같이 나가는 검투사 중 같은 특성이 1·2·3명이면 1·2·3단계, 그 특성을 가진 사람에게만 걸린다. 상대 팀도 똑같이)',
       row('유형 → 특성', TYPES.map(t => `${TYPE_KO[t]}: ${TYPE_TRAITS[t].map(x => TRAIT_KO[x]).join('·')}`).join(' / ')),
       row('큰방패', `방어 +${CONFIG.traits.bigShield.def[0]} → (자리) → +${CONFIG.traits.bigShield.def[2]} — 밀어붙이기·닳지 않음은 장비 규칙과 함께 뺐다`),
@@ -185,7 +194,7 @@ function renderHelp(): Node {
     sec('미시오 (패자의 목숨)',
       row('기본', `${Math.round(M.base * 100)}% + 호감도×${M.perFame * 100}% + 승수×${M.perWin * 100}% (최대 ${M.maxWins}승).`),
       row('주최자', `성격에 따라 상금·대여료·미시오·루디스가 다르다 (아래 '주최자' 절). 등급 1 경기 +${Math.round(M.tierBonus[1] * 100)}%, 등급 2 +${Math.round(M.tierBonus[2] * 100)}% (지방 주최자는 사망 배상을 꺼려 살려 주는 편).`),
-      row('결과', `살아남으면 ${Math.round(M.injuryChance * 100)}% 확률로 부상 (${injurySeasons(S.st)}시즌 출전 불가, 치료 ${healCostOf(S.st)} HS). 실패하면 사망하고 주최자가 배상 (구매가×${CONFIG.deathComp.priceMult} + 승수×${CONFIG.deathComp.perWin}).`)),
+      row('결과', `살아남으면 ${Math.round(M.injuryChance * 100)}% 확률로 부상 (${injurySeasons(S.st)}시즌 출전 불가 — 즉시 치료는 없고 침상에 누우면 시즌마다 1 낫고 ${bedCostOf(S.st)} HS, 침상 밖이면 ${Math.round(CONFIG.injury.natural.heal * 100)}% 낫거나 ${Math.round(CONFIG.injury.natural.worsen * 100)}% 덧나며 ${CONFIG.injury.deathAt}에 이르면 죽는다). 실패하면 사망하고 주최자가 배상 (구매가×${CONFIG.deathComp.priceMult} + 승수×${CONFIG.deathComp.perWin}).`)),
     sec('주최자 (에디토르)',
       ...(Object.keys(HOST) as (keyof typeof HOST)[]).map(k => { const H = HOST[k]; return row(H.ko, `${H.desc} 상금 ×${H.prize}, 대여료 ×${H.rent}, 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}%, 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? `, 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? `, 출전자 명예 +${H.honorAll}` : ''}.`); }),
       row('팬', `명예 + 승수×2 + 별칭×5. ${FANS_STAR} 이상이면 스타: 관중이 이름을 외치고 관중석이 더 차며, 선거 후보의 경기에서 이기면 호감도 +1 (폼페이 낙서의 팬심).`),
@@ -228,7 +237,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
     if (g) { // 고른 매물의 자세한 정보 (목록은 없다: 위 판매대의 검투사를 눌러 고른다)
       const price = priceOf(S.st, g);
       out.push(gladRow(g, [h('button', { class: 'primary', disabled: S.st.money < price || full, onclick: () => { if (buy(S.st, g)) { sfx.coin(); S.marketSel = null; S.detail = null; render(); } } }, `구매 ${price.toLocaleString()}${price < g.buyPrice ? ' (할인)' : ''}`)], { sel: true }));
-      out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 손놀림 ${g.base.hand} · 걸음 ${g.base.spd}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
+      out.push(h('div', { class: 'meta', style: 'padding:2px 4px' }, `${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · 손놀림 ${g.base.hand} · 걸음 ${g.base.spd} · 상인: \"${merchantLine(g)}\"${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}${g.scaeva ? ' · 왼손잡이(상대 방패의 첫 타격 감소 절반)' : ''}`));
       if (S.st.money < price) out.push(item('warn', `자금이 ${(price - S.st.money).toLocaleString()} HS 부족합니다.`));
       const idx = S.st.market.findIndex(m => m.id === g.id); out.push(h('div', { class: 'hint', style: 'padding:2px 4px' }, `매물 ${idx + 1}/${S.st.market.length} — 판매대의 다른 검투사를 누르면 바꿔 본다`));
     } else out.push(h('div', { class: 'card ghost' }, h('span', { class: 'hint' }, '판매대의 검투사를 누르면 자세히 보입니다')));
@@ -246,7 +255,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   }
   if (view === 'medic') { // 의무실: 부상자 치료·요양, 침상·의술·약재
     const injured = S.st.roster.filter(g => g.injured);
-    const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${S.st.ludus.beds} · 부상 ${injured.length}명 · 치료 ${healCostOf(S.st)} HS`), helpBtn('의무실', `부상자는 ${injurySeasons(S.st)}시즌 동안 출전하지 못합니다. 치료(${healCostOf(S.st)} HS)하면 바로 복귀하고, 편성에서 요양을 고르면 무료로 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술은 단계마다: 1 치료비 400 · 2 부상 1시즌 · 3 치료비 250 · 4 쓰러진 뒤 부상 확률 40% · 5 30%와 시즌 끝 피로 회복 +1. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
+    const out: Node[] = [h('h3', {}, '의무실', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `침상 ${S.st.ludus.beds} · 부상 ${injured.length}명 · 침상 치료비 ${bedCostOf(S.st)} HS/시즌`), helpBtn('의무실', `부상자는 ${injurySeasons(S.st)}시즌 동안 출전하지 못합니다. 즉시 치료는 없습니다. 침상에 눕히면 시즌마다 1씩 낫고 치료비(${bedCostOf(S.st)} HS/시즌)를 냅니다. 침상이 없으면 ${Math.round(CONFIG.injury.natural.heal * 100)}% 로 낫고 ${Math.round(CONFIG.injury.natural.worsen * 100)}% 로 덧나며, 부상 ${CONFIG.injury.deathAt}에 이르면 죽습니다(배상 없음). 요양을 고르면 회복이 ${CONFIG.actions.recover.extra}시즌 빨라집니다.\n침상보다 부상자가 많으면 넘치는 사람은 회복이 1시즌 늦어집니다. 의술은 단계마다: 1 치료비 400 · 2 부상 1시즌 · 3 치료비 250 · 4 쓰러진 뒤 부상 확률 40% · 5 30%와 시즌 끝 피로 회복 +1. 약재는 단계마다 경기 후 피로를 20% 확률로 면제합니다.`))];
     if (!injured.length) out.push(item('idle', '부상자 없음'));
     // 부상자 개별 표시는 디스플레이의 침상(십자 팻말·치료 금액·이름·무기 아이콘)에서. 대시보드에는 두지 않는다
     { const noBed = injured.filter(g => !inBed(S.st, g)).length; if (noBed) out.push(item('warn', `침상에 눕지 않은 부상자 ${noBed}명은 이번 시즌 낫지 못합니다. 빈 침상을 눌러 눕히세요.`)); }
@@ -276,7 +285,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   { const free = S.st.roster.filter(g => g.status === 'rudiarius'); const docs = S.st.roster.filter(g => g.status === 'doctor');
     if (free.length) out.push(item('todo', `자유민(루디아리우스) ${free.length}명: ${free.map(g => g.name).join(', ')} — 급료(대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%)를 받고 계속 출전하거나, 독토르로 고용(${CONFIG.doctorSalary} HS/시즌, 같은 유형 훈련 강화).`));
     if (docs.length) out.push(item('idle', `독토르 ${docs.length}명: ${docs.map(g => `${g.name}(${TYPE_KO[g.type]} 공 ${g.base.atk}·방 ${g.base.def})`).join(', ')} — 능력치가 앞서는 만큼 같은 유형 훈련 +1~2.`)); }
-  if (injured.length) out.push(item('warn', `부상 검투사 ${injured.length}명: ${injured.map(g => g.name).join(', ')} — 치료(${healCostOf(S.st)} HS)하면 이번 시즌 출전 가능.`));
+  if (injured.length) { const noBed = injured.filter(g => !inBed(S.st, g)); out.push(item(noBed.length ? 'warn' : 'idle', `부상 검투사 ${injured.length}명: ${injured.map(g => `${g.name}${inBed(S.st, g) ? '' : '(침상 밖)'}`).join(', ')} — 침상에 누우면 시즌마다 1 낫고 치료비 ${bedCostOf(S.st)} HS. 침상 밖은 ${Math.round(CONFIG.injury.natural.worsen * 100)}% 로 덧난다.`)); }
   // 계약·상대 이야기는 편성 화면에 있으므로 정문에서는 다루지 않는다 (편성에서 관리로 되돌아올 수 있음)
   if (S.st.roster.length >= rosterCap(S.st)) out.push(item('idle', `켈라 ${S.st.roster.length}/${rosterCap(S.st)} 가득 참 (증축 ${upgradeCost(S.st, 'cells')?.toLocaleString() ?? '최대'} HS)`));
   if (S.st.money < upkeep) out.push(item('warn', `자금이 시즌 유지비 ${upkeep.toLocaleString()} HS 보다 적습니다`));

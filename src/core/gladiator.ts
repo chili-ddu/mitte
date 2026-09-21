@@ -1,6 +1,7 @@
 import type { Gladiator, GType, Lineage, Rank, Stats } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
+import { rollGrowth, rollCaps } from './growth.js';
 import { classKey } from './classes.js';
 import { TYPE_MATCHUP } from './matchup-table.js';
 import { matchupOwner } from './matchup.js';
@@ -39,13 +40,12 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
   const pool = (namesJson as Record<string, { ko: string }[]>)[lineage];
   const name = rng.pick(pool).ko;
   const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; const age = rng.int(a0, a1);
-  const s = TYPE_STATS[type]; const R = CONFIG.statRoll[rank]; const A = CONFIG.statRoll.age; const ageHi = A.hiBonus * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); // 나이가 들수록 위쪽 폭이 열린다 (단련했을 수도)
-  const roll = (v: number, [lo, hi]: readonly [number, number]) => Math.round(v * rng.range(lo, hi + ageHi)); // 스탯마다 범위를 따로 굴린다
+  const s = TYPE_STATS[type]; const M = CONFIG.growthModel.rankMul[rank]; /* 초기 굴림 없음 (2026-09-21): 현재치는 유형 기본 × 서열. 차이는 잠재치·나이·성장형 */
   const grow = rank === 'veteranus' ? Math.min(CONFIG.statRoll.vetGrow.max, Math.floor(((opts.season ?? 1) - 1) / CONFIG.statRoll.vetGrow.every)) : 0; // 베테라누스 시즌 단련
-  const base: Stats = { hp: roll(s.hp, R.hp), atk: roll(s.atk, R.atk) + grow, def: roll(s.def, R.def) + grow, spd: s.spd, hand: Math.max(1, roll(s.hand, R.hand)) }; // 걸음은 유형 고정, 손놀림은 굴린다
+  const base: Stats = { hp: Math.round(s.hp * M), atk: Math.round(s.atk * M) + grow, def: Math.round(s.def * M) + grow, spd: s.spd, hand: Math.max(1, Math.round(s.hand * M)) };
   const wins = rank === 'veteranus' ? rng.int(3, 6) : 0;
   const g: Gladiator = { id: nextId++, name, lineage, type, rank, base, fights: wins + rng.int(0, 2), wins, missios: 0, injured: 0, buyPrice: 0, alive: true, age, scaeva: rng.chance(0.1) || undefined }; // 왼손잡이 10% (비문에 따로 표기될 만큼 귀했다)
-  g.talent = rollTalent(rng); g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
+  g.talent = rollTalent(rng); g.growth = rollGrowth(rng); g.cap = rollCaps(rng, type, base, age, g.growth, s); g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
 }
 
 export function effectiveStats(g: Gladiator): Stats {
@@ -122,4 +122,4 @@ export const isPrimusPalus = (g: Gladiator) => g.rank === 'veteranus' && g.wins 
 
 // 팔루스에 선 검투사가 무엇을 단련할지: 클래스 성장 풀의 가중치로 뽑는다 (2026-09-20 docs/09). 상대 파밀리아도 같은 풀로 훈련한다
 export type TrainStat = 'atk' | 'def' | 'hp' | 'hand';
-export function pickTrainStat(rng: Rng, g: Gladiator): TrainStat { const w = CONFIG.growth[classKey(g.type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 }; const keys: TrainStat[] = ['atk', 'def', 'hp', 'hand']; const total = keys.reduce((a, k) => a + w[k], 0); let r = rng.next() * total; for (const k of keys) { r -= w[k]; if (r <= 0) return k; } return 'atk'; }
+export function pickTrainStat(rng: Rng, g: Gladiator): TrainStat { const w0 = CONFIG.growth[classKey(g.type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 }; const keys: TrainStat[] = ['atk', 'def', 'hp', 'hand']; const w = Object.fromEntries(keys.map(k => [k, g.cap && g.base[k] >= g.cap[k] ? 0 : (g.growth?.trait === 'even' ? 25 : w0[k])])) as Record<TrainStat, number>; /* 상한에 닿은 능력치는 안 뽑는다 · 고른 몸은 풀을 무시 */ const total = keys.reduce((a, k) => a + w[k], 0); if (total <= 0) return 'atk'; let r = rng.next() * total; for (const k of keys) { r -= w[k]; if (r <= 0) return k; } return 'atk'; }

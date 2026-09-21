@@ -1,6 +1,8 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, pickTrainStat, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee } from '../core/game.js';
+import { available, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, pickTrainStat, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient } from '../core/game.js';
+import { classKey } from '../core/classes.js';
+import { fullyGrown } from '../core/growth.js';
 import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
 import { upkeepOf, type Facility } from '../core/game.js';
@@ -66,7 +68,7 @@ function upgradePolicy(st: GameState, reserve: number) {
     upgrade(st, best.f, best.idx);
   }
 }
-function healAll(st: GameState) { for (const g of st.roster) if (g.injured > 0 && st.money > CONFIG.healCost + 2000) heal(st, g); }
+function healAll(st: GameState) { for (const g of st.roster) { if (g.injured <= 0 || inBed(st, g)) continue; for (let k = 0; k < st.ludus.beds; k++) { if (bedPatient(st, k)) continue; if (putInBed(st, g, k)) break; } } } /* 빈 침상만 — 점유된 침상을 덮어쓰면 마지막 부상자만 눕는다 (Codex 리뷰 P1) */ // 즉시 치료는 없다 — 빈 침상에 눕힌다 (2026-09-21)
 
 function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: Contract) => boolean, cellsTo = 6): Bot { // cellsTo: 켈라를 몇 칸까지 늘리나 (특성 몰기는 15 — 6명 3단계를 보려고)
   return (st, onFight) => {
@@ -74,9 +76,14 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: C
       const reserve = st.roster.length * CONFIG.upkeepPerGladiator * 2;
       { const c = upgradeCost(st, 'cells'); if (c != null && st.roster.length >= rosterCap(st) && rosterCap(st) < cellsTo && st.money > c + reserve + 4000) upgrade(st, 'cells'); } // 감방이 차면 증축
       upgradePolicy(st, reserve); // 남는 돈은 시설로 (사람 플레이어처럼): 팔루스 → 의술 → 숙소 질 → 조리장 → 침상 → 약재 → 훈련 시설
+      if (st.season >= 5) { // 독토르(2026-09-21 사용자: 시즌 5쯤부터): 가장 많은 클래스에 독토르가 없으면 — 우리 자유민(루디스)을 앉히거나, 문 앞 자유민 지원자를 사서 앉힌다
+        const fighters = st.roster.filter(g => g.alive && g.status !== 'doctor'); const cnt: Record<string, number> = {}; for (const g of fighters) cnt[classKey(g.type)] = (cnt[classKey(g.type)] ?? 0) + 1;
+        const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0]; const has = top && fighters.some(g => classKey(g.type) === top && doctorFor(st, g.type));
+        if (top && !has && fighters.length >= 5 && st.money > reserve + 12000) { const own = st.roster.find(g => g.status === 'rudiarius' && classKey(g.type) === top); if (own) hireDoctor(st, own); /* 급료 800 이 봇 살림엔 무겁다: 싸울 사람 다섯에 돈이 넉넉할 때만 (09-21 측정: 조건 없이 앉히면 파산 11~20%) */
+          else { const ap = st.applicants.find(g => classKey(g.type) === top); if (ap && !st.roster.some(g => g.status === 'doctor') && st.money - ap.buyPrice > reserve + 9000 && st.roster.length < rosterCap(st) && buy(st, ap)) hireDoctor(st, ap); } } } /* 독토르는 한 명, 살림이 넉넉할 때만 (급료 800 — 09-21 첫 시험에서 파산 14~20%) */
       buyPolicy(st, buyMode, reserve, cellsTo);
       healAll(st);
-      { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 낮은 능력치를 단련
+      { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained || fullyGrown(g)) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 낮은 능력치를 단련
         train(st, g, pickTrainStat(st.rng, g)); slots--; } }
       { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || !canSendChallenge(st, rv) || st.money < challengeFee(st, rv) + reserve) continue; if (best >= power(star) * 1.05) { sendChallenge(st, rv); break; } } } // 도전을 건다: 우리 으뜸이 간판보다 5% 세면 (시즌당 하나)
       for (const c of [...st.pendingChallenges]) { const rv = rivalOf(st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined; const best = Math.max(0, ...available(st).map(power)); if (star && best >= power(star) * 0.9 && !acceptChallenge(st, c)) continue; declineChallenge(st, c); } // 도전장: 우리 으뜸이 간판의 90% 이상이면 받는다

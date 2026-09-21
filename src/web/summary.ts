@@ -1,6 +1,6 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S } from './state.js';
-import { ACTION_KO, TRAIN_KO, EVENT_KEYS, EVENT_KO, healCostOf, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
@@ -53,6 +53,7 @@ export function renderSummary() {
   const promoted = S.seasonReports.flatMap(r => r.promoted);
   const rosterItems: Node[] = [];
   if (promoted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `승급: ${promoted.map(g => g.name).join(', ')} → 베테라누스`)));
+  { const nd = S.seasonReports.flatMap(r => r.newDictata); if (nd.length) rosterItems.push(h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, nd.map(x => `${x.g.name} — '${x.m.name}'`).join(', ') + ' 익힘'))); }
   { const ne = S.seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
   { const freed = S.seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
   if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => `${t.g.name} ${TRAIN_KO[t.stat]} +${t.gain}`).join(', ')}`)));
@@ -60,7 +61,7 @@ export function renderSummary() {
   if (S.st.lastOverwork?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `혹사 끝에 쓰러져 죽음: ${S.st.lastOverwork.join(', ')} — 피로가 쌓인 채 시즌을 넘겼다`)));
   if (S.st.lastFreed?.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `형기 만료: ${S.st.lastFreed.join(', ')} — 자유민이 됐습니다 (독토르 고용 또는 급료 출전)`)));
   if (sum.acted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `행동: ${sum.acted.map(a => `${a.g.name} ${ACTION_KO[a.act]} (${a.note})`).join(', ')}`)));
-  if (injuredNow.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `부상 회복 중: ${injuredNow.map(g => `${g.name} (${g.injured}시즌)`).join(', ')} — 치료 ${healCostOf(S.st)} HS 로 바로 복귀 가능`)));
+  if (injuredNow.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `부상: ${injuredNow.map(g => `${g.name} (${g.injured}시즌${inBed(S.st, g) ? ' · 침상' : ' · 침상 밖'})`).join(', ')} — 침상 치료비 ${bedCostOf(S.st)}/시즌, 침상 밖은 덧날 수 있다`)));
   if (tired.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `피로 누적: ${tired.map(g => `${g.name} (피로 ${g.fatigue})`).join(', ')} — 한 시즌 쉬게 할 것`)));
   if (dead.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `묘비에 새 이름: ${dead.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(', ')} — 관중은 침묵했다`)));
   if (evHeld.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `행사: ${evHeld.map(k => EVENT_KO[k]).join(', ')} — 출전 검투사 명예·호감도 상승`)));
@@ -72,7 +73,7 @@ export function renderSummary() {
       sum.skipped.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `무산된 계약 (앞 경기 부상·사망): ${sum.skipped.map(c => c.venue).join(', ')}`) : null),
     h('div', { class: 'cols' },
       h('div', { class: 'panel' }, h('div', { class: 'cols2' }, h('div', {}, h('h2', {}, '자금'),
-        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('대여료', rent), money('출전 경비', expense, -1), money('승리 상금', prize), betLoss ? money('내기 패배', betLoss, -1) : null, money('사망 배상금', comp), salary ? money('자유민 급료', salary, -1) : null, evCost ? money('시즌 행사', evCost, -1) : null, sum.gift ? money('귀족 사례금', sum.gift) : null, money('유지비·급료', sum.upkeep, -1),
+        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('대여료', rent), money('출전 경비', expense, -1), money('승리 상금', prize), betLoss ? money('내기 패배', betLoss, -1) : null, money('사망 배상금', comp), salary ? money('자유민 급료', salary, -1) : null, evCost ? money('시즌 행사', evCost, -1) : null, sum.gift ? money('귀족 사례금', sum.gift) : null, money('유지비·급료', sum.upkeep - (sum.bedCost ?? 0), -1), (sum.bedCost ? money('침상 치료비', sum.bedCost, -1) : null),
           h('div', { class: 'mrow total' }, h('span', {}, '시즌 순수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
           h('div', { class: 'mrow', style: 'grid-column:1 / -1' }, h('span', {}, '잔액'), h('span', {}, `${sum.before.toLocaleString()} → ${S.st.money.toLocaleString()} HS`))),
         ), h('div', {}, h('h2', {}, '호감도'),

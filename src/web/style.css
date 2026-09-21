@@ -1008,3 +1008,9 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .modal.challenge .offerbox { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:8px 0; }
 .modal.challenge .warn { color:var(--red); }
 .rvmood.strong b { color:var(--red); } .rvmood.weak b { color:var(--ok); } .rvmood .flames { letter-spacing:1px; }
+
+/* 성장 상한 (docs/09 §7, 2026-09-21): 닿은 능력치는 굵게, 다 크면 표식 */
+.sline.capped .v { font-weight:800; }
+.tile.capped b { font-weight:900; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:2px; }
+.sline.rec .grown { margin-left:6px; font-size:9px; padding:0 4px; border-radius:4px; background:#3a2412; color:#f3ead0; font-weight:700; }
+.tile.growth b { font-size:11px; }

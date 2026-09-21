@@ -7,11 +7,11 @@ import { battle } from './battle.js';
 import { makeGladiator, resetIds } from './gladiator.js';
 import { CONFIG } from './config.js';
 
-// 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-20 능력치 정리(docs/09): 손놀림·걸음 분리, 사거리 삭제 — 난수 소비가 바뀐다 뒤 다시 기록
+// 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-21 성장 모델(docs/09 §7): 초기 굴림 없음 · 잠재치 굴림 — 난수 소비가 바뀐다 뒤 다시 기록
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
-1: { winner: 'A', dur: 11.8, frames: 120, events: 21 },
-  7: { winner: 'A', dur: 10.1, frames: 103, events: 15 },
-  42: { winner: 'B', dur: 22.3, frames: 225, events: 27 },
+1: { winner: 'A', dur: 18.1, frames: 183, events: 27 },
+  7: { winner: 'A', dur: 6.6, frames: 68, events: 9 },
+  42: { winner: 'B', dur: 21.1, frames: 213, events: 24 },
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };
 

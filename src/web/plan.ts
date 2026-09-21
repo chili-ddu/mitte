@@ -1,7 +1,7 @@
 // 편성: 계약 카드·배정·서판·시즌 확정·시즌 진행(시작→경기→정산)
 import { S } from './state.js';
 import { type Contract, type GType, type Gladiator } from '../core/types.js';
-import { ACTION_KO, TRAIN_KO, trainGain, pickTrainStat, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, healCostOf, holdEvents, isImportant, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, trainCap, type Action, upkeepOf, validTeam, forfeitChallenges } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, trainGain, pickTrainStat, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, inBed, holdEvents, isImportant, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, trainCap, type Action, upkeepOf, validTeam, forfeitChallenges } from '../core/game.js';
 import { Rng } from '../core/rng.js';
 import { battle } from '../core/battle.js';
 import { CONFIG } from '../core/config.js';
@@ -104,7 +104,7 @@ export function graffitiBtn(kind: 'duel' | 'coins', word: string, title: string,
 // 시즌 시작 전 경고 줄 (계약 벽에서도, 마을에서 바로 넘길 때도 같은 것을 보여준다)
 export function seasonWarnings(): string[] {
   const readyQ = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(S.st, c, t); }), ready = readyQ.length;
-    const healable = S.st.roster.filter(g => g.injured && S.st.money >= healCostOf(S.st)).length;
+    const noBed = S.st.roster.filter(g => g.alive && g.injured > 0 && !inBed(S.st, g)).length;
     const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
     const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
     // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
@@ -113,7 +113,8 @@ export function seasonWarnings(): string[] {
       !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
       ...unmet.map(c => `${rivalOf(S.st.rivals, c.rivalId)?.name ?? '파밀리아'}${c.challenge === 'out' ? '에 걸어 놓은 도전' : '의 도전장'}에 아무도 세우지 않았습니다.\n· ${c.challenge === 'out' ? '그들의 기세 +2 · 호감도 −2 (섭외비는 돌아오지 않습니다)' : '그들의 기세 +1 — 우리를 얕보게 됩니다'}`),
       refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
-      healable ? `의무실에 부상자 ${healable}명이 누워 있습니다. 어서 낫기를.\n· 치료비 ${healCostOf(S.st).toLocaleString()} HS 면 지금 낫습니다. 아니면 요양으로 한 시즌.` : '',
+      noBed ? `부상자 ${noBed}명이 침상 없이 누워 있습니다.
+· 시즌마다 ${Math.round(CONFIG.injury.natural.worsen * 100)}% 로 덧나고, 부상 ${CONFIG.injury.deathAt}이면 죽습니다 (배상 없음). 의무실에서 침상에 눕히세요.` : '',
       (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(overworkChance((g.fatigue ?? 0) + 1) * 100)).join('·')}%` : ''; })(),
     ].filter(Boolean);
     return warn;
@@ -258,7 +259,7 @@ export function renderPlan() {
     // 못 나가는 까닭은 칩이 아니라 흐려진 카드 위에 한 줄로 적는다 (2026-09-17 사용자)
     // 못 나가는 까닭은 하나씩만 적는다. 인원이 모자라 계약이 안 서는 것은 사람의 사정이 아니므로 흐리게만 두고 말하지 않는다 (2026-09-17 사용자)
     const vetShort = !!selC && g.rank !== 'veteranus' && available(S.st).filter(x => x.rank === 'veteranus').length < selC.needVeterans; // 베테라누스가 모자라 티로가 낄 자리가 없다 = '티로는 못 나감' 과 같은 말
-    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` }
+    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 침상에 눕혀야 낫는다 — 즉시 치료는 없다` }
       : g.fought ? { t: '출전중', tip: '이번 시즌에 이미 모래를 밟았다 — 한 시즌에 한 번만 나간다' }
       : vetBlock || swapVetBlock || vetShort ? { t: '출전불가', tip: '주최자가 신참을 받지 않는다 — 남은 자리는 티로가 채울 수 없다' }
       : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' } : null;
@@ -335,8 +336,8 @@ function finishSeason() {
   if (S.skipped.length) S.st.contracts = S.st.contracts.filter(c => !S.skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
   const refused = S.st.contracts.length ? refuseAll(S.st) : 0;
   const eventsHeld = { ...(S.st.events ?? { cena: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
-  const { upkeep, gift } = endSeason(S.st);
-  S.seasonSummary = { upkeep, gift, trained, acted, before: S.seasonSummary?.before ?? S.st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
+  const { upkeep, gift, bedCost } = endSeason(S.st);
+  S.seasonSummary = { upkeep, gift, bedCost, trained, acted, before: S.seasonSummary?.before ?? S.st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
   S.assign = {}; S.trainPlan = {}; savePlan(); S.planSel = null; // 시즌 행동은 시즌마다 다시 (기본 휴식). 팔루스에 선 검투사는 그대로 서 있다
   S.phase = S.st.over ? 'over' : 'summary';
   render();

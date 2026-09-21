@@ -3,6 +3,8 @@
 import type { Gladiator, Lineage } from '../core/types.js';
 import { h, sq } from './dom.js';
 import { CONFIG } from '../core/config.js';
+import { masteryOf } from '../core/dictata.js';
+import { atCap, fullyGrown } from '../core/growth.js';
 import { portrait } from './portrait.js';
 import { effectiveStats, powerOf, powerNow, hpParts, LINEAGE_KO } from '../core/gladiator.js';
 import { overworkChance } from '../core/game.js';
@@ -62,7 +64,7 @@ function rollTo(line: HTMLElement, el: HTMLElement, from: number, to: number, d:
 // 아래: 왼쪽 칸 능력치 · 오른쪽 칸 전적. 숫자는 **실제 싸울 때의 값**이다 — 승수 성장·피로·노쇠·예명이 모두 녹아 있고,
 // 타고난 값과 다르면 그 차이를 옆에 붙인다. 미시오는 뺐다: 규칙에서 쓰이는 데가 예명 '불사' 뿐이다 (2026-09-17 사용자)
 const statLines = (g: Gladiator, foes: Gladiator[] = []) => { const e = effectiveStats(g), b = g.base;
-  const stat = (k: string, now: number, base: number) => h('div', { class: 'sline' }, h('span', { class: 'k' }, k),
+  const stat = (k: string, now: number, base: number, capped = false) => h('div', { class: `sline${capped ? ' capped' : ''}`, title: capped ? '더 자라지 않는다 — 상한에 닿았다' : '' }, h('span', { class: 'k' }, k),
     h('span', { class: 'v' }, String(now), now !== base ? h('em', { class: now > base ? 'up' : 'down' }, `${now > base ? '+' : '−'}${Math.abs(now - base)}`) : null));
   const pw = Math.round(powerNow(g, foes)), pw0 = Math.round(powerOf(g)), d = pw - pw0; // 타고난 전력과의 차이 (상성 포함)
   const prev = shownPower.get(g.id); shownPower.set(g.id, pw); const rolling = prev != null && prev !== pw; // 값이 실제로 달라졌을 때만 굴린다
@@ -71,11 +73,11 @@ const statLines = (g: Gladiator, foes: Gladiator[] = []) => { const e = effectiv
   const vEl = h('span', { class: 'v' }, String(rolling ? prev : pw));
   pwLine.append(vEl, h('em', { class: 'tr' }, d > 0 ? '▲' : d < 0 ? '▼' : '\u00a0'));
   if (rolling) rollTo(pwLine, vEl, prev!, pw, d); // 상성이 붙으면 숫자가 굴러가고 색이 서서히 물든다 /* 화살표는 줄 맨 오른쪽에 못 박는다 — 숫자가 길어져도 자리가 안 흔들린다 (2026-09-17 사용자) */ /* 오름·내림은 화살표와 글자 색으로. 화살표가 없어도 자리는 비워 둔다 (2026-09-17 사용자) */
-  return [stat('ATK', e.atk, b.atk), stat('DEF', e.def, b.def),
-    h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`)), pwLine]; };
+  return [stat('ATK', e.atk, b.atk, atCap(g, 'atk')), stat('DEF', e.def, b.def, atCap(g, 'def')),
+    h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`), fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null), pwLine]; };
 const SKILL_ROWS = 3; // 기술 칩 자리: 기술 개념은 2026-09-18 뺐다(유형 정리 때 유형 기술 하나로 돌아올 자리). 빈 자리 셋을 그대로 잡아 카드 높이가 흔들리지 않게
 export const emptySlots = (n = SKILL_ROWS) => Array.from({ length: n }, () => h('span', { class: 'badge empty lock' }));
-const skillChips = (_g: Gladiator) => emptySlots();
+const skillChips = (g: Gladiator) => { const have = masteryOf(g); return [...have.map(m => h('span', { class: 'badge skill', title: `${m.name}: ${m.ko} (${m.cond.ko})` }, m.name)), ...emptySlots(Math.max(0, SKILL_ROWS - have.length))]; }; /* 익힌 숙련 딕타타 (docs/09 2-α) — 빈 자리는 잠금 */
 
 // 부상: 린넨 띠에 피가 배어난다. 단계가 오를수록 얼룩이 커지고 번진다 (1~3시즌, 2026-09-17 사용자)
 const woundMark = (g: Gladiator) => { const lv = Math.max(1, Math.min(3, g.injured)); const el = h('span', { class: `wound w${lv}`, title: `부상: 앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` });

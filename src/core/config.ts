@@ -10,7 +10,7 @@ export const CONFIG = {
   upkeepFacility: { cell: 30, star: 50, kitchen: 80, bed: 50, medicine: 60, herbs: 80, palus: 175, gym: 80 }, // 2026-09-16 절반 수준으로 (두 개만 올려도 유지비가 너무 뛰었다) // 시설 유지비: 증축 칸·숙소 ★·조리장 단계·침상(첫 침상 제외)·의술 단계·약재 단계·팔루스(기본 2개부터, 훈련 회당 요금 대신)·훈련 시설 단계
   upkeepSmallLudus: 0.75,   // 켈라 4칸 이하 작은 루두스는 검투사 유지비 −25% (초반 완화)
   upkeepFame: { from: 60, per: 40 },
-  contractDiff: { ratio: { weak: 0.85, even: 1.1, strong: 1.4 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
+  contractDiff: { ratio: { weak: 0.75, even: 0.95, strong: 1.25 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 2026-09-21: .85/1.1/1.4 → .75/.95/1.25 — 흥행 계약은 '지지 않을 만한 경기'(도전 계약이 위험을 맡는다). 봇 흥행 승률 47 → 54% // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
   /* rivalFameGrow 제거(2026-09-16): 경쟁 파밀리아를 세게 만들어도 계약 생성기가 내 전력 대비 비율로 상대를 뽑아 정규화해 버려 효과가 0이었다. 같은 뜻을 contractDiff.fameRamp 로 옮겼다 */
   statRoll: { // 시장·상대 검투사의 초기 능력치: 유형 기본치에 스탯마다 [lo, hi] 배율을 따로 굴린다 (전력은 그 결과로 계산). 속도는 유형 고정
     tiro:      { hp: [0.80, 0.92], atk: [0.80, 0.92], def: [0.75, 0.92], hand: [0.75, 0.95] },   // 어린 티로: 단련이 없으니 약하다
@@ -72,7 +72,7 @@ export const CONFIG = {
   retrainCost: 2000,   // 유형 전환(재훈련): 비용, 그 시즌은 출전 불가 // 기술 전수: 세쿠토르 연속 +4% / 무르밀로 방패 첫 타격 감소 60% / 트라엑스 방어 무시 40% / 레티아리우스 속박 1.6초
   promoteWins: 3,
   teamSize: 3,   // 최대 규모 (계약마다 size 1~3)
-  injury: { mild: 0.5, mid: 0.32, medicineCut: 1 }, // 부상의 무게: 가벼움 50%(1시즌) · 보통 32%(2시즌) · 중상 18%(3시즌). 의무실이 injuryAt 단계 이상이면 한 시즌 덜 눕는다 (2026-09-17 사용자: 전투 뒤 부상이 3까지)
+  injury: { mild: 0.5, mid: 0.32, medicineCut: 1, natural: { heal: 0.35, worsen: 0.25 }, deathAt: 5 }, // 2026-09-21 사용자: 즉시 치료 없음. 침상에 누우면 시즌마다 1 낫고 치료비(medicine.healCostByLevel)를 낸다. 눕지 못한 부상자는 시즌마다 heal 로 1 낫거나 worsen 으로 1 덧나고, 덧나 deathAt 에 이르면 죽는다(전투 밖 죽음 — 배상 없음) // 부상의 무게: 가벼움 50%(1시즌) · 보통 32%(2시즌) · 중상 18%(3시즌). 의무실이 injuryAt 단계 이상이면 한 시즌 덜 눕는다 (2026-09-17 사용자: 전투 뒤 부상이 3까지)
   fatigue: { statPenalty: 1, missioPenalty: 0.03, max: 9, overworkAt: 5, overworkPer: 0.09, overworkRamp: 0.35, overworkCap: 0.8, free: 1, cleanWinHp: 0.7, chanceHard: 0.8, chanceClean: 0.3, perCellStar: 0.15, trainAfterFight: 0.6 }, // 과로사는 피로 5부터(2026-09-17 사용자: 4 는 눈금만 비고 벌은 없다). 대신 쌓일수록 가중치가 붙는다 — 확률 = per × n × (1 + (n−1) × ramp), n = 피로 − 5 + 1, 상한 cap. 5:9% · 6:24% · 7:46% · 8:74% · 9:80%(상한)
   // trainAfterFight: 출전한 시즌에 훈련까지 하면 그 확률로 피로 +1 (숙소 ★마다 −15%) // free: 페널티 없는 피로 점수(첫 1점 무료). 피로가 쌓일 확률: 힘든 경기 80%, 가벼운 경기(쓰러지지 않고 HP 70%↑ 이김) 30%, 숙소 ★마다 −15% // 피로는 계속 쌓인다(최대 9). 4부터 시즌 끝에 과로사 확률 (피로−3)×12% // 누적 피로: 출전 +1(최대 3), 쉬는 시즌 −1. 1당 공·방 −1, 미시오 −3% (−2/−5% 는 승률을 15%p 깎아 완화)
   maxTurns: 30,
@@ -135,9 +135,23 @@ export const CONFIG = {
     'bare+gladius':        { atk: 30, def: 20, hp: 20, hand: 30 }, // 스키소르: 세쿠토르 몸에 손
   } as Record<string, { atk: number; def: number; hp: number; hand: number }>,
   // 상대 파밀리아 살림(2026-09-20 docs/10): 시즌 수가 아니라 자기 경기 결과로 자란다. 금고로 사고 훈련하고, 기세(−2~+2)로 도전장을 낸다
-  rivals: { purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 3, trainGain: 3, trainHp: 12, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, focusP: 0.6 }, // focusP: 즐겨 사는 클래스를 고를 확률
+  rivals: { purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 2, trainGain: 2, trainHp: 10, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, focusP: 0.6 }, // focusP: 즐겨 사는 클래스를 고를 확률
   // 도전 계약(docs/10): 파밀리아가 우리를 지목하거나(in) 우리가 건다(out). 상한 없음, 상금 ×1.5, 호감도 +2, 필수 배정. 거절은 벌점 없이 그쪽 기세 +1
   challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, acceptBase: 0.55, acceptMood: 0.15, acceptWeak: -0.3, acceptStrong: 0.2, maxPerSeason: 2 },
+  mastery: { slots: 3, needDoctor: true, rivalVetP: 0.1 },
+  // 성장 모델(2026-09-21 docs/09 §7): 초기 굴림 없음 — 현재치 = 유형 기본 × 서열(rankMul), 개체 차이는 잠재치·나이·성장형(곡선 넷 × 결 넷)·자질
+  growthModel: {
+    rankMul: { tiro: 0.85, veteranus: 1.0 } as Record<'tiro' | 'veteranus', number>,
+    potential: [1.15, 1.55] as const,                                      // 잠재 굴림: 상한 = 기본 × 이것 × 나이 계수 × 곡선 상한
+    age: { youngFrom: 18, capFullTo: 25, capAtOld: 0.85, youngTo: 23, primeTo: 29 }, // 25세까지 위가 다 열리고 30세엔 0.85 (0.7 은 봇이 사는 베테라누스가 거의 안 자라 으뜸 1.11배 — 09-21) · 청년 ≤23 · 장년 ≤29 · 노년 30~
+    curveRate: { early: 0.2, late: 0.2, second: 0.1 },                      // 나머지 평범 50%
+    curveCap: { normal: 1.0, early: 1.08, late: 1.17, second: 1.0 } as Record<'normal' | 'early' | 'late' | 'second', number>,
+    curveSpeed: { normal: { young: 1.3, prime: 1.0, old: 0.5 }, early: { young: 1.8, prime: 0.7, old: 0.3 }, late: { young: 0.7, prime: 1.4, old: 0.8 }, second: { young: 1.0, prime: 1.0, old: 0.8 } } as Record<'normal' | 'early' | 'late' | 'second', Record<'young' | 'prime' | 'old', number>>,
+    secondAt: 30, secondBoost: 1.15,                                       // 늦바람: 서른에 상한 +15%
+    traitP: 0.4, oneCap: 1.5, oneOtherCap: 0.6, oneSpeed: 1.8, oneOtherSpeed: 0.6, fieldTrainMul: 0.6, fieldGain: 1, pupilWith: 1.6, pupilWithout: 0.7, evenCap: 1.1,
+    talentMul: [1, 1.3, 1.6, 2.0] as readonly number[],                     // 자질은 크기 배율 (전엔 +1 추가 확률)
+    revealCurveAfter: 3,                                                   // 세 번째 훈련 뒤 독토르가 곡선을 짚어 준다
+  }, // 숙련 딕타타(docs/09 2-α): 자리 셋, 같은 클래스 독토르가 있어야 익힌다. 상대 베테라누스는 승수마다 이 확률로 하나씩(최대 둘)
   matchup: { power: 1.2 }, // 상성이 전력에 실리는 폭: 보이는 전력 × (1 + (상성 승률 − 0.5) × power). 최악의 짝(0.39/0.61)에서 ±13% (2026-09-17 사용자: 배정하면 상성만큼 전력이 깎이거나 오르게)
   typePower: { murmillo: 1.4, secutor: 0.9, thraex: 0.2, retiarius: -2.9, hoplomachus: 3.1, provocator: 2.8, eques: -1.1, dimachaerus: -1.7, scissor: -0.6, laquearius: -1.8 } as Record<string, number>, // 유형 보정(2026-09-18 재측정): 장비 규칙을 뺀 전투에서 전력이 같은 짝의 1대1 승률이 50%가 되도록 맞춘 값(상성표 셀 0.445~0.555). 무거운 유형(HP·방어)이 전력식보다 세게 나와 +, 빠른 유형이 −. 유형 정리 뒤 다시 잰다
   tierGraduate: 0.95, // 졸업(2026-09-16): 내 검투사 평균 전력이 그 등급 상한의 이 배를 넘으면 아래 등급 주최자는 더 이상 나를 부르지 않는다. 으뜸이 아니라 평균인 이유: 으뜸 기준이면 검투사 하나만 세져도 하위 경기가 사라져 새로 산 티로를 키울 자리가 없어진다(사용자). 상한은 약할 때를 지키는 장치이고, 세월이 지나 상한을 추월하면 하위 등급 경기는 이길 게 뻔한 공짜 승리가 된다 — 상한을 올리는 대신 등급을 졸업시킨다 (위 등급이 호감도로 아직 안 열렸으면 그대로 둔다: 경기가 없어지면 안 된다)

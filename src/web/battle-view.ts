@@ -809,6 +809,7 @@ function renderResult() {
   for (const f of bad) line(f.fate === 'dead' ? `${f.g.name}${eun(f.g.name)} 돌아오지 못했다.` : `${f.g.name}${eun(f.g.name)} ${f.g.injured >= 3 ? '크게 다쳤다. 세 시즌은 눕는다.' : `다쳤다. ${f.g.injured >= 2 ? '두' : '한'} 시즌은 쉬어야 한다.`}`, f.fate === 'dead' ? 'grave' : 'bad');
   for (const g of r.rudis) { line(`${g.name}${eun(g.name)} 목검(루디스)을 받았다 — 자유다.`, 'good'); if (g.status === 'rudiarius') flags.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '거절')); }
   for (const g of r.promoted) line(`${g.name}${eun(g.name)} 베테라누스가 되었다.`, 'good');
+  for (const nd of r.newDictata) flags.push(h('div', { class: 'rline good', title: `${nd.m.ko} — ${nd.m.cond.ko}` }, `${nd.g.name}${eun(nd.g.name)} 팔루스에서 '${nd.m.name}'${eul(nd.m.name)} 익혔다.`));
   for (const ne of r.newEpithets) flags.push(h('div', { class: 'rline good', title: `${ne.e.cond} → ${ne.e.effect}` }, `관중이 ${ne.g.name}${eul(ne.g.name)} '${ne.e.name}' 이라 부르기 시작했다.`));
   const title = won ? '승리' : r.winner === 'draw' ? '무승부' : '패배';
   const tp = turningPoint(r);

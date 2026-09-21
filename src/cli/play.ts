@@ -1,7 +1,7 @@
 // 콘솔 대화형 플레이
 import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { newGame, available, buy, sell, heal, fight, refuseAll, endSeason, validTeam, score, seasonName, type GameState } from '../core/game.js';
+import { newGame, available, buy, sell, fight, refuseAll, endSeason, validTeam, score, seasonName, type GameState } from '../core/game.js';
 import { label, sellPrice, rentFee, TYPE_KO } from '../core/gladiator.js';
 import { HOST_KO } from '../core/contracts.js';
 import { traitLevelsOf, describeTraits } from '../core/traits.js';
@@ -33,7 +33,7 @@ async function marketPhase(st: GameState) {
     const n = Number(a.slice(1));
     if (a[0] === 'b' && st.market[n]) { if (!buy(st, st.market[n])) console.log('자금 부족'); }
     else if (a[0] === 's' && st.roster[n]) sell(st, st.roster[n]);
-    else if (a[0] === 'h' && st.roster[n]) { if (!heal(st, st.roster[n])) console.log('치료 불가'); }
+    else if (a[0] === 'h' && st.roster[n]) { console.log('즉시 치료는 없다 — 의무실 침상에 눕힌다 (b)'); }
   }
 }
 

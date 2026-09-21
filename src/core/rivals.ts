@@ -5,6 +5,8 @@ import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator, pickTrainStat, powerOf, TYPES } from './gladiator.js';
 import { classKey } from './classes.js';
+import { masteryCandidates } from './dictata.js';
+import { growthSpeed, capOf } from './growth.js';
 
 export type RivalProfile = 'local' | 'major' | 'grand'; // 지방 파밀리아 · 큰 루두스 · 최대 루두스
 export interface Rival {
@@ -33,7 +35,8 @@ const RV = () => CONFIG.rivals;
 function pickType(rng: Rng, focus: string): GType { const pool = TYPES.filter(t => classKey(t) === focus); return pool.length && rng.chance(RV().focusP) ? rng.pick(pool) : rng.pick(TYPES); }
 function makeMember(rng: Rng, season: number, roster: Gladiator[], rank: 'tiro' | 'veteranus', focus: string): Gladiator {
   const g = makeGladiator(rng, rank, { season, type: pickType(rng, focus) });
-  if (rank === 'veteranus') { g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2)); }
+  if (rank === 'veteranus') { g.wins = rng.int(3, 3 + Math.min(9, Math.floor(season / 2))); g.fights = g.wins + rng.int(0, 3); g.honor = rng.int(0, Math.min(30, season * 2));
+    const cand = masteryCandidates(g.type); const n = Math.min(2, Math.floor(g.wins / 3)); for (let k = 0; k < n; k++) if (rng.chance(CONFIG.mastery.rivalVetP)) { const pick = rng.pick(cand.filter(m => !(g.dictata ?? []).includes(m.id))); if (pick) (g.dictata ??= []).push(pick.id); } } // 상대 베테라누스도 승수만큼 익힌 것이 있다
   const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } // 같은 파밀리아 안에서 이름 겹침 방지
   return g;
 }
@@ -59,7 +62,7 @@ export function replenishRivals(rng: Rng, rivals: Rival[], season: number): stri
     // 보이지 않는 다른 경기: 우리가 없어도 세상이 돈다
     if (rng.chance(C.otherGames.winP)) { r.purse += C.purseWin; } else { r.purse += C.purseLose; if (rng.chance(C.otherGames.deathP / C.otherGames.winP)) { const alive = r.roster.filter(g => g.alive); if (alive.length > 2) { const dead = rng.pick(alive); r.roster = r.roster.filter(g => g !== dead); bumpMood(r, dead === rivalStar(r) ? -2 : -1); news.push(`${r.name}의 ${dead.name}${dead === rivalStar(r) ? '(간판)' : ''}이(가) 다른 경기에서 쓰러졌다`); } } }
     // 훈련: 금고가 있으면 둘 — 자기 클래스 풀로
-    for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); const stat = pickTrainStat(rng, g); g.base[stat] += stat === 'hp' ? C.trainHp : C.trainGain; /* 파밀리아는 독토르가 늘 있는 집이라 우리 기본치(2)보다 한 점 더 */ r.purse -= C.trainCost; }
+    for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); const stat = pickTrainStat(rng, g); const gain = Math.min(Math.max(0, capOf(g, stat) - g.base[stat]), Math.round((stat === 'hp' ? C.trainHp : C.trainGain) * growthSpeed(g, stat, true))); g.base[stat] += gain; /* 파밀리아는 독토르가 늘 있는 집 — 같은 성장 모델, 상한까지 */ r.purse -= C.trainCost; }
     // 보충: 금고가 허락하는 만큼. 기세가 좋으면 베테라누스
     while (r.roster.length < ROSTER_SIZE) { const vet = (r.mood ?? 0) > 0 && r.purse >= C.buyVet; const cost = vet ? C.buyVet : C.buyTiro; if (r.purse < cost) break; r.purse -= cost; r.roster.push(makeMember(rng, season, r.roster, vet ? 'veteranus' : 'tiro', r.focus)); }
   }

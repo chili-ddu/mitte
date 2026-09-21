@@ -18,7 +18,7 @@ export interface State {
   view: View;
   travel: { to: View; from: View; fromX: number; start: number } | null;
   seasonReports: FightReport[];
-  seasonSummary: { upkeep: number; gift: number; trained: { g: Gladiator; stat: TrainStat; gain: number }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
+  seasonSummary: { upkeep: number; gift: number; bedCost?: number; trained: { g: Gladiator; stat: TrainStat; gain: number }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
   report: FightReport | null;
   notice: string;
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;

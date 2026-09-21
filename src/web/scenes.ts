@@ -3,7 +3,7 @@ import { S, myInk, myLight } from './state.js';
 import { INK, NPC_POSES, attackClipFor, clipLength, clipSkeleton, drawStickman, type DrawOpts, type Skeleton, walkSkeleton } from './stickman.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { HOST } from '../core/hosts.js';
-import { bedPatient, healCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam } from '../core/game.js';
+import { bedPatient, bedCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam } from '../core/game.js';
 import { EPITHET_BY_ID, accessoriesOf, type EpithetId } from '../core/epithets.js';
 import { sfx } from './sound.js';
 import { CH, GY, MEDIC, TOWN, drawCivilian } from './town.js';
@@ -284,7 +284,7 @@ export function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   }
   // 부상자: 침상에 눕고(머리 왼쪽), 침상이 모자라면 오른쪽 벽가에 앉는다
   // 부상 표시: 남은 시즌 수만큼 구급 십자 (침상 위 작은 팻말). 누르면 치료
-  const cost = `${healCostOf(S.st).toLocaleString()}`; ctx.font = 'bold 10px sans-serif'; const costW = ctx.measureText(cost).width;
+  const cost = `${bedCostOf(S.st).toLocaleString()}/시즌`; ctx.font = 'bold 10px sans-serif'; const costW = ctx.measureText(cost).width;
   const crosses = (cx: number, cy: number, n: number, k: number) => { const w = n * 17 + 10 + costW + 6; ctx.fillStyle = '#f3ead0'; ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - 10, w, 20, 4); ctx.fill(); ctx.stroke(); // 십자(남은 시즌) + 치료 금액
     for (let j = 0; j < n; j++) { const x = cx - w / 2 + 12 + j * 17, bob = Math.sin(t * 2 + k + j) * 0.6; ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 6.5, cy - 2 + bob, 13, 4); ctx.fillRect(x - 2, cy - 6.5 + bob, 4, 13); }
     ctx.fillStyle = '#3a2412'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(cost, cx - w / 2 + 12 + n * 17, cy + 3.5); ctx.textAlign = 'center'; };

@@ -15,6 +15,7 @@
     "traits:gain": "tsx src/cli/traits-gain.ts",
     "stat:worth": "tsx src/cli/stat-worth.ts",
     "growth": "tsx src/cli/growth.ts",
+    "mastery": "tsx src/cli/mastery.ts",
     "dev": "vite --host",
     "build:watch": "vite build --watch",
     "matchup:table": "tsx src/cli/matchup-table.ts 600 > /tmp/matchup-table.ts && mv /tmp/matchup-table.ts src/core/matchup-table.ts"
