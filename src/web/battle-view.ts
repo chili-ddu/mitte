@@ -596,9 +596,11 @@ export function renderBattle() {
     for (const n of nets) {
       const k = Math.max(0, Math.min(1, (ct - n.start) / n.dur)); if (k <= 0) continue;
       const a = pos[n.from], b = pos[n.to];
-      const x0 = a.x + face[n.from] * 10, y0 = a.y - 10;
-      const x = x0 + (b.x - x0) * k, y = y0 + (b.y - 10 - y0) * k - Math.sin(k * Math.PI) * 70;
-      drawNetProjectile(ctx, x, y, 26, Math.min(1, Math.max(0, (k - 0.15) / 0.5)), k * 6);
+      const x0 = a.x + face[n.from] * 13, y0 = a.y - 18, x1 = b.x, y1 = b.y - 16;
+      const arc = Math.sin(k * Math.PI), x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k - arc * 76 + k * k * 10;
+      const open = Math.min(1, Math.max(0, (k - 0.08) / 0.58)), sag = Math.max(0, k - 0.55) / 0.45;
+      ctx.save(); ctx.strokeStyle = '#3a2412'; ctx.globalAlpha = 0.55 + open * 0.25; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(x0 - face[n.from] * 5, y0 + 2); ctx.quadraticCurveTo(x0 + (x - x0) * 0.42, y0 - 26 - arc * 20 + sag * 24, x - face[n.from] * (8 + open * 8), y + 6 + sag * 8); ctx.stroke(); ctx.restore(); // 손목줄: 투망이 빗나가면 끌어올 수 있는 줄
+      drawNetProjectile(ctx, x, y + sag * 8, 30, open, k * 5.4 + face[n.from] * 0.35);
     }
     for (const u of units) if (hp[u.g.id] > 0 && ct < (boundUntil[u.g.id] ?? 0)) drawNetOverlay(ctx, pos[u.g.id].x, pos[u.g.id].y + 32 * SC, 78 * SC, undefined, ct);
     ctx.fillStyle = '#9b1f14';

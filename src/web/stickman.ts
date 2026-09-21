@@ -370,21 +370,26 @@ export function drawNetOverlay(ctx: CanvasRenderingContext2D, x: number, footY: 
   ctx.stroke();
   ctx.restore();
 }
-// 날아가는 그물: 뭉치(open=0)에서 펼쳐진 원(open=1)으로. spin 으로 회전
+// 날아가는 그물: 접힌 꾸러미(open=0)에서 납추 달린 찌그러진 원형 투망(open=1)으로 펼쳐진다.
 export function drawNetProjectile(ctx: CanvasRenderingContext2D, x: number, y: number, rMax: number, open: number, spin: number, ink = INK) {
-  const r = 4 + (rMax - 4) * open;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(spin); ctx.strokeStyle = ink; ctx.lineWidth = 1.2; ctx.globalAlpha *= 0.9;
+  const r = 4 + (rMax - 4) * open, rx = r * (1.14 + open * 0.12), ry = r * (0.48 + open * 0.22);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(spin); ctx.strokeStyle = ink; ctx.lineWidth = 1.15; ctx.globalAlpha *= 0.9;
   if (open < 0.25) { // 뭉치: 작은 덩어리 + 꼬리
-    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-3, 2); ctx.quadraticCurveTo(-10, 6, -14, 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, 5.5, 3.8, 0.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4, 2); ctx.quadraticCurveTo(-11, 8, -18, 4); ctx.quadraticCurveTo(-10, 1, -5, -2); ctx.stroke();
   } else {
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-    const step = Math.max(5, r / 4);
+    const wob = 1 + Math.sin(spin * 1.7) * 0.06;
+    ctx.save(); ctx.scale(1, wob);
+    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    const step = Math.max(5, rx / 4.5);
     ctx.beginPath();
-    for (let i = -r + step; i < r; i += step) { const hh = Math.sqrt(r * r - i * i); ctx.moveTo(i, -hh); ctx.lineTo(i, hh); ctx.moveTo(-hh, i); ctx.lineTo(hh, i); }
+    for (let i = -rx + step; i < rx; i += step) { const hh = ry * Math.sqrt(Math.max(0, 1 - (i * i) / (rx * rx))); ctx.moveTo(i, -hh); ctx.quadraticCurveTo(i + Math.sin(i + spin) * 1.6, 0, i, hh); }
+    for (let j = -ry + step * 0.55; j < ry; j += step * 0.55) { const ww = rx * Math.sqrt(Math.max(0, 1 - (j * j) / (ry * ry))); ctx.moveTo(-ww, j); ctx.quadraticCurveTo(0, j + Math.cos(j + spin) * 1.4, ww, j); }
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a); ctx.moveTo(0, 0); ctx.lineTo(ca * rx * 0.88, sa * ry * 0.88); }
     ctx.stroke();
-    // 가장자리 추(무게추) 4개
-    ctx.fillStyle = ink; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(Math.cos(k * Math.PI / 2) * r, Math.sin(k * Math.PI / 2) * r, 1.8, 0, Math.PI * 2); ctx.fill(); }
+    // 가장자리 납추: 아래쪽이 조금 더 무겁게 보이도록 큰 점을 섞는다
+    ctx.fillStyle = ink; for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), heavy = sa > 0.35; ctx.beginPath(); ctx.arc(ca * rx, sa * ry + (heavy ? 1.2 : 0), heavy ? 2.2 : 1.55, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
   }
   ctx.restore();
 }
