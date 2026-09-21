@@ -986,7 +986,6 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .hint.turning::after { content:''; position:absolute; left:30px; right:10px; bottom:4px; height:1.5px; background:linear-gradient(90deg, rgba(155,44,28,.7), transparent); transform:rotate(-.4deg); transform-origin:left center; }
 #app.land.page .panel.result .hint.turning { margin-top:-4px; }
 
-/* 새 게임 설정: 파밀리아 색과 시작 유형 (2026-09-17, Codex 한도 소진으로 Claude 가 임시로 넣음 — 모양은 다듬어도 됨) */
 
 /* 편성: 장비가 만드는 상성 한 줄씩 (2026-09-17, Claude 임시 — 모양은 다듬어도 됨) */
 .lmatch { display:flex; flex-direction:column; gap:3px; margin:2px 0 4px; }
