@@ -65,7 +65,7 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
       if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
       if (diff === 'strong') return makeGladiator(rng, 'veteranus', { season });
       if (diff === 'even') return makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season });
-      const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
+      const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); if (g.cap) { g.cap.atk = Math.max(g.base.atk, g.cap.atk + O.stat); g.cap.def = Math.max(g.base.def, g.cap.def + O.stat); } return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
     }));
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
     out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier === 3 ? size : tier === 2 ? 1 : 0, /* 등급 3(로마)은 티로를 세우지 않는다 — 리벨루스에 이름을 파는 경기다 (2026-09-17 사용자) */ powerCap: Number.isFinite(cap) ? cap : undefined, size, enemy, enemyPreview, rivalId, classic: classic || undefined, clauses: offerClauses(rng, host, tier), accepted: [] });

@@ -7,7 +7,6 @@ import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { effectiveStats } from './gladiator.js';
 import { noTraits, unitMods, type TraitLevels, type TraitMods } from './traits.js';
-import { epithetMods } from './epithets.js';
 import { TYPE_TRAIT } from './equipment.js';
 import { rangeOf, blockOf, reachOf } from './classes.js';
 import { basicDictataOf, masteryOf, mergeMastery, type DictataId, type MergedEffect, type AfterHit } from './dictata.js';
@@ -72,7 +71,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', L: TraitLevels, hpBonus =
 
 export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { hpBonusA?: number; boostedB?: Set<number>; boostMul?: number; traitsA?: TraitLevels; traitsB?: TraitLevels } = {}): BattleResult { // traitsA/B: 각 편성에서 센 특성 단계 (없으면 0 — 시뮬·테스트)
   const units = [...makeUnits(teamA, 'A', opts.traitsA ?? noTraits(), opts.hpBonusA ?? 0), ...makeUnits(teamB, 'B', opts.traitsB ?? noTraits(), 0, opts.boostedB, opts.boostMul ?? 1)];
-  const form: Record<number, number> = {}; const teamForm = { A: rng.range(-1, 1), B: rng.range(-1, 1) }; for (const u of units) { const f = u.g.form ?? (teamForm[u.side] * CONFIG.form.team + rng.range(-1, 1) * (1 - CONFIG.form.team)); form[u.g.id] = f; /* 우리 검투사는 시즌 시작에 정해 둔 값(g.form), 상대는 경기 때 굴린다 */ const F = CONFIG.form; u.hp = Math.max(1, u.hp + Math.round(f * F.hp)); u.atk = Math.max(1, u.atk + Math.round(f * F.atk)); u.def = Math.max(0, u.def + Math.round(f * F.def)); }
+  /* 몸 상태(form) 보정은 2026-09-22 뺐다 — 능력치는 훈련이 만든 값 그대로 싸운다 */
   const byId = new Map(units.map(u => [u.g.id, u]));
   const log: string[] = [];
   const events: BattleEvent[] = [];
@@ -95,7 +94,6 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
   const stumble = (v: Unit, sec: number) => { v.openUntil = Math.max(v.openUntil, t + sec); v.holdUntil = Math.max(v.holdUntil, t + sec); v.sprint = false; }; // 헛디딤(빈틈)
   const strike = (a: Unit, b: Unit, mult: number, id: string, counter = true) => { const dm = Math.max(1, Math.round(a.atk * mult * rng.range(0.85, 1.15) - b.def * 0.5)); b.hp -= dm; b.lastAttacker = a.g.id; a.s.dmgDealt += dm; b.s.dmgTaken += dm; a.s.dictata[id] = (a.s.dictata[id] ?? 0) + 1; ev({ kind: 'attack', actor: a.g.id, target: b.g.id, dmg: dm, targetHp: Math.max(0, b.hp), counter, net: false, blocked: false, combo: false, charge: false, crit: false, downed: b.hp <= 0, dictata: id }); log.push(`${fmt(t)} ${a.g.name} ${id} → ${b.g.name} ${dm}${b.hp <= 0 ? ' 쓰러짐' : ''}`); if (b.hp <= 0) a.s.kills++; return b.hp <= 0; }; // 숙련 딕타타의 추가 타격
 
-  for (const u of units) if (Math.abs(form[u.g.id]) >= CONFIG.form.tell) log.push(`0.0s ${u.g.name} 오늘 몸이 ${form[u.g.id] > 0 ? '가볍다' : '무겁다'}`);
   let t = 0;
   const snapshot = () => frames.push({ t: +t.toFixed(2), u: units.map(u => [u.g.id, Math.round(u.x), Math.round(u.y), Math.max(0, Math.round(u.hp)), Math.max(0, Math.round(u.stamina))]) });
   snapshot();
@@ -212,7 +210,6 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         const combo = hit >= 1; if (combo) { u.s.combos++; if (u.d.has('twin')) used(u, 'twin'); }
         let dictata: DictataId | undefined;
         let mult = 1.0;
-        if (target.g.type === 'retiarius') mult *= epithetMods(u.g).vsRetiarius; // 별칭 '그물꾼의 악몽'
         if (target.hp / initialHp[target.g.id] < 0.15) mult *= u.m.finishMul; // 승리 계보 2단계: 끝을 낸다
         if (u.ms.finishMul && target.hp / initialHp[target.g.id] < 0.2) mult *= u.ms.finishMul; // 마무리 찌르기
         if (charge && !combo) { mult *= 1.15 * u.m.chargeMul; // 돌진 공격: 기세 보너스
@@ -277,5 +274,5 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
   const winner: BattleResult['winner'] = a > 0 && b === 0 ? 'A' : b > 0 && a === 0 ? 'B' : 'draw'; // 동점은 무승부 (승리×3 동점 승리는 2026-09-18 뺐다)
   const downed = { A: units.filter(u => u.side === 'A' && u.hp <= 0).map(u => u.g), B: units.filter(u => u.side === 'B' && u.hp <= 0).map(u => u.g) };
   const stats: Record<number, UnitStats> = Object.fromEntries(units.map(u => [u.g.id, u.s]));
-  return { events, frames, initialHp, winner, turns: Math.ceil(t), duration: t, log, downed, counterWin: false, form, stats, mounted };
+  return { events, frames, initialHp, winner, turns: Math.ceil(t), duration: t, log, downed, counterWin: false, stats, mounted };
 }

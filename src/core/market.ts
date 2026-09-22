@@ -24,8 +24,8 @@ function withOrigin(rng: Rng, g: Gladiator, season: number): Gladiator {
   const O = CONFIG.origins; g.origin = 'slave';
   if (season <= 1) return g;
   const r = rng.next();
-  if (r < O.mix.captive) { g.origin = 'captive'; g.base.atk += O.captive.atk; g.base.hp += O.captive.hp; g.buyPrice = valueOf(g); }
-  else if (r < O.mix.captive + O.mix.damnatus) { g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.damnatus.stat); g.base.def = Math.max(0, g.base.def + O.damnatus.stat); g.buyPrice = valueOf(g); }
+  if (r < O.mix.captive) { g.origin = 'captive'; g.base.atk += O.captive.atk; g.base.hp += O.captive.hp; if (g.cap) { g.cap.atk += O.captive.atk; g.cap.hp += O.captive.hp; } g.buyPrice = valueOf(g); } /* 출신 보정은 상한도 같이 옮긴다 — 안 그러면 포로가 사자마자 '다 큰 몸'(현재치 > 상한)이 된다 (2026-09-22 사용자 지적) */
+  else if (r < O.mix.captive + O.mix.damnatus) { g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.damnatus.stat); g.base.def = Math.max(0, g.base.def + O.damnatus.stat); if (g.cap) { g.cap.atk = Math.max(g.base.atk, g.cap.atk + O.damnatus.stat); g.cap.def = Math.max(g.base.def, g.cap.def + O.damnatus.stat); } g.buyPrice = valueOf(g); }
   return g;
 }
 // 자유민 지원자(아욱토라티): 호민관 앞에서 선서하고 라니스타와 직접 계약. 루두스 문 앞에 찾아온다

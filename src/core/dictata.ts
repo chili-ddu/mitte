@@ -24,7 +24,7 @@ export const DICTATA: DictataDef[] = [
   { id: 'chest', name: '가슴판', layer: 'type', owner: 'provocator', desc: `치명타를 ${Math.round(D.chest.p * 100)}% 로 보통 타격으로 튕겨 낸다`, note: '카르디오필락스(가슴판)' },
   { id: 'feint', name: '허초', layer: 'type', owner: 'thraex', desc: `공격 때 ${Math.round(D.feint.p * 100)}% 로 들어가는 척 빠졌다 찌른다 — 그 타격은 방어를 무시한다`, note: '지그재그 트라엑스 (창작)' },
   { id: 'spear_wall', name: '창 벽', layer: 'type', owner: 'hoplomachus', desc: `붙은 근접 상대가 치려는 순간 ${Math.round(D.spearWall.p * 100)}% 로 창으로 밀어 그 공격을 무산시키고 찌른다 (공 ×${D.spearWall.poke})`, note: '창과 단검의 이중 무장' },
-  { id: 'dismount', name: '말에서 내려 치기', layer: 'type', owner: 'eques', desc: `말을 타고 들어와 첫 돌진을 말 위에서 — 반드시 적중, 피해 ×${D.dismount.mult}. 부딪힌 뒤 내려서 싸운다`, note: '기마 후 하마 — 고증', once: true },
+  { id: 'dismount', name: '기마 찌르기', layer: 'type', owner: 'eques', desc: `말을 타고 들어와 첫 돌진을 말 위에서 찌른다 — 반드시 적중, 피해 ×${D.dismount.mult}. 부딪힌 뒤 내려서 싸운다`, note: '기마 후 하마 — 고증', once: true },
   { id: 'net', name: '그물', layer: 'type', owner: 'retiarius', desc: `첫 공격에 그물을 던진다. 성공 ${Math.round(D.net.base * 100)}% − 상대 속도×${Math.round(D.net.perSpd * 100)}%, 걸리면 ${D.net.sec}초 묶인다. 빗나가면 그물을 잃는다`, note: '고증', once: true },
   { id: 'twin', name: '이중베기', layer: 'type', owner: 'dimachaerus', desc: `연속 공격 확률 +${Math.round(D.twin.combo * 100)}%p`, note: '두 자루' },
   { id: 'arm_riposte', name: '팔 칼날 되치기', layer: 'type', owner: 'scissor', desc: `맞은 직후 ${Math.round(D.armRiposte.p * 100)}% 로 반달 날로 되친다 (공 ×${D.armRiposte.mult})`, note: '아르벨라스의 팔 칼날' },
@@ -171,7 +171,7 @@ export const LEGEND_MASTERY: MasteryDef[] = [
   LG('prudens', '신중', '올가미 ×1.5 오래 묶고, 묶은 상대를 끌어당기고, 풀릴 때 70% 로 넘어뜨리고, 묶인 상대에 30% 로 한 타 더', { lassoSecMul: 1.5, lassoPull: true, lassoTrip: 0.7, afterHit: { p: 0.3, mult: 1.0, when: 'bound' } }),
 ];
 export const MASTERY_BY_ID: Record<string, MasteryDef> = Object.fromEntries([...MASTERY, ...LEGEND_MASTERY].map(m => [m.id, m]));
-export const MASTERY_SLOTS = 3;
+export const MASTERY_SLOTS = 4;
 // 이 유형이 익힐 수 있는 후보 (네 층)
 export function masteryCandidates(type: GType): MasteryDef[] { const c = classOf(type); const ck = `${c.off}+${c.main}`; return MASTERY.filter(m => (m.layer === 'main' && m.owner === c.main) || (m.layer === 'off' && m.owner === c.off) || (m.layer === 'class' && m.owner === ck) || (m.layer === 'type' && m.owner === type)); }
 export const masteryOf = (g: { dictata?: string[]; type: GType; legend?: string }): MasteryDef[] => (g.dictata ?? []).map(id => MASTERY_BY_ID[id]).filter((m): m is MasteryDef => !!m && (m.layer === 'legend' ? m.owner === g.legend : masteryCandidates(g.type).includes(m)));

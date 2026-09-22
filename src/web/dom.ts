@@ -21,8 +21,8 @@ let toastTimer = 0;
 export function toast(text: string, tone: 'good' | 'bad' | 'plain' = 'plain') {
   if (!text) return;
   document.querySelector('.toast')?.remove(); window.clearTimeout(toastTimer);
-  const el = h('div', { class: `toast ${tone}` }, text); document.body.append(el);
-  toastTimer = window.setTimeout(() => el.remove(), 3600); // 애니메이션(toastup 3.6s)이 끝나면 치운다
+  const lines = text.split('\n'); const el = h('div', { class: `toast ${tone}${lines.length > 1 ? ' multi' : ''}` }, ...lines.map(l => h('div', { class: 'tl' }, l))); document.body.append(el); /* 줄바꿈이 있으면 한 줄씩 (2026-09-22 사용자: 검투사 한 명당 한 줄) */
+  const dur = Math.min(6000, 3600 + Math.max(0, lines.length - 1) * 600); el.style.animationDuration = `${dur}ms`; toastTimer = window.setTimeout(() => el.remove(), dur); // 애니메이션(toastup)이 끝나면 치운다 — 줄이 많으면 최대 6초
 }
 export const tell = (msg: string, title?: string) => ask(msg, { cancel: false, title });
 // ? 아이콘: 누르면 자세한 설명 모달. 화면에는 짧은 말만 남긴다

@@ -33,7 +33,7 @@ export function rollCaps(rng: Rng, type: Gladiator['type'], base: Stats, age: nu
   const pool = CONFIG.growth[classKey(type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 };
   const out = {} as Record<GrowStat, number>;
   for (const k of GROW_STATS) { const tilt = growth.trait === 'even' ? 1 : 0.85 + (pool[k] / 100) * 0.6; const one = growth.trait === 'one' ? (growth.one === k ? P.oneCap : P.oneOtherCap) : 1; const even = growth.trait === 'even' ? P.evenCap : 1;
-    const floor = Math.round(base[k] * P.minRoom[ageBand(age)]); out[k] = Math.max(base[k], floor, Math.round(typeBase[k] * pot * ageK * P.curveCap[growth.curve] * tilt * one * even)); } // 최소 여유: 나이대별로 현재치 위를 남긴다
+    const floor = Math.max(base[k] + 1, Math.round(base[k] * P.minRoom[ageBand(age)])); /* 최소 여유는 어느 능력치든 +1 은 된다 — 방어 2 는 ×1.2 해도 2 였고, 서른 넘은 한 우물은 나머지 셋이 바닥에 붙어 사자마자 '다 컸다' 였다 (2026-09-22 사용자) */ out[k] = Math.max(base[k], floor, Math.round(typeBase[k] * pot * ageK * P.curveCap[growth.curve] * tilt * one * even)); } // 최소 여유: 나이대별로 현재치 위를 남긴다
   return out;
 }
 // 자질이 바뀌면(깨우침·자유민 보정) 상한도 그 비율만큼 (현재치 아래로는 안 내려간다)
@@ -48,6 +48,10 @@ export function growthSpeed(g: Gladiator, stat: GrowStat, hasDoctor: boolean): n
   return k * P.talentMul[talentOf(g)];
 }
 export const capOf = (g: Gladiator, k: GrowStat): number => g.cap?.[k] ?? Infinity;
+// 훈련 한 번은 네 능력치가 다 오른다 (2026-09-22 사용자: "전체적으로 오르는 걸 생각했다"). 몫은 클래스 풀 비율(고른 몸은 균등), 상한에 닿은 능력치의 몫은 나머지에 돌린다 — 하나를 뽑던 때와 기대값이 같다
+export function trainShares(g: Gladiator): Record<GrowStat, number> { const w0 = CONFIG.growth[classKey(g.type)] ?? { atk: 25, def: 25, hp: 25, hand: 25 }; const w = {} as Record<GrowStat, number>; let sum = 0; for (const k of GROW_STATS) { w[k] = g.base[k] >= capOf(g, k) ? 0 : g.growth?.trait === 'even' ? 1 : w0[k]; sum += w[k]; } for (const k of GROW_STATS) w[k] = sum > 0 ? w[k] / sum : 0; return w; }
+// 한 번의 훈련을 네 능력치에 나눠 얹는다. raw(k): 그 능력치의 기본 상승치(공·방·손은 2+독토르, 체력은 굴림). 돌아오는 값: 정수로 오른 만큼
+export function growAll(g: Gladiator, raw: (k: GrowStat) => number, hasDoctor: boolean): Partial<Record<GrowStat, number>> { const P = G(); const sh = trainShares(g); const out: Partial<Record<GrowStat, number>> = {}; for (const k of GROW_STATS) { if (sh[k] <= 0) continue; const up = addProgress(g, k, raw(k) * (k === 'hp' ? P.hpStep : P.step) * growthSpeed(g, k, hasDoctor) * sh[k]); if (up) out[k] = up; } return out; }
 export const atCap = (g: Gladiator, k: GrowStat): boolean => g.base[k] >= capOf(g, k);
 export const fullyGrown = (g: Gladiator): boolean => !!g.cap && GROW_STATS.every(k => atCap(g, k));
 // 늦바람: 서른이 되면 한 번 상한을 올린다

@@ -1,9 +1,9 @@
 // 마을 장면 그림(의무실·훈련소·포룸·시장·묘지·거리)과 좌표 상수 (Codex: 그림)
-import { S, myInk, myLight } from './state.js';
+import { S, myInk } from './state.js';
 import { INK, NPC_POSES, attackClipFor, clipLength, clipSkeleton, drawStickman, type DrawOpts, type Skeleton, walkSkeleton } from './stickman.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { HOST } from '../core/hosts.js';
-import { bedPatient, bedCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam } from '../core/game.js';
+import { bedPatient, bedCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam, rerollsLeft, canReroll, trainCap, palusTrainees, recommendTrainees } from '../core/game.js';
 import { EPITHET_BY_ID, accessoriesOf, type EpithetId } from '../core/epithets.js';
 import { sfx } from './sound.js';
 import { CH, GY, MEDIC, TOWN, drawCivilian } from './town.js';
@@ -12,7 +12,7 @@ import { TYPE_COLOR, drawGlyph } from './portrait.js';
 
 export const MARKET = { W: 400, H: 250 }; // 폰 화면 폭에 맞춰 좁힘. 매물 최대 4명이 한 줄
  // 폰 화면 폭에 맞춰 좁힘. 매물 최대 4명이 한 줄
-export const MK = { sc: 0.8, get ox() { return (MARKET.W * (1 - this.sc)) / 2; } }; // 시장 장면 축소 배율과 가운데 정렬 여백
+export const MK = { sc: 0.9, get ox() { return (MARKET.W * (1 - this.sc)) / 2; } }; // 시장 장면 축소 배율과 가운데 정렬 여백
  // 시장 장면 축소 배율과 가운데 정렬 여백
 export const marketSlotX = (n: number, i: number) => { const W = MARKET.W; const gap = Math.min(120, (W - 120) / Math.max(1, n - 1)); const startX = W / 2 - gap * (n - 1) / 2 + 10; return n === 1 ? W / 2 + 10 : startX + i * gap; };
 const marketTagW = (n: number) => n > 1 ? Math.min(86, marketSlotX(n, 1) - marketSlotX(n, 0) - 8) : 86; // 가격표 폭
@@ -164,11 +164,11 @@ export function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
     // 판매대 (카타스타): 윗면 띠 + 앞면
     ctx.fillStyle = '#c4ad76'; ctx.fillRect(30, H - 68, W - 60, 8); ctx.fillStyle = '#a89064'; ctx.fillRect(30, H - 60, W - 60, 20); ctx.fillStyle = '#8f7a4e'; ctx.fillRect(30, H - 40, W - 60, 40);
     // 상인 (오른쪽 끝, 라니스타가 왼쪽에 서므로): 줄무늬 튜닉에 두루마리를 든 스틱맨 (기본 리그)
-    drawStickman(ctx, 'murmillo', { x: W - 26, y: H - 68, scale: 0.9, facing: -1, skeleton: NPC_POSES.tablet, t, ink, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16',
+    drawStickman(ctx, 'murmillo', { x: W - 26, y: H - 68, scale: 1.0, facing: -1, skeleton: NPC_POSES.tablet, t, ink, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16',
       hands: (c, f) => { c.fillStyle = '#e8d9b5'; c.fillRect(f.hx - 2, f.hy - 12, 9, 13); c.strokeStyle = ink; c.lineWidth = 1; c.strokeRect(f.hx - 2, f.hy - 12, 9, 13); } });
     if (!items.length) return; // 매물 없음: 빈 카타스타만 (안내는 대시보드에)
     // 사슬: 목 고리 사이를 늘어진 곡선(카테너리 느낌)으로, 작은 고리들이 곡선을 따라 이어짐. 살짝 흔들림
-    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === S.marketSel; const sc0 = sel ? 1.05 : 0.95; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
+    const neckOf = (g: Gladiator, i: number) => { const sel = g.id === S.marketSel; const sc0 = sel ? 1.22 : 1.12; return { x: slotX(i) - 1 * sc0, y: H - 68 + (sel ? 8 : 0) - 44 * sc0 }; };
     ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
     for (let i = 0; i < items.length; i++) {
       const a = neckOf(items[i], i);
@@ -193,8 +193,8 @@ export function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
       const sel = g.id === S.marketSel, dim = S.marketSel != null && !sel;
       const x = slotX(i), y = H - 68 + (sel ? 8 : 0);
       ctx.globalAlpha = dim ? 0.45 : 1;
-      const team = g.rank === 'veteranus' ? myInk() : myLight();
-      const sc0 = sel ? 1.05 : 0.95;
+      const team = myInk();
+      const sc0 = sel ? 1.22 : 1.12; /* 2026-09-22 사용자: 장면이 0.9 로 축소돼 노예가 작아 보였다 — 매물은 크게 */
       drawStickman(ctx, g.type, { x, y, scale: sc0, pose: sel ? 'captive_up' : 'captive', t: t + i, team, facing: 1, bare: true }); // 시장: 맨몸 + 손목 묶임 (고증)
       // 손목 밧줄: 두 손이 모인 자리(몸 앞 아래)에 고리 + 아래로 늘어진 줄
       { const wx = x + 9 * sc0, wy = y - 27 * sc0; ctx.strokeStyle = '#7a5a2c'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.ellipse(wx, wy, 5 * sc0, 3.2 * sc0, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(wx, wy + 3 * sc0); ctx.lineTo(wx - 2, wy + 12 * sc0); ctx.stroke(); }
@@ -220,12 +220,28 @@ export function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
     if (W - 24 - cur >= 14) gaps.push([cur, W - 24]);
     const poses: ('watch' | 'point' | 'tiptoe')[] = ['watch', 'point', 'tiptoe', 'watch'];
     gaps.forEach((g, k) => { const gw = g[1] - g[0]; const cx = (g[0] + g[1]) / 2; const f: 1 | -1 = cx < W / 2 ? 1 : -1;
-      if (gw >= 60) { crowd.push({ x: cx - 12, y: H + 8, sc: 0.92, pose: poses[k % poses.length], f }); crowd.push({ x: cx + 14, y: H + 10, sc: 0.92, pose: 'child', f }); }
-      else if (gw >= 22) crowd.push({ x: cx, y: H + 8, sc: 0.9, pose: poses[k % poses.length], f });
-      else crowd.push({ x: cx, y: H + 10, sc: 0.92, pose: 'child', f }); }); // 좁은 틈엔 아이만
-    crowd.push({ x: W - 40, y: H - 62, sc: 0.85, pose: 'tiptoe', f: -1 }); // 판매대 옆 까치발
+      if (gw >= 60) { crowd.push({ x: cx - 12, y: H + 8, sc: 1.15, pose: poses[k % poses.length], f }); crowd.push({ x: cx + 16, y: H + 10, sc: 1.05, pose: 'child', f }); } /* 판매대 앞은 보는 쪽에 가까우니 매물보다 크게 (2026-09-22 사용자: 원근이 거꾸로였다) */
+      else if (gw >= 22) crowd.push({ x: cx, y: H + 8, sc: 1.15, pose: poses[k % poses.length], f });
+      else crowd.push({ x: cx, y: H + 10, sc: 1.05, pose: 'child', f }); }); // 좁은 틈엔 아이만
+    /* 판매대 옆 까치발 행인은 뺐다 — 상인·종과 오른쪽 끝에 셋이 몰렸다 (2026-09-22 사용자) */
   }
   crowd.forEach((c, i) => drawCivilian(ctx, c.x, c.y, c.sc, c.pose, t, i * 7 + 1, c.f));
+}
+// 상인을 부르는 종 (2026-09-22 사용자: 서판 메뉴 대신 오른쪽 오브젝트): 기둥에 매단 청동 종. 남은 횟수가 있으면 살짝 흔들리고 금빛, 없으면 매듭으로 묶여 잿빛
+export const MARKET_BELL = { x: MARKET.W + 30, y: MARKET.H - 118, r: 22 }; /* 성벽 앞에 따로 그린다 (town.ts) */ /* 판매대 밖 오른쪽 (사용자: 조금 더 오른쪽) */ // 장면 좌표 (누르는 판정도 여기)
+export function drawMarketBell(ctx: CanvasRenderingContext2D, t: number) {
+  const B = MARKET_BELL; const can = rerollsLeft(S.st) > 0 && canReroll(S.st); const sway = can ? Math.sin(t * 1.7) * 0.06 : 0;
+  ctx.save(); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(B.x + 14, MARKET.H); ctx.lineTo(B.x + 14, B.y - 26); ctx.lineTo(B.x - 6, B.y - 26); ctx.stroke(); // 기둥과 팔
+  ctx.translate(B.x - 6, B.y - 26); ctx.rotate(sway);
+  ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 10); ctx.stroke(); // 끈
+  ctx.fillStyle = can ? '#c9a13a' : '#8a8378'; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(-9, 24); ctx.quadraticCurveTo(-11, 8, -3, 8); ctx.lineTo(3, 8); ctx.quadraticCurveTo(11, 8, 9, 24); ctx.lineTo(12, 27); ctx.lineTo(-12, 27); ctx.closePath(); ctx.fill(); ctx.stroke(); // 종 몸
+  ctx.fillStyle = can ? '#f3e2a0' : '#b5ae9f'; ctx.beginPath(); ctx.ellipse(-3, 14, 2, 5, 0.3, 0, Math.PI * 2); ctx.fill(); // 빛
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(0, 29, 2.4, 0, Math.PI * 2); ctx.fill(); // 추
+  if (!can) { ctx.strokeStyle = '#a8321f'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-10, 18); ctx.lineTo(10, 24); ctx.moveTo(-10, 24); ctx.lineTo(10, 18); ctx.stroke(); } // 묶인 종
+  ctx.restore();
+  ctx.fillStyle = INK; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8; ctx.fillText(can ? '종을 치면 다른 상인' : '이번 시즌은 끝', B.x - 4, B.y + 12); ctx.globalAlpha = 1;
 }
 export const YARD = { W: 600, H: 230 }; // 안뜰 0~470 + 문루 470~600(폭 130). 정문 화면은 문루부터 시작해 훈련소가 보이지 않는다 // 훈련소(대련장·무기고·팔루스·급식소)가 폰 한 화면(≈400)에 들어오고, 정문 화면은 문루+바깥 길 // 좁은 화면에 맞춰 훈련장을 좁히고 정문(문루)을 넓혔다
  // 안뜰 0~470 + 문루 470~600(폭 130). 정문 화면은 문루부터 시작해 훈련소가 보이지 않는다 // 훈련소(대련장·무기고·팔루스·급식소)가 폰 한 화면(≈400)에 들어오고, 정문 화면은 문루+바깥 길 // 좁은 화면에 맞춰 훈련장을 좁히고 정문(문루)을 넓혔다
@@ -293,7 +309,7 @@ export function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
     if (!g) { // 빈 침상: 누르면 켈라에서 부상자를 고른다 (부상자가 있을 때만 표시)
       if (S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { const bob = Math.sin(t * 2 + i) * 1.2; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(bx + 37 - 7, H - 62 + bob); ctx.lineTo(bx + 37 + 7, H - 62 + bob); ctx.moveTo(bx + 37, H - 69 + bob); ctx.lineTo(bx + 37, H - 55 + bob); ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(58,36,18,.7)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('부상자 눕히기', bx + 37, H - 6); }
       return; }
-    const team = g.rank === 'veteranus' ? myInk() : myLight();
+    const team = myInk();
     ctx.save(); ctx.beginPath(); ctx.rect(bx - 4, 0, 92, H); ctx.clip();
     drawStickman(ctx, g.type, { x: bx + 78, y: H - 38, scale: 0.9, pose: 'down_back', t: t + i, team, bare: true, facing: 1 }); ctx.restore(); crosses(bx + 37, H - 80, Math.min(4, g.injured), i);
     nameTag(g, bx + 37, H - 6); }); // 침상 아래 무기 아이콘 + 이름
@@ -447,7 +463,7 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       for (let i = 0; i < 2; i++) { const x = ax + 88 + i * 12; ctx.beginPath(); ctx.moveTo(x, 130); ctx.lineTo(x, 88); ctx.moveTo(x - 3, 92); ctx.lineTo(x, 84); ctx.lineTo(x + 3, 92); ctx.stroke(); }
       ctx.restore(); }
     // 검투사 배치: 팔루스에 세운 검투사는 그 기둥에서 각목(목검) 훈련(공격 클립 반복, 사람마다 위상 다르게). 세우지 않은 건강한 검투사는 짝이 맞는 만큼 연습장에서 대련(최대 2조)
-    const teamColor = (g: Gladiator) => g.rank === 'veteranus' ? myInk() : myLight();
+    const teamColor = (g: Gladiator) => myInk();
     for (let k2 = 0; k2 < postN; k2++) { const g = palusTrainee(S.st, k2); if (!g) continue; const px = posts[k2]; const clip = attackClipFor(g.type); const len = clipLength(clip) + 700; const el = ((t * 1000) + k2 * 400) % len;
       drawStickman(ctx, g.type, { x: px - 44, y: H - 20, scale: 0.9, skeleton: clipSkeleton(clip, el), t, team: teamColor(g), accessories: accessoriesOf(g) }); }
     const idle = roster.filter(g => g.alive && !g.injured && g.status !== 'doctor' && palusOf(S.st, g) < 0); const sparN = Math.min(4, idle.length) - (Math.min(4, idle.length) % 2);
@@ -467,6 +483,19 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     for (const wx of [W - 110, W - 10]) { ctx.fillStyle = '#3a2412'; ctx.fillRect(wx - 5, 30, 10, 16); } // 작은 창
     ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(W - 92, H - 20); ctx.lineTo(W - 92, 84); ctx.arc(W - 65, 84, 27, Math.PI, 0); ctx.lineTo(W - 38, H - 20); ctx.closePath(); ctx.fill(); // 아치 문(열림), 바닥까지
     ctx.fillStyle = '#e8d9b5'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('LUDUS', W - 65, 40);
+  drawYardSign(ctx, t);
+}
+// 훈련 서판 (2026-09-22 사용자: 서판 메뉴 대신 시장의 종처럼 그림 안에): 회랑 벽에 건 나무 명부. 세울 만한 사람이 있으면 밀랍이 살아 있고 누르면 추천 배치, 없으면 잿빛
+export const YARD_SIGN = { x: 258, y: 62, w: 30, h: 24 }; // 훈련장 좌표: 회랑 벽, 무기고 거치대(~240)와 네메시스 감실(270~) 사이 — 문루는 정문 화면의 것 (2026-09-22 사용자)
+export function drawYardSign(ctx: CanvasRenderingContext2D, t: number) {
+  const G = YARD_SIGN; const busy = new Set(Object.values(S.assign).flat()); const free = trainCap(S.st) - palusTrainees(S.st).length; const can = free > 0 && recommendTrainees(S.st, busy).length > 0;
+  ctx.save(); ctx.translate(G.x, G.y); if (can) ctx.rotate(Math.sin(t * 1.3) * 0.02);
+  ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(-6, 0); ctx.moveTo(0, -8); ctx.lineTo(6, 0); ctx.stroke(); // 못에 건 끈
+  ctx.fillStyle = can ? '#8a6a44' : '#7a7267'; ctx.fillRect(-G.w / 2, 0, G.w, G.h); ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.5; ctx.strokeRect(-G.w / 2, 0, G.w, G.h); // 나무 틀
+  ctx.fillStyle = can ? '#e8d9b5' : '#a8a196'; ctx.fillRect(-G.w / 2 + 3, 3, G.w - 6, G.h - 6); // 밀랍
+  ctx.strokeStyle = can ? '#6b4a22' : '#8a8378'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-G.w / 2 + 6, 8 + i * 5); ctx.lineTo(G.w / 2 - 6 - (i === 2 ? 6 : 0), 8 + i * 5); ctx.stroke(); } // 글줄
+  ctx.restore();
+  ctx.fillStyle = INK; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8; ctx.fillText(can ? '명부: 추천 배치' : free > 0 ? '세울 사람 없음' : '팔루스 찼음', G.x, G.y + G.h + 11); ctx.globalAlpha = 1;
 }
 // 계약 카드용 경기장 아이콘: 등급별 크기·재질
 // 경기장 그림: 등급마다 다르게 — 1 목조 경기장(나무 관람석 2단·기둥), 2 석조 원형경기장(돌 관람석 3단·아치), 3 로마 대경기장(4단·아치 줄·붉은 차양)

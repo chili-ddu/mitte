@@ -21,7 +21,7 @@ export function coach(): Node | null {
   return h('div', { class: `coach ${arrow}` }, h('span', { class: 'hand' }, '☞'), h('span', { class: 'grow' }, text), h('button', { class: 'tiny', title: '안내 끄기', onclick: () => { S.coachOff = true; localStorage.setItem('lanista-coach', '1'); render(); } }, '✕'));
 } // 첫 실행: 제목 화면 (관중 함성과 함께)
 // 헤더의 설정(톱니바퀴) 버튼: 메뉴 시트 (인라인 SVG, Lucide settings 형태)
-function gearBtn(): Node { const b = h('button', { class: `gear${S.sheet === 'menu' ? ' on' : ''}`, title: '메뉴', onclick: () => { S.sheet = S.sheet === 'menu' ? null : 'menu'; render(); } });
+function gearBtn(): Node { const b = h('button', { class: `gear${S.sheet === 'menu' ? ' on' : ''}`, title: '메뉴', onclick: () => { S.sheet = S.sheet === 'menu' ? null : 'menu'; S.detail = null; S.shownDetail = null; render(); } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
   return b; }
 // 계절 그림 (로마 사계절 도상: 봄 꽃가지 · 여름 밀 이삭 · 가을 포도송이 · 겨울 헐벗은 가지). 낙서풍 선 그림, 헤더의 계절 글자를 대신한다
@@ -61,5 +61,5 @@ export function headerEl(): Node {
 }
 // 소식 배지: 정문 항목 중 할 일·경고 수
 const newsCount = () => renderDash('ludus', true).filter(n => n instanceof HTMLElement && /\b(todo|warn)\b/.test(n.className)).length;
-function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${S.sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { S.sheet = S.sheet === 'news' ? null : 'news'; S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }); // 소식도 다른 시트·켈라와 배타적
+function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${S.sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { S.sheet = S.sheet === 'news' ? null : 'news'; S.detail = null; S.shownDetail = null; S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }); // 소식도 다른 시트·켈라와 배타적
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>'; if (n) b.append(h('span', { class: 'nbadge' }, String(n))); return b; } // 두루마리(소식)

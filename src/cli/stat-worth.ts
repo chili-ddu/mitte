@@ -9,7 +9,7 @@ const STEPS: [keyof Gladiator['base'], number][] = [['hp', 10], ['atk', 1], ['de
 const gain: Record<string, number> = {};
 for (const [stat, step] of STEPS) { let w = 0, n = 0;
   for (const t of TYPES) for (let i = 0; i < N; i++) {
-    const a = makeGladiator(rng, 'veteranus', { season: 3, type: t }); const b = makeGladiator(rng, 'veteranus', { season: 3, type: t }); b.base = { ...a.base }; b.base[stat] += step; a.form = 0; b.form = 0; a.scaeva = false; b.scaeva = false;
+    const a = makeGladiator(rng, 'veteranus', { season: 3, type: t }); const b = makeGladiator(rng, 'veteranus', { season: 3, type: t }); b.base = { ...a.base }; b.base[stat] += step; a.scaeva = false; b.scaeva = false;
     const flip = i % 2 === 1; const r = battle(new Rng(i * 7 + t.length), flip ? [b] : [a], flip ? [a] : [b]); if (r.winner === 'draw') continue; n++; if (r.winner === (flip ? 'A' : 'B')) w++; }
   gain[stat] = (w / n - 0.5) * 100; }
 const per = { hp: gain.hp / 10, atk: gain.atk, def: gain.def, spd: gain.spd, hand: gain.hand };

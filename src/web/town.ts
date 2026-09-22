@@ -1,13 +1,13 @@
 // 마을 캔버스: 카메라·이동·라니스타·입력. 장면 그림은 scenes.ts, 켈라는 cells.ts
 import { S } from './state.js';
 import { INK, NPC_POSES, drawStickman, type Skeleton, walkSkeleton } from './stickman.js';
-import { bedPatient, inBed, leavePalus, moveToCell, occupantOf, palusOf, palusTrainee, putAtPalus, putInBed } from '../core/game.js';
+import { bedPatient, inBed, leavePalus, moveToCell, occupantOf, palusOf, palusTrainee, putAtPalus, putInBed, rerollsLeft, canReroll, rerollMarket, trainCap, palusTrainees, recommendTrainees, autoPalus } from '../core/game.js';
 import { sfx } from './sound.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
-import { FORUM, MARKET, MK, YARD, drawCityWall, drawCountryside, drawForumScene, drawGraveScene, drawMarketScene, drawMedicScene, drawStreetProps, drawYardScene, marketSlotX, palusPosts } from './scenes.js';
+import { FORUM, MARKET, MARKET_BELL, MK, YARD, YARD_SIGN, drawMarketBell, drawCityWall, drawCountryside, drawForumScene, drawGraveScene, drawMarketScene, drawMedicScene, drawStreetProps, drawYardScene, marketSlotX, palusPosts } from './scenes.js';
 import { View, app, render, save } from './main.js';
-import { h, tell } from './dom.js';
+import { h } from './dom.js';
 import { roadBoard } from './board.js';
 import { openSeasonConfirm } from './plan.js';
 import { cellRects, drawCellsScene } from './cells.js';
@@ -105,6 +105,7 @@ export function renderTown() {
     S.st.applicants.forEach((g, i) => { const x = TOWN.yardX + YARD.W - 58 - i * 26; drawStickman(ctx, g.type, { x, y: GY, scale: 0.9, skeleton: NPC_POSES.watch, t: t + i, ink: INK, bare: true, garment: 'tunic', garmentColor: '#b9c2a8', facing: -1 }); }); // 자유민 지원자: 루두스 문루 아래에 서서 훈련소 안을 본다 (계약을 청하러 찾아옴)
     ctx.save(); ctx.translate(TOWN.marketX + MK.ox, GY - MARKET.H * MK.sc); ctx.scale(MK.sc, MK.sc); drawMarketScene(ctx, t); ctx.restore(); // 시장: 조금 작게, 판매대 밑면이 땅(GY)에 닿게 뒤로 물려 길 뒤에 선다
     ctx.save(); ctx.translate(TOWN.wallX, GY); drawCityWall(ctx); ctx.restore();                  // 성벽과 성문 (시장과 묘지 사이)
+    ctx.save(); ctx.translate(TOWN.marketX + MK.ox, GY - MARKET.H * MK.sc); ctx.scale(MK.sc, MK.sc); drawMarketBell(ctx, t); ctx.restore(); // 상인을 부르는 종: 성벽 앞에 (2026-09-22 사용자)
     ctx.save(); ctx.translate(TOWN.graveX, GY); drawGraveScene(ctx, t); ctx.restore();
     { const span = TOWN.roadW + MARKET.W - 80; const p1 = TOWN.yardX + YARD.W + 40 + ((t * 38) % span), p2 = TOWN.wallX - 40 - ((t * 30 + 300) % span); // 거리 행인: 장면 앞(길 위)을 오간다. 성문 안쪽(길·시장)만
       drawCivilian(ctx, p1, GY + 4, 0.9, 'walk', t, 11, 1); drawCivilian(ctx, p2, GY + 4, 0.9, 'walk', t, 5, -1); } // 묘지 (성문 밖 길가 묘역, 발 = GY) // 시장 (판매대 윗면 = GY-30, 앞면·가격표가 디스플레이 안에 들어오도록)
@@ -158,15 +159,23 @@ export function renderTown() {
       return; } // 시설 강화는 왼쪽 망치 토글에서
     if (S.view === 'yard') { // 문루 아래 지원자를 누르면 계약 패널, 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
       const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.yardX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
+      { const G = YARD_SIGN; if (Math.abs(lx - G.x) <= G.w / 2 + 4 && ly >= G.y - 10 && ly <= G.y + G.h + 12) { // 훈련 명부: 추천 배치 (2026-09-22 사용자)
+          const busy = new Set(Object.values(S.assign).flat()); const free = trainCap(S.st) - palusTrainees(S.st).length; const rec = recommendTrainees(S.st, busy);
+          if (free <= 0) { S.notice = '팔루스가 다 찼다'; render(); return; } if (!rec.length) { S.notice = '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다'; render(); return; }
+          const placed = autoPalus(S.st, busy); sfx.step(); { const why = (g: Gladiator) => { const r = rec.find(x => x.g === g); return r ? `${g.name} — ${r.why}` : g.name; }; const head = placed.slice(0, 3).map(why), rest = placed.slice(3); S.notice = placed.length ? `팔루스에 세웠다 (${placed.length}명)\n${head.join('\n')}${rest.length ? `\n외 ${rest.length}명: ${rest.map(g => g.name).join(' · ')}` : ''}` : '빈 팔루스가 없다'; } /* 이유는 앞 셋만, 나머지는 한 줄로 (2026-09-22 사용자: 여덟이면 너무 길다) */ save(); render(); return; } }
       { const posts = palusPosts(S.st.ludus.palus), H = YARD.H; const first = posts[0] - 56, last = posts[posts.length - 1] + 12; // 팔루스 줄 전체 (기둥들과 그 왼쪽에 선 사람들)
         if (lx >= first && lx <= last && ly >= H - 104 && ly <= H - 8) { if (!S.st.roster.some(x => x.alive && x.injured <= 0 && x.status !== 'doctor')) { S.notice = '세울 검투사가 없다'; render(); return; } S.palusMode = true; S.bedPick = null; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } } // 팔루스 줄을 누르면 켈라가 열려 배정 모드 (방을 누르면 세우고, 다시 누르면 내려온다)
-      if (Math.abs(lx - YARD.W / 2) <= 30 && ly >= 30 && ly <= 86) void tell(`복수와 운명의 여신 네메시스의 감실입니다. 검투사들은 경기 전에 여기서 기도하고 봉헌했습니다(원형경기장 곁의 네메세움 비문 근거).\n이번 시즌 봉헌: ${S.st.events?.votum ? '함 (미시오 +3%)' : '안 함'}. 편성 화면의 시즌 행사에서 ${CONFIG.events.votum.cost} HS 로 봉헌하면 그 시즌 미시오 확률이 +${Math.round(CONFIG.events.votum.missio * 100)}% 오릅니다.`, '네메시스 사당');
+      /* 네메시스 감실 설명 팝업은 뺐다 (2026-09-22 사용자) — 감실은 그림으로만 */
       return; }
     if (S.view === 'ludus') { const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, ly = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 기준 좌표 (발 = 0)
-      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if (S.st.applicants.length && yx >= YARD.W - 58 - S.st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) { S.sheet = 'applicants'; S.cellsOpen = false; render(); return; } } // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
+      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if ((S.st.applicants.length && yx >= YARD.W - 58 - S.st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) || (yx >= YARD.W - 92 && yx <= YARD.W - 38 && yy >= 57 && yy <= YARD.H - 20)) { S.sheet = 'applicants'; S.cellsOpen = false; render(); return; } } /* 문(아치)을 눌러도 지원자 목록 (2026-09-22 사용자) */ // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
       if (lx >= 0 && lx <= FORUM.wallW + 20 && ly >= -186 && ly <= 8) { if (S.zoomIn) return; S.zoomIn = { start: performance.now(), dur: 560, wx: TOWN.forumX + FORUM.wallW / 2, wy: GY + FORUM.posterY0 + FORUM.posterGapY / 2 + FORUM.posterH / 2, k: Math.min(1.8, S.VW / FORUM.wallW), done: () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); } }; return; } // 공고벽·심부름꾼 → 줌인 연출 뒤 편성
       return; } // 소식은 헤더의 두루마리 아이콘에서
     if (S.view !== 'market') return; const x = ((ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.marketX - MK.ox) / MK.sc; // 시장 장면 좌표 (축소·가운데 정렬 반영)
+    { const y = ((ev.clientY - r.top) * (CH() / r.height) - (GY - MARKET.H * MK.sc)) / MK.sc; const B = MARKET_BELL; if (Math.abs(x - (B.x - 4)) <= B.r && y >= B.y - 30 && y <= B.y + 14) { // 종: 상인을 다시 부른다 (2026-09-22 사용자)
+        if (rerollsLeft(S.st) <= 0) { S.notice = '이번 시즌은 상인을 더 부를 수 없다'; render(); return; }
+        if (!canReroll(S.st)) { S.notice = `사람을 보낼 돈이 없다 (${CONFIG.market.reroll.cost.toLocaleString()} HS)`; render(); return; }
+        if (rerollMarket(S.st)) { sfx.coin(); S.marketSel = null; S.detail = null; save(); S.notice = `종을 쳤다 — 다른 상인이 왔다 (매물 ${S.st.market.length}명, −${CONFIG.market.reroll.cost.toLocaleString()} HS)`; render(); } return; } }
     const items = S.st.market; let best: Gladiator | null = null, bd = items.length > 1 ? (marketSlotX(items.length, 1) - marketSlotX(items.length, 0)) / 2 : 80;
     items.forEach((g, i) => { const d = Math.abs(x - marketSlotX(items.length, i)); if (d < bd) { bd = d; best = g; } });
     S.marketSel = best ? (best as Gladiator).id : null; if (S.marketSel != null) { S.detail = { kind: 'market', id: S.marketSel }; S.sheet = null; } render(); // 판매대의 검투사를 누르면 상세 페이지 (오른쪽에서)
@@ -194,7 +203,7 @@ function drawLanista(ctx: CanvasRenderingContext2D, x: number, y: number, facing
 // 장소 이동: 화면(카메라·대시보드)이 먼저 새 장소로 옮겨가고, 라니스타는 화면 밖 가장자리에서 걸어 들어와 제자리에 선다
 export function startTravel(to: View) {
   if (to === S.view && !lanista.walking) return;
-  S.camPan = 0; S.sheet = null; S.marketSel = null;
+  S.camPan = 0; S.sheet = null; S.marketSel = null; S.detail = null; S.shownDetail = null; S.cellsOpen = false; S.cellPop = null; S.cellSide = null; /* 다른 장소로 걸어가면 켈라와 그 안의 상세도 닫힌다 (2026-09-22 사용자) */
   const from = S.view; S.view = to; S.camV = 0;
   S.travel = { to, from, fromX: lanista.x, start: performance.now() };
   lanista.target = restX(to);

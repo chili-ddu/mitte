@@ -1,6 +1,6 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S, randomColor } from './state.js';
-import { ACTION_KO, TRAIN_KO, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
@@ -56,7 +56,7 @@ export function renderSummary() {
   { const nd = S.seasonReports.flatMap(r => r.newDictata); if (nd.length) rosterItems.push(h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, nd.map(x => `${x.g.name} — '${x.m.name}'`).join(', ') + ' 익힘'))); }
   { const ne = S.seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
   { const freed = S.seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
-  if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => `${t.g.name} ${TRAIN_KO[t.stat]} +${t.gain}`).join(', ')}`)));
+  if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => { const ups = (Object.keys(t.gains) as TrainStat[]).map(k => `${TRAIN_KO[k]} +${t.gains[k]}`); return `${t.g.name} ${ups.length ? ups.join('·') : '쌓임'}`; }).join(', ')}`)));
   if (S.st.lastLeft?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `계약 만료로 떠남: ${S.st.lastLeft.join(', ')}`)));
   if (S.st.lastOverwork?.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `혹사 끝에 쓰러져 죽음: ${S.st.lastOverwork.join(', ')} — 피로가 쌓인 채 시즌을 넘겼다`)));
   if (S.st.lastFreed?.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `형기 만료: ${S.st.lastFreed.join(', ')} — 자유민이 됐습니다 (독토르 고용 또는 급료 출전)`)));

@@ -15,7 +15,7 @@ for (const a of TYPES) { grid[a] = {};
     while (n < N && guard < N * 80) { guard++;
       const A = makeGladiator(rng, 'tiro', { type: a }), B = makeGladiator(rng, 'tiro', { type: b });
       if (Math.abs(powerOf(A) - powerOf(B)) > BAND) continue; // 전력이 같다고 표시되는 짝만
-      A.form = 0; B.form = 0; A.scaeva = false; B.scaeva = false; // 몸 상태·왼손잡이는 빼고 유형 차이만
+      A.scaeva = false; B.scaeva = false; // 몸 상태·왼손잡이는 빼고 유형 차이만
       const r = battle(rng, [A], [B]); n++; dur.push(r.duration);
       tot[a] = (tot[a] ?? 0) + 1; tot[b] = (tot[b] ?? 0) + 1;
       if (r.winner === 'A') { w++; win[a] = (win[a] ?? 0) + 1; } else if (r.winner === 'B') win[b] = (win[b] ?? 0) + 1;

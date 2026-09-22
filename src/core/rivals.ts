@@ -6,7 +6,7 @@ import { CONFIG } from './config.js';
 import { makeGladiator, pickTrainStat, powerOf, TYPES } from './gladiator.js';
 import { classKey } from './classes.js';
 import { masteryCandidates } from './dictata.js';
-import { growthSpeed, capOf, addProgress } from './growth.js';
+import { growthSpeed, capOf, addProgress, growAll } from './growth.js';
 
 export type RivalProfile = 'local' | 'major' | 'grand'; // 지방 파밀리아 · 큰 루두스 · 최대 루두스
 export interface Rival {
@@ -65,7 +65,7 @@ export function replenishRivals(rng: Rng, rivals: Rival[], season: number, taken
     // 보이지 않는 다른 경기: 우리가 없어도 세상이 돈다
     if (rng.chance(C.otherGames.winP)) { r.purse += C.purseWin; } else { r.purse += C.purseLose; if (rng.chance(C.otherGames.deathP / C.otherGames.winP)) { const alive = r.roster.filter(g => g.alive); if (alive.length > 2) { const dead = rng.pick(alive); r.roster = r.roster.filter(g => g !== dead); bumpMood(r, dead === rivalStar(r) ? -2 : -1); news.push(`${r.name}의 ${dead.name}${dead === rivalStar(r) ? '(간판)' : ''}이(가) 다른 경기에서 쓰러졌다`); } } }
     // 훈련: 금고가 있으면 둘 — 자기 클래스 풀로
-    for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); const stat = pickTrainStat(rng, g); if (g.base[stat] < capOf(g, stat)) addProgress(g, stat, (stat === 'hp' ? C.trainHp * CONFIG.growthModel.hpStep : C.trainGain * CONFIG.growthModel.step) * growthSpeed(g, stat, true)); /* 파밀리아는 독토르가 늘 있는 집 — 같은 성장 모델, 상한까지 */ r.purse -= C.trainCost; }
+    for (let k = 0; k < C.trainPerSeason && r.purse >= C.trainCost; k++) { const pool = r.roster.filter(g => g.alive && g.injured === 0); if (!pool.length) break; const g = rng.pick(pool); growAll(g, k => k === 'hp' ? C.trainHp : C.trainGain, true); /* 파밀리아는 독토르가 늘 있는 집 — 같은 성장 모델, 상한까지 */ r.purse -= C.trainCost; }
     // 보충: 금고가 허락하는 만큼. 기세가 좋으면 베테라누스
     while (r.roster.length < ROSTER_SIZE) { const vet = (r.mood ?? 0) > 0 && r.purse >= C.buyVet; const cost = vet ? C.buyVet : C.buyTiro; if (r.purse < cost) break; r.purse -= cost; r.roster.push(makeMember(rng, season, r.roster, vet ? 'veteranus' : 'tiro', r.focus, taken)); }
   }

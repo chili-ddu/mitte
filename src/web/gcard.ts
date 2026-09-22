@@ -1,11 +1,9 @@
 // 검투사 카드 한 종류. 화면마다 따로 짜던 초상 묶음을 여기로 모았다 (2026-09-17 사용자: "카드는 모두 통일")
-// 순서와 밀도는 어디서나 같다 — [초상(계급·명예) | 기술 칩] / [무기 표식 + 이름] / [전적 또는 능력치 + 덧붙임]
+// 순서와 밀도는 어디서나 같다 — [초상(명예·티로 T)+체력바 | ATK·DEF·DEX·SPD] / [무기 표식 + 이름] / [전적 · 전력]. 딕타타는 카드에 안 보인다 (2026-09-22 사용자)
 import type { Gladiator, Lineage } from '../core/types.js';
 import { h, sq } from './dom.js';
 import { CONFIG } from '../core/config.js';
-import { masteryOf } from '../core/dictata.js';
 import { atCap, fullyGrown } from '../core/growth.js';
-import { talentOf, TALENT_KO } from '../core/talent.js';
 import { LEGEND_BY_ID } from '../core/legends.js';
 import { portrait } from './portrait.js';
 import { effectiveStats, powerOf, powerNow, hpParts, LINEAGE_KO } from '../core/gladiator.js';
@@ -24,7 +22,7 @@ const honorBadge = (g: Gladiator) => { const b = h('span', { class: 'honor', tit
 // 자연=잎 · 승리=종려가지 · 신화=신전 기둥 · 별명=말풍선 · 지명=성문. 규칙이 걸린 것은 자연뿐이라 자연만 색이 산다.
 const LIN_SVG: Record<Lineage, string> = {
   nature: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
-  victory: '<path d="M12 22V9"/><path d="M12 12c-2-3-5-4-8-4 1 3 4 5 8 4Z"/><path d="M12 12c2-3 5-4 8-4-1 3-4 5-8 4Z"/><path d="M12 8c-1.6-2.4-4-3.2-6.4-3.2C6.8 7.2 9.2 8.8 12 8Z"/><path d="M12 8c1.6-2.4 4-3.2 6.4-3.2C17.2 7.2 14.8 8.8 12 8Z"/>',
+  victory: '<path d="M12 22V4"/><path d="M12 19c-4.2-1.4-7.3-4-9.2-7.6 4.2-.2 7.2 1.3 9.2 4.4Z"/><path d="M12 19c4.2-1.4 7.3-4 9.2-7.6-4.2-.2-7.2 1.3-9.2 4.4Z"/><path d="M12 14c-3.7-1.4-6.4-3.7-8-7 3.7-.1 6.3 1.2 8 3.8Z"/><path d="M12 14c3.7-1.4 6.4-3.7 8-7-3.7-.1-6.3 1.2-8 3.8Z"/><path d="M12 9c-2.6-1.3-4.4-3.2-5.4-5.8 2.8.2 4.6 1.2 5.4 3.2Z"/><path d="M12 9c2.6-1.3 4.4-3.2 5.4-5.8-2.8.2-4.6 1.2-5.4 3.2Z"/>',
   myth: '<path d="M3 22h18"/><path d="M6 22V8"/><path d="M12 22V8"/><path d="M18 22V8"/><path d="M2 8h20"/><path d="M12 2 3 8h18Z"/>',
   nickname: '<path d="M20 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z"/><path d="M8 10h8"/><path d="M8 14h5"/>',
   place: '<path d="M3 22V10l9-6 9 6v12"/><path d="M9 22v-6a3 3 0 0 1 6 0v6"/><path d="M3 22h18"/>',
@@ -73,13 +71,11 @@ const statLines = (g: Gladiator, foes: Gladiator[] = []) => { const e = effectiv
   const pwLine = h('div', { class: `sline pw ${rolling ? 'flat' : d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}`, title: `전력 ${pw}${d ? ` (타고난 ${pw0} 에서 ${d > 0 ? '+' : '−'}${Math.abs(d)})` : ''} — 승수 성장·예명·노쇠·피로·몸 상태${foes.length ? '·이번 상대와의 상성' : ''}을 반영한 지금 값` });
   pwLine.innerHTML = `<svg class="pwi" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/></svg>`;
   const vEl = h('span', { class: 'v' }, String(rolling ? prev : pw));
-  pwLine.append(vEl, h('em', { class: 'tr' }, d > 0 ? '▲' : d < 0 ? '▼' : '\u00a0'));
+  pwLine.prepend(h('em', { class: 'tr' }, h('i', { class: d > 0 ? 'on' : '' }, '▲'), h('i', { class: d < 0 ? 'on' : '' }, '▼'))); pwLine.append(vEl); /* 화살표는 위아래 한 쌍이 늘 있고 해당하는 쪽만 켜진다 (2026-09-22 사용자) · 칼 아이콘 · 값, 오른쪽 정렬 */
   if (rolling) rollTo(pwLine, vEl, prev!, pw, d); // 상성이 붙으면 숫자가 굴러가고 색이 서서히 물든다 /* 화살표는 줄 맨 오른쪽에 못 박는다 — 숫자가 길어져도 자리가 안 흔들린다 (2026-09-17 사용자) */ /* 오름·내림은 화살표와 글자 색으로. 화살표가 없어도 자리는 비워 둔다 (2026-09-17 사용자) */
-  return [stat('ATK', e.atk, b.atk, atCap(g, 'atk')), stat('DEF', e.def, b.def, atCap(g, 'def')),
-    h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`), fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null, g.legend ? h('span', { class: 'grown talent t3', title: `전설 — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}\n천부: 성장 속도 ×${CONFIG.growthModel.talentMul[3]}, 상한 ×${CONFIG.growthModel.talentCap[3]}. 고유 딕타타를 타고났다` }, '전설') : talentOf(g) > 0 ? h('span', { class: `grown talent t${talentOf(g)}`, title: `자질 ${TALENT_KO[talentOf(g)]} — 성장 속도 ×${CONFIG.growthModel.talentMul[talentOf(g)]}, 상한 ×${CONFIG.growthModel.talentCap[talentOf(g)]}` }, TALENT_KO[talentOf(g)]) : null), pwLine]; }; /* 자질 표식 (2026-09-22 사용자: 처음부터 공개) */
-const SKILL_ROWS = 3; // 기술 칩 자리: 기술 개념은 2026-09-18 뺐다(유형 정리 때 유형 기술 하나로 돌아올 자리). 빈 자리 셋을 그대로 잡아 카드 높이가 흔들리지 않게
-export const emptySlots = (n = SKILL_ROWS) => Array.from({ length: n }, () => h('span', { class: 'badge empty lock' }));
-const skillChips = (g: Gladiator) => { const have = masteryOf(g); return [...have.map(m => h('span', { class: 'badge skill', title: `${m.name}: ${m.ko} (${m.cond.ko})` }, m.name)), ...emptySlots(Math.max(0, SKILL_ROWS - have.length))]; }; /* 익힌 숙련 딕타타 (docs/09 2-α) — 빈 자리는 잠금 */
+  return { col: [stat('ATK', e.atk, b.atk, atCap(g, 'atk')), stat('DEF', e.def, b.def, atCap(g, 'def')), stat('DEX', e.hand, b.hand, atCap(g, 'hand')), stat('SPD', e.spd, b.spd)], /* 오른쪽 기둥: 능력치 넷 (2026-09-22 사용자: 딕타타 칩 대신) */
+    row: [h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승`), g.legend ? null : fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null, g.legend ? h('span', { class: 'grown talent t3', title: `전설 — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}\n천부: 성장 속도 ×${CONFIG.growthModel.talentMul[3]}, 상한 ×${CONFIG.growthModel.talentCap[3]}. 고유 딕타타를 타고났다` }, '전설') : null), pwLine] }; }; /* 자질 칩은 뺐다 — 초상 뒤 흙빛이 말한다 (2026-09-22 사용자). 표식 자리엔 전설·다 컸다만 */ /* 자질 표식 (2026-09-22 사용자: 처음부터 공개) */
+export const emptySlots = (n: number = CONFIG.mastery.slots) => Array.from({ length: n }, () => h('span', { class: 'badge empty lock' })); /* 상세 페이지의 숙련 딕타타 빈 자리 (카드에는 딕타타를 안 보인다 — 2026-09-22 사용자) */
 
 // 부상: 린넨 띠에 피가 배어난다. 단계가 오를수록 얼룩이 커지고 번진다 (1~3시즌, 2026-09-17 사용자)
 const woundMark = (g: Gladiator) => { const lv = Math.max(1, Math.min(3, g.injured)); const el = h('span', { class: `wound w${lv}`, title: `부상: 앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` });
@@ -101,20 +97,25 @@ const tiroMark = () => { const el = h('span', { class: 'tiro', title: "티로: �
   el.innerHTML = `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke-linecap="round"><g stroke="#f3ead0" stroke-width="4.4" opacity=".55"><path d="M3.4 3.6 L12.8 2.9"/><path d="M8 3.2 L7.4 13"/></g><g stroke="#3a2412" stroke-width="2.4"><path d="M3.4 3.6 L12.8 2.9"/><path d="M8 3.2 L7.4 13"/></g><g stroke="#9b2c1c" stroke-width="1" opacity=".6"><path d="M3.8 4.4 L12.6 3.7"/><path d="M8.6 3.6 L8 12.6"/></g></svg>`;
   return el; };
 
-// 낱장(줄 셋). 이미 타일 상자가 있는 곳(.gtile·.etile·.slot)은 이것을 펼쳐 쓴다
-export const gladCardParts = (g: Gladiator, opts: GCardOpts = {}) => [
+// 낱장. 이미 타일 상자가 있는 곳(.gtile·.etile·.slot)은 이것을 펼쳐 쓴다.
+// 2026-09-22 사용자: 카드 본체(.gc-core)는 어디서나 같은 폭·높이 — 초상+칩 / 유형+이름 / 능력치 넷만. 길이가 변하는 것(예명·출신 표식, 힌트 meta)은 본체 밖 .gc-below 로
+export const gladCardParts = (g: Gladiator, opts: GCardOpts = {}) => { const lines = statLines(g, opts.foes); return [
   lineageBg(g), handBg(g), /* 카드 배경: 왼쪽 위 계보 · 오른쪽 아래 쥐는 손 (2026-09-17 사용자) */
+  h('div', { class: 'gc-core' },
   h('div', { class: 'mini-top' },
     h('div', { class: 'mini-left' }, /* 스틱맨 박스와 체력바가 한 기둥 — 기술 칩은 그 높이만큼 선다 (2026-09-17 사용자) */
       h('div', { class: 'mini-port' }, portrait(g, opts.size ?? CARD_PORTRAIT, !!opts.enemy, undefined, opts.size ?? CARD_PORTRAIT, false, opts.mood), g.injured > 0 ? woundMark(g) : null, tiredMark(g), /* 피로는 0 이어도 늘 보인다 — 남은 숨을 재는 눈금이다 (2026-09-17 사용자) */ g.rank === 'tiro' ? tiroMark() : null, honorBadge(g)),
       hpBar(g)),
-    h('div', { class: 'mini-skills' }, ...skillChips(g))),
-  h('div', { class: 'mini-name' }, sq(g.type), ' ', opts.name ?? g.name.replace('(적)', ''), ...(opts.nameExtra ?? []).filter((n): n is Node => !!n)),
-  h('div', { class: 'mini-stats', title: '실제 싸울 때의 값 (승수 성장·피로·노쇠·예명 반영). 옆의 숫자는 타고난 값과의 차이' }, ...statLines(g, opts.foes)),
-  (opts.meta ?? []).filter(Boolean).length ? h('div', { class: 'mini-meta' }, ...(opts.meta ?? [])) : null,
-];
-// 상자까지 포함한 카드. 새로 카드를 놓는 자리는 이것을 쓴다
-export const gladCard = (g: Gladiator, opts: GCardOpts = {}) => h('div', { class: `gcard${opts.enemy ? ' enemy' : ''}${opts.sel ? ' sel' : ''}${opts.other ? ' other' : ''}${opts.dis ? ' dis' : ''}${opts.cls ? ` ${opts.cls}` : ''}`, onclick: opts.onclick },
-  ...gladCardParts(g, opts),
-  ...(opts.rows ?? []).filter((n): n is Node => !!n).map(n => h('div', { class: 'gc-row' }, n)),
-  (opts.acts ?? []).filter(Boolean).length ? h('div', { class: 'gc-acts' }, ...(opts.acts ?? []).filter((n): n is Node => !!n)) : null);
+    h('div', { class: 'mini-stats mini-col', title: '실제 싸울 때의 값 (피로·예명·몸 상태 반영). 옆의 숫자는 타고난 값과의 차이. 상한에 닿으면 굵게' }, ...lines.col)),
+  h('div', { class: 'mini-name', title: opts.name ?? g.name.replace('(적)', '') }, sq(g.type), ' ', h('span', { class: 'nm' }, opts.name ?? g.name.replace('(적)', ''))),
+  h('div', { class: 'mini-stats mini-row' }, ...lines.row)),
+  ((opts.nameExtra ?? []).filter(Boolean).length || (opts.meta ?? []).filter(Boolean).length) ? h('div', { class: 'gc-below' }, ...(opts.nameExtra ?? []).filter((n): n is Node => !!n), ...(opts.meta ?? []).filter((n): n is Node => !!n)) : null,
+]; };
+// 상자까지 포함한 카드. 새로 카드를 놓는 자리는 이것을 쓴다. 상자(.gcard)는 본체 크기로 고정이고, 덧붙는 줄(rows)·행동(acts)·표식(nameExtra)·meta 는 옆(.gc-side)에 선다 — 좁으면 아래로 내려간다 (2026-09-22 사용자)
+export const gladCard = (g: Gladiator, opts: GCardOpts = {}) => { const parts = gladCardParts(g, { ...opts, nameExtra: [], meta: [] });
+  const side = [...(opts.nameExtra ?? []).filter(Boolean).length || (opts.meta ?? []).filter(Boolean).length ? [h('div', { class: 'gc-tags' }, ...(opts.nameExtra ?? []).filter((n): n is Node => !!n), ...(opts.meta ?? []).filter((n): n is Node => !!n))] : [],
+    ...(opts.rows ?? []).filter((n): n is Node => !!n).map(n => h('div', { class: 'gc-row' }, n)),
+    ...((opts.acts ?? []).filter(Boolean).length ? [h('div', { class: 'gc-acts' }, ...(opts.acts ?? []).filter((n): n is Node => !!n))] : [])];
+  return h('div', { class: `gcwrap${opts.cls ? ` ${opts.cls}` : ''}${opts.dis ? ' dis' : ''}`, onclick: opts.onclick },
+    h('div', { class: `gcard${opts.enemy ? ' enemy' : ''}${opts.sel ? ' sel' : ''}${opts.other ? ' other' : ''}${opts.dis ? ' dis' : ''}${opts.cls ? ` ${opts.cls}` : ''}` }, ...parts),
+    side.length ? h('div', { class: 'gc-side' }, ...side) : null); };

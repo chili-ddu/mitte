@@ -11,7 +11,7 @@ for (const a of TYPES) { grid[a] = {};
     while (n < N && guard < N * 80) { guard++;
       const A = makeGladiator(rng, 'tiro', { type: a }), B = makeGladiator(rng, 'tiro', { type: b });
       if (Math.abs(powerOf(A) - powerOf(B)) > BAND) continue;
-      A.form = 0; B.form = 0; A.scaeva = false; B.scaeva = false;
+      A.scaeva = false; B.scaeva = false;
       const r = battle(rng, [A], [B]); n++;
       if (r.winner === 'A') w++; }
     grid[a][b] = n ? +(w / n).toFixed(3) : 0.5; } }

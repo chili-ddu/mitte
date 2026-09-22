@@ -1,5 +1,6 @@
 // 스틱맨 초상 캔버스와 대화 장면 루프 (Codex: 그림)
-import { S, myInk, myLight, rivalInkOf } from './state.js';
+import { S, myInk, rivalInkOf } from './state.js';
+import { talentOf } from '../core/talent.js';
 import { type GType, type Gladiator } from '../core/types.js';
 import { INK, drawStickman, type Pose, type Skeleton, walkSkeleton } from './stickman.js';
 import { accessoriesOf, type EpithetAccessory } from '../core/epithets.js';
@@ -8,6 +9,7 @@ import { sfx } from './sound.js';
 import { drawTalkScene } from './detail.js';
 
 // 계보 색: 카드 배경 무늬(style.css 의 .linbg)와 같은 안료. 스틱맨 뒤 흙에도 이 색이 돈다 (2026-09-17 사용자)
+export const TALENT_SOIL = ['222,204,158', '190,140,58', '150,30,28', '236,188,40'] as const; // 자질별 뒤 바탕 (r,g,b) — 2026-09-22 사용자: 평범 연한 황토 · 재능 진한 황토 · 비범 핏빛 · 천부 금빛
 export const LINEAGE_COLOR: Record<string, string> = { nature: '#2f6a22', victory: '#b08a3a', myth: '#7a2a6a', nickname: '#4a5a78', place: '#7a4a3a' };
 export const TYPE_COLOR: Record<GType, string> = { murmillo: '#2c4f9b', secutor: '#1f7a6d', thraex: '#9b2c1c', retiarius: '#c58a1a', hoplomachus: '#5a7a2c', provocator: '#6b4a8a', eques: '#b5651d', dimachaerus: '#4a4a4a', scissor: '#2f6f8f', laquearius: '#a3652a' };
 // 24x24 좌표계의 무기 도형. 카드(SVG)와 전투 화면(Canvas Path2D)이 공유
@@ -55,8 +57,9 @@ function drawPortrait(e: { c: HTMLCanvasElement; g: Gladiator; pose: 'idle' | 's
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); ctx.clearRect(0, 0, W, S);
   if (e.bare) { ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#6b4a22'; ctx.beginPath(); ctx.ellipse(W / 2, S - 6, W * 0.26, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); } // 배경 판 없이 발밑 그림자만
   else { // 배경 판에 테두리가 없다: 가운데만 진하고 가장자리로 갈수록 투명해져 카드 바닥에 녹는다 (2026-09-17 사용자: 선의 구분이 없는 느낌)
+    const soil = TALENT_SOIL[talentOf(e.g)]; /* 뒤 흙빛이 자질을 말한다 (2026-09-22 사용자: 전적 줄의 자질 칩 대신) — 평범 모래 · 재능 황토 · 비범 붉은 흙 · 천부 금빛 */
     const halo = ctx.createRadialGradient(W / 2, S * 0.48, S * 0.08, W / 2, S * 0.48, S * 0.62);
-    halo.addColorStop(0, 'rgba(216,197,150,.85)'); halo.addColorStop(0.55, 'rgba(216,197,150,.45)'); halo.addColorStop(1, 'rgba(216,197,150,0)');
+    halo.addColorStop(0, `rgba(${soil},.88)`); halo.addColorStop(0.55, `rgba(${soil},.48)`); halo.addColorStop(1, `rgba(${soil},0)`);
     ctx.fillStyle = halo; ctx.fillRect(0, 0, W, S);
     const tint = LINEAGE_COLOR[e.g.lineage] ?? '#6b4a22'; // 계보의 안료가 뒤 흙에 섞인다
     const lin = ctx.createRadialGradient(W / 2, S * 0.5, S * 0.06, W / 2, S * 0.5, S * 0.6);
@@ -65,7 +68,7 @@ function drawPortrait(e: { c: HTMLCanvasElement; g: Gladiator; pose: 'idle' | 's
     const floor = ctx.createRadialGradient(W / 2, S - 7, 1, W / 2, S - 7, W * 0.42); // 발밑 그늘도 번지게 — 바닥 선을 긋지 않는다
     floor.addColorStop(0, hexA(tint, 0.3)); floor.addColorStop(1, hexA(tint, 0)); /* 발밑 그늘도 같은 안료로 */
     ctx.save(); ctx.translate(0, 0); ctx.scale(1, 0.34); ctx.fillStyle = floor; ctx.fillRect(0, (S - 7) / 0.34 - W * 0.42, W, W * 0.84); ctx.restore(); }
-  const team = e.enemy ? rivalInkOf(e.g) : e.g.rank === 'veteranus' ? myInk() : myLight();
+  const team = e.enemy ? rivalInkOf(e.g) : myInk();
   const sc0 = 0.68 * (S / 64); // 초상 크기에 비례 (상세 페이지의 큰 초상은 2배 이상)
   const ENTER = 1.1; const el = e.enter ? (performance.now() - e.enter) / 1000 : ENTER; // 걸어 들어오기: 왼쪽 밖에서 가운데까지 1.1초
   if (el < ENTER) { const k = el / ENTER, ease = 1 - Math.pow(1 - k, 2); const x = -30 * sc0 + (W / 2 - 2 + 30 * sc0) * ease; const walk = walkSkeleton(el * 9, 1);

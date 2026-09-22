@@ -84,7 +84,7 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: C
       buyPolicy(st, buyMode, reserve, cellsTo);
       healAll(st);
       { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained || fullyGrown(g)) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 낮은 능력치를 단련
-        train(st, g, pickTrainStat(st.rng, g)); slots--; } }
+        train(st, g); slots--; } }
       { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || !canSendChallenge(st, rv) || st.money < challengeFee(st, rv) + reserve) continue; if (best >= power(star) * 1.05) { sendChallenge(st, rv); break; } } } // 도전을 건다: 우리 으뜸이 간판보다 5% 세면 (시즌당 하나)
       for (const c of [...st.pendingChallenges]) { const rv = rivalOf(st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined; const best = Math.max(0, ...available(st).map(power)); if (star && best >= power(star) * 0.9 && !acceptChallenge(st, c)) continue; declineChallenge(st, c); } // 도전장: 우리 으뜸이 간판의 90% 이상이면 받는다
       const cs = [...st.contracts].sort((a, b) => (b.challenge ? 1 : 0) - (a.challenge ? 1 : 0) || b.tier - a.tier); // 도전 계약부터 (받았으면 반드시 세운다)

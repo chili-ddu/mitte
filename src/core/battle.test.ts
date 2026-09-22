@@ -9,9 +9,9 @@ import { CONFIG } from './config.js';
 
 // 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-21 성장 모델(docs/09 §7): 초기 굴림 없음 · 잠재치 굴림 — 난수 소비가 바뀐다 뒤 다시 기록
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
-  1: { winner: 'B', dur: 14.6, frames: 148, events: 21 }, /* 2026-09-21 잠재 1.35~1.85 — 베테라누스가 나이만큼 더 자라 있다 */
-  7: { winner: 'A', dur: 8, frames: 82, events: 13 },
-  42: { winner: 'A', dur: 12, frames: 122, events: 16 },
+  1: { winner: 'A', dur: 20.3, frames: 205, events: 30 }, /* 2026-09-22 몸 상태·예명 능력치 효과 삭제 — 난수 소비가 줄고 보정이 사라져 셋 다 바뀜 */
+  7: { winner: 'A', dur: 13.3, frames: 135, events: 19 },
+  42: { winner: 'A', dur: 9.3, frames: 95, events: 16 },
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };
 
@@ -35,15 +35,6 @@ test('프레임은 [id, x, y, hp, 숨] 다섯 칸을 나른다', () => {
   assert.ok(r.frames.some(f => f.u.some(u => u[4] < CONFIG.stamina.windedAt)), '경기가 길면 누군가는 지쳐야 한다');
 });
 
-test('우리 편은 정해 둔 몸 상태를 쓰고 상대는 경기 때 굴린다', () => {
-  resetIds(); const rng = new Rng(3);
-  const A = [makeGladiator(rng, 'tiro', { type: 'secutor' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })];
-  A[0].form = 0.75;
-  const r = battle(rng, A, B);
-  assert.equal(r.form?.[A[0].id], 0.75, '저장해 둔 값 그대로');
-  assert.notEqual(r.form?.[B[0].id], undefined, '상대도 값은 있다');
-  assert.ok(Math.abs(r.form![B[0].id]) <= 1);
-});
 
 test('전투는 제한 시간 안에 끝난다', () => {
   for (let seed = 1; seed <= 30; seed++) { const { r } = duel(seed); assert.ok(r.duration <= 60.1, `시드 ${seed} 가 ${r.duration}초`); }

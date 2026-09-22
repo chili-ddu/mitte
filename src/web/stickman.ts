@@ -269,18 +269,18 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
     ctx.stroke();
     ctx.restore();
   }
-  // 옷: 튜닉(허벅지까지) / 토가(무릎까지, 자주색 띠·주름·어깨 자락). 뒷팔을 그린 뒤에 덮어 뒷팔 위쪽이 옷 뒤로 들어간다
+  // 옷: 튜닉(허벅지까지) / 토가(무릎까지, 자주색 띠·주름·어깨 자락). 뒷팔을 먼저 그리고 덮어 옷 밖으로 튀지 않게 한다
   const drawGarment = () => { if (!o.garment) return;
     const toga = o.garment === 'toga'; const bottom = hipY + (toga ? 13 : 7); const sway = Math.sin(lean) * 4;
-    ctx.save(); ctx.fillStyle = o.garmentColor ?? '#c9b283'; ctx.lineWidth = 1.6 / Math.sqrt(s);
-    ctx.beginPath(); ctx.moveTo(shX - 5.5, shY + 1); ctx.lineTo(shX + 5.5, shY + 1); ctx.lineTo(7 + sway, bottom); ctx.lineTo(-7 + sway, bottom); ctx.closePath(); ctx.fill(); ctx.stroke(); // 옷은 몸보다 조금만 넓게 (팔이 보이도록)
+    ctx.save(); ctx.fillStyle = o.garmentColor ?? '#c9b283'; ctx.lineWidth = 1.35 / Math.sqrt(s);
+    ctx.beginPath(); ctx.moveTo(shX - 4.8, shY + 1); ctx.lineTo(shX + 4.8, shY + 1); ctx.lineTo(6.2 + sway, bottom); ctx.lineTo(-6.2 + sway, bottom); ctx.closePath(); ctx.fill(); ctx.stroke(); // 옷은 몸보다 얇게, 팔은 선으로만 읽히게
     if (o.apron) { ctx.fillStyle = '#e8d9b5'; ctx.fillRect(shX - 4, shY + 12, 8, bottom - shY - 14); }
     if (o.garmentStripe) { ctx.strokeStyle = o.garmentStripe; ctx.lineWidth = 2.2 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(shX - 3, shY + 3); ctx.lineTo(-5 + sway * 0.6, bottom - 2); ctx.stroke(); }
     if (toga) {
       ctx.strokeStyle = '#b9a26f'; ctx.lineWidth = 1 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(shX + 3, shY + 8); ctx.lineTo(5 + sway * 0.4, bottom - 4); ctx.moveTo(shX + 7, shY + 14); ctx.lineTo(9 + sway * 0.4, bottom - 6); ctx.stroke(); // 주름
       // 어깨 너머 자락: 왼(뒤) 어깨에서 등 뒤로 늘어지는 채워진 띠 (망토가 아니라 토가 천의 끝)
-      ctx.fillStyle = o.garmentColor ?? '#c9b283'; ctx.strokeStyle = o.ink ?? INK; ctx.lineWidth = 1.6 / Math.sqrt(s);
-      ctx.beginPath(); ctx.moveTo(shX - 7, shY); ctx.lineTo(shX - 12, shY + 5); ctx.quadraticCurveTo(shX - 14 + sway * 0.5, shY + 22, -11 + sway, bottom - 2); ctx.lineTo(-6.5 + sway, bottom - 1); ctx.quadraticCurveTo(shX - 9, shY + 20, shX - 5.5, shY + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = o.garmentColor ?? '#c9b283'; ctx.strokeStyle = o.ink ?? INK; ctx.lineWidth = 1.35 / Math.sqrt(s);
+      ctx.beginPath(); ctx.moveTo(shX - 6, shY); ctx.lineTo(shX - 10, shY + 5); ctx.quadraticCurveTo(shX - 12 + sway * 0.5, shY + 21, -9.5 + sway, bottom - 2); ctx.lineTo(-5.5 + sway, bottom - 1); ctx.quadraticCurveTo(shX - 8, shY + 19, shX - 4.8, shY + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
       // 움보: 가슴을 가로질러 오른쪽 허리로 내려가는 굵은 주름
       ctx.beginPath(); ctx.moveTo(shX - 7, shY + 4); ctx.quadraticCurveTo(shX + 7, shY + 15, 5 + sway * 0.5, hipY + 3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(shX - 6, shY + 8); ctx.quadraticCurveTo(shX + 5, shY + 18, 3 + sway * 0.5, hipY + 6); ctx.stroke();
@@ -296,15 +296,13 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   };
   const seg = (x0: number, y0: number, x1: number, y1: number) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
   const arm = (a: [number, number]) => { const p = armPts(a); seg(shX, shY, p.ex, p.ey); seg(p.ex, p.ey, p.hx, p.hy); return p; };
-  // 뒷팔(방패 손) 먼저, 앞팔(무기 손) 나중. 옷을 입었으면 뒷팔 위팔은 옷 뒤, 아래팔은 앞으로 나올 때만 옷 앞에
+  // 뒷팔(방패 손) 먼저, 앞팔(무기 손) 나중. 옷 입은 인물은 뒷팔 전체를 옷 아래에 둔다
   let back: { hx: number; hy: number; ang: number };
   if (o.garment) {
     const p = armPts(sk.backArm); back = p;
-    const forearmFront = p.hx > shX + 3; // 손이 어깨선보다 앞이면 아래팔은 옷 앞
     seg(shX, shY, p.ex, p.ey);
-    if (!forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
+    seg(p.ex, p.ey, p.hx, p.hy);
     drawGarment(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s); ctx.lineCap = 'round';
-    if (forearmFront) seg(p.ex, p.ey, p.hx, p.hy);
   } else {
     back = arm(sk.backArm);
     if (!o.bare) drawOffhand(ctx, L, back.hx, back.hy, seed, sk.backArm[0] + sk.backArm[1], !!o.noNet, o.team);

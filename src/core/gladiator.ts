@@ -1,7 +1,7 @@
 import type { Gladiator, GType, Lineage, Rank, Stats } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { rollGrowth, rollCaps } from './growth.js';
+import { rollGrowth, rollCaps, secondWind } from './growth.js';
 import { classKey } from './classes.js';
 import { TYPE_MATCHUP } from './matchup-table.js';
 import { matchupOwner } from './matchup.js';
@@ -48,37 +48,32 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
   g.talent = rollTalent(rng); g.talentKnown = true; /* 2026-09-22 사용자: 자질도 처음부터 보인다 (성장형·상한과 같이) — 값에도 처음부터 들어간다 */ g.growth = rollGrowth(rng);
   let legend: Legend | undefined; if (opts.legend) { legend = LEGEND_BY_ID[opts.legend]; g.talent = 3; } else if (g.talent === 3) { const l = legendOfType(type); if (l && opts.taken && !opts.taken.has(l.id) && rng.chance(CONFIG.legend.p)) { legend = l; opts.taken.add(l.id); } } /* 천부 중 확률로 전설 (2026-09-22 사용자): 그 유형의 인물이 비어 있어야 한다. 아니면 그냥 천부 */
   if (legend) { g.legend = legend.id; g.name = legend.name; age = legend.age; g.age = age; g.growth = { ...legend.growth }; g.dictata = [legend.dictata]; g.scaeva = undefined; }
-  g.cap = rollCaps(rng, type, base, age, g.growth, s, g.talent, legend?.pot);
+  g.cap = rollCaps(rng, type, base, age, g.growth, s, g.talent, legend?.pot); secondWind(g); /* 서른 넘은 늦바람 매물은 만들 때 바로 상한 +15% (2026-09-22) */
   { const A = CONFIG.growthModel.grownByAge; const f = A.max * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); for (const k of ['hp', 'atk', 'def', 'hand'] as const) g.base[k] = Math.min(g.cap[k], g.base[k] + Math.round((g.cap[k] - g.base[k]) * f * rng.range(0.85, 1.15))); } // 나이만큼 자라 있다 (±15% 흔들림)
   g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
 }
 
 export function effectiveStats(g: Gladiator): Stats {
   const grow = 1; // 승수 성장(+2%/승)은 2026-09-20 뺐다 — 능력치는 훈련으로만 자라고, 경기 경험은 숙련 딕타타로 간다(docs/09). 승수는 신분·명예·값에만
-  const pen = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat; // 피로(첫 1점 무료) + 노쇠
-  const E = epithetMods(g); // 별칭
-  return { hp: Math.max(1, Math.round(g.base.hp * grow * E.hp) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow * E.atk) - pen), def: Math.max(0, Math.round(g.base.def * grow * E.def) - pen), spd: Math.max(1, g.base.spd - agePenalty(g).spd), hand: Math.max(1, Math.round(g.base.hand * grow) - agePenalty(g).spd) }; // 손놀림도 승수로 자라고 노쇠로 무뎌진다
+  const pen = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty; // 피로(첫 1점 무료). 노쇠는 2026-09-22 뺐다
+  return { hp: Math.max(1, Math.round(g.base.hp * grow) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow) - pen), def: Math.max(0, Math.round(g.base.def * grow) - pen), spd: Math.max(1, g.base.spd), hand: Math.max(1, Math.round(g.base.hand * grow)) }; // 예명 능력치 효과는 2026-09-22 뺐다
 }
-// 노쇠: 31세부터 3년마다 속도 −1, 33세부터 2년마다 공·방 −1
 // 체력 한 줄을 이루는 몫들 — 화면의 체력바가 이 값으로 초록(기본)·연초록(보너스)·붉은(패널티)을 칠한다 (2026-09-17 사용자)
 export interface HpParts { base: number; bonus: number; pen: number; total: number }
 export function hpParts(g: Gladiator, kitchen = 0): HpParts {
   const base = g.base.hp;
-  const grown = Math.round(base * epithetMods(g).hp) - base; // 예명('흉터'는 음수) — 승수 성장은 2026-09-20 뺐다
-  const wear = (Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty + agePenalty(g).stat) * CONFIG.hpPenPerStat; // 피로 + 노쇠
-  const form = formMod(g).hp; // 이번 시즌 몸 상태
-  const bonus = Math.max(0, grown) + kitchen + Math.max(0, form);
-  const pen = wear + Math.max(0, -grown) + Math.max(0, -form);
+  const wear = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty * CONFIG.hpPenPerStat; // 피로
+  const bonus = kitchen; /* 보탬은 조리장만 — 예명·몸 상태는 2026-09-22 뺐다 */
+  const pen = wear;
   return { base, bonus, pen, total: Math.max(1, base + bonus - pen) };
 }
 
-export function agePenalty(g: Gladiator): { spd: number; stat: number } {
-  const A = CONFIG.age, age = g.age ?? 22;
-  return { spd: age >= A.spdFrom ? Math.floor((age - A.spdFrom) / A.spdEvery) + 1 : 0, stat: age >= A.statFrom ? Math.floor((age - A.statFrom) / A.statEvery) + 1 : 0 };
-}
+// 나이와 몸 (2026-09-22 사용자: 노쇠는 능력치가 아니라 부상으로): 30세부터 해마다 부상 확률 +10%, 최대 ×1.6
+export function injuryAgeMul(g: Gladiator): number { const A = CONFIG.age, age = g.age ?? 22; return Math.min(A.injuryMax, 1 + Math.max(0, age - A.injuryFrom + 1) * A.injuryPer); }
+export function healAgeCut(g: Gladiator): number { const A = CONFIG.age, age = g.age ?? 22; return A.healCutFrom.filter(a => age >= a).length * A.healCut; } // 방치 자연 회복이 30세·36세에 −5%p 씩
 
 // 팬: 명예 + 승수×2 + 별칭×5. 30 이상이면 스타 (관중이 이름을 외친다)
-export function fansOf(g: Gladiator): number { return (g.honor ?? 0) + g.wins * 2 + (g.epithets ?? []).length * 5; }
+export function fansOf(g: Gladiator): number { return Math.round(((g.honor ?? 0) + g.wins * 2 + ((g.epithets ?? []).length ? 5 : 0)) * epithetMods(g).fans); } // 예명이 있으면 +5 (하나만 단다), '무패' 는 팬 ×1.3
 export function rentFee(g: Gladiator, tier: number): number {
   return Math.round((g.rank === 'tiro' ? CONFIG.rentTiro : CONFIG.rentVeteran) * tier * (1 + (g.honor ?? 0) * CONFIG.honor.rentPer) * epithetMods(g).rent); // 스타는 비싸다
 }
@@ -98,9 +93,7 @@ export function label(g: Gladiator): string {
 // 전력 점수: 계약 난이도(상대가 나보다 강한가)를 재는 대략치. 능력치 + 서열 + 기술 수. 전투 규칙 자체는 아니다
 // 전력(전투력): 거울 대결로 잰 가중치 — 공 1 = 4.5, 방 1 = 3, HP 1 = 0.44, 속도 1 = 1.35. 2026-09-17 재측정: 거울 대결로 잰 승률 이득이 HP+10 11.5%p · 공+1 11.8%p · 방+1 8.1%p · 속+1 3.6%p 였다 — 방패가 첫 타만 막던 시절에 잰 옛 값(방 4.5·속 2.2)은 방어와 속도를 과대평가하고 있었다. 비율은 측정값 그대로 두되 전체를 1.12배 해서 평균 전력을 옛 저울(135)에 맞춘다 — 등급 상한 160/200 과 값 기준선이 절대 수치를 쓰기 때문. 기술은 잰 값(SKILL_WORTH). 계급·승수는 전투에 영향이 없어 넣지 않는다. 피로는 무료 1점을 넘긴 만큼 공·방 −1 → −8.5/점
 // 이번 철의 몸 상태: 값과 말. |f| 가 tell 을 넘어야 드러난다 (미지근한 날은 아무 말도 하지 않는다)
-export const formMod = (g: Gladiator) => { const f = g.form ?? 0; return { atk: Math.round(f * CONFIG.form.atk), def: Math.round(f * CONFIG.form.def), hp: Math.round(f * CONFIG.form.hp) }; };
-export const formLabel = (g: Gladiator): '가벼움' | '무거움' | null => { const f = g.form ?? 0; return f >= CONFIG.form.tell ? '가벼움' : f <= -CONFIG.form.tell ? '무거움' : null; };
-export const formTip = (g: Gladiator) => { const m = formMod(g), l = formLabel(g); return `이번 철 몸 상태: ${l === '가벼움' ? '가볍다' : l === '무거움' ? '무겁다' : '보통'} — 체력 ${m.hp >= 0 ? '+' : ''}${m.hp} · 공 ${m.atk >= 0 ? '+' : ''}${m.atk} · 방 ${m.def >= 0 ? '+' : ''}${m.def}. 철마다 다시 정해진다`; };
+/* 몸 상태(form)는 2026-09-22 뺐다 — 시즌 단위 소음이 전투의 확률 위에 한 겹 더 얹혀 설명이 아니라 핑계로 읽혔다 */
 export function powerOf(g: Gladiator): number {
   const b = g.base;
   const W = CONFIG.power; return b.hp * W.hp + b.atk * W.atk + b.def * W.def + b.spd * W.spd + b.hand * W.hand + (CONFIG.typePower[g.type] ?? 0) - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5; // 유형 보정: 같은 전력이면 실제로 호각이도록
@@ -115,8 +108,8 @@ export function matchupFactor(g: Gladiator, foes: Gladiator[] = []): number {
   return 1 + d * CONFIG.matchup.power;
 }
 export function powerNow(g: Gladiator, foes: Gladiator[] = []): number {
-  const e = effectiveStats(g), f = formMod(g);
-  const W = CONFIG.power; const raw = (e.hp + f.hp) * W.hp + (e.atk + f.atk) * W.atk + (e.def + f.def) * W.def + e.spd * W.spd + e.hand * W.hand + (CONFIG.typePower[g.type] ?? 0);
+  const e = effectiveStats(g);
+  const W = CONFIG.power; const raw = e.hp * W.hp + e.atk * W.atk + e.def * W.def + e.spd * W.spd + e.hand * W.hand + (CONFIG.typePower[g.type] ?? 0);
   return raw * matchupFactor(g, foes); // 마주 설 상대가 정해졌으면 상성만큼 오르내린다
 }
 

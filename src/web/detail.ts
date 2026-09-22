@@ -1,5 +1,5 @@
 // 검투사 상세·확정(구매/매각/치료) 페이지와 카드 조각
-import { S, myInk, myLight } from './state.js';
+import { S, myInk } from './state.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
 import { buy, canBuy, cellOf, cellQuality, bedCostOf, inBed, leavePalus, moveToCell, occupantOf, palusOf, priceOf, recordVsMe, release, renewContract, renewCost, rivalOf, rivalStar, rosterCap, sell, trainGain, upgrade, upgradeCost } from '../core/game.js';
@@ -10,14 +10,15 @@ import { EPITHET_BY_ID, accessoriesOf, type EpithetId } from '../core/epithets.j
 import { LINEAGE_KO, TYPE_KO, fansOf, sellPrice, isPrimusPalus } from '../core/gladiator.js';
 import { INK, NPC_POSES, drawStickman, type Skeleton, walkSkeleton } from './stickman.js';
 import { backBtn, h, helpBtn, sq } from './dom.js';
-import { render, save } from './main.js';
+import { render, save, DEBUG } from './main.js';
 import { TYPE_COLOR, glyphSvg, portrait, portraits, talkScenes } from './portrait.js';
 import { lerp } from './battle-view.js';
 import { assignedTo, planOf } from './plan.js';
 import { canPayFac } from './sheets.js';
 import { gladCard, CARD_PORTRAIT, emptySlots } from './gcard.js';
 import { masteryOf, masteryCandidates } from '../core/dictata.js';
-import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO, progOf } from '../core/growth.js';
+import { atCap, fullyGrown, growthKo, merchantLine, ageBand, AGE_BAND_KO, progOf, trainShares } from '../core/growth.js';
+const KO4 = { hp: '체력', atk: '공격', def: '방어', hand: '손놀림' } as const;
 import { talentOf, TALENT_KO } from '../core/talent.js';
 import { LEGEND_BY_ID, legendGen } from '../core/legends.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
@@ -89,7 +90,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
   const ENTER = 0.9; const gx1 = W * 0.36; const k = Math.min(1, el / ENTER), ease = 1 - Math.pow(1 - k, 2); const gx = -40 + (gx1 + 40) * ease;
   if (e.what === 'heal') { // 치료 장면: 침상에 걸터앉은 부상자(왼쪽) + 붕대 뭉치를 든 의사(오른쪽에서 걸어와 살핀다). 도장이 찍히면 일어선다
     const bx = gx1 - 30 * sc, by = gy; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx, by - 22 * sc); ctx.lineTo(bx + 70 * sc, by - 22 * sc); ctx.moveTo(bx + 3, by - 22 * sc); ctx.lineTo(bx + 3, by); ctx.moveTo(bx + 70 * sc - 3, by - 22 * sc); ctx.lineTo(bx + 70 * sc - 3, by); ctx.stroke(); ctx.fillStyle = '#e8d9b5'; ctx.fillRect(bx + 2, by - 27 * sc, 70 * sc - 4, 5 * sc); // 침상
-    const up = e.healed ? Math.max(0, Math.min(1, (performance.now() - e.healed) / 600)) : 0; const team = e.g.rank === 'veteranus' ? myInk() : myLight(); const w = Math.sin(t * 2);
+    const up = e.healed ? Math.max(0, Math.min(1, (performance.now() - e.healed) / 600)) : 0; const team = myInk(); const w = Math.sin(t * 2);
     const sit: Skeleton = { ...NPC_POSES.stand, lean: 8, frontArm: [40, 60], backArm: [30, 50], frontLeg: [40, -70], backLeg: [-10, -70], headBob: 6 + w * 0.5, sink: 18 }; // 침상에 걸터앉음
     const stand: Skeleton = { ...NPC_POSES.stand, lean: -2, frontArm: [20 + w * 3, 15], headBob: 0 };
     const lerp = (a: number, b: number, u: number) => a + (b - a) * u; const pair = (a: readonly [number, number], b: readonly [number, number], u: number): [number, number] => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
@@ -100,7 +101,7 @@ export function drawTalkScene(e: { c: HTMLCanvasElement; g: Gladiator; start: nu
     const tending = mk >= 1 && ((el > 1.2 && el < 2.4) || (el > 3.6 && el < 4.8)); const msk: Skeleton = mk < 1 ? { ...walkSkeleton(el * 9, 0.8), frontArm: [55, 50] } : tending ? { ...NPC_POSES.tend, lean: 14 + w * 2, frontArm: [72 + w * 6, 34], backArm: [50, 45], headBob: 5 } : { ...NPC_POSES.tablet, lean: 3, headBob: w * 0.6 };
     drawStickman(ctx, 'murmillo', { x: mx, y: gy, scale: sc, facing: -1, skeleton: msk, t, ink: INK, bare: true, garment: 'tunic', garmentColor: '#c8a878', garmentStripe: '#7a1f16', hands: (c, f) => { c.fillStyle = '#f3ead0'; c.beginPath(); c.arc(f.hx - 3, f.hy - 4, 5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#c9b283'; c.lineWidth = 1; c.stroke(); } }); // 붕대 뭉치
     return; }
-  const team = e.g.rank === 'veteranus' ? myInk() : myLight(); const w = Math.sin(t * 2);
+  const team = myInk(); const w = Math.sin(t * 2);
   const gsk: Skeleton = k < 1 ? walkSkeleton(el * 9, 1) : e.what === 'release' ? { ...NPC_POSES.stand, lean: 2, frontArm: [30 + w * 3, 40], headBob: 1 } : e.what === 'sell' ? { ...NPC_POSES.stand, lean: -3, headBob: 6 + w * 0.5, frontArm: [10, 8] } : { ...NPC_POSES.stand, lean: 4, headBob: 2, frontArm: [20 + w * 3, 15] };
   if (e.what === 'buy') { // 시장 노예: 판매대와 똑같이 맨몸 + 손목 묶임 + 발의 백묵 (걸어 들어온 뒤)
     if (k < 1) drawStickman(ctx, e.g.type, { x: gx, y: gy, scale: sc, skeleton: gsk, t, team, facing: 1, bare: true });
@@ -183,7 +184,7 @@ export function detailPage(): Node {
   const again = S.shownDetail === `${d.kind}:${d.id}`; S.shownDetail = `${d.kind}:${d.id}`; // 같은 검투사가 이미 떠 있으면(확인 페이지를 열고 닫을 때의 재렌더) 슬라이드·걸어 들어오기를 반복하지 않는다
   const figure = portrait(g, 116, false, undefined, 170, true); figure.classList.add('big'); /* 초상 크기는 여기(인라인)가 정한다 — 폭 116(오른쪽에 기술 칩 3개가 든다), 높이 170(인물은 높이 기준으로 크게) */ if (!again) for (const e of portraits) if (e.c === figure) { e.enter = performance.now(); } // 큰 초상: 왼쪽에서 발소리를 내며 걸어 들어온다
   const status = d.kind === 'market' ? (g.rank === 'tiro' ? '티로' : '베테라누스') : g.status === 'doctor' ? '독토르' : g.status === 'rudiarius' ? '자유민' : g.rank === 'tiro' ? '티로' : isPrimusPalus(g) ? '프리무스 팔루스' : '베테라누스';
-  const dskills = h('div', { class: 'gskills dskills' }, ...masteryOf(g).map(m => h('span', { class: 'badge skill', title: `${m.name}: ${m.ko} (${m.cond.ko})` }, m.name)), ...emptySlots(Math.max(0, 3 - masteryOf(g).length))); /* 익힌 숙련 딕타타 (docs/09 2-α) */
+  const dskills = h('div', { class: 'gskills dskills' }, ...masteryOf(g).map(m => h('span', { class: 'badge skill', title: `${m.name}: ${m.ko} (${m.cond.ko})` }, m.name)), ...emptySlots(Math.max(0, CONFIG.mastery.slots - masteryOf(g).length))); /* 익힌 숙련 딕타타 (docs/09 2-α) — 카드에는 없고 여기서만 */
   const left = h('div', { class: 'dleft' }, figure, h('div', { class: 'dinfo' }, h('div', { class: 'dname' }, sq(g.type), ' ', h('b', {}, g.name), h('span', { class: 'age' }, `${g.age ?? '?'}세`)), h('div', { class: 'meta dmeta' }, h('div', {}, equipHandsKo(g.type, g.scaeva)), `${TYPE_KO[g.type]} · ${status}${g.lineage ? ` · 계보 ${LINEAGE_KO[g.lineage]}` : ''}`), dskills, h('div', { class: 'dbadges' }, ...epithetBadges(g)))); /* 초상은 왼쪽에 붙이고, 오른쪽에 이름·나이 → 유형·신분·계보 → 기술 칩 한 줄 → 그 아래 특징(별칭) 칩 */
   S.gladSel = g.id; S.marketSel = d.kind === 'market' ? g.id : S.marketSel;
   const { mid, side } = detailRight(g, d.kind);
@@ -211,9 +212,9 @@ const tile = (k: string, v: string, cls = '', title?: string) => h('div', { clas
 const capCls = (g: Gladiator, k: 'hp' | 'atk' | 'def' | 'hand') => atCap(g, k) ? 'capped' : '';
 function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side: Node } {
   const fat = g.fatigue ?? 0; const b = g.base;
-  const statsRow = h('div', { class: 'tiles' }, ...([['HP', b.hp, '체력', capCls(g, 'hp'), g.cap?.hp], ['ATK', b.atk, '공격', capCls(g, 'atk'), g.cap?.atk], ['DEF', b.def, '방어', capCls(g, 'def'), g.cap?.def], ['손놀림', b.hand, '손놀림: 공격 간격·연속·치명타 — 훈련으로 자란다', capCls(g, 'hand'), g.cap?.hand], ['걸음', b.spd, '걸음: 이동·행동 순서·그물 회피 — 유형이 정한다', '', undefined]] as const).map(([k, v, t, c, cap]) => { const key = (k === 'HP' ? 'hp' : k === 'ATK' ? 'atk' : k === 'DEF' ? 'def' : k === '손놀림' ? 'hand' : null) as 'hp' | 'atk' | 'def' | 'hand' | null; const p = key ? progOf(g, key) : 0; return tile(k, cap != null ? `${v}/${cap}` : String(v), c, c ? `${t} — 상한에 닿아 더 자라지 않는다` : cap != null ? `${t} · 상한 ${cap}${p > 0 ? ` · 다음 한 점까지 ${Math.max(1, Math.round((1 - p) / 0.2))}번쯤` : ''}` : t); }), /* 소수점은 안 보인다 — 툴팁에 '다음 한 점까지 몇 번' 만 (2026-09-21 사용자) */ /* 상한 공개 (2026-09-21 사용자) */
+  const statsRow = h('div', { class: 'tiles' }, ...([['HP', b.hp, '체력', capCls(g, 'hp'), g.cap?.hp], ['ATK', b.atk, '공격', capCls(g, 'atk'), g.cap?.atk], ['DEF', b.def, '방어', capCls(g, 'def'), g.cap?.def], ['DEX', b.hand, '손놀림(DEX): 공격 간격·연속·치명타 — 훈련으로 자란다', capCls(g, 'hand'), g.cap?.hand], ['SPD', b.spd, '걸음(SPD): 이동·행동 순서·그물 회피 — 유형이 정한다', '', undefined]] as const).map(([k, v, t, c, cap]) => { const key = (k === 'HP' ? 'hp' : k === 'ATK' ? 'atk' : k === 'DEF' ? 'def' : k === 'DEX' ? 'hand' : null) as 'hp' | 'atk' | 'def' | 'hand' | null; const p = key ? progOf(g, key) : 0; return tile(k, DEBUG && cap != null ? `${v}/${cap}` : String(v), c, c ? `${t} — 상한에 닿아 더 자라지 않는다` : cap != null ? `${t}${DEBUG ? ` · 상한 ${cap}` : ''}${p > 0 ? ` · 다음 한 점까지 ${Math.max(1, Math.round((1 - p) / 0.2))}번쯤` : ''}` : t); }), /* 소수점은 안 보인다 — 툴팁에 '다음 한 점까지 몇 번' 만 (2026-09-21 사용자) */ /* 상한 숫자는 ?debug 에서만 (2026-09-22 사용자) — 닿았을 때의 굵기·'다 컸다' 는 그대로 */
     fat ? tile('피로', String(fat), `fat${fat >= 3 ? ' bad' : ''}`, `첫 ${CONFIG.fatigue.free}점은 괜찮고, 그 위로 1점마다 공·방 −${CONFIG.fatigue.statPenalty}. ${CONFIG.fatigue.overworkAt} 이상인 채 시즌을 넘기면 과로사 위험`) : null);
-  const recordRow = h('div', { class: 'tiles' }, tile('전적', `${g.wins}승 ${g.fights - g.wins}패`, '', '승/패. 승리를 쌓으면 베테라누스, 루디스, 별칭'), tile('미시오', String(g.missios), '', '져서 쓰러졌지만 관중이 살려 준 횟수'), tile('명예', String(g.honor ?? 0), '', '검투사의 명예. 미시오 확률과 별칭·루디스에 영향'), tile('팬', `${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}`, '', `관중의 팬. ${FANS_STAR} 이상이면 ★ 인기 검투사`));
+  const recordRow = h('div', { class: 'tiles' }, tile('전적', `${g.wins}승 ${g.fights - g.wins}패`, '', '승/패. 승리를 쌓으면 베테라누스, 루디스, 별칭'), tile('미시오', String(g.missios), '', '져서 쓰러졌지만 관중이 살려 준 횟수'), /* 명예 타일은 뺐다 — 카드 초상의 명예 표식과 중복 (2026-09-22 사용자) */ tile('팬', `${fansOf(g)}${fansOf(g) >= FANS_STAR ? '★' : ''}`, '', `관중의 팬. ${FANS_STAR} 이상이면 ★ 인기 검투사`));
   const statusBits: string[] = [];
   if (g.injured) statusBits.push(`부상 ${g.injured}시즌 남음`);
   if (g.status === 'rudiarius' && g.contractUntil != null) statusBits.push(`자유민 계약 ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌 남음 · 급료 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%`);
@@ -226,10 +227,10 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
     dsec('stats', '능력치', statsRow),
     (() => { const capped = (['hp', 'atk', 'def', 'hand'] as const).filter(k => atCap(g, k)); const KO: Record<string, string> = { hp: '체력', atk: '공격', def: '방어', hand: '손놀림' }; const known = growthKo(g);
       return dsec('growth', '성장',
-        h('div', { class: 'line' }, `나이대: ${AGE_BAND_KO[ageBand(g.age ?? 24)]} — ${ageBand(g.age ?? 24) === 'young' ? '빨리 크고 위가 넓다' : ageBand(g.age ?? 24) === 'prime' ? '보통으로 자란다' : '더디고 곧 노쇠한다'}`),
+        h('div', { class: 'line' }, `나이대: ${AGE_BAND_KO[ageBand(g.age ?? 24)]} — ${ageBand(g.age ?? 24) === 'young' ? '빨리 자라고 상한이 높게 잡힌다' : ageBand(g.age ?? 24) === 'prime' ? '보통 속도로 자란다' : '더디게 자라고 상한이 낮다. 다치기 쉽고 더디게 낫는다'}`),
         h('div', { class: 'line' }, `성장형: ${known.length ? known.join(' · ') : '평범'}${kind === 'market' ? ` — 상인: "${merchantLine(g)}"` : ''}`),
         g.legend ? h('div', { class: 'line' }, `전설: ${legendGen(g.legend, S.st.graveyard, S.st.hall?.map(x => x.name) ?? [])}대 ${g.name} — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}${LEGEND_BY_ID[g.legend]?.real ? ' (실제 기록)' : ''}. 이름·유형·성장형·잠재·딕타타가 정해져 있다`) : null, /* 전설 (2026-09-22) */
-        h('div', { class: 'line' }, `자질: ${TALENT_KO[talentOf(g)]} — 성장 속도 ×${CONFIG.growthModel.talentMul[talentOf(g)]}, 상한 ×${CONFIG.growthModel.talentCap[talentOf(g)]}${talentOf(g) < 3 ? ' (명예 30 넘는 독토르의 가르침이나 경기 계기로 한 단계 오를 수 있다)' : ''}`), /* 2026-09-22 사용자: 자질 공개 */
+        h('div', { class: 'line' }, `자질: ${TALENT_KO[talentOf(g)]} — 성장 속도 ×${CONFIG.growthModel.talentMul[talentOf(g)]}, 상한 ×${CONFIG.growthModel.talentCap[talentOf(g)]}${talentOf(g) < 2 ? ' (명예 30 넘는 독토르의 가르침이나 경기 계기로 비범까지 오를 수 있다)' : talentOf(g) === 2 ? ' (깨우침의 끝 — 천부는 타고난다)' : ''}`), /* 2026-09-22 사용자: 자질 공개 */
         h('div', { class: 'line' }, fullyGrown(g) ? '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' : capped.length ? `상한에 닿음: ${capped.map(k => KO[k]).join(' · ')} — 나머지는 더 자란다` : '아직 상한에 닿은 능력치가 없다')); })(), /* 성장은 별도 절 (2026-09-21 사용자) */
     // (기술 칸은 초상 오른쪽 칩으로 옮김)
     statusBits.length ? dsec('status', '상태', ...statusBits.map(t => h('div', { class: 'line' }, t))) : null,
@@ -273,7 +274,7 @@ function actionSeg(g: Gladiator): (Node | null)[] {
   if (slot >= 0) { // 팔루스에 서 있다: 무엇을 단련할지는 시즌 끝에 무작위 (공·방, 조건이 되면 기술)
     const fatigueTip = at != null ? ` · 출전 뒤 훈련: 피로가 쌓일 확률 ${Math.round(Math.max(0, CONFIG.fatigue.trainAfterFight - cellQuality(S.st, g) * CONFIG.fatigue.perCellStar) * 100)}%` : '';
     return [h('span', { class: 'seg' },
-      h('span', { class: 'hint', title: `시즌 끝에 공격(+${trainGain(S.st, g, 'atk')})·방어(+${trainGain(S.st, g, 'def')})·체력(+${trainGain(S.st, g, 'hp')}) 중 하나를 무작위로 단련${fatigueTip}` }, `팔루스 ${slot + 1} — 공·방·체력 중 무작위`),
+      h('span', { class: 'hint', title: `시즌 끝에 네 능력치가 클래스 풀 비율로 같이 오른다 (${(['atk', 'def', 'hp', 'hand'] as const).map(k => `${KO4[k]} ${Math.round(trainShares(g)[k] * 100)}%`).join(' · ')})${fatigueTip}` }, `팔루스 ${slot + 1} — 네 능력치가 같이`),
       h('button', { title: `팔루스 ${slot + 1}에서 내려온다 (이번 시즌 훈련 없음)`, onclick: (ev: Event) => { ev.stopPropagation(); leavePalus(S.st, g); save(); render(); } }, '내려오기'))];
   }
   const f = g.fatigue ?? 0; return [h('span', { class: 'hint' }, at != null ? '출전만' : f > 0 ? `휴식 (피로 ${f} → −${cellQuality(S.st, g) >= 1 ? 2 : 1}${S.st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? '−1' : ''})` : `시범 (명예 +${CONFIG.actions.show.honor}) — 훈련은 훈련소의 팔루스에 세워서`)]; // 고르지 않는다: 팔루스에 안 섰으면 피로가 있으면 쉬고, 없으면 시범

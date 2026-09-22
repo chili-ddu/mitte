@@ -19,7 +19,7 @@ export interface State {
   view: View;
   travel: { to: View; from: View; fromX: number; start: number } | null;
   seasonReports: FightReport[];
-  seasonSummary: { upkeep: number; gift: number; bedCost?: number; trained: { g: Gladiator; stat: TrainStat; gain: number }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
+  seasonSummary: { upkeep: number; gift: number; bedCost?: number; trained: { g: Gladiator; gains: Partial<Record<TrainStat, number>> }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
   report: FightReport | null;
   notice: string;
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
@@ -66,7 +66,7 @@ export interface State {
 export const S = {} as State; // 초기값은 main.ts 가 원래 순서대로 대입한다
 
 // 우리 파밀리아 색: 새 게임에서 고른다. 벽화 안료로 설명되는 여섯 가지 (자유 색상은 낙서풍 팔레트를 깬다)
-// ink = 베테라누스, light = 티로. 상대는 stickman.ts 의 ENEMY(자주)
+// ink = 우리 파밀리아 (티로·베테 같은 색, 2026-09-22). 상대는 파밀리아 색, 소속 없으면 ENEMY(자주)
 export const TEAM_COLORS: { id: string; ko: string; ink: string; light: string }[] = [
   { id: 'caeruleum', ko: '청금', ink: '#2c4f9b', light: '#6e7f9b' },   // 이집트 청(카이룰레움) — 기본
   { id: 'viride', ko: '초록토', ink: '#3b7a4a', light: '#7b9b7e' },    // 녹토(테라 베르데)
@@ -77,7 +77,7 @@ export const TEAM_COLORS: { id: string; ko: string; ink: string; light: string }
 ];
 export const teamColorOf = (id?: string) => TEAM_COLORS.find(c => c.id === id) ?? TEAM_COLORS[0];
 export const myInk = () => teamColorOf(S.st?.color).ink;      // 베테라누스
-export const myLight = () => teamColorOf(S.st?.color).light;  // 티로
+export const myLight = () => teamColorOf(S.st?.color).light;  // (2026-09-22 사용자: 계급 색 구분을 뺐다 — 티로는 T 표식으로만. light 는 견본·범례용으로 남김)
 export const randomColor = () => TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)].id; // 새 게임 설정의 첫 색 (2026-09-21 사용자: 랜덤 배정 — 바꿀 수는 있다)
 export const rivalInk = (rivalId?: number) => { const c = rivalId === undefined ? undefined : S.st?.rivals.find(r => r.id === rivalId)?.color; return c ? teamColorOf(c).ink : ENEMY; }; // 상대 파밀리아 색 (없으면 자주)
 export const rivalInkOf = (g: Gladiator) => rivalInk(S.st?.rivals.find(r => r.roster.some(x => x.id === g.id))?.id); // 검투사가 속한 파밀리아 색

@@ -16,7 +16,7 @@ export const CONFIG = {
     tiro:      { hp: [0.80, 0.92], atk: [0.80, 0.92], def: [0.75, 0.92], hand: [0.75, 0.95] },   // 어린 티로: 단련이 없으니 약하다
     veteranus: { hp: [0.95, 1.05], atk: [0.95, 1.05], def: [0.95, 1.05], hand: [0.95, 1.10] },   // 베테라누스: 기본치 안팎 (손놀림은 위로 조금 더)
     age: { from: 20, to: 32, hiBonus: 0.20 },
-    agePrice: { from: 24, per: 0.04, min: 0.6 },                              // 값: 24세를 넘기면 해마다 −4% (최저 ×0.6). 남은 현역 기간이 짧다 (고증: 디오클레티아누스 최고가격령도 노예 값을 나이대로 매겼다)                                 // 나이가 들수록 위쪽 폭이 열린다(20세 +0 → 32세 +0.20): 단련을 했을 수도, 안 했을 수도. 대신 31세부터 노쇠라 오래 못 쓴다
+    agePrice: { from: 30, per: 0.04, min: 0.6 }, /* 2026-09-22: 24 → 30 — 24세는 한창 자라는 나이라 할인 근거가 없다. 노년 = 싸지만 더 안 큼 */                              // 값: 24세를 넘기면 해마다 −4% (최저 ×0.6). 남은 현역 기간이 짧다 (고증: 디오클레티아누스 최고가격령도 노예 값을 나이대로 매겼다)                                 // 나이가 들수록 위쪽 폭이 열린다(20세 +0 → 32세 +0.20): 단련을 했을 수도, 안 했을 수도. 대신 31세부터 노쇠라 오래 못 쓴다
   },
   rentTiro: 600,
   rentVeteran: 1500,
@@ -28,7 +28,7 @@ export const CONFIG = {
   sellPerWin: 0,   // (구) 승당 가산. 값에 포함되어 미사용
   healCost: 500,
   trainHpGain: [8, 14] as const, // 체력 훈련 상승폭 범위(무작위): 공·방 +1 의 값(전력식 4.5)을 가운데 두고 위아래로 (2026-09-17 사용자: 고정 말고 범위로)
-  hpPenPerStat: 5, // 공·방을 1 깎는 원인(피로·노쇠)은 체력도 이만큼 깎는다 — 지친 몸·늙은 몸은 맞으면 더 빨리 무너진다 (2026-09-17 사용자)
+  hpPenPerStat: 5, // 공·방을 1 깎는 원인(피로)은 체력도 이만큼 깎는다 — 지친 몸·늙은 몸은 맞으면 더 빨리 무너진다 (2026-09-17 사용자)
   trainGainBase: 2, // 훈련 한 번의 공·방·손놀림 상승 기본치 (2026-09-20: 승수 성장을 빼며 1 → 2 — 훈련이 유일한 능력치 성장)
   trainCost: 0,   // 훈련 회당 요금 없음 (2026-09-16): 훈련의 대가는 팔루스 유지비·자리 수·출전 뒤 피로. 0 이 아니면 train() 이 그만큼 뺀다
   rudis: { wins: 5, base: 0.45, perFame: 0.004 }, /* 주최자 보정은 core/hosts.ts */ // 루디스: 승리 시 승수가 wins 이상이면 주최자가 확률적으로 수여
@@ -61,7 +61,7 @@ export const CONFIG = {
     auctoratus: { price: 0.8, term: 8, renew: 0.5, base: 0.3, perFame: 0.005, second: 0.25 }, // 자유민 지원자: 시장이 아니라 루두스 문 앞에 찾아온다. 시즌마다 확률 base+호감도×perFame, 그 뒤 second 확률로 한 명 더. 계약금(가격×0.8), 급료, 8시즌 계약, 재계약 = 계약금×0.5
     mix: { captive: 0.3, damnatus: 0.25 },                        // 시장 매물 비율 (나머지는 노예 상인). 자유민은 시장에 서지 않는다
   },
-  age: { tiro: [17, 30], veteran: [24, 32], applicant: [24, 34], spdFrom: 31, spdEvery: 3, statFrom: 33, statEvery: 2 }, // 검투사 나이와 노쇠 (비문의 사망 연령은 대부분 20~30대, 30대 중반 넘겨 싸운 예는 드묾)
+  age: { tiro: [17, 30], veteran: [24, 32], applicant: [24, 34], injuryFrom: 30, injuryPer: 0.1, injuryMax: 1.6, healCutFrom: [30, 36], healCut: 0.05 }, // 검투사 나이. 노쇠 능력치 페널티는 2026-09-22 사용자가 뺐다(성장 모델이 나이를 안다, 늦바람과 충돌) — 대신 30세부터 해마다 부상 확률 +10%(최대 ×1.6), 방치 자연 회복 30세·36세에 −5%p (비문의 사망 연령은 대부분 20~30대)
   lanista: { ageMin: 32, ageMax: 40, voluntaryAge: 46, mortality: [[40, 0.01], [45, 0.03], [50, 0.06], [60, 0.09], [999, 0.15]] as [number, number][], inheritanceTax: 0.05 /* 유산세 5% (비케시마 헤레디타티움, 고증) */, fameKeep: 0.6, fameFromHonor: 0.2, freedmanDiscount: 0.1, doctorTrainBonus: 1 }, // 고증: 울피아누스 생명표 근사 — 해마다 죽을 확률 (40세 미만 1%, 40대 2.5%, 50대 4.5%, 60대 8%, 70세 이상 14%). 은퇴 나이는 없고 46세(세니오레스)부터 자발 은퇴. 호감도 60% + 후계자 명예×0.2 계승, 해방노예 후계 = 시장 10% 할인, 독토르 후계 = 그 유형 훈련 +1
   honor: { win: 3, perTier: 2, classic: 2, crown: 3, lose: -1, missioPer: 0.004, rentPer: 0.01 }, // 검투사 명예: 미시오 +0.4%/점, 대여료 +1%/점
   // 독토르의 '기술 전수'(전투 보정 7종·doctorSkillWins·masterBonus)는 2026-09-18 뺐다 — 전투 보정은 특성 하나만 맡는다(docs/08). 독토르는 같은 유형의 훈련만 돕는다
@@ -91,13 +91,13 @@ export const CONFIG = {
     chest: { p: 0.5 },                                // 프로보카토르 가슴판
     feint: { p: 0.4 },                                // 트라엑스 허초: 방어 무시 (.3 은 행 평균 0.42)
     spearWall: { p: 0.12, poke: 0.4, push: 14 },       // 호플로마쿠스 창 벽 (.4 는 1대1 행 평균 0.74 — 09-18 측정)
-    dismount: { mult: 1.5 },                          // 에퀘스 말에서 내려 치기: 첫 돌진 반드시 적중 (×2 는 행 평균 0.63 — 09-18 측정)
+    dismount: { mult: 1.5 },                          // 에퀘스 기마 찌르기: 첫 돌진 반드시 적중 (×2 는 행 평균 0.63 — 09-18 측정)
     net: { base: 0.8, perSpd: 0.06, min: 0.3, sec: 1.2 }, // 레티아리우스 그물 (한 번, 빗나가면 잃음)
     twin: { combo: 0.4 },                            // 디마카에루스 이중베기 (.25 는 행 평균 0.33)
     armRiposte: { p: 0.3, mult: 1.2 },                // 스키소르 팔 칼날 되치기
     lasso: { p: 0.5, gap: 4, sec: 0.8 },              // 라쿠에아리우스 올가미 (잃지 않음)
   },
-  form: { atk: 5, def: 4, hp: 7, team: 0.5, tell: 0.35 }, // 그날의 몸 상태(2026-09-16): 경기마다 f∈[−1,1]을 굴려 공 +round(f×atk)·방 +round(f×def). f 는 팀 공통분(team: 그날 파밀리아의 분위기)과 개인분을 섞는다 — 다인전에서 개인 우연이 평균으로 묻히지 않게. 시즌 단위 피로와 별개인 '경기 당일'의 우연 — 수십 번 굴리는 타격 흔들림은 평균으로 수렴하지만 이건 경기 내내 남아 승부를 바꾼다(열세 역전의 주된 통로). |f|≥tell 이면 배정 화면 칩과 기록에 '몸이 가볍다/무겁다'로 드러난다 (2026-09-16 0.5→0.35: f 가 삼각분포라 0.5 문턱에서는 넷 중 하나만 드러나 고를 거리가 못 됐다 — 0.35 면 열에 넷)
+  // form(그날의 몸 상태)은 2026-09-22 뺐다 — 시즌 단위 소음. (2026-09-16 도입: 경기마다 f∈[−1,1]을 굴려 공 +round(f×atk)·방 +round(f×def). f 는 팀 공통분(team: 그날 파밀리아의 분위기)과 개인분을 섞는다 — 다인전에서 개인 우연이 평균으로 묻히지 않게. 시즌 단위 피로와 별개인 '경기 당일'의 우연 — 수십 번 굴리는 타격 흔들림은 평균으로 수렴하지만 이건 경기 내내 남아 승부를 바꾼다(열세 역전의 주된 통로). |f|≥tell 이면 배정 화면 칩과 기록에 '몸이 가볍다/무겁다'로 드러난다 (2026-09-16 0.5→0.35: f 가 삼각분포라 0.5 문턱에서는 넷 중 하나만 드러나 고를 거리가 못 됐다 — 0.35 면 열에 넷)
   stamina: { max: 100, swing: 20, sprintPerSec: 10, regen: 4, windedAt: 30, windedInterval: 1.35, windedMove: 0.8, stumble: 0.15, stumbleSec: 0.9, openMult: 1.5, openIgnore: 1.0 }, // 스태미나(2026-09-16): 휘두를 때마다 swing×장비 무게, 질주 중 초당 sprintPerSec 소모, 초당 regen 회복 (1대1 평균 17타·11초: 중무장은 4~5타, 경무장은 6~7타째부터 지친다). windedAt 밑이면 지침 — 공격 간격 ×1.35, 걸음 ×0.8, 휘두를 때 15%로 헛디딤(0.9초 무방비 — 그 사이 맞는 타격은 빈틈 강타: 방어 openIgnore 무시·×openMult). 무게는 보조 장비 기준: 스쿠툼·중형 방패를 든 중무장(무르밀로·세쿠토르·프로보카토르)이 먼저 지친다 — 검투 경기의 승부처는 지치는 쪽이 나오는 것이었다
   crit: { base: 0.08, perSpd: 0.005, mult: 1.3, defIgnore: 1.0 }, // 치명타: 확률 = base + 속도×perSpd . 갑주 틈을 찌른 깨끗한 일격 — 방어를 defIgnore 만큼 무시(1.0 = 전부)하고 ×1.3, 방패 반감 무시. (2026-09-16 ×1.6·방어 적용 → 방어 무시·×1.3: 약자가 방어 높은 상대를 뚫는 통로) // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
   startFame: 0,       // 무명에서 시작 (2026-09-16, 월계관 단계에 맞춰). 시뮬: 30→0 이 파산율을 올리지 않고(등급1만 14%→1%) 초반 사망만 조금 늘어난다(미시오 보정 없음)
@@ -136,7 +136,7 @@ export const CONFIG = {
   rivals: { purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 2, trainGain: 2, trainHp: 10, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, focusP: 0.6 }, // focusP: 즐겨 사는 클래스를 고를 확률
   // 도전 계약(docs/10): 파밀리아가 우리를 지목하거나(in) 우리가 건다(out). 상한 없음, 상금 ×1.5, 호감도 +2, 필수 배정. 거절은 벌점 없이 그쪽 기세 +1
   challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, acceptBase: 0.55, acceptMood: 0.15, acceptWeak: -0.3, acceptStrong: 0.2, maxPerSeason: 2 },
-  mastery: { slots: 3, needDoctor: true, rivalVetP: 0.1 },
+  mastery: { slots: 4, needDoctor: true, rivalVetP: 0.1 }, // 2026-09-22 사용자: 자리 3 → 4 (후보 열둘 중 넷). 열리는 조건 없음 — 문턱을 넘으면 그대로 익혀 카드에 보인다
   legend: { p: 0.75 },                                                       // 2026-09-22 사용자: 천부가 곧 전설은 아니다 — 천부(2%) 중 이 확률로 고정 인물(그 유형이 비어 있을 때). 나머지는 그냥 천부
   // 성장 모델(2026-09-21 docs/09 §7): 초기 굴림 없음 — 현재치 = 유형 기본 × 서열(rankMul), 개체 차이는 잠재치·나이·성장형(곡선 넷 × 결 넷)·자질
   growthModel: {
@@ -147,14 +147,14 @@ export const CONFIG = {
     curveCap: { normal: 1.0, early: 1.08, late: 1.17, second: 1.0 } as Record<'normal' | 'early' | 'late' | 'second', number>,
     curveSpeed: { normal: { young: 1.3, prime: 1.0, old: 0.5 }, early: { young: 1.8, prime: 0.7, old: 0.3 }, late: { young: 0.7, prime: 1.4, old: 0.8 }, second: { young: 1.0, prime: 1.0, old: 0.8 } } as Record<'normal' | 'early' | 'late' | 'second', Record<'young' | 'prime' | 'old', number>>,
     secondAt: 30, secondBoost: 1.15,                                       // 늦바람: 서른에 상한 +15%
-    traitP: 0.4, oneCap: 1.5, oneOtherCap: 0.6, oneSpeed: 1.8, oneOtherSpeed: 0.6, fieldTrainMul: 0.6, fieldGain: 1, pupilWith: 1.6, pupilWithout: 0.7, evenCap: 1.1,
+    traitP: 0.4, oneCap: 1.3, oneOtherCap: 0.75, /* 2026-09-22 사용자: 1.5/0.6 은 한쪽이 기본의 2.4배까지 튀고 나머지는 바닥에 붙었다 */ oneSpeed: 1.8, oneOtherSpeed: 0.6, fieldTrainMul: 0.6, fieldGain: 1, pupilWith: 1.6, pupilWithout: 0.7, evenCap: 1.1,
     talentMul: [1, 1.3, 1.6, 2.0] as readonly number[],                     // 자질은 크기 배율 (전엔 +1 추가 확률)
     talentCap: [1, 1.05, 1.1, 1.15] as readonly number[],                   // 2026-09-22 사용자: 자질이 상한도 조금 올린다 (속도 두 배인 천부에 상한까지 크게 주면 너무 벌어져 작게)
     step: 0.25, hpStep: 0.5,                                               // 2026-09-21 사용자: 나이로 맞춤 — 18세 티로를 매 시즌 세우면(독토르 없이) 상한 도달률 24세 71%·30세 97%·34세 99%. 훈련 한 번 (2 × 0.25 =) 0.5, 체력 약 +5. 잠재를 넓히며 0.15 → 0.25
     revealCurveAfter: 0,                                                   // 2026-09-21 사용자: 처음부터 모두 공개 (0 = 태어날 때부터 안다)
-    minRoom: { young: 1.2, prime: 1.08, old: 1.0 } as Record<'young' | 'prime' | 'old', number>, // 상한의 최소 여유: 청년은 현재치 ×1.2 는 남긴다 — 장년까지 첫 시즌에 '다 컸다'가 나오지 않게 (09-21 사용자 지적)
+    minRoom: { young: 1.2, prime: 1.08, old: 1.04 } as Record<'young' | 'prime' | 'old', number>, // 상한의 최소 여유: 청년은 현재치 ×1.2 는 남긴다 — 장년까지 첫 시즌에 '다 컸다'가 나오지 않게 (09-21 사용자 지적)
   }, // 숙련 딕타타(docs/09 2-α): 자리 셋, 같은 클래스 독토르가 있어야 익힌다. 상대 베테라누스는 승수마다 이 확률로 하나씩(최대 둘)
-  priceBase: 113, // 값의 전력 기준점 (2026-09-21): 나이만큼 자란 몸이 되며 시장 전력이 ~28 올라 티로 값이 3,700 → 6,100 이 됐다(파산 8~22%). 85 → 113 으로 옛 값(티로 ~3,700 · 베테라누스 ~5,900)에 맞춤
+  priceBase: 120, // 값의 전력 기준점 (2026-09-22: 값 할인이 30세부터로 늦춰져 베테라누스가 5,350 → 6,280 으로 올라 봇 파산 7~21% — 120 으로 티로 3,890 · 베테 5,800, 파산 2~7%). (2026-09-21): 나이만큼 자란 몸이 되며 시장 전력이 ~28 올라 티로 값이 3,700 → 6,100 이 됐다(파산 8~22%). 85 → 113 으로 옛 값(티로 ~3,700 · 베테라누스 ~5,900)에 맞춤
   matchup: { power: 1.2 }, // 상성이 전력에 실리는 폭: 보이는 전력 × (1 + (상성 승률 − 0.5) × power). 최악의 짝(0.39/0.61)에서 ±13% (2026-09-17 사용자: 배정하면 상성만큼 전력이 깎이거나 오르게)
   typePower: { murmillo: 1.4, secutor: 0.9, thraex: 0.2, retiarius: -2.9, hoplomachus: 3.1, provocator: 2.8, eques: -1.1, dimachaerus: -1.7, scissor: -0.6, laquearius: -1.8 } as Record<string, number>, // 유형 보정(2026-09-18 재측정): 장비 규칙을 뺀 전투에서 전력이 같은 짝의 1대1 승률이 50%가 되도록 맞춘 값(상성표 셀 0.445~0.555). 무거운 유형(HP·방어)이 전력식보다 세게 나와 +, 빠른 유형이 −. 유형 정리 뒤 다시 잰다
   tierGraduate: 0.95, // 졸업(2026-09-16): 내 검투사 평균 전력이 그 등급 상한의 이 배를 넘으면 아래 등급 주최자는 더 이상 나를 부르지 않는다. 으뜸이 아니라 평균인 이유: 으뜸 기준이면 검투사 하나만 세져도 하위 경기가 사라져 새로 산 티로를 키울 자리가 없어진다(사용자). 상한은 약할 때를 지키는 장치이고, 세월이 지나 상한을 추월하면 하위 등급 경기는 이길 게 뻔한 공짜 승리가 된다 — 상한을 올리는 대신 등급을 졸업시킨다 (위 등급이 호감도로 아직 안 열렸으면 그대로 둔다: 경기가 없어지면 안 된다)

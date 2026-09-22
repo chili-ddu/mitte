@@ -169,11 +169,13 @@ function renderHelp(): Node {
     sec('딕타타 (팔루스에서 익힌 규정 동작 — 주장비·보조장비·유형 하나씩, 유형이면 곧 안다)',
       ...TYPES.map(t => row(TYPE_KO[t], basicDictataOf(t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
     sec('성장 (초기 굴림 없음 — 현재치는 유형 × 서열, 개체 차이는 잠재치·나이·성장형·자질)',
-      row('나이', '청년(~23) 빠르고 위가 넓다 · 장년(24~29) 보통 · 노년(30~) 더디고 현재치가 곧 상한. 33세부터 노쇠'),
+      row('나이', '청년(~23) 빨리 자라고 상한이 높게 잡힌다 · 장년(24~29) 보통 · 노년(30~) 더디고 상한이 낮다. 노쇠로 능력치가 깎이진 않는다 — 대신 30세부터 해마다 부상 확률 +10%(최대 ×1.6), 방치 회복이 느려진다. 값 할인은 30세부터'),
+      row('훈련', '팔루스에 세우면 네 능력치가 클래스 풀 비율로 같이 오른다(무르밀로 방 40 · 체 30 · 공 20 · 손 10%). 상한에 닿은 능력치의 몫은 나머지로. 고른 몸은 균등, 한 우물은 그 능력치 ×1.8·나머지 ×0.6'),
       row('곡선', (['normal', 'early', 'late', 'second'] as const).map(c => `${CURVE_KO[c]}: ${CURVE_DESC[c]}`).join(' / ')),
       row('결 (40%만)', (['one', 'field', 'pupil', 'even'] as const).map(t => `${GROWTH_TRAIT_KO[t]}: ${TRAIT_DESC[t]}`).join(' / ')),
       row('상한', '감춰져 있다. 닿은 능력치는 카드에서 굵어지고, 넷 다 닿으면 \'다 컸다\'. 상인의 한 줄과 독토르의 판단(세 번째 훈련 뒤)이 힌트'),
-      row('자질', '평범 ×1 · 재능 ×1.3 · 비범 ×1.6 · 천부 ×2.0 — 성장 속도 배율. 상한도 ×1 · 1.05 · 1.1 · 1.15'),
+      row('자질', '카드 초상 뒤 바탕색으로 본다 — 연한 황토(평범) · 진한 황토(재능) · 핏빛(비범) · 금빛(천부). 평범 ×1 · 재능 ×1.3 · 비범 ×1.6 · 천부 ×2.0 — 성장 속도 배율. 상한도 ×1 · 1.05 · 1.1 · 1.15. 깨우침(명예 30↑ 독토르의 가르침·열세 승리·미시오 뒤 첫 승·5승·10승, 12%)으로 비범까지 오른다 — 천부는 타고난다'),
+      row('숙련 자리', '카드 오른쪽 기둥 네 칸. 열리는 조건은 없다 — 경기에서 행동이 문턱을 넘고 같은 클래스 독토르가 있으면 익혀서 칩으로 보인다. 후보는 유형마다 열둘(주장비·보조장비·클래스·유형 × 3), 넷이 차면 더 익히지 않는다'),
       row('전설', '천부(4%) 중 75% 는 고유 인물 — 유형마다 한 명(플람마·스피쿨루스·켈라두스·크레스켄스·프리스쿠스·베루스·테트라이테스·헤르메스·콜룸부스·프루덴스). 이름·성장형·잠재·고유 딕타타가 정해져 있고 한 세상에 한 명뿐. 죽거나 나가면 다음 사람이 그 이름을 물려받아 다시 나올 수 있다. 시장·문 앞·상대 파밀리아 어디서든, 조건 없이')),
     sec(`숙련 딕타타 (경기에서 행동이 문턱을 넘고, 같은 클래스 독토르가 있으면 익힌다 — 자리 ${CONFIG.mastery.slots}, 먼저 넘은 순서, 한 번 익히면 바뀌지 않는다. 카드 칩에 뜬다)`,
       ...TYPES.map(t => row(TYPE_KO[t], masteryCandidates(t).map(m => `${m.name}(${m.cond.ko}): ${m.ko}`).join(' / ')))),
@@ -211,7 +213,7 @@ function renderHelp(): Node {
       row('유형 전환', `검투사가 스스로 청할 때만(이벤트, 준비 중) 다른 유형으로 재훈련 (${CONFIG.retrainCost} HS, 그 시즌 출전 불가). 공·방은 유지, 속도·사거리는 새 유형. 세 유형으로 각각 이기면 '혼자서 세 유형을 다 싸우는 자'(헤르메스).`),
       row('왼손잡이', `타고난 특성(매물 10%). 왼손잡이(스카이바)는 상대 방패의 첫 타격 감소를 절반으로 만든다. 비문에 따로 표기될 만큼 귀했다.`),
       row('루디스 거절', `루디스를 받은 경기의 결과 화면에서 거절할 수 있다. 플람마처럼 노예로 남는 대신 명예 +8.`),
-      row('나이', `검투사는 티로 ${CONFIG.age.tiro[0]}~${CONFIG.age.tiro[1]}세, 베테라누스 ${CONFIG.age.veteran[0]}~${CONFIG.age.veteran[1]}세로 들어오고 봄마다 한 살. ${CONFIG.age.spdFrom}세부터 ${CONFIG.age.spdEvery}년마다 속도 −1, ${CONFIG.age.statFrom}세부터 ${CONFIG.age.statEvery}년마다 공·방 −1 (비문의 검투사 사망 연령은 대부분 20~30대).`),
+      row('나이', `검투사는 티로 ${CONFIG.age.tiro[0]}~${CONFIG.age.tiro[1]}세, 베테라누스 ${CONFIG.age.veteran[0]}~${CONFIG.age.veteran[1]}세로 들어오고 봄마다 한 살. ${CONFIG.age.injuryFrom}세부터 해마다 부상 확률 +${Math.round(CONFIG.age.injuryPer * 100)}%(최대 ×${CONFIG.age.injuryMax}), 방치 자연 회복 ${CONFIG.age.healCutFrom.join('·')}세에 −${Math.round(CONFIG.age.healCut * 100)}%p (비문의 검투사 사망 연령은 대부분 20~30대).`),
       row('후계', `라니스타는 봄마다 한 살 먹는다. 정해진 은퇴 나이는 없고 해마다 나이에 따라 죽을 확률이 있다 (40세 미만 1%, 40대 2.5%, 50대 4.5%, 60대 8%, 70세 이상 14% — 울피아누스 생명표 근사). ${CONFIG.lanista.voluntaryAge}세(세니오레스)부터 자발 은퇴 가능. 독토르 후계자는 제 나이 그대로 잇는다. 후계자는 독토르 중 한 명(그 유형 훈련 +${CONFIG.lanista.doctorTrainBonus}, 명예×${CONFIG.lanista.fameFromHonor} 만큼 호감도에 보탬) 또는 부하 해방노예(시장 ${Math.round(CONFIG.lanista.freedmanDiscount * 100)}% 할인). 자금·검투사·시설은 그대로, 호감도는 ${Math.round(CONFIG.lanista.fameKeep * 100)}% 계승.`),
       row('확보 경로', `시장 매물의 출신: 노예 상인(기본), 전쟁 포로(값 −35%, 공격·HP 높음, 미시오 −5%), 형벌 죄수(값 −60%, 능력치 −2, 배상 절반, 12시즌 뒤 자유), 자유민 계약자(아욱토라티)는 시장에 서지 않고 루두스 문 앞에 찾아온다(호감도가 높을수록 자주): 계약금 ×0.8, 급료 지급, 8시즌 계약, 재계약 = 계약금 절반. 첫 시즌은 노예 상인만.`),
       row('루디스', `승리로 ${CONFIG.rudis.wins}승에 이르면 주최자가 확률적으로 루디스(나무 검)를 내려 자유민이 된다 (기본 ${Math.round(CONFIG.rudis.base * 100)}% + 호감도, 관대 +20%/잔혹 −20%). 자유민은 팔 수 없고 사망 배상도 없다. 계속 출전하면 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%를 급료로 가져간다.`),
@@ -230,7 +232,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   if (view === 'market') {
     const g = S.st.market.find(x => x.id === S.marketSel);
     const out: Node[] = [h('h3', {}, '노예 시장', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `매물 ${S.st.market.length}명 · 보유 ${S.st.money.toLocaleString()} HS`))];
-    const rr = rerollsLeft(S.st); out.push(item(rr > 0 ? 'idle' : 'warn', rr > 0 ? `상인을 다시 부를 수 있습니다 (이번 시즌 ${rr}번)` : '이번 시즌은 상인을 더 부를 수 없습니다', rr > 0 ? h('button', { disabled: !canReroll(S.st), title: '노예 상인은 떠돌았고, 사람을 보내 다른 상인을 불러올 수 있었다', onclick: () => { if (rerollMarket(S.st)) { sfx.coin(); S.marketSel = null; S.detail = null; toast(`상인을 다시 불렀다 — 매물 ${S.st.market.length}명`); render(); } } }, `다시 부른다 ${CONFIG.market.reroll.cost.toLocaleString()}`) : null)); /* 2026-09-18 3단계: 리로드 */
+    const rr = rerollsLeft(S.st); out.push(item(rr > 0 ? 'idle' : 'warn', rr > 0 ? `판매대 오른쪽 종을 치면 다른 상인을 부를 수 있습니다 (이번 시즌 ${rr}번, ${CONFIG.market.reroll.cost.toLocaleString()} HS)` : '이번 시즌은 상인을 더 부를 수 없습니다')); /* 부르기는 장면의 종으로 (2026-09-22 사용자) */
     if (!S.st.market.length) return [...out, item('idle', '이번 시즌 매물이 없습니다.')];
     const full = S.st.roster.length >= rosterCap(S.st);
     if (full) out.push(item('warn', `켈라이 가득 찼습니다 (${S.st.roster.length}/${rosterCap(S.st)}). 루두스에서 켈라을 증축하거나 검투사를 매각해야 살 수 있습니다.`));

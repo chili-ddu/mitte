@@ -1,5 +1,5 @@
 // 켈라(방 격자) 장면과 방 시트
-import { S, myInk, myLight } from './state.js';
+import { S, myInk } from './state.js';
 import { cellOf, moveToCell, occupantOf, palusOf, upgrade, upgradeCost } from '../core/game.js';
 import { type Gladiator } from '../core/types.js';
 import { TYPE_KO, fansOf } from '../core/gladiator.js';
@@ -56,7 +56,7 @@ function drawCellDecor(ctx: CanvasRenderingContext2D, r: { x: number; y: number;
     // 팬 스타: 하트 낙서 둘 (오른쪽 벽, 등잔 아래)
     if (fansOf(g) >= FANS_STAR) { ctx.strokeStyle = 'rgba(155,44,28,.8)'; ctx.lineWidth = 1.3 * sc; for (const [hx, hy] of [[r.w - 56 * sc, 30 * sc], [r.w - 46 * sc, 36 * sc]]) { const z = 3.2 * sc; ctx.beginPath(); ctx.moveTo(hx, hy + z); ctx.bezierCurveTo(hx - z * 2, hy - z * 0.6, hx - z * 0.6, hy - z * 2, hx, hy - z * 0.5); ctx.bezierCurveTo(hx + z * 0.6, hy - z * 2, hx + z * 2, hy - z * 0.6, hx, hy + z); ctx.stroke(); } }
     // 장비 걸이 (오른쪽 벽): 유형의 투구·방패(그물)·무기. 독토르는 장비를 내려놓았다
-    if (g.status !== 'doctor') drawGearRack(ctx, g.type, r.w - 24 * sc, r.h - 7, 0.9 * sc, g.id, g.rank === 'veteranus' ? myInk() : myLight()); // 바닥 기준: 선반 위 투구, 못에 건 검, 기대 세운 창·방패
+    if (g.status !== 'doctor') drawGearRack(ctx, g.type, r.w - 24 * sc, r.h - 7, 0.9 * sc, g.id, myInk()); // 바닥 기준: 선반 위 투구, 못에 건 검, 기대 세운 창·방패
     // 루디스 (자유민): 벽에 가로로 걸린 나무 검 + 붉은 띠
     if (g.status === 'rudiarius') { const rx = r.w * 0.5, ry = r.h * 0.38; ctx.strokeStyle = wood; ctx.lineWidth = 3 * sc; ctx.beginPath(); ctx.moveTo(rx - 16 * sc, ry); ctx.lineTo(rx + 14 * sc, ry); ctx.stroke(); ctx.lineWidth = 2 * sc; ctx.beginPath(); ctx.moveTo(rx + 2 * sc, ry - 5 * sc); ctx.lineTo(rx + 2 * sc, ry + 5 * sc); ctx.stroke(); ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 1.5 * sc; ctx.beginPath(); ctx.moveTo(rx + 12 * sc, ry - 4 * sc); ctx.lineTo(rx + 8 * sc, ry + 6 * sc); ctx.stroke(); }
   } else {
@@ -106,10 +106,10 @@ export function drawCellsScene(ctx: CanvasRenderingContext2D, t: number) {
     if (g && S.cellDrag && S.cellDrag.id === g.id && S.cellDrag.moved) { drawCellDecor(ctx, r, g, t, 'wall'); drawCellDecor(ctx, r, g, t, 'front'); return; } // 끌려 나간 방은 비어 있다 (장식만 남음)
     if (g) { drawCellDecor(ctx, r, g, t, 'wall'); const fat = g.injured ? 2 : (g.fatigue ?? 0); // 피로는 자세로: 0 버릇대로 · 1 축 늘어져 앉음 · 2 꾸벅임(부상도) · 3 벽에 기대 잠
       const sk = fat >= 3 ? cellSleep(t + k) : fat === 2 ? cellDoze(t + k) : fat === 1 ? cellSlump(t + k) : cellActivity(g, t + k); const fx = sk.facing ?? 1;
-      drawStickman(ctx, g.type, { x: r.x + r.w * 0.42, y: r.y + r.h - 7, scale: Math.min(0.95, r.h / 92, r.w / 96), skeleton: sk.sk, t: t + k, team: g.rank === 'veteranus' ? myInk() : myLight(), bare: true, facing: fx, accessories: accessoriesOf(g) });
+      drawStickman(ctx, g.type, { x: r.x + r.w * 0.42, y: r.y + r.h - 7, scale: Math.min(0.95, r.h / 92, r.w / 96), skeleton: sk.sk, t: t + k, team: myInk(), bare: true, facing: fx, accessories: accessoriesOf(g) });
       drawCellDecor(ctx, r, g, t, 'front'); }
     if (S.bedPick != null || S.palusMode) { const ok = !!g && (S.bedPick != null ? g.injured > 0 : g.alive && g.injured <= 0 && g.status !== 'doctor'); if (!ok) { ctx.fillStyle = 'rgba(203,182,127,.74)'; ctx.fillRect(r.x, r.y, r.w, r.h); } else if (S.palusMode && g && palusOf(S.st, g) >= 0) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(r.x + 4, r.y + r.h - 22, r.w - 8, 16); ctx.fillStyle = '#f3ead0'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`팔루스 ${palusOf(S.st, g) + 1}`, r.x + r.w / 2, r.y + r.h - 10); } /* 방 아래쪽 띠 (이름을 가리지 않게) */ } // 배정 모드: 고를 수 없는 방은 흐리게 — 침상은 부상자만, 팔루스는 건강하고 아직 안 선 검투사만
   });
-  if (S.cellDrag && S.cellDrag.moved) { const g = S.st.roster.find(x => x.id === S.cellDrag!.id); if (g) { ctx.save(); ctx.globalAlpha = 0.9; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6; drawStickman(ctx, g.type, { x: S.cellDrag.px, y: S.cellDrag.py + 26, scale: 1.0, pose: 'idle', t, team: g.rank === 'veteranus' ? myInk() : myLight(), bare: true, facing: 1, accessories: accessoriesOf(g) }); ctx.restore();
+  if (S.cellDrag && S.cellDrag.moved) { const g = S.st.roster.find(x => x.id === S.cellDrag!.id); if (g) { ctx.save(); ctx.globalAlpha = 0.9; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6; drawStickman(ctx, g.type, { x: S.cellDrag.px, y: S.cellDrag.py + 26, scale: 1.0, pose: 'idle', t, team: myInk(), bare: true, facing: 1, accessories: accessoriesOf(g) }); ctx.restore();
     ctx.save(); ctx.font = 'bold 11px sans-serif'; const nw = ctx.measureText(g.name).width, bx = S.cellDrag.px - (nw + 22) / 2, by = S.cellDrag.py - 84; ctx.fillStyle = 'rgba(243,234,208,.95)'; ctx.beginPath(); ctx.roundRect(bx - 5, by - 12, nw + 32, 20, 5); ctx.fill(); ctx.fillStyle = TYPE_COLOR[g.type]; ctx.fillRect(bx, by - 9, 14, 14); drawGlyph(ctx, g.type, bx + 7, by - 2, 11); ctx.fillStyle = '#3a2412'; ctx.textAlign = 'left'; ctx.fillText(g.name, bx + 18, by + 3); ctx.restore(); } } // 끌고 가는 검투사 (그림자) + 머리 위 무기 아이콘·이름표
 }

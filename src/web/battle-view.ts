@@ -4,7 +4,7 @@ import { CEREMONIES, INK, NPC_POSES, attackClipFor, backstepSkeleton, clipLength
 import { type GType, type Gladiator, type HostKind } from '../core/types.js';
 import { ARENA } from '../core/battle.js';
 import { setCrowd, sfx, startCrowd, stopCrowd } from './sound.js';
-import { fansOf, formLabel } from '../core/gladiator.js';
+import { fansOf } from '../core/gladiator.js';
 import { equipOf } from '../core/equipment.js';
 import { reachOf as reachRule } from '../core/classes.js';
 import { DICTATA_NAME } from '../core/dictata.js';
@@ -329,6 +329,7 @@ export function renderBattle() {
       drops.push({ x, y: y - 10 - Math.random() * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.4 - 40 - Math.random() * 80 * power, r: 1 + Math.random() * 1.8 * power, ground: y + 18 + Math.random() * 12 }); }
   };
   const speedOf: Record<number, number> = {}; const prevPos: Record<number, { x: number; y: number }> = {};
+  const mountedHoldUntil: Record<number, number> = {}, mountedStrikeUntil: Record<number, number> = {}; // 기마 찌르기: 타격 순간까지 말 위 연출을 붙잡는다
 
   const frames = r.frames; let fi = 0;
   function posAt(ct: number): Record<number, { x: number; y: number; hp: number; sta: number }> {
@@ -374,10 +375,11 @@ export function renderBattle() {
       const aid = e.actor, tid = e.target, tgtType = byId[tid].g.type;
       engaged[aid] = tid; engaged[tid] = aid;
       if (e.riposte) { flash.push({ id: aid, t: 1.2, text: '되치기!', color: '#c58a1a' }); fxAt(aid, 'gslash', 0.3, ct, { x: posAt(ct)[aid].x + face[aid] * 26, y: posAt(ct)[aid].y - 4 }); } // '반격!' 표시는 뺐다: 서로 한 대씩 주고받기만 해도 떠서 뜻이 없었다. 반격은 되치기 기술일 때만
-      if (e.dictata && e.dictata !== 'net' && e.dictata !== 'lasso') flash.push({ id: aid, t: 1.3, text: DICTATA_NAME(e.dictata), color: '#c58a1a' }); if (e.dictata === 'dismount') { slowUntil = Math.max(slowUntil, ct + 0.4); crowdCheer = Math.max(crowdCheer, 0.9); rouse('cheer', 0.9, 1.2); } /* 말에서 내려 치기: 첫 충돌은 볼거리 */ /* 타격에 실린 딕타타 이름 — 플레이어는 여기서 유형의 동작을 배운다 */
+      if (e.dictata && e.dictata !== 'net' && e.dictata !== 'lasso') flash.push({ id: aid, t: 1.3, text: DICTATA_NAME(e.dictata), color: '#c58a1a' }); if (e.dictata === 'dismount') { slowUntil = Math.max(slowUntil, ct + 0.5); crowdCheer = Math.max(crowdCheer, 0.9); rouse('cheer', 0.9, 1.2); } /* 기마 찌르기: 첫 충돌은 볼거리 */ /* 타격에 실린 딕타타 이름 — 플레이어는 여기서 유형의 동작을 배운다 */
       if (e.combo) flash.push({ id: aid, t: 1, text: '연속!', color: '#c58a1a' });
       if (e.charge) { flash.push({ id: aid, t: 1, text: '돌진!', color: '#9b2c1c' }); leapUntil[aid] = ct + 0.28; const p0 = posAt(ct)[aid]; fx.push({ kind: 'dust', x: p0.x, y: p0.y + 34, t: 0.5, dir: face[aid], seed: aid }); rouse('cheer', 0.8, 1.0); shout('우와아!', p0.x); }
       const hitDelay = hitDelayOf(e.combo);
+      if (e.dictata === 'dismount') { mountedStrikeUntil[aid] = ct + hitDelay + 0.2; mountedHoldUntil[aid] = ct + hitDelay + 0.48; }
       { const p0 = posAt(ct)[aid], pt0 = posAt(ct)[tid], big = e.crit || e.downed || e.charge || e.counter; fx.push({ kind: 'tell', x: p0.x + face[aid] * 26, y: p0.y - 10, t: hitDelay, life: hitDelay, dir: face[aid], seed: aid * 17 + tid }); sfx.swing(big); if (e.crit && !e.downed) { zoomAt = { x: (p0.x + pt0.x) / 2, y: (p0.y + pt0.y) / 2 - 12 }; zoomStart = ct; holdUntil = Math.max(holdUntil, ct + hitDelay + 0.18); zoomOutDur = 0.35; } } // 공격 예고: 휘두름 소리와 붉은 궤적이 먼저 나오고, 치명타는 잠깐 당겨 본다
       const isFinal = !!e.downed && !r.events.slice(ei).some(x => x.kind === 'attack' && x.downed);
       if (e.net) {
@@ -568,13 +570,15 @@ export function renderBattle() {
       ctx.globalAlpha = (isAlive || (isDeathClip(a.clip) && busy) || inJudge) ? exitAlpha : 0.55;
       const jz = jolt[id] && ct < jolt[id].until ? jolt[id] : null;
       const jx = jz ? Math.sin(ct * 90 + id) * jz.amp * (jz.until - ct) / 0.22 : 0, jy = jz ? Math.cos(ct * 70 + id) * jz.amp * 0.5 * (jz.until - ct) / 0.22 : 0;
-      const winded = isAlive && ((p as { sta?: number }).sta ?? 100) < CONFIG.stamina.windedAt; // 숨이 찬 동안: 어깨를 들썩이며 몸이 조금 내려앉는다
+      const mountedNow = ct < Math.max(r.mounted[id] ?? -1, mountedHoldUntil[id] ?? -1); // 에퀘스: 첫 충돌 전후까지 말 위 자세를 따로 쓴다
+      if (mountedNow && isAlive) sk = mountedSkeleton(ct + id, ct < (mountedStrikeUntil[id] ?? -1)); // 걸음/공격 자세를 쓰면 말 위에서 함께 걷는 것처럼 보인다
+      const winded = isAlive && !mountedNow && ((p as { sta?: number }).sta ?? 100) < CONFIG.stamina.windedAt; // 숨이 찬 동안: 어깨를 들썩이며 몸이 조금 내려앉는다
       const breath = winded ? 1.4 + Math.sin(ct * 5.5 + id) * 1.6 : 0;
       if (a.clip.startsWith('combo') && busy && el > 120 && el < 300) { // 연속 공격: 2타의 잔상 (60ms 전 자세를 흐리게 겹쳐 그린다)
         const gs = clipSkeleton(a.clip, el - 60); ctx.save(); ctx.globalAlpha *= 0.32;
         drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - face[id] * 6, y: p.y + 30 * SC + jy, scale: 1.15 * SC, facing: face[id], skeleton: gs, t: ct, team: u.side === 'A' ? myInk() : foe, accessories: accessoriesOf(u.g) }); ctx.restore(); }
-      if (ct < (r.mounted[id] ?? -1)) drawHorse(ctx, p.x + recoilDx + jx + lapDx + exitDx, p.y + 30 * SC + jy, 1.15 * SC, face[id], ct, u.side === 'A' ? myInk() : foe); /* 에퀘스: 첫 돌진까지 말 위 (2026-09-18) */
-      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx, y: p.y + 30 * SC + jy + breath - (ct < (r.mounted[id] ?? -1) ? 22 * SC : 0), scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? myInk() : foe, accessories: accessoriesOf(u.g) });
+      if (mountedNow) drawHorse(ctx, p.x + recoilDx + jx + lapDx + exitDx, p.y + 30 * SC + jy, 1.15 * SC, face[id], ct, u.side === 'A' ? myInk() : foe); /* 에퀘스: 첫 돌진까지 말 위 (2026-09-18) */
+      drawStickman(ctx, u.g.type, { x: p.x + recoilDx + jx + lapDx + exitDx - (mountedNow ? face[id] * 4 * SC : 0), y: p.y + 30 * SC + jy + breath - (mountedNow ? 31 * SC : 0), scale: 1.15 * SC, facing: face[id], skeleton: sk, t: ct, wobble: (isBound || winded) && !busy, noNet: !!netAway[id], team: u.side === 'A' ? myInk() : foe, accessories: accessoriesOf(u.g) });
       if (winded && !busy) { const bx = p.x + recoilDx + lapDx + exitDx + face[id] * 18, by = p.y - 33 + breath, drift = (ct * 10 + id) % 1; ctx.save(); ctx.globalAlpha = exitAlpha * (0.34 + Math.sin(ct * 5.5 + id) * 0.12); ctx.strokeStyle = '#6e7f9b'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; for (let k = 0; k < 2; k++) { const d = (k * 5 + drift * 3) * face[id]; ctx.beginPath(); ctx.arc(bx + d, by - k * 5, 3 + k * 1.5, face[id] > 0 ? -0.9 : Math.PI - 0.9, face[id] > 0 ? 0.9 : Math.PI + 0.9); ctx.stroke(); } ctx.restore(); } // 숨참: 막대 없이도 지친 검투사를 읽게 하는 얇은 숨결
       if (exitAlpha <= 0) { ctx.globalAlpha = 1; continue; }
       ctx.globalAlpha = exitAlpha; // 퇴장(미시오 생존·승자 퇴장) 중에는 이름표·체력바도 사람과 함께 옮겨 가며 사라진다
@@ -796,10 +800,7 @@ function turningPoint(r: FightReport): string | null {
   if (last?.crit) return `${nameOf(r, last.actor)}의 깨끗한 일격이 갑주 틈을 찔렀다.`;
   const stumbles = r.events.filter(e => e.kind === 'stumble');
   if (stumbles.length) { const ours = stumbles.filter(e => mine.has(e.actor)).length; return ours > stumbles.length - ours ? '먼저 숨이 찬 쪽은 우리였다.' : '상대가 먼저 숨이 찼다.'; }
-  const light = r.team.filter(g => formLabel(g) === '가벼움'), heavy = r.team.filter(g => formLabel(g) === '무거움');
-  const first = r.winner === 'A' ? [light, heavy] : [heavy, light]; // 이겼으면 가벼운 쪽을, 졌으면 무거운 쪽을 먼저 말한다
-  for (const list of first) if (list.length) { const g = list[0]; return `${g.name}${eun(g.name)} 오늘 몸이 ${formLabel(g) === '가벼움' ? '가벼웠다' : '무거웠다'}.`; }
-  return null;
+  return null; /* 몸 상태 한 줄은 2026-09-22 뺐다 */
 }
 const nameOf = (r: FightReport, id: number) => [...r.team, ...r.contract.enemy].find(g => g.id === id)?.name.replace('(적)', '') ?? '누군가';
 function renderResult() {
@@ -836,13 +837,30 @@ function renderResult() {
   if (!needsChoice) window.setTimeout(advance, flags.length ? 3200 : 2200); // 짧은 결과는 보고만 지나간다. 루디스 거절처럼 즉시 선택이 있으면 자동 넘김을 멈춘다.
 }
 
-// 말 실루엣 (낙서풍): 에퀘스가 첫 돌진까지 타고 들어온다. (x, footY) = 사람 발 위치, 사람은 22px 위로 올린다
+function mountedSkeleton(t: number, thrust = false): Skeleton {
+  const bob = Math.sin(t * 14) * 2.2;
+  if (thrust) return { lean: 24, frontArm: [105, -10], backArm: [-8, 44], frontLeg: [82, -94], backLeg: [45, -76], headBob: -2, sink: 14, lift: Math.max(0, bob) * 0.5 };
+  return { lean: 8 + Math.sin(t * 5) * 2, frontArm: [74, -8], backArm: [-18, 48], frontLeg: [78 + bob, -92], backLeg: [42 - bob, -74], headBob: -1 + Math.sin(t * 8) * 0.8, sink: 14, lift: Math.max(0, bob) * 0.8 };
+}
+// 말 실루엣 (낙서풍): 에퀘스가 첫 돌진까지 타고 들어온다. (x, footY) = 말 발 위치, 사람은 안장 높이에 앉힌다
 function drawHorse(ctx: CanvasRenderingContext2D, x: number, footY: number, sc: number, facing: 1 | -1, t: number, ink: string) {
-  ctx.save(); ctx.translate(x, footY); ctx.scale(facing * sc, sc); ctx.strokeStyle = ink; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const g = Math.sin(t * 14) * 5; // 달리는 다리
-  ctx.beginPath(); ctx.moveTo(-26, -26); ctx.quadraticCurveTo(-4, -34, 22, -28); ctx.lineTo(30, -40); ctx.lineTo(38, -36); // 몸통 → 목 → 머리
-  ctx.moveTo(30, -40); ctx.lineTo(27, -46); // 귀
-  ctx.moveTo(-26, -26); ctx.quadraticCurveTo(-34, -22, -36, -12); // 꼬리
-  ctx.moveTo(-20, -26); ctx.lineTo(-24 - g, 0); ctx.moveTo(-12, -26); ctx.lineTo(-8 + g, 0); ctx.moveTo(12, -27); ctx.lineTo(8 - g, 0); ctx.moveTo(20, -27); ctx.lineTo(24 + g, 0); // 다리 넷
-  ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(x, footY); ctx.scale(facing * sc, sc); ctx.strokeStyle = ink; ctx.lineWidth = 3.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const g = Math.sin(t * 14), h = Math.cos(t * 14); // 달리는 다리
+  ctx.beginPath(); // 몸통·목·머리: 옆모습이 한눈에 말로 읽히도록 등을 길게 잡는다
+  ctx.moveTo(-33, -25); ctx.quadraticCurveTo(-13, -38, 16, -33); ctx.quadraticCurveTo(27, -32, 31, -42); ctx.lineTo(41, -47); ctx.quadraticCurveTo(48, -45, 47, -39); ctx.lineTo(38, -37);
+  ctx.moveTo(37, -45); ctx.lineTo(35, -53); ctx.moveTo(42, -46); ctx.lineTo(45, -52); // 귀 둘
+  ctx.moveTo(-32, -25); ctx.quadraticCurveTo(-42, -23, -46, -12); // 꼬리
+  ctx.moveTo(-20, -35); ctx.quadraticCurveTo(-9, -39, 4, -36); // 등선 한 번 더
+  ctx.stroke();
+  ctx.lineWidth = 2.5; ctx.beginPath(); // 안장과 고삐: 기수가 말 위에 묶여 보이는 접점
+  ctx.moveTo(-12, -37); ctx.lineTo(8, -35); ctx.quadraticCurveTo(2, -29, -10, -30); ctx.closePath(); ctx.stroke();
+  ctx.moveTo(7, -35); ctx.quadraticCurveTo(20, -39, 38, -39); ctx.stroke();
+  ctx.lineWidth = 3.1; ctx.beginPath(); // 다리 넷: 교차 보행을 크게 줘서 말이 달리고, 사람 다리와 구분되게 한다
+  ctx.moveTo(-24, -25); ctx.lineTo(-30 - g * 7, -9); ctx.lineTo(-25 - g * 13, 0);
+  ctx.moveTo(-12, -27); ctx.lineTo(-7 + g * 7, -10); ctx.lineTo(-13 + g * 13, 0);
+  ctx.moveTo(13, -29); ctx.lineTo(7 - h * 7, -10); ctx.lineTo(12 - h * 12, 0);
+  ctx.moveTo(23, -30); ctx.lineTo(28 + h * 7, -10); ctx.lineTo(23 + h * 12, 0);
+  ctx.stroke();
+  ctx.lineWidth = 1.4; ctx.globalAlpha *= 0.42; ctx.beginPath(); ctx.ellipse(-6, 2, 39, 6, 0, 0, Math.PI * 2); ctx.stroke(); // 발밑 낙서 그림자
+  ctx.restore();
 }

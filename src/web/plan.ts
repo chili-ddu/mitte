@@ -1,11 +1,11 @@
 // 편성: 계약 카드·배정·서판·시즌 확정·시즌 진행(시작→경기→정산)
 import { S } from './state.js';
 import { type Contract, type GType, type Gladiator } from '../core/types.js';
-import { ACTION_KO, TRAIN_KO, trainGain, pickTrainStat, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, inBed, holdEvents, isImportant, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, trainCap, type Action, upkeepOf, validTeam, forfeitChallenges } from '../core/game.js';
+import { ACTION_KO, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, inBed, holdEvents, isImportant, palusOf, palusTrainees, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, trainCap, type Action, upkeepOf, validTeam, forfeitChallenges } from '../core/game.js';
 import { Rng } from '../core/rng.js';
 import { battle } from '../core/battle.js';
 import { CONFIG } from '../core/config.js';
-import { LINEAGE_KO, TYPE_KO, powerOf, powerNow, rentFee, formLabel, formTip } from '../core/gladiator.js';
+import { LINEAGE_KO, TYPE_KO, powerOf, powerNow, rentFee } from '../core/gladiator.js';
 import { HOST } from '../core/hosts.js';
 import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
@@ -27,7 +27,6 @@ const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringi
 const setPlan = (g: Gladiator, a: Action) => { S.trainPlan[g.id] = a; savePlan(); };
 export const planOf = (g: Gladiator): Action => S.trainPlan[g.id] ?? (g.injured ? 'recover' : 'rest'); // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
  // 정하지 않으면 휴식 (부상자는 요양). 훈련은 팔루스에 세워서 하고 무엇을 단련할지는 시즌 끝에 무작위
-const rollTraining = (g: Gladiator): TrainStat => pickTrainStat(S.st.rng, g); // 팔루스에 선 검투사가 단련할 것: 클래스 성장 풀 (2026-09-20)
 export function assignedTo(gid: number): number | null { for (const cid in S.assign) if (S.assign[cid].includes(gid)) return +cid; return null; }
 // 승리 예측: 실제 전투 규칙으로 40번 돌려 본 결과 (편성이 바뀔 때만 다시 계산). 상대 원한 보정·조리장 HP·독토르 전수까지 fight() 와 같게
 const oddsCache = new Map<string, { win: number; draw: number }>();
@@ -42,13 +41,17 @@ function winOdds(c: Contract, team: Gladiator[]): { win: number; draw: number } 
 // 전력 비교는 숫자 대신 말로: 압도적 우위 · 우위 · 호각 · 열세 · 크게 열세 (라니스타의 감이지 계산표가 아니다)
 const oddsSpan = (o: { win: number; draw: number }) => { const p = o.win; const [cls, word] = p >= 0.8 ? ['good', '압도적 우위'] : p >= 0.6 ? ['good', '우위'] : p >= 0.4 ? ['even', '호각'] : p >= 0.2 ? ['bad', '열세'] : ['bad', '크게 열세']; return h('span', { class: `odds ${cls}`, title: '실제 전투 규칙으로 여러 번 겨뤄 본 감. 상대의 기술·원한·내 시설까지 반영' }, `전력 ${word}`); };
 // 전력 비교(전력 식): 내 팀 평균 전력 ÷ 상대 평균 전력. 자리를 다 못 채웠어도 평균으로 비교한다. 카드의 상대 강도 칩과 편성의 우위·열세가 같은 식
-const powerRatio = (mine: Gladiator[], enemy: Gladiator[]) => { if (!mine.length || !enemy.length) return null; const a = mine.reduce((x, g) => x + powerOf(g), 0) / mine.length, b = enemy.reduce((x, g) => x + powerOf(g), 0) / enemy.length; return b > 0 ? a / b : null; };
-const ratioSpan = (r: number | null, partial = false) => { if (r == null) return h('span', { class: 'odds none' }, '전력 —'); const [cls, word] = r >= 1.25 ? ['good', '압도적 우위'] : r >= 1.08 ? ['good', '우위'] : r >= 0.92 ? ['even', '호각'] : r >= 0.75 ? ['bad', '열세'] : ['bad', '크게 열세']; return h('span', { class: `odds ${cls}`, title: `전력 식으로 비교: 내 ${partial ? '배정한 검투사' : '팀'} 평균 전력이 상대의 ${Math.round(r * 100)}%${partial ? ' (자리를 다 채우면 확정)' : ''}` }, word); };
+const powerSums = (mine: Gladiator[], enemy: Gladiator[]) => { const a = mine.reduce((x, g) => x + Math.round(powerNow(g, enemy)), 0), b = enemy.reduce((x, e) => x + Math.round(powerNow(e, mine)), 0); return { a, b, r: mine.length && b > 0 ? (a / mine.length) / (b / Math.max(1, enemy.length)) : null }; }; /* 카드에 보이는 값(지금 몸·상성)을 그대로 더한다 — 타고난 전력을 더하면 카드 합과 안 맞았다 (2026-09-22 사용자) */
+const shownSums: Record<string, number> = {}; /* 낙서 숫자의 마지막 표시값 — 바뀌면 굴러간다 (2026-09-22 사용자: 0 에서 올라가는 액션) */
+const rollNum = (el: HTMLElement, key: string, to: number) => { const from = shownSums[key] ?? 0; shownSums[key] = to; if (from === to) { el.textContent = String(to); return; } const t0 = performance.now(), ROLL = 520; const step = () => { const k = Math.min(1, (performance.now() - t0) / ROLL), e = 1 - Math.pow(1 - k, 3); el.textContent = String(Math.round(from + (to - from) * e)); if (k < 1 && el.isConnected) requestAnimationFrame(step); else el.textContent = String(to); }; el.textContent = String(from); requestAnimationFrame(step); };
+const ratioSpan = (s: { a: number; b: number; r: number | null }, partial = false, key = '') => { const r = s.r; const cls = r == null ? 'none' : r >= 1.08 ? 'good' : r >= 0.92 ? 'even' : 'bad'; const word = r == null ? '' : r >= 1.25 ? '압도적 우위' : r >= 1.08 ? '우위' : r >= 0.92 ? '호각' : r >= 0.75 ? '열세' : '크게 열세';
+  const us = h('b', { class: 'us' }), them = h('b', { class: 'them' }); rollNum(them, key + ':b', s.b); rollNum(us, key + ':a', s.a); /* 미배정은 0 에서 시작해 배정할수록 굴러 오른다 */
+  return h('span', { class: `odds ${cls}`, title: r == null ? '아직 배정한 검투사가 없다' : `${word} — 내 ${partial ? '배정한 검투사' : '팀'} 평균 전력이 상대의 ${Math.round(r * 100)}%${partial ? ' (자리를 다 채우면 확정)' : ''}` }, them, h('span', { class: 'vs' }, ' vs '), us); }; /* 상대 전력 합 vs 우리 전력 합 — 우리가 오른쪽(우리 줄이 아래) (2026-09-22 사용자) (2026-09-22 사용자: 숫자로) — 색은 평균 비율 */
 function difficultyBySim(c: Contract): { win: number; label: 'weak' | 'even' | 'strong' } | null {
   const pool = available(S.st).sort((a, b) => powerOf(b) - powerOf(a)); if (pool.length < c.size) return null;
   const vets = pool.filter(g => g.rank === 'veteranus'); if (vets.length < c.needVeterans) return null;
   const team: Gladiator[] = [...vets.slice(0, c.needVeterans)]; for (const g of pool) { if (team.length >= c.size) break; if (!team.includes(g)) team.push(g); }
-  const r = powerRatio(team, c.enemy) ?? 1; return { win: r, label: r >= 1.08 ? 'weak' : r >= 0.92 ? 'even' : 'strong' }; // win 자리에 전력 비율
+  const r = powerSums(team, c.enemy).r ?? 1; return { win: r, label: r >= 1.08 ? 'weak' : r >= 0.92 ? 'even' : 'strong' }; // win 자리에 전력 비율
 }
  // 편성 왼쪽 타일 아래 줄: 능력치(기본) / 전적 (스위치)
 const teamOf = (c: Contract) => (S.assign[c.id] ?? []).map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean); // 계약에 배정된 검투사들
@@ -163,7 +166,7 @@ export function renderPlan() {
         c.challenge ? chip(I.swords, c.challenge === 'in' ? '도전장' : '우리 도전', 'down', `${rivalOf(S.st.rivals, c.rivalId)?.name ?? '파밀리아'}${c.challenge === 'in' ? '이(가) 우리를 지목했다' : '에 우리가 건 도전'}. 상대는 그 파밀리아의 간판·정예 — 우리 전력에 맞추지 않는다. 상금 ×${CONFIG.challenge.prize}, 이기면 호감도 +${CONFIG.challenge.fame}. 배정하지 않으면 그쪽 기세가 오른다${c.challenge === 'out' ? ' (걸어 놓고 안 나가면 호감도 −2)' : ''}`) : null,
         c.classic ? chip(I.swords, '정식 대결', 'up', `주최자가 짝을 주문했다: ${c.enemy.map(e => `${TYPE_KO[e.type]}에게 ${partnersOf(e.type).map(t => TYPE_KO[t]).join('·')}`).join(', ')}. 짝을 세우면 상금 ×${CONFIG.classicContract.prize}, 못 세우면 성립하지 않는다 (벌점 없음)`) : null,
         c.needVeterans ? chip(I.shield, c.needVeterans >= c.size ? '티로 불가' : `티로 ${c.size - c.needVeterans}명까지`, 'flat', '주최자는 리벨루스(경기 전 명단)에 이름과 전적을 실어 관중에게 판다. 첫 경기인 티로만으로는 명단이 서지 않는다 — 177년 칙령도 경기 등급마다 검투사 등급 비율을 정해 두었다') : null].filter((n): n is HTMLElement => !!n);
-      cpanel.append(h('div', { class: `card contract detail${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
+      cpanel.append(h('div', { class: `card contract detail tier${c.tier}${err ? '' : ' ready'}${S.planSel === c.id ? ' sel' : ''}`, onclick: () => { S.planSel = c.id; render(); } }, h('div', { class: 'arenacol' }, h('span', { class: 'aleft' }, h('span', { class: 'tierchip', title: c.tier === 3 ? '로마 대경기장' : c.tier === 2 ? '석조 원형경기장' : '목조 경기장' }, `등급 ${c.tier}`), scaleChip, diffChip), h('span', { class: 'aicon' }, arenaIcon(c.tier), !err ? graffitiCheck() : null)), // 왼쪽 등급 칩, 가운데 그림(준비되면 체크), 오른쪽 위 상대 강도 + 아래 배정 수
         h('div', { class: 'grow' },
           h('div', { class: 'ctitle' }, h('b', {}, c.venue)), // 이름 한 줄
           h('div', { class: 'cmeta' }, h('span', { class: `eff count${err ? '' : ' ok'}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c)), // 인원 칩('3대0', 조금 크게) · 주최자 한 줄
@@ -189,15 +192,15 @@ export function renderPlan() {
           h('div', { class: 'etiles' }, ...c.enemy.map(e => { const spBy = S.st.roster.filter(g => (g.spared ?? []).includes(e.id)); const star = rv ? rivalStar(rv) : undefined; // 상대 검투사도 스틱맨 초상 타일로 (복수 표시는 우리 타일 쪽에)
             return h('div', { class: 'etile', title: `${TYPE_KO[e.type]} · ${e.rank === 'tiro' ? '티로' : '베테라누스'} · ${e.wins}승/${e.fights}전${(e.honor ?? 0) >= 30 ? ` · 명예 ${e.honor}` : ''}` },
               ...miniGlad(e, { enemy: true, size: CARD_PORTRAIT, foes: team, mood: spBy.length ? 'grudge' : undefined, meta: [star && star.id === e.id && ((star.honor ?? 0) >= 20 || star.wins >= 5) ? h('span', { class: 'badge star', title: '이 파밀리아의 간판 검투사' }, '간판') : null] })); }))),
-        h('div', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerRatio(team, c.enemy), team.length < c.size)), /* 두 줄의 경계에 걸쳐 앉는다 — 마주 선 두 편 사이의 저울 */
+        h('div', { class: 'lodds' }, err && team.length === c.size ? h('span', { class: 'req' }, err) : ratioSpan(powerSums(team, c.enemy), team.length < c.size, `c${c.id}`)), /* 두 줄의 경계에 걸쳐 앉는다 — 마주 선 두 편 사이의 저울 */
         h('div', { class: 'lally' }, h('div', { class: 'lfam' }, h('b', {}, '우리 파밀리아')), h('div', { class: 'slots' }, ...slotList.map(sl => { const g = 'g' in sl ? sl.g : null; const vet = 'vet' in sl; const rough = !g && !vet; /* 신참도 설 수 있는 자리 — 허름하게 (2026-09-17 사용자) */ const want = !g && c.classic ? c.enemy.map(e => e.type).filter(et => !team.some(x => isClassicPair(x.type, et))).map(et => partnersOf(et)).find(Boolean) : null; /* 정식 대결: 아직 짝이 안 선 상대의 짝 유형을 자리에 놓는다 */
-      return h('span', { class: `slot${g ? ' filled' : ' open'}${vet ? ' vet' : ''}${rough ? ' rough' : ''}`, title: want ? `주최자가 주문한 짝: ${want.map(t => TYPE_KO[t]).join(' 또는 ')}` : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: CARD_PORTRAIT, foes: c.enemy }) : want ? [h('span', { class: 'want' }, ...want.map(t => sq(t)))] : [h('span', { class: 'slotcue' }, '↑')]) /* 빈 홈은 화살표만 둔다 — 아래 후보를 위 자리로 올린다는 신호 (2026-09-18 사용자) */); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양.
-        (() => { const notes = matchupNotes(team, c.enemy); return notes.length ? h('div', { class: 'lmatch' }, ...notes.slice(0, 3).map(n => { const [head, tail] = n.ko.split(' — '); return h('div', { class: `mnote ${n.good ? 'good' : 'bad'}`, title: n.ko }, h('span', { class: 'msign' }, n.good ? '▲' : '▼'), h('span', { class: 'mtext' }, head, tail ? h('small', {}, tail) : null)); })) : null; })(), /* 장비가 만드는 상성: 표식 + 짧은 본문으로 먼저 읽히게 (2026-09-18 사용자) */
+      return h('span', { class: `slot${g ? ' filled' : ' open'}${vet ? ' vet' : ''}${rough ? ' rough' : ''}`, title: want ? `주최자가 주문한 짝: ${want.map(t => TYPE_KO[t]).join(' 또는 ')}` : '', onclick: (ev: Event) => { ev.stopPropagation(); if (g) { S.assign[c.id] = S.assign[c.id].filter(x => x !== g.id); render(); } else { S.planSel = c.id; render(); } } }, ...(g ? miniGlad(g, { size: CARD_PORTRAIT, foes: c.enemy }) : want ? [h('span', { class: 'want' }, ...want.map(t => sq(t)))] : [null /* 파란 ↑ 원은 뺐다 (2026-09-22 사용자) */]) /* 빈 홈은 화살표만 둔다 — 아래 후보를 위 자리로 올린다는 신호 (2026-09-18 사용자) */); }))), // 우리 편도 상대 블록처럼 박스로 감싼다. 배정된 아군은 상대 타일과 같은 모양.
+        /* 상성 줄(lmatch)은 뺐다 — 배정할 때 토스트로만 (2026-09-22 사용자) */
         h('div', { class: 'lsyn' }, c.classic ? (classicNow ? h('span', { class: 'syn classic' }, '정식 대결 ✓ — 짝이 섰다') : h('span', { class: 'syn classic maybe' }, `정식 대결 — 짝 ${team.filter(x => c.enemy.some(e => isClassicPair(x.type, e.type))).length}/${c.size}`)) : null,
           ...(c.size >= 2 ? (() => { const cnt = countTraits(team).trait; return TRAITS.filter(t => cnt[t] >= 2).sort((a, b) => cnt[b] - cnt[a]).map(t => h('span', { class: `syn trait l${cnt[t]}`, title: `${TRAIT_KO[t]} ${cnt[t]}단계 — ${TRAIT_NOTE[t]}` }, `${TRAIT_KO[t]} `, h('b', {}, '●'.repeat(cnt[t]) + '○'.repeat(Math.max(0, c.size - cnt[t]))))); })() : [])), /* 특성은 편성에서 센다: 같이 나가는 둘 이상이 같은 특성이면 단계가 오른다 (2026-09-18 사용자) */ /* 우연한 짝은 더 이상 보너스가 아니다 — 주최자가 주문한 계약에서만 (2026-09-18) */ // 항상 한 줄 자리를 잡아 둔다 (시너지가 생겨도 카드 높이가 안 흔들리게, '시너지 없음' 문구 없음)
         ))));
   }
-  for (let i = S.st.contracts.length; i < 4; i++) cpanel.append(h('div', { class: 'card contract empty' }, h('span', { class: 'hint' }, i === 0 && !S.st.contracts.length ? '이번 시즌 계약 없음' : '빈 칸'))); // 한 줄 4칸 고정: 남는 칸은 빈 칸으로
+  for (let i = S.st.contracts.length; i < 4; i++) cpanel.append(h('div', { class: 'card contract empty' }, h('span', { class: 'hint' }, i === 0 && !S.st.contracts.length ? '이번 시즌 계약 없음' : '') /* '빈 칸' 글자는 뺐다 (2026-09-22 사용자) */)); // 한 줄 4칸 고정: 남는 칸은 빈 칸으로
   // (출전 가능 인원 부족·시장 안내는 뺐다: 계약 페이지는 계약만)
 
   // 시즌 예상 수지
@@ -231,7 +234,7 @@ export function renderPlan() {
   const recommend = (g: Gladiator): string | null => { if (!selC0 || teamSel.includes(g)) return null; const withG = [...teamSel, g];
     if (selC0.classic && selC0.enemyPreview.length === selC0.size) { const types = withG.map(x => x.type); if (withG.length === selC0.size ? classicMatchup(types, selC0.enemyPreview) : classicPartial(types, selC0.enemyPreview)) return '주문한 짝'; }
     if (teamSel.length && withG.length <= selC0.size) { const cnt = countTraits(teamSel).trait; const up = TYPE_TRAITS[g.type].filter(t => cnt[t] >= 1).sort((a, b) => cnt[b] - cnt[a])[0]; if (up) return `${TRAIT_KO[up]} ${cnt[up] + 1}단계`; } return null; }; /* 정식 대결 계약에서만 — 우연한 짝은 보너스가 아니다 (2026-09-18) */ // 1대1이나 첫 배정에서도, 아직 다 안 채웠어도 짝이 이어지면 알린다 (전에는 마지막 한 명을 넣을 때만 보였다)
-  if (selC0) pright.append(h('div', { class: 'assign-guide', title: '아래 검투사 카드를 누르면 위 빈 자리로 배정됩니다' }, h('span', { class: 'arrow' }, '↑'), h('b', {}, '보낼 검투사'))); // 긴 안내문 대신 후보 목록 머리와 빈 슬롯이 같은 동작을 말하게 한다 (2026-09-18 사용자)
+  /* '↑ 보낼 검투사' 안내 띠는 뺐다 (2026-09-22 사용자) — 빈 자리와 카드를 누르는 것으로 충분하다 */
   for (const g of selC0 ? S.st.roster : []) {
     const at = assignedTo(g.id); const c = at != null ? S.st.contracts.find(x => x.id === at) : null;
     const selC = S.planSel != null ? S.st.contracts.find(x => x.id === S.planSel) : null;
@@ -269,7 +272,7 @@ export function renderPlan() {
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 손놀림 ${g.base.hand} 걸음 ${g.base.spd}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
     pright.append(h('div', { class: `gtile${at != null && !elsewhere ? ' sel' : ''}${elsewhere ? ' other' : ''}${ready ? ' ready' : ''}${dis ? ' dis' : ''}`, title: tip,
       onclick: () => { if (at != null && !elsewhere) { S.assign[at] = S.assign[at].filter(x => x !== g.id); render(); } /* 다시 누르면 해제 */ else if (elsewhere && selC && !unfulfillable && swapKeepsVets && !vetBlock) { S.assign[at!] = S.assign[at!].filter(x => x !== g.id); const list = (S.assign[selC.id] ??= []); if (list.length >= selC.size && swapTarget) S.assign[selC.id] = list.filter(x => x !== swapTarget.id); (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canAssign && selC) { (S.assign[selC.id] ??= []).push(g.id); matchupToast(g, selC); render(); } else if (canSwap && selC && swapTarget) { S.assign[selC.id] = S.assign[selC.id].filter(x => x !== swapTarget.id); S.assign[selC.id].push(g.id); matchupToast(g, selC); render(); } } }, // 교체: 화면 마지막 자리(티로)를 빼고 이 검투사를 넣는다
-      ...miniGlad(g, { size: CARD_PORTRAIT, foes: selC ? selC.enemy : [], mood: revengeOn.length ? 'revenge' : undefined, meta: [formLabel(g) ? h('span', { class: `badge form ${formLabel(g) === '가벼움' ? 'good' : 'bad'}`, title: formTip(g) }, `몸 ${formLabel(g)}`) : null, stateNode, tagNode] }) /* 원한·복수는 칩이 아니라 초상의 연출로 (2026-09-17 사용자) */, why ? whyMark(why) : null, elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
+      ...miniGlad(g, { size: CARD_PORTRAIT, foes: selC ? selC.enemy : [], mood: revengeOn.length ? 'revenge' : undefined, meta: [stateNode, tagNode] }) /* '몸 무거움/가벼움' 칩은 뺐다 — 체력바의 보탬·깎임 색이 이미 말한다 (2026-09-22 사용자) */ /* 원한·복수는 칩이 아니라 초상의 연출로 (2026-09-17 사용자) */, why ? whyMark(why) : null, elsewhere ? h('div', { class: 'tstamp', title: `${S.st.contracts.find(x => x.id === at)?.venue ?? '다른 계약'}에 배정됨. 누르면 이 계약으로 옮긴다` }, h('span', {}, 'LOCATVS')) : null)); // 초상 타일. 다른 계약에 빌려준 검투사는 도장(LOCATVS): 누르면 왼쪽 자리로 (교체: 마지막 자리를 빼고 이 검투사를 넣는다)
   }
   app.classList.add('land', 'plan'); const frag = document.createDocumentFragment(); frag.append(tools, cpanel, bar);
   if (selC0) { // 편성 페이지: 상세 페이지처럼 오른쪽에서 밀려 들어온다. 같은 계약이면(카드를 눌러 재렌더) 그 자리에
@@ -322,11 +325,11 @@ export function nextFight() {
 function finishSeason() {
   const label = seasonName(S.st.season); const fameBefore0 = S.st.fame - S.seasonReports.reduce((a, r) => a + r.fameDelta, 0); // 경기 전 호감도
   // 훈련 처리
-  const trained: { g: Gladiator; stat: TrainStat; gain: number }[] = [];
+  const trained: { g: Gladiator; gains: Partial<Record<TrainStat, number>> }[] = [];
   const acted: { g: Gladiator; act: Action; note: string }[] = [];
   for (const g of S.st.roster) { if (g.status === 'doctor' || !g.alive) continue; const tp: Action = planOf(g);
-    if (palusOf(S.st, g) >= 0) { const k = rollTraining(g); // 팔루스에 선 검투사: 무엇을 단련할지 무작위. 자리 수만큼만 서 있으니 상한을 넘지 않는다. 출전했으면 피로가 쌓일 수 있다(train 안에서)
-      { const gain = trainGain(S.st, g, k); if (train(S.st, g, k)) trained.push({ g, stat: k, gain }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' }); } 
+    if (palusOf(S.st, g) >= 0) { // 팔루스에 선 검투사: 네 능력치가 클래스 풀 비율로 같이 오른다 (2026-09-22). 출전했으면 피로가 쌓일 수 있다(train 안에서)
+      { const gains = train(S.st, g); if (gains) trained.push({ g, gains }); else acted.push({ g, act: 'rest', note: '훈련 못 함 (돈 부족)' }); }
       continue; }
     if (assignedTo(g.id) != null || g.fought) continue; // 출전만 한 검투사는 따로 행동 없음
     if (g.injured > 0) { if (doRecover(S.st, g)) acted.push({ g, act: 'recover', note: '회복 가속' }); } // 부상자는 자동 요양
