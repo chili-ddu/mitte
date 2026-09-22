@@ -21,8 +21,6 @@ function sorted(): Gladiator[] {
 /* 켈라 본문: 정렬 줄 + 카드 격자. 침상·팔루스 고르기 모드에선 해당 없는 카드를 흐리게, 카드를 누르면 그 자리에 세운다 */
 export function cellsGrid(): Node {
   const built = S.st.ludus.cells.length, max = CONFIG.ludus.cells.max; const pick = S.bedPick != null ? 'bed' : S.palusMode ? 'palus' : null;
-  const sortRow = h('div', { class: 'cellsort' }, ...(Object.keys(CELLS_SORT_KO) as CellsSort[]).map(k => h('button', { class: `seg${S.cellsSort === k ? ' on' : ''}`, onclick: () => { S.cellsSort = k; render(); } }, CELLS_SORT_KO[k])),
-    h('span', { class: 'hint', style: 'margin-left:auto' }, `${S.st.roster.length}/${built}`));
   const eligible = (g: Gladiator) => pick === 'bed' ? g.injured > 0 && !inBed(S.st, g) : pick === 'palus' ? g.alive && g.injured <= 0 && g.status !== 'doctor' : true;
   const onCard = (g: Gladiator) => {
     if (pick === 'palus') { if (palusOf(S.st, g) >= 0) { leavePalus(S.st, g); toast(`${g.name} 훈련에서 뺐다`); save(); render(); return; }
@@ -36,7 +34,9 @@ export function cellsGrid(): Node {
     const fav = h('button', { class: `favbtn${g.fav ? ' on' : ''}`, title: g.fav ? '즐겨찾기 해제' : '즐겨찾기 — 켈라에서 늘 앞에 선다', onclick: (ev: Event) => { ev.stopPropagation(); g.fav = !g.fav; save(); render(); } }, g.fav ? '★' : '☆');
     return h('div', { class: `cellslot${ok ? '' : ' dim'}` }, card, h('div', { class: 'roomtag' }, fav, h('span', { class: `badge chip bedding q${q}`, title: `숙소 ${CELL_Q_KO[q]} — 상세의 숙소 칸에서 손본다` }, CELL_Q_KO[q]), onP ? h('span', { class: 'badge chip palus' }, '훈련 중') : null, inBed(S.st, g) ? h('span', { class: 'badge chip bed' }, '침상') : null)); };
   /* 빈 방 카드는 뺐다 (2026-09-22 사용자) — 남은 자리는 처마의 n/m 이 말한다 */
-  const unbuilt = Array.from({ length: max - built }, () => h('div', { class: 'cellslot unbuilt', title: '켈라 증축 — 시설 강화', onclick: () => { S.sheet = 'facilities'; S.cellsOpen = false; render(); } }, h('div', { class: 'gcard ghost brick' }, h('span', {}, '증축'))));
-  return h('div', { class: 'cellsbody' }, sortRow, h('div', { class: 'cellgrid' }, ...sorted().map(slot), ...unbuilt));
+  const unbuilt = Array.from({ length: max - built }, () => h('div', { class: 'cellslot unbuilt', title: '아직 짓지 않은 방 — 누르면 시설 강화', onclick: () => { S.sheet = 'facilities'; S.cellsOpen = false; render(); } }, h('div', { class: 'gcard ghost brick' }), h('div', { class: 'roomtag' }, h('span', { class: 'favbtn' }, '☆'), h('span', { class: 'badge chip bedding q0' }, CELL_Q_KO[0])))); /* 글자 없는 벽돌 카드, 아래 줄은 간격을 맞추려 빈 즐겨찾기·맨바닥 (2026-09-22 사용자) */
+  return h('div', { class: 'cellsbody' }, h('div', { class: 'cellgrid' }, ...sorted().map(slot), ...unbuilt));
 }
 export const cellsAvailable = () => available(S.st).length; /* 처마 제목용 */
+/* 정렬 드롭박스: 처마의 닫기 왼쪽 (2026-09-22 사용자: 공간이 부족하면 드롭박스로) */
+export function cellsSortSelect(): Node { const sel = h('select', { class: 'cellsortsel', title: '정렬', onchange: (ev: Event) => { S.cellsSort = (ev.target as HTMLSelectElement).value as CellsSort; render(); } }, ...(Object.keys(CELLS_SORT_KO) as CellsSort[]).map(k => h('option', { value: k }, CELLS_SORT_KO[k]))) as HTMLSelectElement; sel.value = S.cellsSort; return sel; }

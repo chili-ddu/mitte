@@ -17,7 +17,7 @@ import { startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
 import { confirmPage, detailPage } from './detail.js';
-import { cellsGrid } from './cells.js';
+import { cellsGrid, cellsSortSelect } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
 import { renderPlan, seasonConfirmPage, seasonWarnings, tabletsPage } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
@@ -207,7 +207,7 @@ function renderScreen() {
     if (S.cellsOpen) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
       const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자를 누르세요` : S.palusMode ? `훈련 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 훈련시킬 검투사를 누르세요. 훈련 중인 검투사를 누르면 뺍니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
       app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 카드를 누르면 상세') : null),
-        S.bedPick != null ? h('button', { class: 'small recommend', title: '침상 밖 부상자를 오래 누울 사람부터 빈 침상에 눕힌다', onclick: () => { const put = autoBeds(S.st); S.bedPick = null; S.cellsOpen = false; toast(put.length ? `침상에 눕혔다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '눕힐 부상자가 없다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : S.palusMode ? h('button', { class: 'small recommend', title: '자랄 여지가 큰 순서로 팔루스를 채운다', onclick: () => { const put = autoPalus(S.st); toast(put.length ? `팔루스에 세웠다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : null, /* 켈라를 침상·팔루스 고르기로 띄웠을 때 추천 단추 (2026-09-22 사용자) */
+        S.bedPick != null ? h('button', { class: 'small recommend', title: '침상 밖 부상자를 오래 누울 사람부터 빈 침상에 눕힌다', onclick: () => { const put = autoBeds(S.st); S.bedPick = null; S.cellsOpen = false; toast(put.length ? `침상에 눕혔다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '눕힐 부상자가 없다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : S.palusMode ? h('button', { class: 'small recommend', title: '자랄 여지가 큰 순서로 팔루스를 채운다', onclick: () => { const put = autoPalus(S.st); toast(put.length ? `팔루스에 세웠다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : cellsSortSelect(), /* 켈라를 침상·팔루스 고르기로 띄웠을 때 추천 단추, 평소엔 정렬 드롭박스 (2026-09-22 사용자) */
         h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; S.detail = null; S.shownDetail = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, cellsGrid()))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
