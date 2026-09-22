@@ -1,16 +1,15 @@
 // 마을 캔버스: 카메라·이동·라니스타·입력. 장면 그림은 scenes.ts, 켈라는 cells.ts
 import { S } from './state.js';
 import { INK, NPC_POSES, drawStickman, type Skeleton, walkSkeleton } from './stickman.js';
-import { bedPatient, inBed, leavePalus, moveToCell, occupantOf, palusOf, palusTrainee, putAtPalus, putInBed, rerollsLeft, canReroll, rerollMarket, trainCap, palusTrainees, recommendTrainees, autoPalus } from '../core/game.js';
+import { bedPatient, inBed, rerollsLeft, canReroll, rerollMarket, trainCap, palusTrainees, recommendTrainees, autoPalus } from '../core/game.js';
 import { sfx } from './sound.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { FORUM, MARKET, MARKET_BELL, MK, YARD, YARD_SIGN, drawMarketBell, drawCityWall, drawCountryside, drawForumScene, drawGraveScene, drawSun, drawMarketScene, drawMedicScene, drawStreetProps, drawYardScene, marketSlotX, palusPosts } from './scenes.js';
-import { View, app, render, save } from './main.js';
+import { View, render, save } from './main.js';
 import { h } from './dom.js';
 import { roadBoard } from './board.js';
 import { openSeasonFlow } from './plan.js';
-import { cellRects, drawCellsScene } from './cells.js';
 import { openConfirm } from './detail.js';
 
 // 세로 기준 논리 무대 400×(600~900)를 기기에 맞춰 배율 조정. 안전 영역(노치·홈 바)은 빼고 잰다. 세로 전용 게임 — PC 나 옆으로 든 폰에서는 폰 모양 무대를 가운데 세운다
@@ -38,9 +37,8 @@ export const camFor = (v: View) => clampCam(placeCenter(v) - S.VW / 2);
 export const sunScreen = () => ({ x: TOWN.forumX + FORUM.sun.x - camFor('ludus'), y: GY + FORUM.sun.y }); /* 시즌 넘기기 해의 화면 좌표: 정문(포룸) 화면에서 보이던 자리 그대로 — 거기서 카메라가 움직여도 따라온다 (2026-09-22 사용자) */ // 이동한 장소를 화면 가운데에, 양옆은 이웃 장소가 자연스럽게 이어진다
  // cellsCanvas: 켈라 전용 덮개 캔버스 (마을 위, 처마 밑에서 무대 바닥까지). 마을 캔버스는 켈라를 열어도 크기가 변하지 않는다 // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
 export function renderTown() {
-  if (S.townCanvas && S.cellsCanvas) return h('div', { class: 'panel yardwrap' }, S.townCanvas, roadBoard());
+  if (S.townCanvas) return h('div', { class: 'panel yardwrap' }, S.townCanvas, roadBoard());
   const c = h('canvas', { class: 'yard' }) as HTMLCanvasElement; S.townCanvas = c;
-  const oc = h('canvas', { class: 'cellsoverlay' }) as HTMLCanvasElement; S.cellsCanvas = oc; const octx = oc.getContext('2d')!; // 켈라 덮개
   let zoom = 1, lastCw = 0, lastH = 0; c.style.height = CH() + 'px';
   const ctx = c.getContext('2d')!; ctx.scale(devicePixelRatio, devicePixelRatio);
   // 화면 폭에 맞춘다: 좁은 화면은 줌 0.8 까지만 줄이고 보이는 폭(VW)을 좁혀 라니스타 주변만 보여 준다 (찌그러짐 없음)
@@ -116,34 +114,18 @@ export function renderTown() {
       drawLanista(ctx, lanista.x, GY, facing, t * Math.max(0.4, lanista.walking ? lanista.v / 300 : 1), lanista.walking);
     }
     ctx.restore();
-    // 켈라 화면: 시트(key-cells) 본문의 캔버스에 그린다. 마을 캔버스는 그대로
-    S.cellsP = S.cellsOpen ? 1 : 0; // 열림/닫힘 모션은 시트 CSS(panelup/paneldown)가 맡는다
-    if (S.cellsOpen && oc.isConnected) { const ow = oc.clientWidth, oh = oc.clientHeight; if (ow && oh) { const z = ow / VIEW_W; S.cellsH = Math.max(CELLS_MIN_H, Math.floor(oh / z)); const bw = Math.round(ow * devicePixelRatio), bh = Math.round(oh * devicePixelRatio); if (oc.width !== bw || oc.height !== bh) { oc.width = bw; oc.height = bh; }
-      octx.setTransform(devicePixelRatio * z, 0, 0, devicePixelRatio * z, 0, 0); octx.clearRect(0, 0, VIEW_W, S.cellsH); drawCellsScene(octx, t); } }
+    /* 켈라는 카드 격자(cells.ts cellsGrid)라 캔버스에 그리지 않는다 (2026-09-22) */
     requestAnimationFrame(draw);
   };
   requestAnimationFrame(draw);
   // 스와이프: 왼쪽으로 밀면 다음 장소, 오른쪽으로 밀면 이전 장소 (의무실 → 훈련소 → 정문 → 시장). 스와이프했으면 클릭으로 치지 않는다
   const ORDER: View[] = ['medic', 'yard', 'ludus', 'market', 'grave'];
   let drag: { x0: number; t0: number } | null = null; let dragged = false;
-  const cellAt = (ev: PointerEvent | MouseEvent) => { const r = oc.getBoundingClientRect(); const lx = (ev.clientX - r.left) * (S.VW / r.width), ly = (ev.clientY - r.top) * (S.cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); return { lx, ly, k: k < S.st.ludus.cells.length ? k : -1 }; }; // 증축 전 칸은 대상이 아니다
   c.onpointerdown = (ev) => { drag = { x0: ev.clientX, t0: performance.now() }; };
-  oc.onpointerdown = (ev) => { if (!(S.cellsOpen && S.cellsP > 0.9)) return; const { lx, ly, k } = cellAt(ev); const occ = k >= 0 ? occupantOf(S.st, k) : null; if (occ) { S.cellDrag = { id: occ.id, k0: k, px: lx, py: ly, over: k, moved: false }; oc.setPointerCapture(ev.pointerId); } }; // 켈라: 사람이 있는 방에서 누르면 끌기 시작
-  oc.onpointermove = (ev) => { if (!S.cellDrag) return; const { lx, ly, k } = cellAt(ev); if (Math.hypot(lx - S.cellDrag.px, ly - S.cellDrag.py) > 6) S.cellDrag.moved = true; S.cellDrag.px = lx; S.cellDrag.py = ly; S.cellDrag.over = k >= 0 ? k : null; };
-  oc.onpointerup = () => { if (S.cellDrag) { const d = S.cellDrag; S.cellDrag = null; drag = null; if (d.moved) { dragged = true; const g = S.st.roster.find(x => x.id === d.id); if (g && d.over != null && d.over !== d.k0) { moveToCell(S.st, g, d.over); sfx.coin(); render(); } } } }; // 끌어서 놓으면 자리 바꿈 (놓은 방에 사람이 있으면 서로 교환). 안 움직였으면 클릭으로 처리
   c.onpointerup = (ev) => { if (!drag) return;
     if (S.cellsOpen) { drag = null; return; } const dx = ev.clientX - drag.x0, el = performance.now() - drag.t0; drag = null; dragged = Math.abs(dx) > 40 && el < 700;
     if (dragged) { const i = ORDER.indexOf(S.view); const to = ORDER[Math.max(0, Math.min(ORDER.length - 1, i + (dx < 0 ? 1 : -1)))]; if (to !== S.view) startTravel(to); } };
-  c.onpointercancel = () => { drag = null; }; oc.onpointercancel = () => { S.cellDrag = null; };
-  oc.onclick = (ev) => { // 켈라 덮개: 방 클릭 (배정 모드·상세)
-    if (dragged) { dragged = false; return; } if (S.cellsP <= 0.9) return;
-    const r = oc.getBoundingClientRect();
-    { const lx = (ev.clientX - r.left) * (S.VW / r.width), ly = (ev.clientY - r.top) * (S.cellsH / r.height); const k = cellRects(0).findIndex(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h); if (k >= S.st.ludus.cells.length) { S.sheet = 'facilities'; S.cellsOpen = false; render(); return; } if (k >= 0 && S.palusMode) { const occ = occupantOf(S.st, k); if (!occ) S.notice = '빈 방이다'; else if (palusOf(S.st, occ) >= 0) { leavePalus(S.st, occ); S.notice = `${occ.name} 이(가) 팔루스에서 내려왔다`; save(); }
-        else { const free = Array.from({ length: S.st.ludus.palus }, (_, i) => i).find(i => !palusTrainee(S.st, i)); if (free == null) S.notice = `팔루스 ${S.st.ludus.palus}개가 모두 찼다`; else if (putAtPalus(S.st, occ, free)) { S.notice = `${occ.name} 을(를) 팔루스 ${free + 1}에 세웠다`; save(); } else S.notice = occ.injured > 0 ? '부상자는 훈련할 수 없다' : occ.status === 'doctor' ? '독토르는 가르치는 중이다' : '세울 수 없다'; }
-        render(); return; } // 팔루스 배정 모드: 한 번 누르면 빈 자리에 세우고, 다시 누르면 내려온다. 켈라는 열린 채 (서판으로 닫는다)
-            if (k >= 0 && S.bedPick != null) { const occ = occupantOf(S.st, k); if (occ && occ.injured > 0) { putInBed(S.st, occ, S.bedPick); S.notice = `${occ.name} 을(를) 침상 ${S.bedPick + 1}에 눕혔다`; S.bedPick = null; S.cellsOpen = false; } else S.notice = '부상자만 침상에 눕힐 수 있다'; render(); return; } // 침상 배정 모드
-      if (k >= 0) { const occ = occupantOf(S.st, k); S.cellSel = k; const q = cellRects(S.st.ludus.cells.length)[k]; const ar = app.getBoundingClientRect(), sk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-k')) || 1; const cx = (r.left - ar.left) / sk + (q.x + q.w / 2) * (r.width / sk / S.VW), cy = (r.top - ar.top) / sk + (q.y + q.h / 2) * (r.height / sk / S.cellsH); if (occ) { S.gladSel = occ.id; S.detail = { kind: 'roster', id: occ.id }; S.cellPop = null; render(); return; } void cx; void cy; } return; } // 사람이 있는 방 → 검투사를 불러 상세 페이지(오른쪽에서). 빈 방은 아무것도 없음 (구매하면 자동 배정, 자리는 끌어서 바꾼다)
-  };
+  c.onpointercancel = () => { drag = null; };
   c.onclick = (ev) => { // 켈라 화면이면 방 클릭, 아니면 시장 매물 클릭 (카메라 보정)
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();

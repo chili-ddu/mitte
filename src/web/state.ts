@@ -30,6 +30,7 @@ export interface State {
   setup: { color: string } | null; /* 새 게임 시작 표시: 색은 랜덤 (2026-09-21 색 고르기 창 삭제, 2026-09-18 유형 선택 삭제). render 가 보고 바로 새 게임을 만든다 */ /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;
   cellSel: number;
+  cellsSort: 'cell' | 'power' | 'fatigue' | 'age'; // 켈라 카드 정렬 (2026-09-22)
   cellSide: 'glad' | 'empty' | null;
   cellPop: { cx: number; cy: number; fresh: boolean } | null;
   cellsOpen: boolean;

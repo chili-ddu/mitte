@@ -3,7 +3,7 @@ import { S, randomColor } from './state.js';
 import { LEGEND_BY_ID } from '../core/legends.js';
 import { sfx, unlockAudio } from './sound.js';
 
-import { available, deserialize, newGame, palusTrainees, serialize, fight, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
+import { available, deserialize, newGame, palusTrainees, serialize, fight, autoBeds, autoPalus, type GameState, acceptChallenge, declineChallenge, rivalOf, rivalStar } from '../core/game.js';
 import { makeGladiator } from '../core/gladiator.js';
 import { HOSTS_BY_TIER } from '../core/hosts.js';
 import { Rng } from '../core/rng.js';
@@ -16,8 +16,8 @@ import { h, hideTip, isAction, isChip, showTip, tipTarget, toast } from './dom.j
 import { startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
-import { confirmPage, detailPage, gladSheet } from './detail.js';
-import { cellPanel } from './cells.js';
+import { confirmPage, detailPage } from './detail.js';
+import { cellsGrid } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
 import { renderPlan, seasonConfirmPage, seasonWarnings, tabletsPage } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
@@ -107,6 +107,7 @@ S.detail = null; // solo: 장면에서 바로 연 확인 페이지 (밑에 상�
 S.cellDrag = null; // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
  // 켈라에서 스틱맨을 끌어 방을 바꾼다 (캔버스 좌표) // 검투사 상세 페이지 (오른쪽에서 밀려 들어옴). roster: 내 검투사, market: 시장 노예
 S.cellSel = 0; // 켈라에서 고른 칸
+S.cellsSort = 'cell'; // 켈라 카드 정렬
  // 켈라에서 고른 칸
 S.cellSide = null; // 가로 배치: 켈라가 열려 있을 때 오른쪽 칸에 무엇을 보일지 (검투사 시트 / 빈 방 / 안내)
  // 가로 배치: 켈라가 열려 있을 때 오른쪽 칸에 무엇을 보일지 (검투사 시트 / 빈 방 / 안내)
@@ -193,14 +194,7 @@ function renderScreen() {
     const seed = Number(location.hash.slice(1)) || Math.floor(Math.random() * 100000);
     S.st = newGame(seed, { color: S.setup.color }); S.setup = null; S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; sfx.fanfare(); save(); render(); return;
   }
-  if (S.cellPop) { // 켈라 팝업: 누른 방에서 펼쳐진다 (스테이지 좌표, 화면 안에 들어오게 보정). 사람이 있으면 검투사 시트, 빈 방이면 넣을 검투사 고르기
-    const stageH = document.getElementById('stage')?.clientHeight ?? STAGE_H; const W = Math.min(400, (document.getElementById('stage')?.clientWidth ?? STAGE_W) - 12), H = Math.min(460, stageH - 50);
-    const left = Math.max(6, Math.min((document.getElementById('stage')?.clientWidth ?? STAGE_W) - W - 6, S.cellPop.cx - W / 2)), top = Math.max(40, Math.min(stageH - H - 6, S.cellPop.cy - 30));
-    app.append(h('div', { class: 'popscrim', onclick: () => { S.cellPop = null; render(); } }),
-      h('div', { class: `cellpop${S.cellPop.fresh ? ' fresh' : ''}`, style: `left:${left}px;top:${top}px;width:${W}px;max-height:${H}px;transform-origin:${S.cellPop.cx - left}px ${S.cellPop.cy - top}px` },
-        h('button', { class: 'xclose', title: '닫기', onclick: () => { S.cellPop = null; render(); } }, '✕'), S.gladSel != null && S.st.roster.some(g => g.id === S.gladSel) ? gladSheet() : cellPanel(S.cellSel)));
-    S.cellPop.fresh = false;
-  }
+  /* 켈라 팝오버는 뺐다 (2026-09-22): 켈라가 카드 격자라 카드가 곧 입구 */
   if (S.resumed) { S.resumed = false; S.notice = '저장된 게임을 이어합니다.'; }
   if (S.phase === 'over') { app.append(renderOver()); app.classList.add('land', 'page'); return; }
   // 단계 표시
@@ -210,9 +204,11 @@ function renderScreen() {
   if (S.phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
   if (S.st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
   { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { S.cellsOpen = !S.cellsOpen; S.cellPop = null; S.cellSide = null; if (S.cellsOpen) S.sheet = null; else { S.bedPick = null; S.palusMode = false; S.detail = null; S.shownDetail = null; } render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }, ...(S.view === 'medic' ? [{ key: 'medic' as const, icon: 'place' as const, title: '의무실' }] : [])])); app.append(town); /* 장소 서판: 그 장소의 안내·버튼(상인 다시 부르기·훈련 추천 배치·침상). 2026-09-22 사용자: 시트가 있는데 여는 길이 없었다 */
-    if (S.cellsOpen && S.cellsCanvas) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
-      const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자의 방을 누르세요` : S.palusMode ? `팔루스 배정 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 방을 누르면 세우고, 다시 누르면 내려옵니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
-      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 방을 누르면 검투사') : null), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; S.detail = null; S.shownDetail = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, S.cellsCanvas))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
+    if (S.cellsOpen) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
+      const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자를 누르세요` : S.palusMode ? `훈련 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 훈련시킬 검투사를 누르세요. 훈련 중인 검투사를 누르면 뺍니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
+      app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 카드를 누르면 상세') : null),
+        S.bedPick != null ? h('button', { class: 'small recommend', title: '침상 밖 부상자를 오래 누울 사람부터 빈 침상에 눕힌다', onclick: () => { const put = autoBeds(S.st); S.bedPick = null; S.cellsOpen = false; toast(put.length ? `침상에 눕혔다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '눕힐 부상자가 없다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : S.palusMode ? h('button', { class: 'small recommend', title: '자랄 여지가 큰 순서로 팔루스를 채운다', onclick: () => { const put = autoPalus(S.st); toast(put.length ? `팔루스에 세웠다 (${put.length}명): ${put.map(g => g.name).join(', ')}` : '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다', put.length ? 'good' : 'bad'); save(); render(); } }, '추천 배치') : null, /* 켈라를 침상·팔루스 고르기로 띄웠을 때 추천 단추 (2026-09-22 사용자) */
+        h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; S.detail = null; S.shownDetail = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, cellsGrid()))); } } // 토글은 헤더 아래 한 줄 (켈라 = 지금 검투사 인벤토리, 나머지는 정보 서랍). 시트는 이 줄 밑에서 아래로 내려온다
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
 

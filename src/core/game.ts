@@ -153,6 +153,8 @@ export function recommendTrainees(st: GameState, exclude: Set<number> = new Set(
   return out.sort((a, b) => b.score - a.score);
 }
 // 추천대로 빈 팔루스를 채운다. 돌아온 것 = 세운 사람들
+/* 침상 추천(2026-09-22 사용자): 침상 밖 부상자를 오래 누울 사람부터 빈 침상에 눕힌다. 돌아오는 값 = 눕힌 사람들 */
+export function autoBeds(st: GameState): Gladiator[] { const out: Gladiator[] = []; const waiting = st.roster.filter(g => g.alive && g.injured > 0 && !inBed(st, g)).sort((a, b) => b.injured - a.injured); for (const g of waiting) { for (let k = 0; k < st.ludus.beds; k++) { if (bedPatient(st, k)) continue; if (putInBed(st, g, k)) { out.push(g); break; } } } return out; }
 export function autoPalus(st: GameState, exclude: Set<number> = new Set()): Gladiator[] {
   const placed: Gladiator[] = []; const free = Array.from({ length: st.ludus.palus }, (_, i) => i).filter(i => !palusTrainee(st, i));
   for (const r of recommendTrainees(st, exclude)) { const slot = free.shift(); if (slot == null) break; if (putAtPalus(st, r.g, slot)) placed.push(r.g); }
@@ -167,6 +169,7 @@ export function cellOf(st: GameState, g: Gladiator): number {
   let k = 0; while (used.has(k)) k++; g.cell = k; return k;
 }
 export function occupantOf(st: GameState, k: number): Gladiator | undefined { return st.roster.find(g => cellOf(st, g) === k); }
+export const CELL_Q_KO = ['맨바닥', '짚자리', '삿자리', '양털 요'] as const; /* 숙소 질 0~3 을 잠자리로 말한다 (2026-09-22 사용자: 별 말고) — 켈라 방은 좁은 돌방이라 잠자리가 곧 등급이다 */
 export function cellQuality(st: GameState, g: Gladiator): number { const i = cellOf(st, g); return i >= 0 && i < st.ludus.cells.length ? st.ludus.cells[i] : 0; }
 // 과로사 확률: 피로가 쌓일수록 가파르게 (2026-09-17 사용자: 가중치를 주자). 화면도 이 함수를 그대로 쓴다
 export function overworkChance(fatigue: number): number { const F = CONFIG.fatigue; const n = fatigue - F.overworkAt + 1; return n <= 0 ? 0 : Math.min(F.overworkCap, F.overworkPer * n * (1 + (n - 1) * F.overworkRamp)); }

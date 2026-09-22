@@ -16,7 +16,6 @@ import { FANS_STAR, HOST } from '../core/hosts.js';
 import { View, clearSave, render, save } from './main.js';
 import { ask, h, helpBtn, hintSpan, sq, tell, toast, gearLine } from './dom.js';
 import { gladRow, gladSheet } from './detail.js';
-import { cellPanel } from './cells.js';
 import { TYPE_COLOR, glyphSvg, gearSvg } from './portrait.js';
 import { MAIN_HAND, OFF_HAND, type MainHand, type OffHand } from '../core/equipment.js';
 
@@ -38,7 +37,6 @@ export function renderSheetBody(): (Node | null)[] {
     : S.sheet === 'medic' ? [h('div', { class: 'panel' }, h('h2', {}, '의무실'), ...renderDash('medic').slice(1))]
     : S.sheet === 'yard' ? [h('div', { class: 'panel' }, h('h2', {}, '훈련소'), ...renderDash('yard').slice(1))]
     : S.sheet === 'applicants' ? [applicantsPanel() ?? h('div', { class: 'panel' }, h('h2', {}, '문 앞의 지원자'), h('div', { class: 'hint' }, '지금은 지원자가 없습니다.'))]
-    : S.sheet === 'cell' ? [cellPanel(S.cellSel)]
     : [menuPanel()];
 }
 export function renderSheet(): Node {

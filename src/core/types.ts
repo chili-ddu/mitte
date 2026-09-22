@@ -43,6 +43,7 @@ export interface Gladiator {
   typesWon?: GType[];   // 승리를 거둔 유형들 (유형 전환 별칭)
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
+  fav?: boolean;        // 즐겨찾기 — 켈라 카드 격자에서 늘 앞 (2026-09-22)
   fellToUs?: boolean;   // (파밀리아 검투사) 우리 앞에 쓰러진 적이 있다 — 명단 전원이 그러면 그 집이 우리를 피한다 (2026-09-22)
   revenged?: number;    // 복수 성공 횟수
   dictata?: string[];     // 익힌 숙련 딕타타 id (자리 CONFIG.mastery.slots, docs/09 2-α). 전설의 고유 딕타타(L_*)는 자리를 안 차지한다. 자리가 차면 가장 오래된 것이 새것으로 바뀐다 (2026-09-22 사용자)
