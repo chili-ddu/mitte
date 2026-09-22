@@ -40,6 +40,7 @@ function growthChips(g: Gladiator): Node[] { const gr = g.growth; const out: Nod
   if (gr?.trait && gr.traitKnown) { const ONE_KO: Record<string, string> = { hp: '체력', atk: '공격', def: '방어', hand: '손놀림' }; const one = gr.trait === 'one' && gr.one ? ONE_KO[gr.one] : null;
     out.push(h('span', { class: `badge chip trait ${gr.trait}${one ? ` one-${gr.one}` : ''}`, title: `결 — ${GROWTH_TRAIT_KO[gr.trait]}${one ? ` (${one})` : ''}: ${TRAIT_DESC[gr.trait]}` }, GROWTH_TRAIT_KO[gr.trait])); } /* '한 우물(체력)' 대신 '한 우물' — 어느 능력치인지는 칩 색과 툴팁이 말한다 (2026-09-22 사용자) */
   const t = talentOf(g); out.push(h('span', { class: `badge chip talent t${t}`, title: `자질 — 성장 속도 ×${CONFIG.growthModel.talentMul[t]}, 상한 ×${CONFIG.growthModel.talentCap[t]}` }, TALENT_KO[t]));
+  if (g.legend) out.push(h('span', { class: 'badge chip legendtag', title: `전설 — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}. 이름·나이·성장형·잠재치·고유 딕타타가 정해져 있다` }, '전설')); /* 천부 옆 전설 칩 (2026-09-22 사용자) */
   return out; }
 function epithetBadges(g: Gladiator): Node[] {
   const sc: Node[] = []; // 왼손잡이 칩은 뺐다 — 카드 바닥에 뒤집힌 손이 그려진다 (2026-09-17 사용자)

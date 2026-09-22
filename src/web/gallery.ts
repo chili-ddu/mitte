@@ -2,6 +2,8 @@ import { drawStickman, clipSkeleton, clipLength, attackClipFor, drawNetOverlay, 
 import type { GType } from '../core/types.js';
 import { attackClipForLoadout, deathClipForWeapon, offhandClipFor, comboClipForLoadout } from './stickman.js';
 import type { Loadout } from './loadout.js';
+import { LEGENDS } from '../core/legends.js';
+import type { LegendMark } from '../core/epithets.js';
 import { TYPES, TYPE_KO as KO } from '../core/gladiator.js'; /* 유형 목록은 한 곳에서 (2026-09-18 유형 열) */
 const POSES: Pose[] = ['idle', 'guard', 'hit', 'bound', 'kneel_down', 'fly_back', 'sit_slump'];
 // 막기는 큰 방패 유형만 (게임 룰과 동일)
@@ -17,7 +19,7 @@ const COMBOS: { name: string; l: Loadout }[] = [
   { name: '오른손 삼지창 · 왼손 없음 · 갈레루스 + 종려가지', l: { main: 'trident', off: 'none', helmet: 'none', extras: ['galerus'], accessories: ['palm', 'armband'] } },
 ];
 const c = document.getElementById('c') as HTMLCanvasElement;
-const W = 2200, H = (TYPES.length + COMBOS.length) * 150 + 20; const dpr = devicePixelRatio;
+const W = 2200, H = (TYPES.length + COMBOS.length + 1) * 150 + 20; const dpr = devicePixelRatio; /* +1: 전설 줄 */
 c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px';
 const ctx = c.getContext('2d')!; ctx.scale(dpr, dpr);
 function frame(ts: number) {
@@ -49,6 +51,10 @@ function frame(ts: number) {
     const atk = attackClipForLoadout(cb.l), die = deathClipForWeapon(cb.l.main), offc = offhandClipFor(cb.l.off);
     [atk, comboClipForLoadout(cb.l), ...(offc ? [offc.clip] : []), die].forEach((cl, i) => { const len = clipLength(cl) + 700; const x = 100 + 4 * 110 + i * 150; drawStickman(ctx, cb.l, { x, y, scale: 1.4, skeleton: clipSkeleton(cl, ts % len), t }); ctx.fillStyle = '#7a6a4e'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(cl, x, y + 16); });
   });
+  { const y = 130 + (TYPES.length + COMBOS.length) * 150; /* 전설 줄: 열 명의 표식 (2026-09-22) */
+    ctx.fillStyle = '#7a6a4e'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('전설: ' + LEGENDS.map(l => l.name).join(' · '), 16, y - 100);
+    ctx.strokeStyle = '#c9b47f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y + 2); ctx.lineTo(W, y + 2); ctx.stroke();
+    LEGENDS.forEach((l, i) => { drawStickman(ctx, l.type, { x: 100 + i * 200, y, scale: 2.0, pose: 'idle', t, accessories: ['legend', `leg_${l.id}` as LegendMark] }); ctx.fillStyle = '#7a6a4e'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(l.name, 100 + i * 200, y + 16); }); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

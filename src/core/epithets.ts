@@ -2,7 +2,8 @@
 import type { Gladiator } from './types.js';
 
 export type EpithetId = 'invictus' | 'immortalis' | 'superstes' | 'cicatrix' | 'suspirium' | 'flamma' | 'retiarii_terror' | 'coronatus' | 'attilius' | 'par' | 'magister' | 'martia' | 'omnia_solus' | 'vindex';
-export type EpithetAccessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband' | 'staff' | 'rudis' | 'grudge' | 'revenge' | 'legend'; // 예명 밖의 표식: 신분(막대·나무 검)과 인연(원한·복수) (2026-09-17 사용자)
+export type LegendMark = 'leg_flamma' | 'leg_spiculus' | 'leg_celadus' | 'leg_crescens' | 'leg_priscus' | 'leg_verus' | 'leg_tetraites' | 'leg_hermes' | 'leg_columbus' | 'leg_prudens'; /* 전설마다 다른 표식 (2026-09-22, Codex 안 + 셋은 대안) */
+export type EpithetAccessory = 'laurel' | 'scar' | 'sash' | 'palm' | 'armband' | 'staff' | 'rudis' | 'grudge' | 'revenge' | 'legend' | LegendMark; // 예명 밖의 표식: 신분(막대·나무 검)과 인연(원한·복수) (2026-09-17 사용자)
 export interface EpithetDef { id: EpithetId; name: string; latin: string; attested: boolean; cond: string; effect: string; accessory: EpithetAccessory; check: (g: Gladiator) => boolean; anyRank?: boolean }
 export const MAX_EPITHETS = 1; // 2026-09-22 사용자: 검투사 하나에 예명 하나 (플람마·켈라두스처럼 이름이 곧 별명). 먼저 얻은 것 고정, 단 실제 기록(attested) 예명이 뒤에 조건을 채우면 창작 예명을 밀어낸다
 
@@ -50,4 +51,4 @@ export function grantEpithets(g: Gladiator): EpithetDef[] {
     if (e.id === 'omnia_solus') g.honor = Math.min(100, (g.honor ?? 0) + 10); }
   return out;
 }
-export function accessoriesOf(g: Gladiator): EpithetAccessory[] { return Array.from(new Set([...(g.legend ? ['legend' as const] : []), ...(g.epithets ?? []).map(id => EPITHET_BY_ID[id as EpithetId]?.accessory).filter((a): a is EpithetAccessory => !!a)])); } // 전설은 황금 띠 (2026-09-22)
+export function accessoriesOf(g: Gladiator): EpithetAccessory[] { return Array.from(new Set([...(g.legend ? ['legend' as const, `leg_${g.legend}` as LegendMark] : []), ...(g.epithets ?? []).map(id => EPITHET_BY_ID[id as EpithetId]?.accessory).filter((a): a is EpithetAccessory => !!a)])); } // 전설은 황금 띠 (2026-09-22)

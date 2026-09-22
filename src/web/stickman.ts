@@ -315,12 +315,12 @@ export function drawStickman(ctx: CanvasRenderingContext2D, who: GType | Loadout
   }
   // 머리: 뒷팔·옷 뒤, 앞팔(카메라 쪽) 앞에 놓인다 → 앞팔은 머리 뒤에 그린다
   const hx0 = shX + Math.sin(lean) * (HEAD + 2), hy0 = shY - Math.cos(lean) * (HEAD + 2) + sk.headBob;
-  drawHead(ctx, o.bare ? 'none' : L.helmet, hx0, hy0, HEAD, seed);
+  drawHead(ctx, o.bare ? 'none' : L.helmet, hx0, hy0, HEAD, seed, SKIN, o.bare ? undefined : L.crest);
   if (o.beard) { ctx.lineWidth = 2.2 / Math.sqrt(s); ctx.beginPath(); ctx.moveTo(hx0 + 4, hy0 + 4); ctx.quadraticCurveTo(hx0 + 6, hy0 + 10, hx0 - 1, hy0 + 11); ctx.stroke(); }
   if (!o.bare) drawAccessories(ctx, L, hx0, hy0, HEAD, shX, shY, hipY, seed);
   ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s);
   const front = arm(frontA);
-  if (lieK < 0.5 && !o.bare) drawWeapon(ctx, L.main, front.hx, front.hy, front.ang, pose, seed);
+  if (lieK < 0.5 && !o.bare) drawWeapon(ctx, L.main, front.hx, front.hy, front.ang, pose, seed, L.weaponTint);
   if (!o.bare) drawExtras(ctx, L, shX, shY, hipY, seed); // 쓰러지면 무기를 놓친다
   if (o.hands) { ctx.save(); o.hands(ctx, front, back, { shX, shY, hipY }); ctx.restore(); ctx.strokeStyle = o.ink ?? INK; ctx.fillStyle = o.ink ?? INK; ctx.lineWidth = prof.line / Math.sqrt(s); }
 
@@ -392,10 +392,12 @@ export function drawNetProjectile(ctx: CanvasRenderingContext2D, x: number, y: n
 }
 
 export const SKIN = '#eadfc0'; // 머리 채움 (불투명: 뒤의 선이 비치지 않게)
-function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: number, r: number, seed: number, skin = SKIN) {
+function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: number, r: number, seed: number, skin = SKIN, crest?: string) {
   ctx.beginPath(); ctx.arc(x + jit(seed + 3, .8), y, r, 0, Math.PI * 2); ctx.save(); ctx.fillStyle = skin; ctx.fill(); ctx.restore(); ctx.stroke();
+  const crestFill = (path: () => void) => { if (!crest) return; ctx.save(); ctx.fillStyle = crest; ctx.beginPath(); path(); ctx.closePath(); ctx.fill(); ctx.restore(); }; /* 전설의 볏 색: 볏 모양을 먼저 채우고 먹선을 위에 */
   switch (helmet) {
     case 'crested': // 큰 볏 + 얼굴 격자 (무르밀로)
+      crestFill(() => { ctx.moveTo(x - 4, y - r + 1); ctx.quadraticCurveTo(x - 2, y - r - 17, x + 15, y - r - 9); ctx.quadraticCurveTo(x + 10, y - r - 3, x + 5, y - r + 2); });
       ctx.save(); ctx.lineWidth *= 1.08; ctx.beginPath(); ctx.moveTo(x - 4, y - r + 1); ctx.quadraticCurveTo(x - 2, y - r - 17, x + 15, y - r - 9); ctx.quadraticCurveTo(x + 10, y - r - 3, x + 5, y - r + 2); ctx.stroke();
       ctx.beginPath(); ctx.arc(x + 1, y, r + 2, Math.PI * 1.12, Math.PI * 2.08); ctx.stroke();
       ctx.beginPath(); for (let i = -1; i <= 2; i++) { ctx.moveTo(x + 1, y - 4 + i * 3); ctx.lineTo(x + r + 3, y - 5 + i * 3); } ctx.stroke(); ctx.restore();
@@ -406,10 +408,12 @@ function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: n
       ctx.beginPath(); ctx.arc(x + 5, y - 2, 1.1, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       break;
     case 'griffin': // 굽은 볏 + 챙 (트라엑스)
+      crestFill(() => { ctx.moveTo(x - 6, y - r + 1); ctx.quadraticCurveTo(x - 6, y - r - 16, x + 11, y - r - 13); ctx.quadraticCurveTo(x + 3, y - r - 7, x + 6, y - r + 2); });
       ctx.save(); ctx.lineWidth *= 1.05; ctx.beginPath(); ctx.moveTo(x - 6, y - r + 1); ctx.quadraticCurveTo(x - 6, y - r - 16, x + 11, y - r - 13); ctx.quadraticCurveTo(x + 3, y - r - 7, x + 6, y - r + 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - r - 4, y + 2); ctx.lineTo(x + r + 5, y + 1); ctx.lineTo(x + r + 1, y + 4); ctx.stroke(); ctx.restore();
       break;
     case 'brimmed': // 챙 넓은 투구 + 볏 (호플로마쿠스)
+      crestFill(() => { ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x, y - r - 14, x + 11, y - r - 5); ctx.lineTo(x + 5, y - r + 1); });
       ctx.beginPath(); ctx.moveTo(x - r - 6, y - 2); ctx.lineTo(x + r + 6, y - 3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x, y - r - 14, x + 11, y - r - 5); ctx.lineTo(x + 5, y - r + 1); ctx.stroke();
       break;
@@ -419,6 +423,7 @@ function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: n
       break;
     case 'plumed': // 챙 투구 + 깃털 둘 (에퀘스)
       ctx.beginPath(); ctx.moveTo(x - r - 3, y - 2); ctx.lineTo(x + r + 3, y - 2); ctx.stroke();
+      if (crest) { ctx.save(); ctx.strokeStyle = crest; ctx.lineWidth *= 2.2; ctx.beginPath(); ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x - 6, y - r - 9, x - 2, y - r - 13); ctx.moveTo(x + 3, y - r); ctx.quadraticCurveTo(x + 6, y - r - 9, x + 2, y - r - 13); ctx.stroke(); ctx.restore(); } /* 깃털 색 */
       ctx.beginPath(); ctx.moveTo(x - 3, y - r); ctx.quadraticCurveTo(x - 6, y - r - 9, x - 2, y - r - 13); ctx.moveTo(x + 3, y - r); ctx.quadraticCurveTo(x + 6, y - r - 9, x + 2, y - r - 13); ctx.stroke();
       break;
     case 'none': // 맨머리: 기본 스틱맨은 눈·머리카락 없이 동그라미만 (낙서 기본형)
@@ -448,9 +453,17 @@ function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: nu
       break;
     case 'armblade': // 스키소르: 팔 관 끝의 반달 날 — 시카 그림을 빌린다
     case 'blade': // 왼손 시카: 굽은 칼을 거꾸로 쥠
-      ctx.save(); ctx.rotate(-0.9); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -9); ctx.quadraticCurveTo(2, -19, 10, -23); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3.5, -1); ctx.lineTo(4, -1); ctx.stroke(); ctx.restore();
+      ctx.save(); if (L.weaponTint) ctx.strokeStyle = L.weaponTint; ctx.rotate(-0.9); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -9); ctx.quadraticCurveTo(2, -19, 10, -23); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3.5, -1); ctx.lineTo(4, -1); ctx.stroke(); ctx.restore();
       break;
   }
+  if (L.emblem && (L.off === 'scutum' || L.off === 'parmula' || L.off === 'parma' || L.off === 'medium')) { /* 전설의 방패 문장 (2026-09-22) */
+    ctx.save(); ctx.lineWidth *= 0.9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (L.emblem === 'flame') { ctx.strokeStyle = '#a8321f'; ctx.beginPath(); ctx.moveTo(-3, 6); ctx.lineTo(-1, 0); ctx.lineTo(-3, -3); ctx.lineTo(1, -8); ctx.lineTo(0, -3); ctx.lineTo(3, 0); ctx.lineTo(2, 6); ctx.stroke(); }
+    else if (L.emblem === 'ring') { ctx.strokeStyle = L.off === 'parma' ? '#a8321f' : '#e8c96a'; ctx.lineWidth *= 1.2; ctx.beginPath(); ctx.arc(0, -1, 4, 0, Math.PI * 2); ctx.stroke(); }
+    else if (L.emblem === 'heart') { ctx.fillStyle = '#a8321f'; ctx.beginPath(); ctx.moveTo(0, 3); ctx.quadraticCurveTo(-5, -1, -2.5, -3.5); ctx.quadraticCurveTo(0, -4.5, 0, -1.5); ctx.quadraticCurveTo(0, -4.5, 2.5, -3.5); ctx.quadraticCurveTo(5, -1, 0, 3); ctx.fill(); }
+    else if (L.emblem === 'bar') { ctx.strokeStyle = '#e3d1a6'; ctx.lineWidth *= 2; ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(6, -6); ctx.stroke(); }
+    else if (L.emblem === 'dot') { ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.arc(0, -1, 3, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore(); }
   if (hasNet(L) && !noNet) { // 손에 든 그물
     ctx.save(); ctx.lineWidth *= 0.7;
     ctx.beginPath();
@@ -477,10 +490,42 @@ function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, 
   for (const a of L.accessories) {
     ctx.save();
     switch (a) {
-      case 'legend': // 전설: 투구 위 황금 띠와 뒤로 흐르는 붉은 술 — 이름을 물려받은 사람 (2026-09-22)
-        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.1; ctx.beginPath(); ctx.arc(hx, hy, r + 1.2, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
-        ctx.strokeStyle = '#a8321f'; ctx.lineWidth *= 0.9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(hx, hy - r - 1.5); ctx.quadraticCurveTo(hx - r * 1.4, hy - r * 1.9, hx - r * 2.2, hy - r * 0.6); ctx.stroke();
-        ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.arc(hx, hy - r - 1.5, 1.6, 0, Math.PI * 2); ctx.fill();
+      case 'legend': // 전설 공통 표식: 머리 위 황토 점 하나 (2026-09-22: 금띠·붉은 술은 뺐다 — 인물마다 제 표식이 있으니)
+        ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.arc(hx, hy - r - 2.6, 1.7, 0, Math.PI * 2); ctx.fill();
+        break;
+      /* 전설 열 명의 표식 (2026-09-22, Codex 안·일부 대안). 좌표계: +x 가 앞, 등은 −x, 발이 0 이고 위가 음수 */
+      case 'leg_flamma': // 거절한 목검: 등 쪽 허리에 황토 목검, 그 위 붉은 사선 — 루디스 네 번 거절
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.1; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(shX - 9, hipY - 6); ctx.lineTo(shX - 9, hipY + 7); ctx.moveTo(shX - 12, hipY - 2); ctx.lineTo(shX - 6, hipY - 2); ctx.stroke();
+        ctx.strokeStyle = '#a8321f'; ctx.beginPath(); ctx.moveTo(shX - 13, hipY - 5); ctx.lineTo(shX - 5, hipY + 6); ctx.stroke();
+        break;
+      case 'leg_spiculus': // 황실의 어깨띠: 앞 어깨에서 등 쪽 허리로 진한 자주 띠 — 네로의 총애
+        ctx.strokeStyle = '#7a2a6a'; ctx.lineWidth *= 1.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(shX + 4, shY + 1); ctx.lineTo(shX - 5, hipY - 1); ctx.stroke();
+        break;
+      case 'leg_celadus': // 한숨 리본: 뒤 어깨에서 늘어지는 붉은 곡선 둘 — 소녀들의 한숨
+        ctx.strokeStyle = '#a8321f'; ctx.lineWidth *= 0.9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(shX - 3, shY + 1); ctx.quadraticCurveTo(shX - 12, shY + 4, shX - 14, shY + 14); ctx.moveTo(shX - 3, shY + 2); ctx.quadraticCurveTo(shX - 9, shY + 6, shX - 9, shY + 11); ctx.stroke();
+        break;
+      case 'leg_crescens': // 밤의 초승달: 관자놀이 옆 황토 초승달 — 밤의 소녀들의 의사
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(hx - r - 3, hy - 1, 3.2, Math.PI * 0.55, Math.PI * 1.45); ctx.stroke();
+        break;
+      case 'leg_priscus': // 맞선 목검: 등 뒤 회벽빛 목검(왼쪽 기울임) + 붉은 매듭 — 베루스와 같은 날 받은 루디스
+        ctx.strokeStyle = '#e3d1a6'; ctx.lineWidth *= 1.3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(shX - 6, shY + 2); ctx.lineTo(shX - 10, hipY + 4); ctx.stroke();
+        ctx.strokeStyle = '#a8321f'; ctx.lineWidth *= 0.8; ctx.beginPath(); ctx.moveTo(shX - 11, shY + 8); ctx.lineTo(shX - 5, shY + 9); ctx.stroke();
+        break;
+      case 'leg_verus': // 승부 매듭: 허리 앞 붉은 고리 + 회벽 꼬리 둘 — 프리스쿠스와의 무승부
+        ctx.strokeStyle = '#a8321f'; ctx.lineWidth *= 1.0; ctx.beginPath(); ctx.arc(shX + 5, hipY - 1, 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#e3d1a6'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(shX + 4, hipY + 2); ctx.lineTo(shX + 3, hipY + 7); ctx.moveTo(shX + 7, hipY + 2); ctx.lineTo(shX + 8, hipY + 7); ctx.stroke();
+        break;
+      case 'leg_tetraites': // 유리잔: 투구 뒤 황토 U자와 윗선 — 갈리아까지 팔린 유리잔
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.1; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(hx - r - 4, hy + 1, 3, 0, Math.PI); ctx.moveTo(hx - r - 8, hy - 2); ctx.lineTo(hx - r, hy - 2); ctx.stroke();
+        break;
+      case 'leg_hermes': // 세 갈래: 등 뒤 어깨 위로 황토 선 셋 부채꼴 — 세 가지 무기
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.0; ctx.lineCap = 'round'; ctx.beginPath(); for (const a of [-0.9, -0.6, -0.3]) { ctx.moveTo(shX - 2, shY - 1); ctx.lineTo(shX - 2 + Math.cos(Math.PI + a) * 9, shY - 1 + Math.sin(Math.PI + a) * 9); } ctx.stroke();
+        break;
+      case 'leg_columbus': // 비둘기: 뒤 어깨 위 회벽 작은 몸통과 날개 한 획 — 이름 '비둘기'
+        ctx.fillStyle = '#e3d1a6'; ctx.strokeStyle = '#e3d1a6'; ctx.lineWidth *= 0.9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.ellipse(shX - 6, shY - 3, 2.6, 1.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(shX - 8, shY - 4); ctx.lineTo(shX - 6, shY - 8); ctx.lineTo(shX - 3, shY - 4); ctx.stroke();
+        break;
+      case 'leg_prudens': // 잔대: 투구 뒤 뒤집힌 U자와 밑선 — 테트라이테스와 같은 유리잔의 상대
+        ctx.strokeStyle = '#e8c96a'; ctx.lineWidth *= 1.1; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(hx - r - 4, hy - 1, 3, Math.PI, Math.PI * 2); ctx.moveTo(hx - r - 8, hy + 2); ctx.lineTo(hx - r, hy + 2); ctx.stroke();
         break;
       case 'laurel': // 월계관: 초록 잎사귀 + 금빛 띠
         ctx.strokeStyle = '#3b7a2c'; ctx.fillStyle = '#4f9a3a'; ctx.lineWidth *= 0.8;
@@ -530,8 +575,8 @@ function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, 
   }
 }
 
-function drawWeapon(ctx: CanvasRenderingContext2D, w: MainHand, x: number, y: number, ang: number, _pose: Pose, _seed: number) {
-  ctx.save(); ctx.translate(x, y);
+function drawWeapon(ctx: CanvasRenderingContext2D, w: MainHand, x: number, y: number, ang: number, _pose: Pose, _seed: number, tint?: string) {
+  ctx.save(); ctx.translate(x, y); if (tint) ctx.strokeStyle = tint; /* 전설의 무기 색 (2026-09-22) */
   // 무기는 손 방향 + 앞쪽으로
   // 무기는 전완 방향으로 이어진다. 전완 벡터 (sin a, cos a) 를 '위(-y)' 축에 맞추려면 180 - a
   const dir = 180 - ang; // 공격: 정면, 대기·방어: 앞 아래로 비스듬히

@@ -2,21 +2,23 @@
 // 이름·유형·시작 나이·성장형·잠재·고유 딕타타·외형이 고정이고 나이만 흐른다. 유형마다 한 명. 죽거나 나가면 풀로 돌아가고 다음 사람이 그 이름을 물려받는다(검투사 예명은 실제로 대물림됐다).
 // 잠재는 나이와 맞물려 정했다: 늦게 나오는(26세) 프리스쿠스·베루스는 1.55, 어린(19세) 켈라두스·크레스켄스는 1.8 — 같은 유형·같은 나이 일반 베테라누스 상대 1대1 승률 60~80% 를 노린다
 // 출연 조건은 없다 — 2% 주사위뿐. 사연은 카드 한 줄과 고정 수치의 근거일 뿐이다. 스파르타쿠스는 시대(기원전 73)가 안 맞아 뺐다.
-import type { GType, Gladiator } from './types.js';
+import type { GType, Gladiator, Lineage } from './types.js';
 import type { Growth } from './growth.js';
-export interface Legend { id: string; name: string; type: GType; age: number; growth: Growth; pot: number; dictata: string; lore: string; real: boolean }
-const L = (id: string, name: string, type: GType, age: number, curve: Growth['curve'], trait: Growth['trait'], one: Growth['one'], pot: number, lore: string, real = true): Legend => ({ id, name, type, age, growth: { curve, trait, one, curveKnown: true, traitKnown: true }, pot, dictata: `L_${id}`, lore, real });
+/* 전설은 전부 고정이다 (2026-09-22 사용자): 이름·유형·나이·성장형·잠재치·고유 딕타타에 더해 시작 능력치·서열·전적·이름 유래까지. 굴리는 것은 언제 어디서 나오는가뿐 */
+export interface LegendFixed { hp: number; atk: number; def: number; hand: number; rank: 'tiro' | 'veteranus'; wins: number; fights: number; lineage: Lineage }
+export interface Legend { id: string; name: string; type: GType; age: number; growth: Growth; pot: number; dictata: string; lore: string; real: boolean; fixed: LegendFixed }
+const L = (id: string, name: string, type: GType, age: number, curve: Growth['curve'], trait: Growth['trait'], one: Growth['one'], pot: number, lore: string, fixed: LegendFixed, real = true): Legend => ({ id, name, type, age, growth: { curve, trait, one, curveKnown: true, traitKnown: true }, pot, dictata: `L_${id}`, lore, real, fixed });
 export const LEGENDS: Legend[] = [
-  L('flamma', '플람마', 'secutor', 22, 'late', 'field', undefined, 1.6, '시리아 출신. 34전 21승, 루디스를 네 번 거절하고 30세에 죽었다 (시칠리아 묘비)'),
-  L('spiculus', '스피쿨루스', 'murmillo', 24, 'normal', 'even', undefined, 1.7, '네로가 총애해 집과 땅을 내렸다. 네로가 죽던 밤 그를 찾았으나 오지 않았다 (수에토니우스)'),
-  L('celadus', '켈라두스', 'thraex', 19, 'early', 'field', undefined, 1.8, '"소녀들의 한숨, 세 번 싸워 세 번 이긴 켈라두스" (폼페이 낙서)'),
-  L('crescens', '크레스켄스', 'retiarius', 19, 'early', 'pupil', undefined, 1.8, '"밤의 소녀들의 의사, 크레스켄스" (폼페이 낙서)'),
-  L('priscus', '프리스쿠스', 'provocator', 26, 'late', 'one', 'def', 1.55, '콜로세움 개장 경기에서 베루스와 끝내 승부를 못 내 둘 다 루디스를 받았다 (마르티알리스)'),
-  L('verus', '베루스', 'hoplomachus', 26, 'normal', 'pupil', undefined, 1.6, '프리스쿠스의 맞수. 같은 날 같은 나무 검을 받았다 (마르티알리스)'),
-  L('tetraites', '테트라이테스', 'eques', 23, 'normal', 'even', undefined, 1.7, '유리잔에 새겨져 갈리아·브리타니아까지 팔린 이름. 프루덴스를 꺾었다'),
-  L('hermes', '헤르메스', 'dimachaerus', 21, 'early', 'even', undefined, 1.8, '"세 가지 무기로 싸우고 세 가지로 이긴다" (마르티알리스 5.24)'),
-  L('columbus', '콜룸부스', 'scissor', 21, 'late', 'field', undefined, 1.7, '"비둘기". 폼페이 낙서에 이름만 남았다 — 유형은 가공', false),
-  L('prudens', '프루덴스', 'laquearius', 23, 'normal', 'pupil', undefined, 1.75, '테트라이테스의 상대로 유리잔에 함께 새겨졌다 — 유형은 가공', false),
+  L('flamma', '플람마', 'secutor', 22, 'late', 'field', undefined, 1.6, '시리아 출신. 34전 21승, 루디스를 네 번 거절하고 30세에 죽었다 (시칠리아 묘비)', { hp: 112, atk: 8, def: 7, hand: 5, rank: 'veteranus', wins: 6, fights: 8, lineage: 'nature' }),
+  L('spiculus', '스피쿨루스', 'murmillo', 24, 'normal', 'even', undefined, 1.7, '네로가 총애해 집과 땅을 내렸다. 네로가 죽던 밤 그를 찾았으나 오지 않았다 (수에토니우스)', { hp: 122, atk: 8, def: 9, hand: 4, rank: 'veteranus', wins: 8, fights: 9, lineage: 'nickname' }),
+  L('celadus', '켈라두스', 'thraex', 19, 'early', 'field', undefined, 1.8, '"소녀들의 한숨, 세 번 싸워 세 번 이긴 켈라두스" (폼페이 낙서)', { hp: 92, atk: 10, def: 4, hand: 7, rank: 'veteranus', wins: 3, fights: 3, lineage: 'nickname' }),
+  L('crescens', '크레스켄스', 'retiarius', 19, 'early', 'pupil', undefined, 1.8, '"밤의 소녀들의 의사, 크레스켄스" (폼페이 낙서)', { hp: 98, atk: 8, def: 2, hand: 9, rank: 'tiro', wins: 2, fights: 2, lineage: 'nature' }),
+  L('priscus', '프리스쿠스', 'provocator', 26, 'late', 'one', 'def', 1.55, '콜로세움 개장 경기에서 베루스와 끝내 승부를 못 내 둘 다 루디스를 받았다 (마르티알리스)', { hp: 118, atk: 7, def: 9, hand: 4, rank: 'veteranus', wins: 7, fights: 9, lineage: 'nickname' }),
+  L('verus', '베루스', 'hoplomachus', 26, 'normal', 'pupil', undefined, 1.6, '프리스쿠스의 맞수. 같은 날 같은 나무 검을 받았다 (마르티알리스)', { hp: 102, atk: 9, def: 6, hand: 6, rank: 'veteranus', wins: 7, fights: 9, lineage: 'nickname' }),
+  L('tetraites', '테트라이테스', 'eques', 23, 'normal', 'even', undefined, 1.7, '유리잔에 새겨져 갈리아·브리타니아까지 팔린 이름. 프루덴스를 꺾었다', { hp: 104, atk: 9, def: 4, hand: 8, rank: 'veteranus', wins: 5, fights: 6, lineage: 'place' }),
+  L('hermes', '헤르메스', 'dimachaerus', 21, 'early', 'even', undefined, 1.8, '"세 가지 무기로 싸우고 세 가지로 이긴다" (마르티알리스 5.24)', { hp: 96, atk: 10, def: 3, hand: 8, rank: 'veteranus', wins: 4, fights: 4, lineage: 'myth' }),
+  L('columbus', '콜룸부스', 'scissor', 21, 'late', 'field', undefined, 1.7, '"비둘기". 폼페이 낙서에 이름만 남았다 — 유형은 가공', { hp: 110, atk: 8, def: 5, hand: 7, rank: 'tiro', wins: 1, fights: 2, lineage: 'nature' }, false),
+  L('prudens', '프루덴스', 'laquearius', 23, 'normal', 'pupil', undefined, 1.75, '테트라이테스의 상대로 유리잔에 함께 새겨졌다 — 유형은 가공', { hp: 102, atk: 8, def: 3, hand: 9, rank: 'veteranus', wins: 4, fights: 6, lineage: 'nickname' }, false),
 ];
 export const LEGEND_BY_ID: Record<string, Legend> = Object.fromEntries(LEGENDS.map(l => [l.id, l]));
 export const legendOfType = (type: GType) => LEGENDS.find(l => l.type === type);

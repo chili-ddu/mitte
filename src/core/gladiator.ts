@@ -49,9 +49,9 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
   const g: Gladiator = { id: nextId++, name, lineage, type, rank, base, fights: wins + rng.int(0, 2), wins, missios: 0, injured: 0, buyPrice: 0, alive: true, age, scaeva: rng.chance(0.1) || undefined }; // 왼손잡이 10% (비문에 따로 표기될 만큼 귀했다)
   g.talent = rollTalent(rng); g.talentKnown = true; /* 2026-09-22 사용자: 자질도 처음부터 보인다 (성장형·상한과 같이) — 값에도 처음부터 들어간다 */ g.growth = rollGrowth(rng);
   let legend: Legend | undefined; if (opts.legend) { legend = LEGEND_BY_ID[opts.legend]; g.talent = 3; } else if (g.talent === 3) { const l = legendOfType(type); if (l && opts.taken && !opts.taken.has(l.id) && rng.chance(CONFIG.legend.p)) { legend = l; opts.taken.add(l.id); } } /* 천부 중 확률로 전설 (2026-09-22 사용자): 그 유형의 인물이 비어 있어야 한다. 아니면 그냥 천부 */
-  if (legend) { g.legend = legend.id; g.name = legend.name; age = legend.age; g.age = age; g.growth = { ...legend.growth }; g.dictata = [legend.dictata]; g.scaeva = undefined; }
-  g.cap = rollCaps(rng, type, base, age, g.growth, s, g.talent, legend?.pot); secondWind(g); /* 서른 넘은 늦바람 매물은 만들 때 바로 상한 +15% (2026-09-22) */
-  { const A = CONFIG.growthModel.grownByAge; const f = A.max * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); for (const k of ['hp', 'atk', 'def', 'hand'] as const) g.base[k] = Math.min(g.cap[k], g.base[k] + Math.round((g.cap[k] - g.base[k]) * f * rng.range(0.85, 1.15))); } // 나이만큼 자라 있다 (±15% 흔들림)
+  if (legend) { const F = legend.fixed; g.legend = legend.id; g.name = legend.name; age = legend.age; g.age = age; g.growth = { ...legend.growth }; g.dictata = [legend.dictata]; g.scaeva = undefined; g.lineage = F.lineage; g.rank = F.rank; g.wins = F.wins; g.fights = F.fights; g.base = { hp: F.hp, atk: F.atk, def: F.def, hand: F.hand, spd: s.spd }; } /* 전설은 전부 고정 (2026-09-22 사용자): 시작 능력치·서열·전적·유래까지 */
+  g.cap = rollCaps(rng, type, g.base, age, g.growth, s, g.talent, legend?.pot); secondWind(g); /* 서른 넘은 늦바람 매물은 만들 때 바로 상한 +15% (2026-09-22) */
+  if (!legend) { const A = CONFIG.growthModel.grownByAge; const f = A.max * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); for (const k of ['hp', 'atk', 'def', 'hand'] as const) g.base[k] = Math.min(g.cap[k], g.base[k] + Math.round((g.cap[k] - g.base[k]) * f * rng.range(0.85, 1.15))); } // 나이만큼 자라 있다 (±15% 흔들림)
   g.buyPrice = valueOf(g); return g; // 값은 난수가 아니라 능력치·승수로 (+ 상인의 눈만큼 자질). 자질은 초기 능력치에 안 얹는다 (성장 가중치)
 }
 
