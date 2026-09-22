@@ -3,7 +3,7 @@ import { S, myInk } from './state.js';
 import { INK, NPC_POSES, attackClipFor, clipLength, clipSkeleton, drawStickman, type DrawOpts, type Skeleton, walkSkeleton } from './stickman.js';
 import { type Contract, type Gladiator } from '../core/types.js';
 import { HOST } from '../core/hosts.js';
-import { bedPatient, bedCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam, rerollsLeft, canReroll, trainCap, palusTrainees, recommendTrainees } from '../core/game.js';
+import { bedPatient, bedCostOf, inBed, palusOf, palusTrainee, rosterCap, validTeam, rerollsLeft, canReroll, recommendTrainees } from '../core/game.js';
 import { EPITHET_BY_ID, accessoriesOf, type EpithetId } from '../core/epithets.js';
 import { sfx } from './sound.js';
 import { CH, GY, MEDIC, TOWN, drawCivilian } from './town.js';
@@ -495,14 +495,14 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
 // 훈련 서판 (2026-09-22 사용자: 서판 메뉴 대신 시장의 종처럼 그림 안에): 회랑 벽에 건 나무 명부. 세울 만한 사람이 있으면 밀랍이 살아 있고 누르면 추천 배치, 없으면 잿빛
 export const YARD_SIGN = { x: 258, y: 62, w: 30, h: 24 }; // 훈련장 좌표: 회랑 벽, 무기고 거치대(~240)와 네메시스 감실(270~) 사이 — 문루는 정문 화면의 것 (2026-09-22 사용자)
 export function drawYardSign(ctx: CanvasRenderingContext2D, t: number) {
-  const G = YARD_SIGN; const busy = new Set(Object.values(S.assign).flat()); const free = trainCap(S.st) - palusTrainees(S.st).length; const can = free > 0 && recommendTrainees(S.st, busy).length > 0;
+  const G = YARD_SIGN; const busy = new Set(Object.values(S.assign).flat()); const can = recommendTrainees(S.st, busy, true).length > 0; /* 추천은 찼어도 다시 세운다 */
   ctx.save(); ctx.translate(G.x, G.y); if (can) ctx.rotate(Math.sin(t * 1.3) * 0.02);
   ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(-6, 0); ctx.moveTo(0, -8); ctx.lineTo(6, 0); ctx.stroke(); // 못에 건 끈
   ctx.fillStyle = can ? '#8a6a44' : '#7a7267'; ctx.fillRect(-G.w / 2, 0, G.w, G.h); ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.5; ctx.strokeRect(-G.w / 2, 0, G.w, G.h); // 나무 틀
   ctx.fillStyle = can ? '#e8d9b5' : '#a8a196'; ctx.fillRect(-G.w / 2 + 3, 3, G.w - 6, G.h - 6); // 밀랍
   ctx.strokeStyle = can ? '#6b4a22' : '#8a8378'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-G.w / 2 + 6, 8 + i * 5); ctx.lineTo(G.w / 2 - 6 - (i === 2 ? 6 : 0), 8 + i * 5); ctx.stroke(); } // 글줄
   ctx.restore();
-  ctx.fillStyle = INK; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8; ctx.fillText(can ? '명부: 추천 배치' : free > 0 ? '세울 사람 없음' : '팔루스 찼음', G.x, G.y + G.h + 11); ctx.globalAlpha = 1;
+  ctx.fillStyle = INK; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8; ctx.fillText(can ? '명부: 추천' : '세울 사람 없음', G.x, G.y + G.h + 11); ctx.globalAlpha = 1;
 }
 // 계약 카드용 경기장 아이콘: 등급별 크기·재질
 // 경기장 그림: 등급마다 다르게 — 1 목조 경기장(나무 관람석 2단·기둥), 2 석조 원형경기장(돌 관람석 3단·아치), 3 로마 대경기장(4단·아치 줄·붉은 차양)

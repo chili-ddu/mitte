@@ -31,6 +31,7 @@ export interface State {
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;
   cellSel: number;
   cellsSort: 'cell' | 'power' | 'fatigue' | 'age'; // 켈라 카드 정렬 (2026-09-22)
+  cellsOrder: number[] | null; // 켈라 카드 순서(검투사 id): 켈라를 열거나 정렬을 바꿀 때만 다시 계산 — 즐겨찾기를 눌러도 그 자리에서 튀지 않는다 (2026-09-22 사용자)
   cellSide: 'glad' | 'empty' | null;
   cellPop: { cx: number; cy: number; fresh: boolean } | null;
   cellsOpen: boolean;

@@ -15,7 +15,9 @@ export const CELLS_SORT_KO: Record<CellsSort, string> = { cell: '들어온 순',
 function sorted(): Gladiator[] {
   const list = S.st.roster.filter(g => g.alive); const k = S.cellsSort;
   const key = (g: Gladiator) => k === 'power' ? -powerOf(g) : k === 'fatigue' ? -(g.fatigue ?? 0) : k === 'age' ? -(g.age ?? 0) : cellOf(S.st, g); /* '들어온 순' = 방 순서 */
-  return list.sort((a, b) => (Number(!!b.fav) - Number(!!a.fav)) || (key(a) - key(b)) || (cellOf(S.st, a) - cellOf(S.st, b)));
+  const ids = new Set(list.map(g => g.id)); const cached = S.cellsOrder;
+  if (cached && cached.length === list.length && cached.every(id => ids.has(id))) return cached.map(id => list.find(g => g.id === id)!); /* 열려 있는 동안은 순서를 지킨다 — 즐겨찾기를 눌러도 다음에 열거나 정렬을 바꿀 때 반영 (2026-09-22 사용자) */
+  const out = list.sort((a, b) => (Number(!!b.fav) - Number(!!a.fav)) || (key(a) - key(b)) || (cellOf(S.st, a) - cellOf(S.st, b))); S.cellsOrder = out.map(g => g.id); return out;
 }
 
 /* 켈라 본문: 정렬 줄 + 카드 격자. 침상·팔루스 고르기 모드에선 해당 없는 카드를 흐리게, 카드를 누르면 그 자리에 세운다 */
@@ -39,4 +41,4 @@ export function cellsGrid(): Node {
 }
 export const cellsAvailable = () => available(S.st).length; /* 처마 제목용 */
 /* 정렬 드롭박스: 처마의 닫기 왼쪽 (2026-09-22 사용자: 공간이 부족하면 드롭박스로) */
-export function cellsSortSelect(): Node { const sel = h('select', { class: 'cellsortsel', title: '정렬', onchange: (ev: Event) => { S.cellsSort = (ev.target as HTMLSelectElement).value as CellsSort; render(); } }, ...(Object.keys(CELLS_SORT_KO) as CellsSort[]).map(k => h('option', { value: k }, CELLS_SORT_KO[k]))) as HTMLSelectElement; sel.value = S.cellsSort; return sel; }
+export function cellsSortSelect(): Node { const sel = h('select', { class: 'cellsortsel', title: '정렬', onchange: (ev: Event) => { S.cellsSort = (ev.target as HTMLSelectElement).value as CellsSort; S.cellsOrder = null; render(); } }, ...(Object.keys(CELLS_SORT_KO) as CellsSort[]).map(k => h('option', { value: k }, CELLS_SORT_KO[k]))) as HTMLSelectElement; sel.value = S.cellsSort; return sel; }

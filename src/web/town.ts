@@ -1,7 +1,7 @@
 // 마을 캔버스: 카메라·이동·라니스타·입력. 장면 그림은 scenes.ts, 켈라는 cells.ts
 import { S } from './state.js';
 import { INK, NPC_POSES, drawStickman, type Skeleton, walkSkeleton } from './stickman.js';
-import { bedPatient, inBed, rerollsLeft, canReroll, rerollMarket, trainCap, palusTrainees, recommendTrainees, autoPalus } from '../core/game.js';
+import { bedPatient, inBed, rerollsLeft, canReroll, rerollMarket, recommendTrainees, autoPalus } from '../core/game.js';
 import { sfx } from './sound.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
@@ -138,16 +138,16 @@ export function renderTown() {
         const g = bedPatient(S.st, i);
         if (g) { S.gladSel = g.id; S.detail = { kind: 'roster', id: g.id }; render(); return; } // 누운 부상자 → 상세 (즉시 치료 장면은 2026-09-22 뺐다 — 즉시 치료가 없어진 뒤 남아 있던 껍데기)
         if (!S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { S.notice = '눕힐 부상자가 없다'; render(); return; }
-        S.bedPick = i; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } // 빈 침상 → 켈라에서 부상자 고르기
+        S.bedPick = i; S.cellsOpen = true; S.cellsOrder = null; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } // 빈 침상 → 켈라에서 부상자 고르기
       return; } // 시설 강화는 왼쪽 망치 토글에서
     if (S.view === 'yard') { // 문루 아래 지원자를 누르면 계약 패널, 네메시스 사당을 누르면 설명과 이번 시즌 봉헌 여부
       const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.yardX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);
       { const G = YARD_SIGN; if (Math.abs(lx - G.x) <= G.w / 2 + 4 && ly >= G.y - 10 && ly <= G.y + G.h + 12) { // 훈련 명부: 추천 배치 (2026-09-22 사용자)
-          const busy = new Set(Object.values(S.assign).flat()); const free = trainCap(S.st) - palusTrainees(S.st).length; const rec = recommendTrainees(S.st, busy);
-          if (free <= 0) { S.notice = '팔루스가 다 찼다'; render(); return; } if (!rec.length) { S.notice = '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다'; render(); return; }
-          const placed = autoPalus(S.st, busy); sfx.step(); { const why = (g: Gladiator) => { const r = rec.find(x => x.g === g); return r ? `${g.name} — ${r.why}` : g.name; }; const head = placed.slice(0, 3).map(why), rest = placed.slice(3); S.notice = placed.length ? `팔루스에 세웠다 (${placed.length}명)\n${head.join('\n')}${rest.length ? `\n외 ${rest.length}명: ${rest.map(g => g.name).join(' · ')}` : ''}` : '빈 팔루스가 없다'; } /* 이유는 앞 셋만, 나머지는 한 줄로 (2026-09-22 사용자: 여덟이면 너무 길다) */ save(); render(); return; } }
+          const busy = new Set(Object.values(S.assign).flat()); const rec = recommendTrainees(S.st, busy, true);
+          if (!rec.length) { S.notice = '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다'; render(); return; } /* 추천은 세워 둔 사람을 풀고 다시 세운다 — 찼어도 된다 (2026-09-22 사용자) */
+          const placed = autoPalus(S.st, busy); sfx.step(); { const why = (g: Gladiator) => { const r = rec.find(x => x.g === g); return r ? `${g.name} — ${r.why}` : g.name; }; const head = placed.slice(0, 3).map(why), rest = placed.slice(3); S.notice = placed.length ? `추천대로 세웠다 (${placed.length}명)\n${head.join('\n')}${rest.length ? `\n외 ${rest.length}명: ${rest.map(g => g.name).join(' · ')}` : ''}` : '빈 팔루스가 없다'; } /* 이유는 앞 셋만, 나머지는 한 줄로 (2026-09-22 사용자: 여덟이면 너무 길다) */ save(); render(); return; } }
       { const posts = palusPosts(S.st.ludus.palus), H = YARD.H; const first = posts[0] - 56, last = posts[posts.length - 1] + 12; // 팔루스 줄 전체 (기둥들과 그 왼쪽에 선 사람들)
-        if (lx >= first && lx <= last && ly >= H - 104 && ly <= H - 8) { if (!S.st.roster.some(x => x.alive && x.injured <= 0 && x.status !== 'doctor')) { S.notice = '세울 검투사가 없다'; render(); return; } S.palusMode = true; S.bedPick = null; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } } // 팔루스 줄을 누르면 켈라가 열려 배정 모드 (방을 누르면 세우고, 다시 누르면 내려온다)
+        if (lx >= first && lx <= last && ly >= H - 104 && ly <= H - 8) { if (!S.st.roster.some(x => x.alive && x.injured <= 0 && x.status !== 'doctor')) { S.notice = '세울 검투사가 없다'; render(); return; } S.palusMode = true; S.bedPick = null; S.cellsOpen = true; S.cellsOrder = null; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } } // 팔루스 줄을 누르면 켈라가 열려 배정 모드 (방을 누르면 세우고, 다시 누르면 내려온다)
       /* 네메시스 감실 설명 팝업은 뺐다 (2026-09-22 사용자) — 감실은 그림으로만 */
       return; }
     if (S.view === 'ludus') { const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, ly = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 기준 좌표 (발 = 0)

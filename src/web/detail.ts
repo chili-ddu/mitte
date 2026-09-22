@@ -212,7 +212,7 @@ function detailRight(g: Gladiator, kind: DetailKind): { mid: Node; side: Node } 
   const have = new Set(g.dictata ?? []); const career = g.career ?? {};
   const chip = (cls: string, name: string, title: string) => h('span', { class: `badge chip dict ${cls}`, title }, name);
   const basics = basicDictataOf(g.type).map(d => chip('basic', d.name, `${d.name} — 처음부터 안다. ${d.desc}`));
-  const legends = masteryOf(g).filter(m => m.layer === 'legend').map(m => chip('legend', m.name, `${m.name} — 전설의 고유 딕타타. ${m.ko}${g.legend ? ` · 전설 ${legendGen(g.legend, S.st.graveyard, S.st.hall?.map(x => x.name) ?? [])}대: ${LEGEND_BY_ID[g.legend]?.lore ?? ''}` : ''}`));
+  const legends = masteryOf(g).filter(m => m.layer === 'legend').map(m => chip('lgd', m.name, /* 'legend' 클래스는 범례(.legend) 규칙에 걸려 딕타타 줄이 깨졌다 (2026-09-22 사용자) */ `${m.name} — 전설의 고유 딕타타. ${m.ko}${g.legend ? ` · 전설 ${legendGen(g.legend, S.st.graveyard, S.st.hall?.map(x => x.name) ?? [])}대: ${LEGEND_BY_ID[g.legend]?.lore ?? ''}` : ''}`));
   const seen = new Set<string>(); const cands = masteryCandidates(g.type).filter(m => { const dup = seen.has(m.name); seen.add(m.name); return !dup; }).map(m0 => { const same = masteryCandidates(g.type).filter(x => x.name === m0.name); const m = same.find(x => have.has(x.id)) ?? same.find(x => (g.dictataPast ?? []).includes(x.id)) ?? m0; /* 같은 이름이 두 층에 걸리면(클래스·유형의 '재돌격'·'뛰어넘기') 칩은 하나 — 익히는 것도 이름당 하나다 */
     const on = have.has(m.id), past = (g.dictataPast ?? []).includes(m.id), now = career[m.cond.key] ?? 0;
     return chip(on ? 'on' : past ? 'past' : 'off', m.name, `${m.name} — ${m.ko} (${m.cond.ko}${on ? '' : `, 지금 ${now}`})${past ? ' · 자리에서 밀려나 다시 익히지 않는다' : ''}`); });

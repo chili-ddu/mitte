@@ -140,9 +140,9 @@ export function putAtPalus(st: GameState, g: Gladiator, slot: number): boolean {
 export function leavePalus(st: GameState, g: Gladiator) { const u = (st.ludus.palusUse ??= []); for (let i = 0; i < u.length; i++) if (u[i] === g.id) u[i] = null; }
 export function prunePalus(st: GameState) { const u = (st.ludus.palusUse ??= []); for (let i = 0; i < u.length; i++) { const id = u[i]; if (id == null) continue; const g = st.roster.find(x => x.id === id); if (!g || !g.alive || g.injured > 0 || g.status === 'doctor') u[i] = null; } }
 // 훈련 추천(2026-09-21 사용자): 누구를 팔루스에 세울까 — 남은 폭이 크고, 지금 나이대·성장형·자질로 빨리 자라고, 덜 지친 사람. 다 큰 사람·부상자·독토르·이미 선 사람은 뺀다
-export function recommendTrainees(st: GameState, exclude: Set<number> = new Set()): { g: Gladiator; score: number; why: string }[] {
+export function recommendTrainees(st: GameState, exclude: Set<number> = new Set(), ignorePlaced = false): { g: Gladiator; score: number; why: string }[] { /* ignorePlaced: 이미 팔루스에 선 사람도 후보로 (추천이 배치를 풀고 다시 세울 때, 2026-09-22) */
   const out: { g: Gladiator; score: number; why: string }[] = [];
-  for (const g of st.roster) { if (!g.alive || g.injured > 0 || g.status === 'doctor' || exclude.has(g.id) || palusOf(st, g) >= 0 || fullyGrown(g)) continue;
+  for (const g of st.roster) { if (!g.alive || g.injured > 0 || g.status === 'doctor' || exclude.has(g.id) || (!ignorePlaced && palusOf(st, g) >= 0) || fullyGrown(g)) continue;
     const d = doctorFor(st, g.type); const stats: GrowStat[] = ['hp', 'atk', 'def', 'hand'];
     const room = stats.reduce((a, k) => a + Math.max(0, capOf(g, k) - g.base[k]) / Math.max(1, g.base[k]), 0) / 4; // 남은 폭 (비율)
     const speed = stats.reduce((a, k) => a + growthSpeed(g, k, !!(d && d !== g)), 0) / 4;
@@ -156,8 +156,8 @@ export function recommendTrainees(st: GameState, exclude: Set<number> = new Set(
 // 추천대로 빈 팔루스를 채운다. 돌아온 것 = 세운 사람들
 /* 침상 추천(2026-09-22 사용자): 침상 밖 부상자를 오래 누울 사람부터 빈 침상에 눕힌다. 돌아오는 값 = 눕힌 사람들 */
 export function autoBeds(st: GameState): Gladiator[] { const out: Gladiator[] = []; const waiting = st.roster.filter(g => g.alive && g.injured > 0 && !inBed(st, g)).sort((a, b) => b.injured - a.injured); for (const g of waiting) { for (let k = 0; k < st.ludus.beds; k++) { if (bedPatient(st, k)) continue; if (putInBed(st, g, k)) { out.push(g); break; } } } return out; }
-export function autoPalus(st: GameState, exclude: Set<number> = new Set()): Gladiator[] {
-  const placed: Gladiator[] = []; const free = Array.from({ length: st.ludus.palus }, (_, i) => i).filter(i => !palusTrainee(st, i));
+export function autoPalus(st: GameState, exclude: Set<number> = new Set()): Gladiator[] { /* 추천: 세워 둔 사람을 전부 풀고 추천 조합으로 다시 세운다 (2026-09-22 사용자) */
+  st.ludus.palusUse = []; const placed: Gladiator[] = []; const free = Array.from({ length: st.ludus.palus }, (_, i) => i);
   for (const r of recommendTrainees(st, exclude)) { const slot = free.shift(); if (slot == null) break; if (putAtPalus(st, r.g, slot)) placed.push(r.g); }
   return placed;
 }

@@ -288,9 +288,9 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
     // 검투사 개인 정보는 켈라에서 본다 (여기서는 훈련 시설과 독토르만)
     if (docs.length) out.push(item('idle', `독토르 ${docs.map(g => `${g.name}(${TYPE_KO[g.type]})`).join(', ')} — 같은 유형 훈련 +1~2.`));
     out.push(item('idle', `팔루스 ${trainCap(S.st)}개 · 세운 검투사 ${palusTrainees(S.st).length}명 · 훈련 폭 +${1 + gymBonus(S.st)}`, helpBtn('훈련', `훈련은 훈련장의 팔루스(기둥)에 검투사를 세워서 합니다. 빈 기둥을 누르면 켈라에서 세울 검투사를 고르고, 선 검투사를 누르면 공격·방어·기술 중 무엇을 단련할지 정합니다. 시즌이 끝날 때 훈련하며 팔루스 수가 곧 훈련 인원입니다. 훈련비는 따로 없고 팔루스 유지비(${CONFIG.upkeepFacility.palus}/개)에 듭니다. 출전 검투사도 세울 수 있지만 피로가 쌓일 수 있습니다. 세우지 않은 검투사는 피로가 있으면 쉬고, 없으면 시범(명예 +1)을 합니다. 부상자는 요양합니다.`)));
-    { const freeN = trainCap(S.st) - palusTrainees(S.st).length; const busy = new Set(Object.values(S.assign).flat()); const rec = recommendTrainees(S.st, busy).slice(0, Math.max(freeN, 1)); // 이번 시즌 출전자는 뺀다 (출전 뒤 훈련은 피로가 쌓인다)
+    { const freeN = trainCap(S.st) - palusTrainees(S.st).length; const busy = new Set(Object.values(S.assign).flat()); const rec = recommendTrainees(S.st, busy, true).slice(0, Math.max(trainCap(S.st), 1)); // 이번 시즌 출전자는 뺀다 (출전 뒤 훈련은 피로가 쌓인다)
       out.push(item(freeN > 0 ? 'idle' : 'warn', freeN > 0 ? (rec.length ? `추천: ${rec.map(r => `${r.g.name} (${r.why})`).join(' / ')}` : '세울 만한 사람이 없다 — 다 컸거나 다쳤거나 출전한다') : '팔루스가 다 찼다',
-        freeN > 0 && rec.length ? h('button', { class: 'small', title: '남은 폭이 크고 지금 빨리 자라는 사람부터 빈 팔루스에 세운다. 이번 시즌 출전자·부상자·다 큰 사람은 뺀다', onclick: () => { const placed = autoPalus(S.st, busy); toast(placed.length ? `${placed.map(g => g.name).join(', ')} 을(를) 팔루스에 세웠다` : '세울 사람이 없다', placed.length ? 'good' : undefined); save(); render(); } }, '추천 배치') : null)); } /* 훈련 추천 (2026-09-21 사용자) */
+        rec.length ? h('button', { class: 'small', title: '세워 둔 사람을 풀고, 남은 폭이 크고 빨리 자라는 사람부터 다시 세운다. 이번 시즌 출전자·부상자·다 큰 사람은 뺀다', onclick: () => { const placed = autoPalus(S.st, busy); toast(placed.length ? `${placed.map(g => g.name).join(', ')} 을(를) 팔루스에 세웠다` : '세울 사람이 없다', placed.length ? 'good' : undefined); save(); render(); } }, '추천') : null)); } /* 훈련 추천 (2026-09-21 사용자) */
     out.push(h('div', { class: 'dlist' }, ...facRows('yard')));
     return out;
   }
