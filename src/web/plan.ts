@@ -9,7 +9,7 @@ import { LINEAGE_KO, TYPE_KO, powerOf, powerNow, rentFee } from '../core/gladiat
 import { HOST } from '../core/hosts.js';
 import { CLAUSES, acceptedOf, clausesOf, setClause } from '../core/clauses.js';
 import { sfx } from './sound.js';
-import { classicMatchup, isClassicPair, partnersOf, canPairFrom } from '../core/classic.js';
+import { classicMatchup, isClassicPair, partnersOf, canPairFrom, fitsClassic } from '../core/classic.js';
 import { countTraits, TRAITS, TRAIT_KO, TRAIT_NOTE, TYPE_TRAITS } from '../core/traits.js';
 import { matchupNotes } from '../core/matchup.js';
 import { TYPE_MATCHUP } from '../core/matchup-table.js';
@@ -229,7 +229,8 @@ export function renderPlan() {
     const vetBlock = (() => { if (!selC || (at != null && !elsewhere0) || g.rank === 'veteranus') return false; const team = (S.assign[selC.id] ?? []).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const left = selC.size - team.length, vetsLeft = selC.needVeterans - team.filter(x => x.rank === 'veteranus').length;
       const freeVets = S.st.roster.filter(v => v.rank === 'veteranus' && v.alive && !v.injured && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
       return left > 0 && vetsLeft > 0 && (vetsLeft >= left || freeVets < vetsLeft); })(); // 다른 계약에 있는 티로도 이 계약의 베테 몫 자리에는 못 온다
-    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable;
+    const pairBlock = !!selC?.classic && at == null && !fitsClassic([...(S.assign[selC.id] ?? []).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x).map(x => x.type), g.type], selC.enemy.map(e => e.type)); /* 정식 대결: 주최자가 주문한 짝이 아니면 애초에 못 세운다 (2026-09-22 사용자: 세운 뒤 '짝이 아닙니다' 대신) */
+    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable && !pairBlock;
     // 교체 뒤에도 베테라누스 조건을 채우는가 (마지막 자리의 베테라누스를 티로로 바꾸면 안 된다)
     // 교체 대상: 화면의 마지막 자리 = 마지막에 넣은 티로. 티로가 없으면 마지막 베테라누스. (베테를 왼쪽 대장 자리에 두므로 '마지막에 넣은 사람'이 아니라 자리 순서로)
     const swapTarget = (() => { if (!selC) return null; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return null; const gl = ids.map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const tiros = gl.filter(x => x.rank !== 'veteranus'); return (tiros.length ? tiros[tiros.length - 1] : gl[gl.length - 1]) ?? null; })();
@@ -246,11 +247,12 @@ export function renderPlan() {
     // 못 나가는 까닭은 칩이 아니라 흐려진 카드 위에 한 줄로 적는다 (2026-09-17 사용자)
     // 못 나가는 까닭은 하나씩만 적는다. 인원이 모자라 계약이 안 서는 것은 사람의 사정이 아니므로 흐리게만 두고 말하지 않는다 (2026-09-17 사용자)
     const vetShort = !!selC && g.rank !== 'veteranus' && available(S.st).filter(x => x.rank === 'veteranus').length < selC.needVeterans; // 베테라누스가 모자라 티로가 낄 자리가 없다 = '티로는 못 나감' 과 같은 말
-    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 침상에 눕혀야 낫는다 — 즉시 치료는 없다` }
+    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 침상에 눕혀야 낫는다` }
       : g.fought ? { t: '출전중', tip: '이번 시즌에 이미 모래를 밟았다 — 한 시즌에 한 번만 나간다' }
       : vetBlock || swapVetBlock || vetShort ? { t: '출전불가', tip: '주최자가 신참을 받지 않는다 — 남은 자리는 티로가 채울 수 없다' }
-      : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' } : null;
-    const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || (!!selC && at == null && !!g.fought);
+      : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' }
+      : pairBlock ? { t: '짝 아님', tip: `주최자가 주문한 짝이 아니다 — ${selC!.enemy.map(e => `${TYPE_KO[e.type]}에게 ${partnersOf(e.type).map(t => TYPE_KO[t]).join('·')}`).join(', ')}` } : null;
+    const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || pairBlock || (!!selC && at == null && !!g.fought);
     const ready = !dis && (canAssign || canSwap || (elsewhere && !!selC && !unfulfillable && swapKeepsVets)); // 누르면 위 자리로 들어갈 수 있는 카드: 빈 홈과 같은 파란 신호
     const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; // 복수 기회는 우리 검투사 타일에
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 손놀림 ${g.base.hand} 걸음 ${g.base.spd}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;

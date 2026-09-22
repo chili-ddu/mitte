@@ -55,7 +55,7 @@ export function eul(word: string): string { const c = word.charCodeAt(word.lengt
 export function eun(word: string): string { const c = word.charCodeAt(word.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0 ? '은' : '는'; } // 받침이 있으면 '은'
 export function hideTip() { if (S.tipEl) { S.tipEl.remove(); S.tipEl = null; } S.tipFor = null; }
 export const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-tip]') as Element | null;
-export const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile');
+export const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile, .gcwrap, .rvpick'); /* .gcwrap: 켈라 카드 격자에서 카드 안의 명예·피로·막대(title 있음)를 탭해도 말풍선이 아니라 카드가 열리게 (2026-09-22 사용자: 툴팁이 눌려 상세로 못 들어간다). 설명은 길게 누르기 */
 export const isChip = (el: Element) => el.matches('.badge, .eff, .tile, .tierchip, .host, .rank, .stars') && !el.closest('button');
 export const sq = (t: GType) => h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, glyphSvg(t));
 // 유형 = 주장비 + 보조장비: 같은 유형 색의 작은 네모 둘 (2026-09-22 사용자) — 상세에서 쓴다

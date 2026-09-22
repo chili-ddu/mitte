@@ -30,8 +30,8 @@ function comboByDiff(rng: Rng, pool: Gladiator[], size: number, diff: Difficulty
   const lo = diff === 'weak' ? 0 : diff === 'even' ? third : Math.max(0, n - third), hi = diff === 'weak' ? third : diff === 'even' ? Math.max(third + 1, n - third) : n;
   return all[rng.int(lo, Math.max(lo, hi - 1))];
 }
-export function offerContracts(rng: Rng, season: number, fame: number, rivals: Rival[] = [], roster: Gladiator[] = []): Contract[] {
-  const n = rng.int(2, 4); // 1대1 위주라 계약 수를 늘려 시즌 총 출전 자리를 유지
+export function offerContracts(rng: Rng, season: number, fame: number, rivals: Rival[] = [], roster: Gladiator[] = [], max: number = CONFIG.postersMax): Contract[] {
+  const n = Math.max(1, Math.min(max, rng.int(2, 4))); /* max: 벽에서 도전·도전장 자리를 뺀 나머지 (2026-09-22) */ // 1대1 위주라 계약 수를 늘려 시즌 총 출전 자리를 유지
   const out: Contract[] = [];
   const mine = roster.filter(g => g.alive && g.status !== 'doctor'); const ref = mine.length ? teamPower(mine) / mine.length : 0; // 내 검투사 한 명의 평균 전력 (없으면 옛 방식)
   const CD = CONFIG.contractDiff; const dist = [...DIST[n]].map(d => season <= 2 && d === 'strong' ? 'even' : season >= CD.lateFrom && d === 'weak' && rng.chance(CD.lateWeakToStrong) ? 'strong' : d).sort(() => rng.next() - 0.5); // 순서는 섞는다. 첫 두 시즌은 강한 상대 없음, 후반엔 약한 계약이 강한 계약으로 바뀌기도

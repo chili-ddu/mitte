@@ -10,7 +10,6 @@ import { View, render, save } from './main.js';
 import { h } from './dom.js';
 import { roadBoard } from './board.js';
 import { openSeasonFlow } from './plan.js';
-import { openConfirm } from './detail.js';
 
 // 세로 기준 논리 무대 400×(600~900)를 기기에 맞춰 배율 조정. 안전 영역(노치·홈 바)은 빼고 잰다. 세로 전용 게임 — PC 나 옆으로 든 폰에서는 폰 모양 무대를 가운데 세운다
 export const VIEW_W = 440; // 마을 장면의 보이는 폭 (월드 단위): 라니스타 주변만, 이웃 장소는 걸어가서 본다
@@ -137,7 +136,7 @@ export function renderTown() {
       const beds = Math.max(1, Math.min(4, S.st.ludus.beds)); const H = MEDIC.H;
       for (let i = 0; i < beds; i++) { const bx = 16 + i * 80; if (!(lx >= bx - 4 && lx <= bx + 88 && ly >= H - 90 && ly <= H - 4)) continue;
         const g = bedPatient(S.st, i);
-        if (g) { openConfirm(g, 'heal'); return; } // 누운 부상자 → 치료 장면
+        if (g) { S.gladSel = g.id; S.detail = { kind: 'roster', id: g.id }; render(); return; } // 누운 부상자 → 상세 (즉시 치료 장면은 2026-09-22 뺐다 — 즉시 치료가 없어진 뒤 남아 있던 껍데기)
         if (!S.st.roster.some(x => x.injured > 0 && !inBed(S.st, x))) { S.notice = '눕힐 부상자가 없다'; render(); return; }
         S.bedPick = i; S.cellsOpen = true; S.cellPop = null; S.cellSide = null; S.sheet = null; render(); return; } // 빈 침상 → 켈라에서 부상자 고르기
       return; } // 시설 강화는 왼쪽 망치 토글에서
@@ -152,7 +151,7 @@ export function renderTown() {
       /* 네메시스 감실 설명 팝업은 뺐다 (2026-09-22 사용자) — 감실은 그림으로만 */
       return; }
     if (S.view === 'ludus') { const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, ly = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 기준 좌표 (발 = 0)
-      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if ((S.st.applicants.length && yx >= YARD.W - 58 - S.st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) || (yx >= YARD.W - 92 && yx <= YARD.W - 38 && yy >= 57 && yy <= YARD.H - 20)) { S.sheet = 'applicants'; S.cellsOpen = false; render(); return; } } /* 문(아치)을 눌러도 지원자 목록 (2026-09-22 사용자) */ // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
+      { const yx = lx + (TOWN.forumX - TOWN.yardX), yy = ly + 210; if ((S.st.applicants.length && yx >= YARD.W - 58 - S.st.applicants.length * 26 - 12 && yx <= YARD.W - 44 && yy >= 120 && yy <= 216) || (yx >= YARD.W - 92 && yx <= YARD.W - 38 && yy >= 57 && yy <= YARD.H - 20)) { if (S.st.applicants.length) { S.gladSel = S.st.applicants[0].id; S.detail = { kind: 'applicant', id: S.st.applicants[0].id }; S.sheet = null; } else S.sheet = 'applicants'; S.cellsOpen = false; render(); return; } } /* 문(아치)·문루 아래 지원자 → 첫 지원자의 상세 (시장처럼, 스와이프로 다음). 없으면 안내 시트 (2026-09-22 사용자) */ // 문루 아래 지원자 (문루는 훈련장 좌표에 그려지지만 포룸 화면에 보인다)
       if (lx >= 0 && lx <= FORUM.wallW + 20 && ly >= -186 && ly <= 8) { if (S.zoomIn) return; S.zoomIn = { start: performance.now(), dur: 560, wx: TOWN.forumX + FORUM.wallW / 2, wy: GY + FORUM.posterY0 + FORUM.posterGapY / 2 + FORUM.posterH / 2, k: Math.min(1.8, S.VW / FORUM.wallW), done: () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); } }; return; } // 공고벽·심부름꾼 → 줌인 연출 뒤 편성
       return; } // 소식은 헤더의 두루마리 아이콘에서
     if (S.view !== 'market') return; const x = ((ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.marketX - MK.ox) / MK.sc; // 시장 장면 좌표 (축소·가운데 정렬 반영)

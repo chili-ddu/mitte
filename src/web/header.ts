@@ -3,7 +3,7 @@ import { S } from './state.js';
 import { SEASON_KO, upkeepOf } from '../core/game.js';
 import { TYPE_KO } from '../core/gladiator.js';
 import { h } from './dom.js';
-import { render } from './main.js';
+import { render, closeOverlays } from './main.js';
 import { renderDash } from './sheets.js';
 
  // 첫 시즌 안내를 껐는가 (2번째 시즌부터는 자동으로 끝)
@@ -61,5 +61,5 @@ export function headerEl(): Node {
 }
 // 소식 배지: 정문 항목 중 할 일·경고 수
 const newsCount = () => renderDash('ludus', true).filter(n => n instanceof HTMLElement && /\b(todo|warn)\b/.test(n.className)).length;
-function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${S.sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { S.sheet = S.sheet === 'news' ? null : 'news'; S.detail = null; S.shownDetail = null; S.cellsOpen = false; S.bedPick = null; S.palusMode = false; S.cellPop = null; S.cellSide = null; render(); } }); // 소식도 다른 시트·켈라와 배타적
+function newsBtn(): Node { const n = newsCount(); const b = h('button', { class: `newsbtn${S.sheet === 'news' ? ' on' : ''}`, title: '소식', onclick: () => { const was = S.sheet; closeOverlays(); S.sheet = was === 'news' ? null : 'news'; render(); } }); // 소식도 다른 시트·켈라와 배타적
   b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>'; if (n) b.append(h('span', { class: 'nbadge' }, String(n))); return b; } // 두루마리(소식)

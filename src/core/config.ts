@@ -30,7 +30,7 @@ export const CONFIG = {
   deathComp: { priceMult: 1.2, perWin: 0 }, // 배상 = 지금 값(valueOf: 능력치·승수) × 1.2 (대체 비용). 승수는 값에 이미 들어 있다
   sellBase: 0.7,   // 매각가 = 지금 값 × 0.7 (키우면 구매가를 넘길 수 있다)
   sellPerWin: 0,   // (구) 승당 가산. 값에 포함되어 미사용
-  healCost: 500,
+  /* healCost 삭제 (2026-09-22): 즉시 치료는 2026-09-21 뺐다 — 침상 치료비는 ludus.medicine.healCostByLevel */
   trainHpGain: [8, 14] as const, // 체력 훈련 상승폭 범위(무작위): 공·방 +1 의 값(전력식 4.5)을 가운데 두고 위아래로 (2026-09-17 사용자: 고정 말고 범위로)
   hpPenPerStat: 5, // 공·방을 1 깎는 원인(피로)은 체력도 이만큼 깎는다 — 지친 몸·늙은 몸은 맞으면 더 빨리 무너진다 (2026-09-17 사용자)
   trainGainBase: 2, // 훈련 한 번의 공·방·손놀림 상승 기본치 (2026-09-20: 승수 성장을 빼며 1 → 2 — 훈련이 유일한 능력치 성장)
@@ -139,7 +139,7 @@ export const CONFIG = {
   // 상대 파밀리아 살림(2026-09-20 docs/10): 시즌 수가 아니라 자기 경기 결과로 자란다. 금고로 사고 훈련하고, 기세(−2~+2)로 도전장을 낸다
   rivals: { quality: { local: 0.9, major: 1.0, grand: 1.06 } as Record<'local' | 'major' | 'grand', number>, /* 파밀리아 품질(2026-09-22): 지방은 훈련도 독토르도 부실하다 — 능력치 ×0.9(인당 전력 −15 안팎, 우리 티로가 7할). 큰 루두스 그대로, 최대 루두스 ×1.06 */ purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 2, trainGain: 2, trainHp: 10, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, focusP: 0.6 }, // focusP: 즐겨 사는 클래스를 고를 확률
   // 도전 계약(docs/10): 파밀리아가 우리를 지목하거나(in) 우리가 건다(out). 상한 없음, 상금 ×1.5, 호감도 +2, 필수 배정. 거절은 벌점 없이 그쪽 기세 +1
-  challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, acceptBase: 0.55, acceptMood: 0.15, acceptWeak: -0.3, acceptStrong: 0.2, maxPerSeason: 2 },
+  challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, acceptBase: 0.55, acceptMood: 0.15, acceptWeak: -0.3, acceptStrong: 0.2, maxPerSeason: 1 }, // maxPerSeason 2 → 1 (2026-09-22 사용자: 도전장 받은 것·우리가 건 것·간판 내기가 한 시즌에 셋 겹쳐 곤란했다) — 도전 성격 계약은 시즌에 하나
   mastery: { slots: 4, needDoctor: true, rivalVetP: 0.1 }, // 2026-09-22 사용자: 자리 3 → 4 (후보 열둘 중 넷). 열리는 조건 없음 — 문턱을 넘으면 그대로 익혀 카드에 보인다
   legend: { p: 0.75 },                                                       // 2026-09-22 사용자: 천부가 곧 전설은 아니다 — 천부(2%) 중 이 확률로 고정 인물(그 유형이 비어 있을 때). 나머지는 그냥 천부
   // 성장 모델(2026-09-21 docs/09 §7): 초기 굴림 없음 — 현재치 = 유형 기본 × 서열(rankMul), 개체 차이는 잠재치·나이·성장형(곡선 넷 × 결 넷)·자질

@@ -1,6 +1,6 @@
 // 켈라: 방 격자를 검투사 카드로 (2026-09-22 사용자: 방 그림 대신 카드, 방 바꾸기 없음, 정렬·즐겨찾기)
 import { S } from './state.js';
-import { available, cellOf, CELL_Q_KO, palusOf, palusTrainee, putAtPalus, leavePalus, putInBed, inBed } from '../core/game.js';
+import { available, cellOf, CELL_Q_KO, occupantOf, palusOf, palusTrainee, putAtPalus, leavePalus, putInBed, inBed } from '../core/game.js';
 import { type Gladiator } from '../core/types.js';
 import { powerOf } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
@@ -33,9 +33,9 @@ export function cellsGrid(): Node {
     const card = gladCard(g, { size: CARD_PORTRAIT, dis: !!pick && !ok, sel: pick === 'palus' && onP, onclick: () => onCard(g) });
     const fav = h('button', { class: `favbtn${g.fav ? ' on' : ''}`, title: g.fav ? '즐겨찾기 해제' : '즐겨찾기 — 켈라에서 늘 앞에 선다', onclick: (ev: Event) => { ev.stopPropagation(); g.fav = !g.fav; save(); render(); } }, g.fav ? '★' : '☆');
     return h('div', { class: `cellslot${ok ? '' : ' dim'}` }, card, h('div', { class: 'roomtag' }, fav, h('span', { class: `badge chip bedding q${q}`, title: `숙소 ${CELL_Q_KO[q]} — 상세의 숙소 칸에서 손본다` }, CELL_Q_KO[q]), onP ? h('span', { class: 'badge chip palus' }, '훈련 중') : null, inBed(S.st, g) ? h('span', { class: 'badge chip bed' }, '침상') : null)); };
-  /* 빈 방 카드는 뺐다 (2026-09-22 사용자) — 남은 자리는 처마의 n/m 이 말한다 */
+  const emptySlots = Array.from({ length: built }, (_, k) => k).filter(k => !occupantOf(S.st, k)).map(k => { const q = S.st.ludus.cells[k] ?? 0; return h('div', { class: 'cellslot empty' }, h('div', { class: 'gcard ghost' }), h('div', { class: 'roomtag' }, h('span', { class: 'favbtn' }, '☆'), h('span', { class: `badge chip bedding q${q}` }, CELL_Q_KO[q]))); }); /* 지은 빈 방: 글자 없는 점선 카드 + 그 방의 잠자리 (2026-09-22 사용자: '빈 방' 글자만 빼기) */
   const unbuilt = Array.from({ length: max - built }, () => h('div', { class: 'cellslot unbuilt', title: '아직 짓지 않은 방 — 누르면 시설 강화', onclick: () => { S.sheet = 'facilities'; S.cellsOpen = false; render(); } }, h('div', { class: 'gcard ghost brick' }), h('div', { class: 'roomtag' }, h('span', { class: 'favbtn' }, '☆'), h('span', { class: 'badge chip bedding q0' }, CELL_Q_KO[0])))); /* 글자 없는 벽돌 카드, 아래 줄은 간격을 맞추려 빈 즐겨찾기·맨바닥 (2026-09-22 사용자) */
-  return h('div', { class: 'cellsbody' }, h('div', { class: 'cellgrid' }, ...sorted().map(slot), ...unbuilt));
+  return h('div', { class: 'cellsbody' }, h('div', { class: 'cellgrid' }, ...sorted().map(slot), ...emptySlots, ...unbuilt));
 }
 export const cellsAvailable = () => available(S.st).length; /* 처마 제목용 */
 /* 정렬 드롭박스: 처마의 닫기 왼쪽 (2026-09-22 사용자: 공간이 부족하면 드롭박스로) */

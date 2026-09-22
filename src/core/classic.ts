@@ -16,6 +16,12 @@ export function classicMatchup(mine: GType[], theirs: GType[]): boolean { return
 // 이 유형의 정식 짝들 (없는 유형은 없다 — 여덟 유형 모두 짝이 있다)
 export function partnersOf(t: GType): GType[] { return CLASSIC_PAIRS.flatMap(([x, y]) => x === t ? [y] : y === t ? [x] : []); }
 // 가진 유형들(중복 허용)로 상대 유형 전부에 짝을 세울 수 있는가 — 탐욕 매칭 (한 사람은 한 자리)
+/* 부분 짝: 지금 세운 사람들(mine, 상대보다 적어도 된다)을 서로 다른 상대에게 짝지을 수 있는가 — 편성 중에 짝이 아닌 사람을 미리 막는다 (2026-09-22 사용자) */
+export function fitsClassic(mine: GType[], theirs: GType[]): boolean {
+  if (mine.length > theirs.length) return false; const used = new Set<number>();
+  const rec = (i: number): boolean => { if (i === mine.length) return true; for (let k = 0; k < theirs.length; k++) { if (used.has(k) || !isClassicPair(mine[i], theirs[k])) continue; used.add(k); if (rec(i + 1)) return true; used.delete(k); } return false; };
+  return rec(0);
+}
 export function canPairFrom(mine: GType[], theirs: GType[]): boolean {
   // 가진 유형(중복 허용, 상대보다 많아도 됨)에서 상대 전원의 짝을 고를 수 있는가 — 상대 각각에 서로 다른 사람
   const rest = [...mine];

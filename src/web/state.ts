@@ -25,7 +25,7 @@ export interface State {
   helpSec: string | null; /* 특성·규칙 페이지에서 펼친 절 (null 이면 목차) — 2026-09-22 사용자: 뎁스 */
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
   gladSel: number | null;
-  detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null;
+  detail: { kind: 'roster' | 'market' | 'applicant'; id: number; confirm?: 'sell' | 'release' | 'buy'; solo?: boolean } | null; // applicant: 문 앞 자유민 지원자 (2026-09-22 사용자: 시장처럼 상세·스와이프)
   detailSwipe: 1 | -1 | null;
   setup: { color: string } | null; /* 새 게임 시작 표시: 색은 랜덤 (2026-09-21 색 고르기 창 삭제, 2026-09-18 유형 선택 삭제). render 가 보고 바로 새 게임을 만든다 */ /* 상세를 좌우로 밀어 이웃 검투사로 넘긴 방향 (들어오는 애니메이션에만 쓰고 바로 비운다) */
   cellDrag: { id: number; k0: number; px: number; py: number; over: number | null; moved: boolean } | null;

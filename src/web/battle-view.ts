@@ -549,11 +549,11 @@ export function renderBattle() {
       const recoilDx = rc && rk < 1 ? rc.dir * Math.sin(rk * Math.PI) * rc.dist * (1 - rk * 0.15) : 0;
       const pv = prevPos[id]; let sp = 0;
       let mdir: 0 | 1 | -1 = 0; // 이동 방향
-      if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) { mdir = p.x > pv.x ? 1 : -1; face[id] = mdir; } }
+      if (pv && dt > 0) { sp = Math.hypot(p.x - pv.x, p.y - pv.y) / dt; if (Math.abs(p.x - pv.x) > 0.3) { mdir = p.x > pv.x ? 1 : -1; if (isAlive) face[id] = mdir; } } /* 쓰러진 사람은 방향을 바꾸지 않는다 */
       prevPos[id] = { x: p.x, y: p.y };
       speedOf[id] = sp; phaseOf[id] = (phaseOf[id] ?? 0) + dt * (sp > 120 ? 16 : 7);
       if (sp > 40 && isAlive && Math.random() < dt * (sp > 140 ? 9 : 4)) addMark(p.x + (Math.random() - 0.5) * 6, p.y + 30, sp > 140 ? 'drag' : 'step', sp > 140 ? 9 : 4); // 모래에 자취가 남는다
-      const eng = engaged[id]; if (eng != null && hp[eng] > 0) face[id] = pos[eng].x >= p.x ? 1 : -1; // 붙은 상대는 물러날 때도 계속 본다 (등을 돌려 달리지 않는다)
+      const eng = engaged[id]; if (isAlive && eng != null && hp[eng] > 0) face[id] = pos[eng].x >= p.x ? 1 : -1; // 붙은 상대는 물러날 때도 계속 본다 (등을 돌려 달리지 않는다). 쓰러진 뒤엔 상대가 돌아다녀도 몸이 뒤집히지 않는다 (2026-09-22 사용자: 쓰러진 애가 좌우로 왔다 갔다)
       const a = clips[id]; const el = (ct - a.start) * 1000;
       let sk = clipSkeleton(a.clip, el);
       let lapDx = 0;
