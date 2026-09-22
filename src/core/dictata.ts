@@ -142,7 +142,7 @@ export const MASTERY: MasteryDef[] = [
   M('t_hop_wall', '밀집 창', 'type', 'hoplomachus', 'nearAllySec', 34, '아군 곁 200초 34', '아군을 노리는 적을 창으로 밀어낸다', { allyGuard: 0.3 }),
   M('t_eq_recharge', '재돌격', 'type', 'eques', 'charges', 5, '돌진 5', '넘어지거나 묶인 상대에 다시 돌진', { recharge: true }),
   M('t_eq_leap', '뛰어넘기', 'type', 'eques', 'd:dismount', 8, '말 위 돌진 8', '등 뒤 빈틈을 친다', { stumbleOnHit: { p: 0.3, sec: 0.6 } }),
-  M('t_eq_lance', '말 위 찌르기', 'type', 'eques', 'd:dismount', 13, '첫 돌진 적중 13', '말 위 돌진이 사거리 2 에서 시작', { mountedRange: true }),
+  M('t_eq_lance', '창 겨누기', 'type', 'eques', 'd:dismount', 13, '첫 돌진 적중 13', '말 위 돌진이 사거리 2 에서 시작', { mountedRange: true }), /* '말 위 찌르기' → '창 겨누기' (2026-09-22 사용자): 기본 딕타타 '기마 찌르기' 와 이름이 겹쳐 보였다 */
   M('t_ret_recover', '그물 회수', 'type', 'retiarius', 'misses', 3, '그물 빗나감 3', '빗나간 그물을 거둬 한 번 더', { netRecover: true }),
   M('t_ret_double', '삼지창 두 번', 'type', 'retiarius', 'd:net', 9, '그물 9', '묶인 상대를 연속으로', { afterHit: { p: 0.7, mult: 0.8, when: 'bound' } }),
   M('t_ret_far', '물러서며 던지기', 'type', 'retiarius', 'dmgTaken', 1180, '받은 피해 1,180', '거리에서 그물을 던진다 (성공 −.1)', { farNet: true }),
@@ -171,14 +171,15 @@ export const LEGEND_MASTERY: MasteryDef[] = [
   LG('prudens', '신중', '올가미 ×1.5 오래 묶고, 묶은 상대를 끌어당기고, 풀릴 때 70% 로 넘어뜨리고, 묶인 상대에 30% 로 한 타 더', { lassoSecMul: 1.5, lassoPull: true, lassoTrip: 0.7, afterHit: { p: 0.3, mult: 1.0, when: 'bound' } }),
 ];
 export const MASTERY_BY_ID: Record<string, MasteryDef> = Object.fromEntries([...MASTERY, ...LEGEND_MASTERY].map(m => [m.id, m]));
-export const MASTERY_SLOTS = 4;
 // 이 유형이 익힐 수 있는 후보 (네 층)
 export function masteryCandidates(type: GType): MasteryDef[] { const c = classOf(type); const ck = `${c.off}+${c.main}`; return MASTERY.filter(m => (m.layer === 'main' && m.owner === c.main) || (m.layer === 'off' && m.owner === c.off) || (m.layer === 'class' && m.owner === ck) || (m.layer === 'type' && m.owner === type)); }
 export const masteryOf = (g: { dictata?: string[]; type: GType; legend?: string }): MasteryDef[] => (g.dictata ?? []).map(id => MASTERY_BY_ID[id]).filter((m): m is MasteryDef => !!m && (m.layer === 'legend' ? m.owner === g.legend : masteryCandidates(g.type).includes(m)));
 export const masterySlotsUsed = (g: { dictata?: string[] }) => (g.dictata ?? []).filter(id => MASTERY_BY_ID[id]?.layer !== 'legend').length; // 전설의 고유 딕타타는 자리를 안 차지한다 // 유형이 바뀌면 안 맞는 층은 잠든다
-// 경력 누적으로 문턱을 넘은 후보 (아직 안 익힌 것, 이름이 같은 것은 하나만 — 후보끼리도, Codex 리뷰)
-export function masteryReady(g: { dictata?: string[]; career?: Record<string, number>; type: GType }): MasteryDef[] {
-  const have = new Set(g.dictata ?? []); const names = new Set((g.dictata ?? []).map(id => MASTERY_BY_ID[id]?.name)); const out: MasteryDef[] = [];
+// 경력 누적으로 문턱을 넘은 후보 (아직 안 익힌 것·밀려난 적 없는 것, 이름이 같은 것은 하나만 — 후보끼리도, Codex 리뷰)
+/* 자리가 찼을 때 밀려날 것: 가장 오래 전에 익힌 숙련(전설 고유는 제외). 없으면 null (2026-09-22 사용자: 숙련은 교체되는 방향) */
+export const masteryOldest = (g: { dictata?: string[] }): string | null => (g.dictata ?? []).find(id => MASTERY_BY_ID[id]?.layer !== 'legend') ?? null;
+export function masteryReady(g: { dictata?: string[]; dictataPast?: string[]; career?: Record<string, number>; type: GType }): MasteryDef[] {
+  const have = new Set([...(g.dictata ?? []), ...(g.dictataPast ?? [])]); /* 밀려난 것도 다시 안 익힌다 */ const names = new Set((g.dictata ?? []).map(id => MASTERY_BY_ID[id]?.name)); const out: MasteryDef[] = [];
   for (const m of masteryCandidates(g.type)) { if (have.has(m.id) || names.has(m.name) || (g.career?.[m.cond.key] ?? 0) < m.cond.n) continue; names.add(m.name); out.push(m); }
   return out;
 }

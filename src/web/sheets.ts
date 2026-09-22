@@ -1,23 +1,24 @@
 // 시트(시설·독토르·파밀리아·소식·지원자·규칙)와 대시보드 항목
 import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드 한 종류 (2026-09-17 사용자) */
 import { S, randomColor, teamColorOf } from './state.js';
-import { TYPE_TRAITS, TRAIT_KO } from '../core/traits.js';
-import { basicDictataOf, masteryCandidates } from '../core/dictata.js';
+import { TYPE_TRAITS, TRAIT_KO, type Trait } from '../core/traits.js';
+import { DICTATA, MASTERY } from '../core/dictata.js';
 import { COMPARE_KO } from '../core/rivals.js';
 import { merchantLine, CURVE_KO, CURVE_DESC, TRAIT_KO as GROWTH_TRAIT_KO, TRAIT_DESC } from '../core/growth.js';
-import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, bedCostOf, hireDoctor, inBed, injurySeasons, mortality, newGame, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollMarket, canReroll, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge, recommendTrainees, autoPalus } from '../core/game.js';
-import { type Gladiator } from '../core/types.js';
-import { LINEAGE_KO, TYPE_KO, TYPES } from '../core/gladiator.js';
+import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, facilityUpkeep, gymBonus, bedCostOf, hireDoctor, inBed, injurySeasons, mortality, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge, recommendTrainees, autoPalus } from '../core/game.js';
+import { type Gladiator, type GType } from '../core/types.js';
+import { LINEAGE_KO, TYPE_KO, TYPES, LINEAGE_DESC } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
 import { EPITHETS, EPITHET_BY_ID, type EpithetId } from '../core/epithets.js';
 import { setSoundEnabled, sfx, soundEnabled, unlockAudio } from './sound.js';
 import { rivalDef } from '../core/rivals.js';
 import { FANS_STAR, HOST } from '../core/hosts.js';
 import { View, clearSave, render, save } from './main.js';
-import { ask, h, helpBtn, hintSpan, sq, tell, toast } from './dom.js';
+import { ask, h, helpBtn, hintSpan, sq, tell, toast, gearLine } from './dom.js';
 import { gladRow, gladSheet } from './detail.js';
 import { cellPanel } from './cells.js';
-import { TYPE_COLOR, glyphSvg, portrait } from './portrait.js';
+import { TYPE_COLOR, glyphSvg, gearSvg } from './portrait.js';
+import { MAIN_HAND, OFF_HAND, type MainHand, type OffHand } from '../core/equipment.js';
 
 // 시트 닫기: 아래로 내려가는 동작 뒤에 지운다 (켈라가 내려가듯)
 function closeSheet() {
@@ -25,7 +26,7 @@ function closeSheet() {
   ov.classList.add('closing'); window.setTimeout(() => { S.sheet = null; render(); }, 300);
 }
 export function renderSheetBody(): (Node | null)[] {
-  return S.sheet === 'help' ? [h('h2', {}, '특성 · 규칙'), renderHelp()]
+  return S.sheet === 'help' ? [h('h2', {}, S.helpSec ? h('button', { class: 'hback', title: '목차로', onclick: () => { S.helpSec = null; render(); } }, '‹ 특성 · 규칙') : '특성 · 규칙', S.helpSec ? h('span', { class: 'hint' }, ` ${S.helpSec}`) : null), renderHelp()]
     : S.sheet === 'glad' ? [gladSheet()]
     : S.sheet === 'facilities' ? [facilitiesPanel()]
     : S.sheet === 'doctors' ? [doctorsPanel()]
@@ -157,28 +158,39 @@ function rivalsPanel(): Node {
         })));
 }
 // ── 도움말: 장비 규칙 + 특성 효과 + 전투·미시오·경제 규칙 (상성은 제거됨) (수치는 config/equipment/synergy 와 동기화)
+const TRAIT_GEAR: Record<Trait, MainHand | OffHand> = { gladius: 'gladius', sica: 'sica', spear: 'spear', bigShield: 'scutum', smallShield: 'parma', bare: 'none' }; // 특성 → 대표 장비 아이콘
+const traitIcon = (tr: Trait) => h('span', { class: 'sq', title: TRAIT_KO[tr], style: 'background:#3a2412' }, gearSvg(TRAIT_GEAR[tr]));
+const ownerIcons = (layer: string, owner: string): Node[] => layer === 'type' ? [sq(owner as GType)] : layer === 'class' ? owner.split('+').map(x => traitIcon(x as Trait)) : [traitIcon(owner as Trait)]; // 층에 맞는 아이콘: 유형 / 클래스(보조+주) / 장비 하나
+const ownerName = (layer: string, owner: string): string => layer === 'type' ? TYPE_KO[owner as GType] : layer === 'class' ? owner.split('+').map(x => TRAIT_KO[x as Trait]).join('·') : TRAIT_KO[owner as Trait];
 function renderHelp(): Node {
   const row = (title: string, body: string) => h('div', { class: 'hrow' }, h('b', {}, title), h('span', {}, body));
-  const sec = (title: string, ...kids: (Node | null)[]) => h('div', { class: 'hsec' }, h('h3', {}, title), ...kids);
+  const irow = (icons: Node[], title: string, body: string) => h('div', { class: 'hrow irow' }, h('span', { class: 'ilabel' }, ...icons, h('b', {}, title)), h('span', {}, body)); /* 아이콘 + 이름 줄 */
+  const hsub = (t: string) => h('div', { class: 'hsub' }, t);
+  const sec = (title: string, ...kids: (Node | null)[]) => h('div', { class: 'hsec', 'data-title': title }, h('h3', {}, title), ...kids);
   const M = CONFIG.missio;
-  return h('div', { class: 'help' },
+  const all = h('div', { class: 'help' },
     sec('유형 (열 — 장비 수치 둘과 딕타타 셋으로 갈린다)',
-      row('갈리는 것', '능력치·속도·접근 방식 · 장비 수치 둘(사거리·막기) · 딕타타 셋 · 편성 특성 · 계보. 투구·받아넘기기·방패 닳음·다리 노리기·무기 놓침은 없다 (2026-09-18 docs/09).'),
+      h('div', { class: 'gearlist' }, ...TYPES.map(t => h('div', { class: 'gearline' }, ...gearLine(t)))), /* 유형마다 유형·주장비·보조장비 아이콘 (2026-09-22 사용자) */
+      h('div', { class: 'gearlegend' }, ...(['gladius', 'sica', 'spear', 'trident'] as const).map(k => h('span', { class: 'gearitem' }, h('span', { class: 'sq', style: 'background:#3a2412' }, gearSvg(k)), h('span', { class: 'lbl' }, MAIN_HAND[k].label))), h('span', { class: 'sep' }, '|'), ...(['scutum', 'medium', 'parmula', 'parma', 'net', 'lasso', 'blade', 'armblade'] as const).map(k => h('span', { class: 'gearitem' }, h('span', { class: 'sq', style: 'background:#3a2412' }, gearSvg(k)), h('span', { class: 'lbl' }, OFF_HAND[k].label)))), /* 장비 아이콘 범례 */
+      row('갈리는 것', '능력치·속도·접근 방식 · 장비 수치 둘(사거리·막기) · 딕타타 셋 · 편성 특성 · 이름 유래. 투구·받아넘기기·방패 닳음·다리 노리기·무기 놓침은 없다 (2026-09-18 docs/09).'),
       row('접근 방식', '무르밀로·호플로마쿠스·프로보카토르는 옆걸음으로 신중하게, 세쿠토르·에퀘스·스키소르는 곧장 돌진, 트라엑스·디마카에루스는 지그재그, 레티아리우스·라쿠에아리우스는 거리를 두려 한다.'),
       row('장비 수치', `사거리: 창·삼지창 2, 나머지 1 (사거리 2 는 ${CONFIG.gear.reach[2]}px 에서 닿는다). 막기: 큰방패 ${Math.round(CONFIG.gear.block.bigShield * 100)}% · 작은방패 ${Math.round(CONFIG.gear.block.smallShield * 100)}% · 맨몸 0% — 막으면 피해 −${Math.round(CONFIG.gear.blockCut * 100)}%. 닳지 않는다.`)),
     sec('딕타타 (팔루스에서 익힌 규정 동작 — 주장비·보조장비·유형 하나씩, 유형이면 곧 안다)',
-      ...TYPES.map(t => row(TYPE_KO[t], basicDictataOf(t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
+      hsub('주장비'), ...(['gladius', 'sica', 'spear'] as const).map(o => irow(ownerIcons('main', o), ownerName('main', o), DICTATA.filter(d => d.layer === 'main' && d.owner === o).map(d => `${d.name}: ${d.desc}`).join(' / '))), /* 층마다 아이콘 + 이름 (2026-09-22 사용자) */
+      hsub('보조장비'), ...(['bigShield', 'smallShield', 'bare'] as const).map(o => irow(ownerIcons('off', o), ownerName('off', o), DICTATA.filter(d => d.layer === 'off' && d.owner === o).map(d => `${d.name}: ${d.desc}`).join(' / '))),
+      hsub('유형'), ...TYPES.map(t => irow(ownerIcons('type', t), TYPE_KO[t], DICTATA.filter(d => d.layer === 'type' && d.owner === t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
     sec('성장 (초기 굴림 없음 — 현재치는 유형 × 서열, 개체 차이는 잠재치·나이·성장형·자질)',
-      row('나이', '청년(~23) 빨리 자라고 상한이 높게 잡힌다 · 장년(24~29) 보통 · 노년(30~) 더디고 상한이 낮다. 노쇠로 능력치가 깎이진 않는다 — 대신 30세부터 해마다 부상 확률 +10%(최대 ×1.6), 방치 회복이 느려진다. 값 할인은 30세부터'),
+      row('나이대', '청년(~23) 빨리 자라고 상한이 높게 잡힌다 · 장년(24~29) 보통 속도 · 노년(30~) 더디게 자라고 상한이 낮다. 상세의 성장 줄 첫 낱말이 나이대. 노쇠로 능력치가 깎이진 않는다 — 대신 30세부터 해마다 부상 확률 +10%(최대 ×1.6), 방치 회복이 느려진다. 값 할인은 30세부터'),
       row('훈련', '팔루스에 세우면 네 능력치가 클래스 풀 비율로 같이 오른다(무르밀로 방 40 · 체 30 · 공 20 · 손 10%). 상한에 닿은 능력치의 몫은 나머지로. 고른 몸은 균등, 한 우물은 그 능력치 ×1.8·나머지 ×0.6'),
       row('곡선', (['normal', 'early', 'late', 'second'] as const).map(c => `${CURVE_KO[c]}: ${CURVE_DESC[c]}`).join(' / ')),
       row('결 (40%만)', (['one', 'field', 'pupil', 'even'] as const).map(t => `${GROWTH_TRAIT_KO[t]}: ${TRAIT_DESC[t]}`).join(' / ')),
-      row('상한', '감춰져 있다. 닿은 능력치는 카드에서 굵어지고, 넷 다 닿으면 \'다 컸다\'. 상인의 한 줄과 독토르의 판단(세 번째 훈련 뒤)이 힌트'),
+      row('상한', '숫자는 감춰져 있다. 칸 막대 위 ▲ 가 그 능력치의 상한 자리, 닿으면 카드에서 굵어지고 넷 다 닿으면 \'다 컸다\'(팔거나 독토르로). 상인의 한 줄이 힌트'),
+      row('자질 깨우침', '명예 30 넘는 같은 클래스 독토르의 가르침, 열세 승리, 미시오 뒤 첫 승, 5승·10승 때 12% 로 한 단계 — 비범까지. 천부는 타고난다'),
+      row('전설', '천부 중 75% 는 유형별 고유 인물(플람마·스피쿨루스·켈라두스·크레스켄스·프리스쿠스·베루스·테트라이테스·헤르메스·콜룸부스·프루덴스). 이름·성장형·잠재·고유 딕타타가 정해져 있고 한 세상에 한 명, 죽거나 나가면 다음 사람이 이름을 물려받는다(상세에 N대)'),
       row('자질', '카드 초상 뒤 바탕색으로 본다 — 연한 황토(평범) · 진한 황토(재능) · 핏빛(비범) · 금빛(천부). 평범 ×1 · 재능 ×1.3 · 비범 ×1.6 · 천부 ×2.0 — 성장 속도 배율. 상한도 ×1 · 1.05 · 1.1 · 1.15. 깨우침(명예 30↑ 독토르의 가르침·열세 승리·미시오 뒤 첫 승·5승·10승, 12%)으로 비범까지 오른다 — 천부는 타고난다'),
-      row('숙련 자리', '카드 오른쪽 기둥 네 칸. 열리는 조건은 없다 — 경기에서 행동이 문턱을 넘고 같은 클래스 독토르가 있으면 익혀서 칩으로 보인다. 후보는 유형마다 열둘(주장비·보조장비·클래스·유형 × 3), 넷이 차면 더 익히지 않는다'),
-      row('전설', '천부(4%) 중 75% 는 고유 인물 — 유형마다 한 명(플람마·스피쿨루스·켈라두스·크레스켄스·프리스쿠스·베루스·테트라이테스·헤르메스·콜룸부스·프루덴스). 이름·성장형·잠재·고유 딕타타가 정해져 있고 한 세상에 한 명뿐. 죽거나 나가면 다음 사람이 그 이름을 물려받아 다시 나올 수 있다. 시장·문 앞·상대 파밀리아 어디서든, 조건 없이')),
-    sec(`숙련 딕타타 (경기에서 행동이 문턱을 넘고, 같은 클래스 독토르가 있으면 익힌다 — 자리 ${CONFIG.mastery.slots}, 먼저 넘은 순서, 한 번 익히면 바뀌지 않는다. 카드 칩에 뜬다)`,
-      ...TYPES.map(t => row(TYPE_KO[t], masteryCandidates(t).map(m => `${m.name}(${m.cond.ko}): ${m.ko}`).join(' / ')))),
+      row('숙련 자리', `상세의 딕타타 칸에 후보 열둘(주장비·보조장비·클래스·유형 × 3)이 다 보이고 익힌 것은 칠해진다. 열리는 조건은 없다 — 경기에서 행동이 문턱을 넘고 같은 클래스 독토르가 있으면 익힌다. 자리 ${CONFIG.mastery.slots}, 차면 가장 오래된 것이 새것과 바뀌고 밀려난 것은 다시 익히지 않는다`)),
+    sec(`숙련 딕타타 (경기에서 행동이 문턱을 넘고, 같은 클래스 독토르가 있으면 익힌다 — 자리 ${CONFIG.mastery.slots}, 먼저 넘은 순서, 차면 가장 오래된 것과 바뀐다. 상세의 딕타타 칸에 후보가 다 보인다)`,
+      ...(['main', 'off', 'class', 'type'] as const).flatMap(layer => { const owners = [...new Set(MASTERY.filter(m => m.layer === layer).map(m => m.owner))]; return [hsub(layer === 'main' ? '주장비' : layer === 'off' ? '보조장비' : layer === 'class' ? '클래스 (보조장비 + 주장비)' : '유형'), ...owners.map(o => irow(ownerIcons(layer, o), ownerName(layer, o), MASTERY.filter(m => m.layer === layer && m.owner === o).map(m => `${m.name}(${m.cond.ko}): ${m.ko}`).join(' / ')))]; })),
     sec('특성 (편성에서 센다 — 같이 나가는 검투사 중 같은 특성이 1·2·3명이면 1·2·3단계, 그 특성을 가진 사람에게만 걸린다. 상대 팀도 똑같이)',
       row('유형 → 특성', TYPES.map(t => `${TYPE_KO[t]}: ${TYPE_TRAITS[t].map(x => TRAIT_KO[x]).join('·')}`).join(' / ')),
       row('큰방패', `방어 +${CONFIG.traits.bigShield.def[0]} → (자리) → +${CONFIG.traits.bigShield.def[2]} — 밀어붙이기·닳지 않음은 장비 규칙과 함께 뺐다`),
@@ -187,7 +199,8 @@ function renderHelp(): Node {
       row('글라디우스', `치명타 +${Math.round(CONFIG.traits.gladius.crit[0] * 100)}%p → +${Math.round(CONFIG.traits.gladius.crit[1] * 100)}%p → +${Math.round(CONFIG.traits.gladius.crit[2] * 100)}%p`),
       row('곡도', `피해 ×${CONFIG.traits.sica.atk[0]} → ×${CONFIG.traits.sica.atk[1]} → ×${CONFIG.traits.sica.atk[2]}`),
       row('창', `돌진 ×${CONFIG.traits.spear.charge[0]} → ×${CONFIG.traits.spear.charge[1]} → ×${CONFIG.traits.spear.charge[2]} (자리표시 — 사거리가 돌아오면 바뀐다)`),
-      row('계보 (이름의 갈래, 같은 계보가 모이면)', `자연: 공격 +${Math.round((CONFIG.traits.nature.atk[0] - 1) * 100)}% → 첫 공격에 붙듦 → +${Math.round((CONFIG.traits.nature.atk[2] - 1) * 100)}% / 승리: 30% 아래 받는 피해 −${Math.round(CONFIG.traits.victory.lowCut[0] * 100)}% → 15% 아래 상대에 ×${CONFIG.traits.victory.finish[1]} → −${Math.round(CONFIG.traits.victory.lowCut[2] * 100)}% / 신화: 돌진 ×${CONFIG.traits.myth.charge[0]} → 치명타 배율 ×${CONFIG.traits.myth.critMult[1]} → 돌진 ×${CONFIG.traits.myth.charge[2]} / 별명: 헛디딤 ×${CONFIG.traits.nickname.stumble[0]} → ×${CONFIG.traits.nickname.stumble[1]} → ×${CONFIG.traits.nickname.stumble[2]} / 지명: 숨 +${CONFIG.traits.place.staminaMax[0]} → 지침 문턱 ${CONFIG.traits.place.windedAt[0]}→${CONFIG.traits.place.windedAt[1]} → 숨 회복 ×${CONFIG.traits.place.regen[2]}`),
+      row('이름 유래 (다섯 갈래 — 자연·승리·신화·별호·지역. 라니스타가 붙인 링네임의 출처. 편성 효과는 자연만)', `${(['nature', 'victory', 'myth', 'nickname', 'place'] as const).map(l => `${LINEAGE_KO[l]}: ${LINEAGE_DESC[l]}`).join(' / ')}`),
+      row('같은 유래가 모이면', `자연: 공격 +${Math.round((CONFIG.traits.nature.atk[0] - 1) * 100)}% → 첫 공격에 붙듦 → +${Math.round((CONFIG.traits.nature.atk[2] - 1) * 100)}% / 승리: 30% 아래 받는 피해 −${Math.round(CONFIG.traits.victory.lowCut[0] * 100)}% → 15% 아래 상대에 ×${CONFIG.traits.victory.finish[1]} → −${Math.round(CONFIG.traits.victory.lowCut[2] * 100)}% / 신화: 돌진 ×${CONFIG.traits.myth.charge[0]} → 치명타 배율 ×${CONFIG.traits.myth.critMult[1]} → 돌진 ×${CONFIG.traits.myth.charge[2]} / 별명: 헛디딤 ×${CONFIG.traits.nickname.stumble[0]} → ×${CONFIG.traits.nickname.stumble[1]} → ×${CONFIG.traits.nickname.stumble[2]} / 지명: 숨 +${CONFIG.traits.place.staminaMax[0]} → 지침 문턱 ${CONFIG.traits.place.windedAt[0]}→${CONFIG.traits.place.windedAt[1]} → 숨 회복 ×${CONFIG.traits.place.regen[2]}`),
       row('정식 대결', `무르밀로–트라엑스, 레티아리우스–세쿠토르처럼 로마인이 좋아한 짝. 주최자가 짝을 주문한 계약('정식 대결' 칩)에서는 상대마다 짝이 되는 유형을 세워야 성립한다 — 못 세우면 그 계약은 나가지 못하지만 벌점은 없다. 성립하면 상금 ×${CONFIG.classicContract.prize}, 승리 시 호감도 +${CONFIG.fameDelta.classicWin}, 패배 시 미시오 +${Math.round(CONFIG.missio.classic * 100)}%, 명예 +${CONFIG.honor.classic}.`)),
     sec('전투',
       row('연속 공격', `${Math.round(CONFIG.combo.base * 100)}% + 속도×${CONFIG.combo.perSpd * 100}% 로 한 번 더 친다.`),
@@ -207,10 +220,9 @@ function renderHelp(): Node {
       row('출전 경비', `대여료의 ${Math.round(CONFIG.fightExpense.rentRate * 100)}% (장비 정비·식량·의료) + 등급별 이동·호송비 (${[1, 2, 3].map(t => CONFIG.fightExpense.byTier[t].toLocaleString()).join(' · ')}) 가 경기마다 차감. 큰 경기일수록 가는 길이 비싸다.`),
       row('지출', `시즌 유지비: 티로 ${CONFIG.upkeepTiro}, 베테라누스 ${CONFIG.upkeepPerGladiator}, 독토르 ${CONFIG.doctorSalary} (켈라 4칸 이하 작은 루두스는 검투사 유지비 −25%). 시설은 단계마다 유지비. 호감도 ${CONFIG.upkeepFame.from} 이상이면 명성 유지비 (호감도−50)×${CONFIG.upkeepFame.per}. 훈련은 따로 돈을 받지 않고 팔루스 유지비(${CONFIG.upkeepFacility.palus}/개)에 든다.`),
       row('호감도', `승리 +${CONFIG.fameDelta.win} (호감도 ${CONFIG.fameDelta.winAt[0][0]}↑이면 +${CONFIG.fameDelta.winAt[0][1]}, ${CONFIG.fameDelta.winAt[1][0]}↑이면 +${CONFIG.fameDelta.winAt[1][1]}), 패배 ${CONFIG.fameDelta.lose}, 사망 ${CONFIG.fameDelta.death}. 매 시즌 망각 ${CONFIG.fameDelta.decay} (${CONFIG.fameDelta.decayAt[0][0]}↑ ${CONFIG.fameDelta.decayAt[0][1]}, ${CONFIG.fameDelta.decayAt[1][0]}↑ ${CONFIG.fameDelta.decayAt[1][1]}; 한 번이라도 출전하면 +${CONFIG.fameDelta.active}). 명성은 오를수록 지키기 어렵다. 받을 수 있는 중요한 계약(등급 2·3)을 거절하면 시즌당 ${CONFIG.fameDelta.refuse} (검투사를 전부 내보냈으면 벌점 없음). 등급 2는 ${CONFIG.fameTierReq[2]}, 등급 3은 ${CONFIG.fameTierReq[3]} 이상 필요.`),
-      row('별칭', `베테라누스가 전적 조건을 채우면 붙는다 (최대 3개, 초상·경기 화면에 장식). ${EPITHETS.map(e => `'${e.name}'${e.attested ? '*' : ''}(${e.cond}: ${e.effect})`).join(' · ')}. *는 폼페이 낙서·묘비·마르티알리스의 실제 기록.`),
+      row('별칭', `베테라누스가 전적 조건을 채우면 붙는다 (하나만 — 실제 기록 예명이 창작 예명을 밀어낸다, 초상·경기 화면에 장식). ${EPITHETS.map(e => `'${e.name}'${e.attested ? '*' : ''}(${e.cond}: ${e.effect})`).join(' · ')}. *는 폼페이 낙서·묘비·마르티알리스의 실제 기록.`),
       row('상대 파밀리아', `상대는 시즌을 넘어 유지되는 네 파밀리아(율리우스·암플리아투스·네로니아누스·스카이바)에서 나온다. 그들도 승패·명예·부상·사망이 쌓이고 빈자리를 채운다. 경기 광고(에딕타)처럼 상대 이름과 전적은 전부 공개.`),
       row('원한과 복수', `내가 이기고 살려 준 상대를 다시 만나면 그는 공격 ×${CONFIG.grudge.atk}, 그에게 지면 미시오 ${Math.round(CONFIG.grudge.missio * 100)}% (우르비쿠스 묘비: "네가 이긴 자를 조심하라"). 나를 쓰러뜨렸던 상대를 꺾으면 복수: 명예 +${CONFIG.grudge.revengeHonor}, 별칭 '복수자'.`),
-      row('유형 전환', `검투사가 스스로 청할 때만(이벤트, 준비 중) 다른 유형으로 재훈련 (${CONFIG.retrainCost} HS, 그 시즌 출전 불가). 공·방은 유지, 속도·사거리는 새 유형. 세 유형으로 각각 이기면 '혼자서 세 유형을 다 싸우는 자'(헤르메스).`),
       row('왼손잡이', `타고난 특성(매물 10%). 왼손잡이(스카이바)는 상대 방패의 첫 타격 감소를 절반으로 만든다. 비문에 따로 표기될 만큼 귀했다.`),
       row('루디스 거절', `루디스를 받은 경기의 결과 화면에서 거절할 수 있다. 플람마처럼 노예로 남는 대신 명예 +8.`),
       row('나이', `검투사는 티로 ${CONFIG.age.tiro[0]}~${CONFIG.age.tiro[1]}세, 베테라누스 ${CONFIG.age.veteran[0]}~${CONFIG.age.veteran[1]}세로 들어오고 봄마다 한 살. ${CONFIG.age.injuryFrom}세부터 해마다 부상 확률 +${Math.round(CONFIG.age.injuryPer * 100)}%(최대 ×${CONFIG.age.injuryMax}), 방치 자연 회복 ${CONFIG.age.healCutFrom.join('·')}세에 −${Math.round(CONFIG.age.healCut * 100)}%p (비문의 검투사 사망 연령은 대부분 20~30대).`),
@@ -224,6 +236,10 @@ function renderHelp(): Node {
       row('명예', `검투사 개인의 인기. 승리 +${CONFIG.honor.win} (등급마다 +${CONFIG.honor.perTier}), 전통 짝 +${CONFIG.honor.classic}, 화관(주최자 만족) +${CONFIG.honor.crown}, 패배 ${CONFIG.honor.lose}. 미시오 생존 +${CONFIG.honor.missioPer * 100}%/점, 대여료 +${CONFIG.honor.rentPer * 100}%/점 (스타는 비싸다). 폼페이 낙서의 팬심과 비싼 스타를 죽이기 꺼린 주최자가 근거.`),
       row('출전', `계약마다 규모가 다름 (1대1 · 2대2 · 3대3). 검투사는 시즌당 1회만 출전. ${CONFIG.promoteWins}승이면 베테라누스로 승격.`),
       row('피로', `출전 뒤 피로가 쌓일 확률: 힘든 경기 ${Math.round(CONFIG.fatigue.chanceHard * 100)}%, 가벼운 경기(쓰러지지 않고 HP ${Math.round(CONFIG.fatigue.cleanWinHp * 100)}%↑ 남기며 이김) ${Math.round(CONFIG.fatigue.chanceClean * 100)}%, 숙소 ★마다 −${Math.round(CONFIG.fatigue.perCellStar * 100)}%. 쉬는 시즌마다 −1(★1 숙소 −2). 첫 ${CONFIG.fatigue.free}점은 괜찮고 그 위로 1점마다 공·방 −${CONFIG.fatigue.statPenalty}, 미시오 −${Math.round(CONFIG.fatigue.missioPenalty * 100)}%. 피로 ${CONFIG.fatigue.overworkAt} 이상인 채 시즌을 넘기면 (피로−${CONFIG.fatigue.overworkAt - 1})×${Math.round(CONFIG.fatigue.overworkPer * 100)}% 로 과로사. 로스터를 돌려 쉬게 할 것.`)));
+  const secs = [...all.children].filter((n): n is HTMLElement => n instanceof HTMLElement && n.classList.contains('hsec'));
+  const key = (t: string) => t.split(' (')[0].split(' —')[0].trim(); /* 목차 제목: 괄호 앞 짧은 이름 */
+  if (S.helpSec) { const cur = secs.find(n => key(n.dataset.title ?? '') === S.helpSec); return h('div', { class: 'help' }, cur ?? h('div', { class: 'hint' }, '없는 절')); }
+  return h('div', { class: 'help hindex' }, ...secs.map(n => { const t = n.dataset.title ?? ''; const rows = n.querySelectorAll('.hrow').length; return h('button', { class: 'hitem', onclick: () => { S.helpSec = key(t); render(); } }, h('b', {}, key(t)), h('span', { class: 'hint' }, t.includes(' (') ? t.slice(t.indexOf(' (') + 2).replace(/\)$/, '') : `${rows}항목`), h('span', { class: 'chev' }, '›')); }));
 }
 // ── 대시보드: 현재 장소에서 선택해야 하는 일들
 export function renderDash(v: View = S.view, forNews = false): Node[] {
@@ -280,7 +296,7 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   }
   // 정문(루두스 문 앞): 계약·지원자·상대 등 결정할 일 목록
   const out: Node[] = [h('h3', {}, '정문', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${seasonName(S.st.season)} · ${S.st.money.toLocaleString()} HS`))];
-  const injured = S.st.roster.filter(g => g.injured); const avail = available(S.st);
+  const injured = S.st.roster.filter(g => g.injured);
   const upkeep = upkeepOf(S.st);
   if (!S.st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
   for (const rv of S.st.rivals.filter(r => r.since === S.st.season && S.st.season > 1)) out.push(item('todo', `${rv.name} 이(가) 이 지방에 나타났다 — ${rivalDef(rv)?.desc ?? ''}. 앞으로 계약 상대로 만난다.`)); // 호감도가 올라 큰 루두스가 온 시즌

@@ -1,6 +1,6 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S, randomColor } from './state.js';
-import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, newGame, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, type FightReport } from '../core/game.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
@@ -53,7 +53,7 @@ export function renderSummary() {
   const promoted = S.seasonReports.flatMap(r => r.promoted);
   const rosterItems: Node[] = [];
   if (promoted.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `승급: ${promoted.map(g => g.name).join(', ')} → 베테라누스`)));
-  { const nd = S.seasonReports.flatMap(r => r.newDictata); if (nd.length) rosterItems.push(h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, nd.map(x => `${x.g.name} — '${x.m.name}'`).join(', ') + ' 익힘'))); }
+  { const nd = S.seasonReports.flatMap(r => r.newDictata); if (nd.length) rosterItems.push(h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, nd.map(x => `${x.g.name} — '${x.m.name}'${x.out ? ` ('${x.out.name}' 대신)` : ''}`).join(', ') + ' 익힘'))); }
   { const ne = S.seasonReports.flatMap(r => r.newEpithets); if (ne.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `별칭: ${ne.map(x => `${x.g.name} '${x.e.name}' (${x.e.effect})`).join(', ')}`))); }
   { const freed = S.seasonReports.flatMap(r => r.rudis); if (freed.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `루디스: ${freed.map(g => g.name).join(', ')} — 자유민이 됐습니다. 관리 화면에서 독토르 고용 또는 계속 출전을 정하세요.`))); }
   if (sum.trained.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `훈련: ${sum.trained.map(t => { const ups = (Object.keys(t.gains) as TrainStat[]).map(k => `${TRAIN_KO[k]} +${t.gains[k]}`); return `${t.g.name} ${ups.length ? ups.join('·') : '쌓임'}`; }).join(', ')}`)));

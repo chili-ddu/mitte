@@ -3,10 +3,10 @@
 import type { Gladiator, GType } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { makeGladiator, pickTrainStat, powerOf, TYPES } from './gladiator.js';
+import { makeGladiator, powerOf, TYPES } from './gladiator.js';
 import { classKey } from './classes.js';
 import { masteryCandidates } from './dictata.js';
-import { growthSpeed, capOf, addProgress, growAll } from './growth.js';
+import { growAll } from './growth.js';
 
 export type RivalProfile = 'local' | 'major' | 'grand'; // 지방 파밀리아 · 큰 루두스 · 최대 루두스
 export interface Rival {
@@ -86,7 +86,6 @@ export function pickElite(rival: Rival, size: number): Gladiator[] | null {
 }
 export function rivalOf(rivals: Rival[], id?: number): Rival | undefined { return rivals.find(r => r.id === id); }
 export function memberById(rivals: Rival[], id: number): { rival: Rival; g: Gladiator } | undefined { for (const r of rivals) { const g = r.roster.find(x => x.id === id); if (g) return { rival: r, g }; } return undefined; }
-export const GRUDGE = CONFIG.grudge;
 // 간판 검투사: 명예가 가장 높은(같으면 승수) 검투사
 export function rivalStar(r: Rival): Gladiator | undefined { return [...r.roster].filter(g => g.alive).sort((a, b) => ((b.honor ?? 0) - (a.honor ?? 0)) || (b.wins - a.wins))[0]; }
 export function recordVsMe(r: Rival): string { const v = r.vsMe ?? { wins: 0, losses: 0, draws: 0 }; const total = v.wins + v.losses + v.draws; return total ? `${total}전 ${v.losses}승 ${v.wins}패${v.draws ? ` ${v.draws}무` : ''}` : '첫 대결'; } // 내 기준 (내 승/패)

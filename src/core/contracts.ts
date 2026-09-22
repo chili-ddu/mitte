@@ -76,7 +76,7 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
 }
 
 // 도전 계약(docs/10): 파밀리아가 간판·정예를 세운다. 우리 전력과 무관하고 상한이 없다. tier 는 파밀리아의 격
-export function makeChallenge(rng: Rng, season: number, rival: Rival, dir: 'in' | 'out', size: 1 | 2 | 3): Contract | null {
+export function makeChallenge(rng: Rng, _season: number, rival: Rival, dir: 'in' | 'out', size: 1 | 2 | 3): Contract | null {
   const enemy = pickElite(rival, size); if (!enemy) return null;
   const tier: 1 | 2 | 3 = rival.profile === 'grand' ? 3 : rival.profile === 'major' ? 2 : 1;
   return { id: cid++, tier, venue: rng.pick(VENUES[tier]), host: rng.pick(HOSTS_BY_TIER[tier]), needVeterans: 0, size, enemy, enemyPreview: enemy.map(e => e.type), rivalId: rival.id, challenge: dir, clauses: [], accepted: [] };

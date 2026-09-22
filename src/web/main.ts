@@ -8,18 +8,18 @@ import { makeGladiator } from '../core/gladiator.js';
 import { HOSTS_BY_TIER } from '../core/hosts.js';
 import { Rng } from '../core/rng.js';
 import { renderBattle } from './battle-view.js';
-import { TYPES, TYPE_KO } from '../core/gladiator.js';
+import { TYPES } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
-import { equipHandsKo } from '../core/equipment.js';
-import type { GType } from '../core/types.js';
-import { h, helpBtn, hideTip, isAction, isChip, showTip, sq, tipTarget, toast } from './dom.js';
-import { portrait, startPortraitLoop } from './portrait.js';
+
+import type { GType, Contract } from '../core/types.js';
+import { h, hideTip, isAction, isChip, showTip, tipTarget, toast } from './dom.js';
+import { startPortraitLoop } from './portrait.js';
 import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
 import { confirmPage, detailPage, gladSheet } from './detail.js';
 import { cellPanel } from './cells.js';
 import { renderOver, renderSuccession, renderSummary } from './summary.js';
-import { renderPlan, seasonConfirmPage, seasonWarnings } from './plan.js';
+import { renderPlan, seasonConfirmPage, seasonWarnings, tabletsPage } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
 import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
 
@@ -95,6 +95,7 @@ S.seasonReports = [];
 S.seasonSummary = null;
 S.report = null;
 S.notice = '';
+S.helpSec = null;
 S.sheet = null; // news·market·medic·yard·applicants: 대시보드를 대신하는 서랍 // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
  // news·market·medic·yard·applicants: 대시보드를 대신하는 서랍 // glad: 켈라 방을 누르면 여는 검투사 카드 시트 (검투사 목록 시트를 대신한다)
 S.gladSel = null; // 검투사 시트에 보이는 검투사 id
@@ -157,15 +158,15 @@ function renderScreen() {
   const oldPanel = app.querySelector('.scenepanel:not(.closing)') as HTMLElement | null; const oldKey = oldPanel ? [...oldPanel.classList].find(c => c.startsWith('key-'))?.slice(4) : null;
   const stillClosing = [...app.querySelectorAll('.scenepanel.closing')] as HTMLElement[];
   app.replaceChildren(); app.classList.remove('fit'); app.classList.remove('land', 'plan', 'battle', 'page');
-  app.append(headerEl()); requestAnimationFrame(() => { document.documentElement.style.setProperty('--head-h', `${headerBox.offsetHeight}px`); const tl = app.querySelector<HTMLElement>('.sidetools.inland'); document.documentElement.style.setProperty('--top-h', `${tl && tl.offsetHeight ? tl.offsetTop + tl.offsetHeight : headerBox.offsetTop + headerBox.offsetHeight}px`); }); // 헤더(두 줄)와 그 아래 토글 줄의 바닥 높이. 시트·상세는 이 아래에서 시작한다
+  app.append(headerEl()); requestAnimationFrame(() => { document.documentElement.style.setProperty('--head-h', `${headerBox.offsetHeight}px`); document.documentElement.style.setProperty('--head-b', `${headerBox.offsetTop + headerBox.offsetHeight}px`); /* 헤더(붉은 띠) 아래 끝 — 모달 페이지가 여기서 바로 시작한다 (2026-09-22 사용자) */ const tl = app.querySelector<HTMLElement>('.sidetools.inland'); document.documentElement.style.setProperty('--top-h', `${tl && tl.offsetHeight ? tl.offsetTop + tl.offsetHeight : headerBox.offsetTop + headerBox.offsetHeight}px`); }); // 헤더(두 줄)와 그 아래 토글 줄의 바닥 높이. 시트·상세는 이 아래에서 시작한다
   const curKey = S.cellsOpen ? 'cells' : S.sheet; const stillOpen = !!oldPanel && oldKey === curKey; // 같은 시트가 열린 채 다시 그리는 것이면 내려오는 모션을 되풀이하지 않는다 (팔루스·침상 누르면 켈라가 두 번 내려오던 것)
-  if (oldPanel && S.phase === 'manage' && oldKey !== curKey) { /* 켈라도 시트의 하나(key-cells) */ oldPanel.classList.add('closing'); stillClosing.push(oldPanel); window.setTimeout(() => oldPanel.remove(), 380); }
+  if (oldPanel && (S.phase === 'manage' || S.phase === 'plan') && oldKey !== curKey) { /* 켈라도 시트의 하나(key-cells) */ oldPanel.classList.add('closing'); stillClosing.push(oldPanel); window.setTimeout(() => oldPanel.remove(), 380); }
   for (const n of stillClosing) app.append(n);
-  const SCENE_KEYS = ['facilities', 'doctors', 'rivals', 'news', 'market', 'yard', 'medic', 'applicants', 'chronicle'] as const; type SceneKey = typeof SCENE_KEYS[number];
-  if (S.sheet && S.phase === 'manage' && (SCENE_KEYS as readonly string[]).includes(S.sheet)) { // 준비 화면: 모달 대신 장면 안에서 켈라처럼 올라오는 패널. 왼쪽 토글로 오간다
+  const SCENE_KEYS = ['facilities', 'doctors', 'rivals', 'news', 'market', 'yard', 'medic', 'applicants', 'chronicle', 'help'] as const; /* help 도 전체 높이 장면 패널로 (2026-09-22 사용자) */ type SceneKey = typeof SCENE_KEYS[number];
+  if (S.sheet && (S.phase === 'manage' || S.phase === 'plan') && (SCENE_KEYS as readonly string[]).includes(S.sheet)) { /* 편성에서도 같은 장면 패널 — 준비에서만 패널이고 편성에선 옛 모달로 떨어지던 것 (2026-09-22 사용자) */ // 준비 화면: 모달 대신 장면 안에서 켈라처럼 올라오는 패널. 왼쪽 토글로 오간다
     const key = S.sheet as SceneKey; const body = renderSheetBody(); const nodes = body.filter((n): n is Node => !!n);
     let h2: Element | null = null; for (const n of [...nodes].reverse()) { if (n instanceof HTMLElement) { h2 = n.tagName === 'H2' ? n : n.querySelector('h2'); if (h2) break; } }
-    app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.sheet = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
+    app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.sheet = null; S.helpSec = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
   } else if (S.sheet) app.append(renderSheet());
   if (S.phase === 'manage' && !S.showIntro && !S.setup && !S.st.pendingSuccession && S.st.pendingChallenges.length) { /* 색 고르기(설정)가 떠 있으면 그 뒤로 숨지 않게 기다린다 */ // 도전장(docs/10): 계약보다 먼저 답한다 — 수락하면 필수 배정, 거절하면 그쪽 기세 +1
     const c = S.st.pendingChallenges[0]; const rv = rivalOf(S.st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined;
@@ -216,6 +217,7 @@ function renderScreen() {
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
 
   if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
+  if (S.tabletQueue && S.seasonFrom === 'manage') { const cs = S.tabletQueue.map(id => S.st.contracts.find(x => x.id === id)).filter((c): c is Contract => !!c); if (cs.length) app.append(tabletsPage(cs)); else S.tabletQueue = null; } /* 마을의 해로 시즌을 넘길 때 배정해 둔 계약이 있으면 서판(서명)이 마을 위로 (2026-09-22 사용자) */
   if (S.seasonConfirm && S.seasonFrom === 'manage') app.append(seasonConfirmPage(seasonWarnings())); /* 시즌 넘기기: 계약 벽을 거치지 않고 마을 위로 바로 (뒤로가기는 마을 그대로) */
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
@@ -249,17 +251,10 @@ function toolButtons(tools: ToolItem[]): HTMLElement[] {
     if (t.badge) b.append(h('span', { class: 'nbadge' }, String(t.badge))); return b; });
 }
 // 준비 화면의 아이콘 토글: 디스플레이(장면) 오른쪽 아래에 세로로 — 대시보드를 가리지 않는다
-function sideTools(tools: ToolItem[]): Node { return h('div', { class: 'sidetools indisplay' }, ...toolButtons(tools)); }
 // 가로 배치: 장면 밖 맨 왼쪽 세로 띠 (왼손 엄지 자리)
 export function sideToolsLand(tools: ToolItem[]): Node { return h('div', { class: 'sidetools inland' }, ...toolButtons(tools).map((b, i) => { b.insertBefore(h('span', { class: 'lbl' }, tools[i].title), b.querySelector('.nbadge')); return b; })); } // 처마 밑에 매달린 서판: 아이콘 + 이름 (+ 수)
  // 처마 밑에 매달린 서판: 아이콘 + 이름 (+ 수)
 // 단계 버튼: 지금 누를 수 있는 것만 (준비에서는 '편성', 편성에서는 '준비' 와 '전투'). 화살표 없이
-function stageItems(cur: 'manage' | 'plan', next?: { label: string; onclick: () => void }): StageItem[] {
-  const toManage = () => { S.sheet = null; S.phase = 'manage'; render(); };
-  const toPlan = () => { S.phase = 'plan'; S.sheet = null; S.planSel = null; render(); }; // 계약(경기장)을 먼저 고르면 검투사 목록이 나온다
-  if (cur === 'manage') return [{ label: '편성', primary: true, onclick: toPlan }];
-  return [{ label: next?.label ?? '전투', primary: true, onclick: next?.onclick }]; // '준비'는 계약 벽 왼쪽 위의 낙서 뒤로가기로
-}
  // 마을 장면 높이 · 켈라 장면의 위 여백(처마 토글이 덮는 만큼, 월드 단위) · 켈라 장면 최소 높이 (3×5 방, 방 높이 100 + 여백)
 S.cellsH = CELLS_MIN_H; // 켈라 장면 높이: 무대 바닥까지 채운다 (renderTown 의 draw 가 매 프레임 잰다). 방은 그만큼 세로로 늘어난다
  // 켈라 장면 높이: 무대 바닥까지 채운다 (renderTown 의 draw 가 매 프레임 잰다). 방은 그만큼 세로로 늘어난다

@@ -109,18 +109,25 @@ function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: numbe
   if (team.length >= c.size && !validTeam(S.st, c, team.map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean))) { ctx.strokeStyle = SOOT; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(px + 25, py + 9); ctx.lineTo(px + 31, py + 16); ctx.lineTo(px + 45, py + 3); ctx.stroke(); ctx.globalAlpha = 1; }
   ctx.restore();
 }
+/* 시즌 넘기기 해: 화면에 고정된 HUD — 어느 장소로 가든 따라다닌다 (2026-09-22 사용자). 원점이 해의 중심. 누르면 계약 벽·서판을 건너뛰고 바로 시즌 진행 창으로 */
+export function drawSun(ctx: CanvasRenderingContext2D, t: number) {
+  const s = FORUM.sun, pulse = 1 + Math.sin(t * 1.6) * 0.035;
+  ctx.save(); ctx.scale(pulse, pulse);
+  /* 솔(Sol) 고증 (2026-09-22 사용자): 로마의 해는 살 달린 원반이 아니라 사람 얼굴에 살 일곱이 뻗는 방사관(corona radiata) — 동전의 솔 인빅투스, 네로 거상, 폼페이 벽화. 얼굴은 넣지 않는다(스틱맨과 같이) */
+  ctx.fillStyle = '#e8c96a'; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.arc(0, 0, s.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  for (let k = 0; k < 7; k++) { const a = -Math.PI * (0.92 - k * 0.14) + Math.sin(t * 1.3 + k) * 0.03, len = 13 + 4 * Math.sin(t * 2.2 + k * 1.9); /* 살 길이 9 → 13 (2026-09-22 사용자: 조금 더 길게) */ /* 관의 살 일곱: 머리 위쪽 반원에 부채꼴로, 살마다 길이가 숨 쉬듯 늘고 줄며 살짝 흔들린다 */
+    const nx = -Math.sin(a), ny = Math.cos(a), bx = Math.cos(a) * (s.r - 1), by = Math.sin(a) * (s.r - 1), tx = Math.cos(a) * (s.r + len), ty = Math.sin(a) * (s.r + len); /* 솔잎 모양 (2026-09-22 사용자: 직선에 화살촉은 안 예뻤다) — 밑은 2.4 폭, 끝은 뾰족한 가는 쐐기를 붉게 채운다 */
+    ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.moveTo(bx + nx * 1.2, by + ny * 1.2); ctx.quadraticCurveTo(bx + nx * 0.9 + (tx - bx) * 0.55, by + ny * 0.9 + (ty - by) * 0.55, tx, ty); ctx.quadraticCurveTo(bx - nx * 0.9 + (tx - bx) * 0.55, by - ny * 0.9 + (ty - by) * 0.55, bx - nx * 1.2, by - ny * 1.2); ctx.closePath(); ctx.fill(); }
+  /* 얼굴은 뺐다 — 스틱맨도 얼굴이 없다 (2026-09-22 사용자). 방사관의 살 일곱만 솔을 말한다 */
+  ctx.restore();
+  const lx = -(s.r + 40); /* 살이 17 까지 뻗으니 글자·화살표는 그 밖으로 (2026-09-22 사용자: 화살표를 더 옆으로) */ /* 글자 오른쪽 끝 — 화살표와 사이를 띄운다 (2026-09-22 사용자) */ /* 글자는 해 왼쪽, 세로 가운데 — 해 아래에 두면 지붕·성벽에 가려질 때가 있었다 (2026-09-22 사용자). TEMPVS 는 4 더 왼쪽 */
+  ctx.textAlign = 'right'; ctx.fillStyle = '#9b2c1c'; ctx.font = 'bold 9px serif'; ctx.fillText('TEMPVS', lx - 4, -3); /* 시간 — 폼페이 낙서처럼 붉은 글씨 */
+  ctx.fillStyle = INK; ctx.font = 'bold 8px sans-serif'; ctx.fillText('시즌 넘기기', lx, 8); ctx.textAlign = 'left';
+  { const ax = -(s.r + 30) + Math.sin(t * 3) * 1.5, ay = 5; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 9, ay); ctx.moveTo(ax + 5, ay - 3.5); ctx.lineTo(ax + 9, ay); ctx.lineTo(ax + 5, ay + 3.5); ctx.stroke(); } /* 글자와 해 사이 붉은 화살표가 해를 향해 까딱인다 — 누르면 시즌이 넘어간다는 것을 강조 (2026-09-22 사용자) */
+}
 export function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
   const W = TOWN.forumW, ink = INK;
-  { // 하늘의 해: 누르면 계약 벽·서판을 건너뛰고 바로 시즌 진행 창으로 (시즌 넘기기). 해가 한 바퀴 돌면 한 철이 간다
-    const s = FORUM.sun, pulse = 1 + Math.sin(t * 1.6) * 0.035;
-    ctx.save(); ctx.translate(s.x, s.y); ctx.scale(pulse, pulse);
-    ctx.fillStyle = '#e8c96a'; ctx.strokeStyle = '#9b2c1c'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(0, 0, s.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t * 0.05; ctx.beginPath(); ctx.moveTo(Math.cos(a) * (s.r + 4), Math.sin(a) * (s.r + 4)); ctx.lineTo(Math.cos(a) * (s.r + 10), Math.sin(a) * (s.r + 10)); ctx.stroke(); } /* 살: 아주 천천히 돈다 */
-    ctx.restore();
-    ctx.textAlign = 'center'; ctx.fillStyle = '#9b2c1c'; ctx.font = 'bold 9px serif'; ctx.fillText('TEMPVS', s.x, s.y + s.r + 22); /* 시간 — 폼페이 낙서처럼 붉은 글씨 */
-    ctx.fillStyle = ink; ctx.font = 'bold 8px sans-serif'; ctx.fillText('시즌 넘기기', s.x, s.y + s.r + 33); ctx.textAlign = 'left';
-  }
   // 회랑: 뒤 벽 + 기둥 + 엔타블러처·지붕
   ctx.fillStyle = '#d9c9a2'; ctx.fillRect(0, -184, W, 170); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, -196, W + 16, 12); ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -184, W, 6); // 세로 무대: 공고 2×2 가 들어가게 벽을 높였다
   for (let x = FORUM.wallW + 10; x < W - 10; x += 52) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(x, -178, 10, 164); ctx.fillStyle = '#a58f60'; ctx.fillRect(x - 2, -178, 14, 5); ctx.fillRect(x - 2, -18, 14, 4); } // 열주
@@ -417,7 +424,7 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     else if (pose === 'cup') { const a = Math.sin(t * 2.5 + seed) * 3; sk = { ...NPC_POSES.tend, lean: 18, frontArm: [88 + a, 18], backArm: [-35, -25] };
       hands = (c, f) => { c.fillStyle = '#c8a878'; c.beginPath(); c.moveTo(f.hx - 3, f.hy - 4); c.lineTo(f.hx + 3, f.hy - 4); c.lineTo(f.hx + 2, f.hy + 2); c.lineTo(f.hx - 2, f.hy + 2); c.closePath(); c.fill(); c.strokeStyle = ink; c.lineWidth = 1; c.stroke(); }; } // 물잔
     else if (pose === 'whip') { const hand = whipHand((t + seed) % 3.0); sk = { ...NPC_POSES.stand, lean: 6, reach: hand, backArm: [-45, -25] };
-      hands = (c, f) => { whipStep(t + seed, { x: f.hx, y: f.hy }); drawWhip(t + seed, 1, sc); }; } // 채찍: 실제 손 위치에서 물리로 따라옴
+      hands = (_c, f) => { whipStep(t + seed, { x: f.hx, y: f.hy }); drawWhip(t + seed, 1, sc); }; } // 채찍: 실제 손 위치에서 물리로 따라옴
     drawStickman(ctx, 'murmillo', { x, y, scale: sc, facing, skeleton: sk, t: t + seed, ink, bare: true, garment: 'tunic', garmentColor: tunic, garmentStripe: pose === 'point' ? '#9b2c1c' : undefined, apron: pose === 'stir', hands });
   };
     // (배경은 타운이 깐다) 2층 주랑 회랑: 위층 난간 + 아래층 아치 + 켈라 문
@@ -449,7 +456,7 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     // (관람석은 뺐다: 폭을 아끼려고)
     // 교관(독토르): 관람석 앞에서 막대로 지시
     stick(46, 178, 0.85, 'point', t, 1); // 교관은 대련장 왼쪽 앞
-    roster.filter(g => g.status === 'doctor').forEach((g, i) => { const x = 70 + i * 22; stick(x, 180, 0.85, 'point', t + i * 2, 11 + i); }); // 고용한 독토르(전직 검투사)는 교관 옆
+    roster.filter(g => g.status === 'doctor').forEach((_g, i) => { const x = 70 + i * 22; stick(x, 180, 0.85, 'point', t + i * 2, 11 + i); }); // 고용한 독토르(전직 검투사)는 교관 옆
     // 로라리우스(채찍 든 감독): 대련 조 뒤에서 채찍을 휘두름
     stick(276, 178, 0.85, 'whip', t, 5); // 로라리우스는 대련장 오른쪽 앞
     // 보리죽 솥 (오른쪽 뒤 구석) + 요리사 + 김 — 팔루스보다 먼저 그려 뒤에 놓인다
@@ -463,7 +470,7 @@ export function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       for (let i = 0; i < 2; i++) { const x = ax + 88 + i * 12; ctx.beginPath(); ctx.moveTo(x, 130); ctx.lineTo(x, 88); ctx.moveTo(x - 3, 92); ctx.lineTo(x, 84); ctx.lineTo(x + 3, 92); ctx.stroke(); }
       ctx.restore(); }
     // 검투사 배치: 팔루스에 세운 검투사는 그 기둥에서 각목(목검) 훈련(공격 클립 반복, 사람마다 위상 다르게). 세우지 않은 건강한 검투사는 짝이 맞는 만큼 연습장에서 대련(최대 2조)
-    const teamColor = (g: Gladiator) => myInk();
+    const teamColor = (_g: Gladiator) => myInk();
     for (let k2 = 0; k2 < postN; k2++) { const g = palusTrainee(S.st, k2); if (!g) continue; const px = posts[k2]; const clip = attackClipFor(g.type); const len = clipLength(clip) + 700; const el = ((t * 1000) + k2 * 400) % len;
       drawStickman(ctx, g.type, { x: px - 44, y: H - 20, scale: 0.9, skeleton: clipSkeleton(clip, el), t, team: teamColor(g), accessories: accessoriesOf(g) }); }
     const idle = roster.filter(g => g.alive && !g.injured && g.status !== 'doctor' && palusOf(S.st, g) < 0); const sparN = Math.min(4, idle.length) - (Math.min(4, idle.length) % 2);

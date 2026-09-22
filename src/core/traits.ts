@@ -24,8 +24,6 @@ export const TYPE_TRAITS: Record<GType, [Trait, Trait]> = {
   retiarius: ['bare', 'spear'], dimachaerus: ['bare', 'sica'],
   scissor: ['bare', 'gladius'], laquearius: ['bare', 'spear'], // 2026-09-18 추가
 };
-export const traitsOf = (t: GType): [Trait, Trait] => TYPE_TRAITS[t];
-export const hasTrait = (t: GType, tr: Trait) => TYPE_TRAITS[t].includes(tr);
 
 export type Level = 0 | 1 | 2 | 3;
 export interface TraitLevels { trait: Record<Trait, Level>; lineage: Record<Lineage, Level> }

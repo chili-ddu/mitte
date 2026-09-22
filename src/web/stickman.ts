@@ -1,6 +1,6 @@
 // 폼페이 낙서풍 스틱맨 렌더러. 유형 = 장비 실루엣.
 import type { GType } from '../core/types.js';
-import { loadoutFor, hasBigShield, hasNet, type Loadout, type Helmet, type Accessory } from './loadout.js';
+import { loadoutFor, hasNet, type Loadout, type Helmet, type Accessory } from './loadout.js';
 import type { MainHand, OffHand } from '../core/equipment.js';
 
 export type Pose = 'idle' | 'guard' | 'windup' | 'attack' | 'swing' | 'recover' | 'hit' | 'kneel' | 'down'
@@ -30,7 +30,6 @@ export const NPC_POSES = {
   tend:    { lean: 10,  frontArm: [70, 35],    backArm: [55, 45],   frontLeg: [18, -8],  backLeg: [-14, 6],  headBob: 2 }, // 두 손 앞으로 (붕대·물건)
   stir:    { lean: -4,  frontArm: [-75, -30],  backArm: [35, 30],   frontLeg: [12, -4],  backLeg: [-12, 4],  headBob: 0 }, // 뒤쪽 솥을 젓는다, 뒷팔은 앞으로 내밀어 보이게
 } as const satisfies Record<string, Skeleton>;
-export type NpcPose = keyof typeof NPC_POSES;
 // 걷기: 다리 교차 + 팔 반대 스윙. phase 는 라디안
 export function walkSkeleton(phase: number, armSwing = 1): Skeleton {
   const sw = Math.sin(phase);
@@ -427,7 +426,7 @@ function drawHead(ctx: CanvasRenderingContext2D, helmet: Helmet, x: number, y: n
   }
 }
 
-function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: number, seed: number, handAng = 0, noNet = false, team?: string) {
+function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: number, _seed: number, handAng = 0, noNet = false, team?: string) {
   ctx.save(); ctx.translate(x, y);
   if (L.off === 'scutum' || L.off === 'parmula' || L.off === 'parma' || L.off === 'medium') ctx.rotate(Math.max(-25, Math.min(0, -(handAng - 40) * 0.5)) * Math.PI / 180); // 앞으로 뻗을수록 정면
   switch (L.off) {
@@ -463,16 +462,16 @@ function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: nu
 }
 
 // 부속: 팔보호대(마니카), 정강이받이, 어깨 보호대(갈레루스), 흉갑
-function drawExtras(ctx: CanvasRenderingContext2D, L: Loadout, shX: number, shY: number, hipY: number, seed: number) {
+function drawExtras(ctx: CanvasRenderingContext2D, L: Loadout, shX: number, shY: number, _hipY: number, _seed: number) {
   ctx.save(); ctx.lineWidth *= 0.6;
-  if (L.extras.includes('galerus')) { ctx.beginPath(); ctx.moveTo(shX - 6, shY - 6); ctx.lineTo(shX - 2, shY - 12); ctx.lineTo(shX + 2, shY - 5); ctx.stroke(); }
+  if (L.extras.includes('galerus')) { ctx.save(); ctx.fillStyle = '#b08a3a'; ctx.beginPath(); ctx.moveTo(shX - 9, shY - 1); ctx.quadraticCurveTo(shX - 10, shY - 9, shX - 7, shY - 14); ctx.quadraticCurveTo(shX - 9, shY - 17, shX - 12, shY - 16); ctx.quadraticCurveTo(shX - 6, shY - 18, shX - 3, shY - 12); ctx.quadraticCurveTo(shX - 1, shY - 7, shX - 1, shY - 1); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } /* 갈레루스: 왼쪽 어깨에서 귀 높이까지 올라가는 청동 곡면판, 위 끝이 바깥으로 젖혀진다 (2026-09-22 사용자: 꺾쇠처럼 보였다) */
   if (L.extras.includes('pectorale')) { ctx.beginPath(); ctx.rect(shX - 4, shY + 2, 8, 7); ctx.stroke(); }
   if (L.extras.includes('greaves')) { ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(-3, -6 - i * 3); ctx.lineTo(3, -7 - i * 3); } ctx.stroke(); } // 앞다리 정강이 빗금(대략 위치)
   ctx.restore();
 }
 
 // 악세사리: 별칭·전적 장식
-function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, hy: number, r: number, shX: number, shY: number, hipY: number, seed: number) {
+function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, hy: number, r: number, shX: number, shY: number, hipY: number, _seed: number) {
   for (const a of L.accessories) {
     ctx.save();
     switch (a) {
@@ -529,7 +528,7 @@ function drawAccessories(ctx: CanvasRenderingContext2D, L: Loadout, hx: number, 
   }
 }
 
-function drawWeapon(ctx: CanvasRenderingContext2D, w: MainHand, x: number, y: number, ang: number, pose: Pose, seed: number) {
+function drawWeapon(ctx: CanvasRenderingContext2D, w: MainHand, x: number, y: number, ang: number, _pose: Pose, _seed: number) {
   ctx.save(); ctx.translate(x, y);
   // 무기는 손 방향 + 앞쪽으로
   // 무기는 전완 방향으로 이어진다. 전완 벡터 (sin a, cos a) 를 '위(-y)' 축에 맞추려면 180 - a
@@ -571,5 +570,31 @@ export function drawSeated(ctx: CanvasRenderingContext2D, x: number, y: number, 
   if (arms) { ctx.beginPath(); ctx.moveTo(-2, shY + 2); ctx.lineTo(-12, shY - 8); ctx.lineTo(-14, shY - 20); ctx.moveTo(-2, shY + 2); ctx.lineTo(9, shY - 8); ctx.lineTo(12, shY - 20); ctx.stroke(); }
   else if (k > 0.3) { ctx.beginPath(); ctx.moveTo(-2, shY + 2); ctx.lineTo(-9, shY + 12); ctx.lineTo(2, shY + 20); ctx.moveTo(-2, shY + 2); ctx.lineTo(7, shY + 11); ctx.lineTo(10, shY + 20); ctx.stroke(); }
   ctx.beginPath(); ctx.arc(-2 + j * 0.3, shY - 9, 9, 0, Math.PI * 2); ctx.save(); ctx.fillStyle = SKIN; ctx.fill(); ctx.restore(); ctx.stroke(); // 머리 (불투명)
+  ctx.restore();
+}
+
+// 말 (에퀘스): 전투의 말 탄 돌진과 초상 뒤 배경에서 같이 쓴다. t 로 다리가 달린다 (0 이면 서 있다)
+export function drawHorse(ctx: CanvasRenderingContext2D, x: number, footY: number, sc: number, facing: 1 | -1, t: number, ink: string, gait: 'run' | 'walk' | 'stand' = 'run') {
+  ctx.save(); ctx.translate(x, footY); ctx.scale(facing * sc, sc); ctx.strokeStyle = ink; ctx.lineWidth = 3.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const g = gait === 'stand' ? 0 : gait === 'walk' ? Math.sin(t * 6) * 0.55 : Math.sin(t * 14), h = gait === 'stand' ? 0 : gait === 'walk' ? Math.cos(t * 6) * 0.55 : Math.cos(t * 14); // 다리: 달림·걸음·서 있음 (2026-09-22)
+  ctx.beginPath(); // 몸통·목·머리: 옆모습이 한눈에 말로 읽히도록 등을 길게 잡는다
+  ctx.moveTo(-33, -25); ctx.quadraticCurveTo(-13, -38, 16, -33); ctx.quadraticCurveTo(27, -32, 31, -42); ctx.lineTo(41, -47); ctx.quadraticCurveTo(48, -45, 47, -39); ctx.lineTo(38, -37);
+  ctx.moveTo(37, -45); ctx.lineTo(35, -53); ctx.moveTo(42, -46); ctx.lineTo(45, -52); // 귀 둘
+  ctx.moveTo(-32, -25); ctx.quadraticCurveTo(-42, -23, -46, -12); // 꼬리
+  ctx.moveTo(-20, -35); ctx.quadraticCurveTo(-9, -39, 4, -36); // 등선 한 번 더
+  for (let i = 0; i < 5; i++) { const nx = 17 + i * 4, ny = -34 - i * 2.2; ctx.moveTo(nx, ny); ctx.lineTo(nx - 4, ny - 6); } // 갈기 (2026-09-22: 말처럼 읽히게)
+  ctx.moveTo(44, -44); ctx.lineTo(47, -42); // 눈 자리 콧등 선
+  ctx.stroke();
+  ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(41, -44, 1.6, 0, Math.PI * 2); ctx.fill(); // 눈
+  ctx.lineWidth = 2.5; ctx.beginPath(); // 안장과 고삐: 기수가 말 위에 묶여 보이는 접점
+  ctx.moveTo(-12, -37); ctx.lineTo(8, -35); ctx.quadraticCurveTo(2, -29, -10, -30); ctx.closePath(); ctx.stroke();
+  ctx.moveTo(7, -35); ctx.quadraticCurveTo(20, -39, 38, -39); ctx.stroke();
+  ctx.lineWidth = 3.1; ctx.beginPath(); // 다리 넷: 교차 보행을 크게 줘서 말이 달리고, 사람 다리와 구분되게 한다
+  ctx.moveTo(-24, -25); ctx.lineTo(-30 - g * 7, -9); ctx.lineTo(-25 - g * 13, 0);
+  ctx.moveTo(-12, -27); ctx.lineTo(-7 + g * 7, -10); ctx.lineTo(-13 + g * 13, 0);
+  ctx.moveTo(13, -29); ctx.lineTo(7 - h * 7, -10); ctx.lineTo(12 - h * 12, 0);
+  ctx.moveTo(23, -30); ctx.lineTo(28 + h * 7, -10); ctx.lineTo(23 + h * 12, 0);
+  ctx.stroke();
+  ctx.lineWidth = 1.4; ctx.globalAlpha *= 0.42; ctx.beginPath(); ctx.ellipse(-6, 2, 39, 6, 0, 0, Math.PI * 2); ctx.stroke(); // 발밑 낙서 그림자
   ctx.restore();
 }

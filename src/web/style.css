@@ -46,7 +46,7 @@ header { position:sticky; top:0; z-index:12; display:flex; flex-direction:column
 header .hrow { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
 .stat.season { display:inline-flex; align-items:center; gap:4px; }
 .season-ico { display:inline-flex; color:#7a3b1e; }
-.season-ico.s0 { color:#8a6a2c; } .season-ico.s1 { color:#a0741c; } .season-ico.s2 { color:#7a2a3a; } .season-ico.s3 { color:#5a4a3a; }
+.season-ico.s0 { color:#8a6a2c; } .season-ico.s1 { color:#a0741c; } .season-ico.s2 { color:#7a2a3a; }
 header h1 { font-size:21px; margin:0; letter-spacing:.05em; font-family:Georgia, "Times New Roman", serif; color:#ffe1a0; text-shadow:1.2px 1.2px 0 #3f180f, -1px 0 0 rgba(255,242,207,.3); transform:rotate(-2deg); }
 
 header button.tiny { padding:2px 10px; font-size:12px; min-height:26px; }
@@ -82,14 +82,12 @@ button.primary { background:#8f2618; color:#fff7de; border-color:#5e170f; box-sh
 .contract.mini { cursor:pointer; padding:5px 8px; }
 .host { font-size:12px; font-weight:700; padding:1px 6px; border-radius:3px; background:#e4d3a4; color:#5a3a1c; }
 .host.magistrate { background:transparent; border:1px solid #c9b283; color:var(--dim); font-weight:600; } .host.miser { background:#d9d2b8; } .host.mourner { background:#b8a6a6; color:#3a1f1f; } .host.gambler { background:#e8c96a; } .host.imperial { background:#9b2c1c; color:#fff; } .host.candidate { background:#c9b283; }
-.betline { display:flex; align-items:center; gap:8px; margin:2px 0; }
 button.tiny.bet { margin-left:auto; } button.tiny.bet.on { background:#7a5a1c; color:#fff; border-color:#7a5a1c; }
 .card.mini { padding:4px 8px; flex-wrap:nowrap; cursor:pointer; }
 .contract.mini.ready { border-left-color:var(--ok); }
 .contract .tier { font-weight:700; }
 .legend { display:flex; gap:10px; font-size:12px; color:var(--dim); margin:6px 0; flex-wrap:wrap; }
 .legend.box { align-items:center; gap:6px; background:#f3ead0; border:1px solid var(--sand2); border-radius:6px; padding:6px 10px; margin-bottom:10px; }
-.legend .lg { display:inline-flex; align-items:center; gap:4px; color:var(--ink); font-weight:600; }
 .legend .arrow { color:var(--dim); font-size:16px; line-height:1; }
 .legend .sq { display:inline-flex; width:18px; height:18px; border-radius:2px; vertical-align:-4px; margin-right:3px; align-items:center; justify-content:center; }
 .legend .sq svg { width:14px; height:14px; }
@@ -131,11 +129,7 @@ button.tiny.bet { margin-left:auto; } button.tiny.bet.on { background:#7a5a1c; c
 .xclose:hover { background:transparent; color:var(--ink); }
 .overlay.sheet .modal > h2, .overlay.sheet .modal > .panel > h2 { padding-right:40px; }
 /* 커스텀 드롭다운 */
-.dd { position:relative; display:inline-block; min-width:92px; font-size:12px; font-weight:400; text-transform:none; letter-spacing:0; } /* 버튼과 펼침 목록의 너비가 같다 */
-.ddbtn { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; min-height:30px; width:100%; justify-content:flex-start; border:1px solid #7a5a1c; border-radius:14px; background:#fbf6e6; color:var(--ink); font-size:12px; }
-.ddarrow { width:7px; height:7px; border-right:2px solid #7a3b1e; border-bottom:2px solid #7a3b1e; transform:rotate(45deg) translateY(-2px); margin-right:2px; } /* 아래 방향 화살표, 글자 앞 */
-.ddlist { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; min-width:0; box-sizing:border-box; background:#fbf6e6; border:1px solid #7a5a1c; border-radius:8px; box-shadow:0 6px 18px rgba(43,29,14,.3); padding:4px; z-index:20; }
-.dd.open .ddlist { display:block; }
+.dd { position:relative; display:inline-block; min-width:92px; font-size:12px; font-weight:400; text-transform:none; letter-spacing:0; } /* 아래 방향 화살표 */
 .ddopt { padding:7px 10px; border-radius:6px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ddopt:hover { background:#f3ead0; }
 .ddopt.on { background:#5a3a1c; color:#f3ead0; }
@@ -174,9 +168,6 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .sidetools button.tool.on .nbadge { background:#f3ead0; color:#3a2412; box-shadow:0 0 0 2px var(--ink); }
 .modal h2 { margin:0 0 10px; }
 .modal.ask { width:min(420px, 92vw); z-index:1; }
-.modal.offers { width:min(400px, 92vw); }
-.modal.offers .card { flex-wrap:wrap; }
-.modal.offers .card .grow { flex:1 1 160px; }
 .panel.battle { position:relative; }
 .panel.battle .actions { position:absolute; right:18px; bottom:18px; margin:0; } /* 버튼을 캔버스 위에 띄워 화면이 짧아도 항상 보인다 */
 .panel.battle .actions button { min-height:40px; padding:6px 14px; background:rgba(255,248,229,.92); }
@@ -205,9 +196,6 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .rank.veteranus { background:#2c4f9b; color:#fff; }
 .req { display:inline-block; margin-top:3px; font-size:12px; font-weight:700; color:var(--red); }
 .req.ok { color:var(--ok); }
-.cycle { display:grid; grid-template-columns:auto 22px auto; grid-template-rows:auto 18px auto; align-items:center; justify-items:center; gap:2px 4px; }
-.cyc { display:inline-flex; align-items:center; gap:4px; color:var(--ink); font-weight:600; }
-.cycle .arrow { font-size:14px; color:var(--dim); }
 .steps { display:flex; gap:6px; margin-bottom:10px; }
 .step { flex:1; text-align:center; padding:6px 8px; border:1px solid var(--sand2); border-radius:4px; color:var(--dim); font-size:13px; background:#efe5c9; }
 .step.on { background:var(--red); color:#fff; border-color:var(--red); font-weight:700; }
@@ -219,11 +207,6 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .seg button.on { background:var(--blue); color:#fff; border-color:var(--blue); }
 .portrait { border-radius:4px; flex:none; } /* 테두리 선 없음 — 배경 그라데이션이 상자를 잡는다 (2026-09-17 사용자) */
 .yardwrap { padding:0; overflow:hidden; margin-bottom:10px; position:relative; }
-/* 디스플레이 상단 장소 표지판 (나무 팻말 느낌) */
-.loctabs { position:absolute; top:6px; left:6px; right:6px; display:flex; gap:4px; transition:opacity .25s, transform .3s; }
-.loctabs.hidden { opacity:0; transform:translateY(-16px); pointer-events:none; } /* 켈라 화면이 올라오면 팻말은 사라진다 (켈라가 팻말 위까지 덮는 느낌) */
-.loctabs button { flex:1; min-height:30px; padding:2px 2px; font-size:12px; background:rgba(201,178,131,.85); border:1px solid #7a5a1c; color:#3a2412; border-radius:3px; box-shadow:0 1px 0 #7a5a1c; }
-.loctabs button.on { background:#5a3a1c; color:#f3ead0; border-color:#3a2412; }
 /* 켈라 팝오버: 누른 방에서 커지며 나타난다 */
 .popscrim { position:fixed; inset:0; z-index:9; }
 .cellpop { position:absolute; z-index:10; background:var(--sand); border:1px solid #7a5a1c; border-radius:10px; box-shadow:0 8px 24px rgba(43,29,14,.35); padding:10px 12px 12px; overflow:auto; }
@@ -231,9 +214,6 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .cellpop > .panel { border:0; padding:0; background:transparent; }
 .cellpop h2 { padding-right:36px; }
 @keyframes popin { from { transform:scale(.15); opacity:0; } to { transform:scale(1); opacity:1; } }
-/* 디스플레이 왼쪽 아래 켈라 버튼 */
-.cellbtn { display:none; } /* 켈라 버튼은 오른쪽 토글 열로 옮김 */
-.cellbtn.on { background:#5a3a1c; color:#f3ead0; }
 .yard { display:block; width:100%; touch-action:pan-y; cursor:grab; }
 .arena-icon { flex:none; margin-right:4px; }
 .card { align-items:center; }
@@ -265,9 +245,15 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 
 /* 도움말 (상성·시너지·규칙) */
 .help { font-size:12.5px; line-height:1.5; }
+.help.hindex { display:flex; flex-direction:column; gap:6px; padding:4px 0; } /* 특성·규칙 목차: 절마다 한 줄, 누르면 그 절만 (2026-09-22 사용자: 전체 화면 + 뎁스) */
+.help.hindex .hitem { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; text-align:left; min-height:40px; padding:6px 12px; font-size:13px; }
+.help.hindex .hitem b { font-size:14px; } .help.hindex .hitem .hint { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .help.hindex .hitem .chev { font-size:18px; color:var(--dim); }
+.sheethead .hback, h2 .hback { min-height:0; padding:0 4px 0 0; background:transparent; border:0; box-shadow:none; font:inherit; font-weight:700; color:inherit; cursor:pointer; }
 .hsec { margin-bottom:10px; }
 .hsec h3 { font-size:12px; margin:0 0 4px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--sand2); padding-bottom:2px; }
 .hrow { display:grid; grid-template-columns:110px 1fr; gap:8px; padding:2px 0; }
+.hrow.irow { grid-template-columns:150px 1fr; } .hrow.irow .ilabel { display:inline-flex; align-items:center; gap:4px; min-width:0; } .hrow.irow .ilabel .sq { width:18px; height:18px; border-radius:3px; flex:none; } .hrow.irow .ilabel .sq svg { width:14px; height:14px; } .hrow.irow .ilabel b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* 아이콘 + 이름 줄 (2026-09-22) */
+.help .hsub { margin:6px 0 2px; font-size:11px; font-weight:700; color:#7a3b1e; letter-spacing:.04em; } /* 딕타타 층 소제목 */
 .hrow b { color:var(--ink); }
 
 .contract .size { display:inline-block; font-size:11px; font-weight:700; padding:1px 6px; border-radius:10px; background:var(--sand2); color:var(--ink); }
@@ -286,11 +272,13 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .fline { font-size:12px; color:#6b5a3c; } .fline.bad { color:#8a5a12; } .fline.grave { color:var(--red); font-weight:700; } .fline.good { color:#2f5a22; }
 .quickdetail { margin-top:8px; }
 .quickdetail summary { cursor:pointer; }
-.rcols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.rlayout { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
-.rlayout .rleft h3:first-child { margin-top:0; }
-.rlayout .rright .mtable { margin-top:0; border-top:0; padding-top:0; }
 .badge { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:10px; margin-right:4px; background:var(--sand2); color:var(--ink); }
+.dbadges.chips, .detailpage .dbadges.chips { gap:5px 6px; margin:0; } .dbadges.chips .badge { margin-right:0; padding:3px 9px; } /* 손가락으로 누를 만큼: 칩 높이 ~24, 간격 5·6 (2026-09-22 사용자: 휴대폰에서 누르기 힘들 것 같다) */ /* 줄바꿈으로 감긴 줄 사이(2)도 첫째·둘째 줄 사이(dinfo gap 2)와 같게 (2026-09-22 사용자: 감긴 줄이 더 멀었다) */ .badge.chip { border:1px solid rgba(58,36,18,.25); background:#f3ead0; } /* 상세 카드 아래 칩 (2026-09-22) */
+.badge.chip.lin.nature { background:#e4efd9; color:#2f5a22; border-color:#9cc48a; } .badge.chip.lin.victory { background:#f4e6bd; color:#7a5a1c; border-color:#c9a94a; } .badge.chip.lin.myth { background:#eddce9; color:#6a2a5a; border-color:#b58ab0; } .badge.chip.lin.nickname { background:#dfe4ec; color:#3a4a68; border-color:#98a4bb; } .badge.chip.lin.place { background:#ead9cb; color:#6a3a2a; border-color:#b88f78; } /* 계보 색 = 카드 문양 색 */
+.badge.chip.talent.t1 { background:#e9d3a3; color:#5a3a1c; border-color:#c9a94a; } .badge.chip.talent.t2 { background:#e8c9c6; color:#7a1f16; border-color:#c07a72; } .badge.chip.talent.t3 { background:#f3e2a0; color:#5a3a1c; border-color:#d4a83a; } /* 자질 칩: 재능 황토 · 비범 핏빛 · 천부 금빛 (흙빛과 같은 계열) */
+.badge.chip.curve.early { background:#e4f0dc; color:#2f5a22; } .badge.chip.curve.late, .badge.chip.curve.second { background:#e6e2ee; color:#4a3a6a; }
+.detailpage .gcwrap.big { position:relative; } .detailpage .fanstag { position:absolute; right:0; top:-22px; font-size:12px; font-weight:700; color:#7a3b1e; } /* 팬 수: 카드 밖 오른쪽 위 (2026-09-22) */
+.badge.chip.origin.captive { background:#ead8cf; color:#8a2417; } .badge.chip.origin.damnatus { background:#e0dcd4; color:#4a4038; } .badge.chip.origin.auctoratus { background:#e4f0dc; color:#2c5a1e; }
 .badge.injured { background:#c58a1a; color:#fff; } /* 주의: 부상·피로 3 이상 */
 .badge.warn { background:#f2e3c0; color:#8a5a12; border:1px solid #c58a1a; } /* 같은 주의색의 옅은 단계 (피로 2) */
 .mtable { margin-top:10px; border-top:1px solid var(--sand2); padding-top:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px 24px; font-size:13px; }
@@ -310,23 +298,15 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 
 .syn.classic { background:#7a5a1c; color:#fff; }
 .lsyn .syn.trait { margin-left:8px; color:var(--dim); } .lsyn .syn.trait b { letter-spacing:1px; font-weight:400; } .lsyn .syn.trait.l2 { color:var(--ink); } .lsyn .syn.trait.l3 { color:var(--ok); } /* 편성 특성 진행 (2026-09-18) */
-.syn.classic.maybe { background:transparent; color:#7a5a1c; border:1px dashed #7a5a1c; }
-
-.badge.teach { background:transparent; color:#5a4224; border:1px solid #5a4224; } /* 가르침: 기술까지 전수하는 독토르 */
+.syn.classic.maybe { background:transparent; color:#7a5a1c; border:1px dashed #7a5a1c; } /* 가르침: 기술까지 전수하는 독토르 */
 .card .badge { margin-right:4px; vertical-align:1px; }
 
 .badge.skill { background:#d8c08a; color:#2a1b0c; box-shadow:inset 0 0 0 1px rgba(255,255,255,.45), 0 1px 1px rgba(58,36,18,.14); } /* 완전히 불투명 — 뒤의 계보 무늬가 비치지 않게 (2026-09-17 사용자) */ /* 기술은 정보 칩 — 경고색(#c58a1a)은 피로·부상에만 (2026-09-17 칩 정리) */
 .offer { display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%; margin-top:6px; padding:6px 8px; background:#fff3c4; border:1px solid #c9a227; border-radius:6px; font-size:12.5px; }
 .offer .grow { flex:1 1 180px; min-width:0; }
 .offer .replace { width:100%; margin-top:4px; }
-.offer .replace .rhead { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-.offer .replace .ritem { display:flex; align-items:center; gap:6px; margin-top:4px; padding:4px 8px; background:rgba(255,255,255,.55); border:1px solid #d9c07a; border-radius:6px; }
-.offer .replace .ritem .grow { flex:1; min-width:0; }
-.offer .replace .ritem .desc { font-size:11.5px; line-height:1.3; margin-top:1px; }
 .panel.result { animation:pagein .22s ease-out; }
 @keyframes pagein { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:none; } }
-.modal .actions.pager { display:flex; align-items:center; gap:8px; }
-.modal .actions.pager button:disabled { opacity:.35; }
 
 /* 루두스 시설 */
 .fgrid { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:12px; }
@@ -334,13 +314,6 @@ h3.sub { font-size:12px; margin:10px 0 6px; color:var(--dim); text-transform:upp
 .frow { display:flex; gap:8px; align-items:center; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:6px 8px; font-size:12.5px; margin-bottom:6px; }
 .frow button { white-space:nowrap; margin-left:auto; } /* 강화 버튼은 오른쪽 정렬 (줄바꿈돼도) */
 .cells { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:8px; }
-.cellbox { background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:5px 6px; font-size:12px; }
-.cellbox.empty { opacity:.55; }
-.cellbox.q1 { border-color:#c9a94a; } .cellbox.q2 { border-color:#8a6a44; background:#f7efd8; } .cellbox.q3 { border-color:var(--red); background:#f7e9d8; }
-.cellhead { display:flex; justify-content:space-between; }
-.cellbox .stars { color:#c9a94a; letter-spacing:1px; }
-.cellbox .nm { font-weight:700; margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cellbtns { display:flex; gap:3px; align-items:center; }
 button.tiny { padding:1px 5px; font-size:11px; }
 
 .evrow { display:flex; gap:8px; align-items:center; padding:5px 8px; border:1px solid var(--sand2); border-radius:6px; margin-bottom:6px; background:#fbf6e6; font-size:13px; cursor:pointer; }
@@ -353,17 +326,10 @@ button.tiny { padding:1px 5px; font-size:11px; }
 
 select.tiny { font:inherit; font-size:12px; padding:4px 26px 4px 10px; border:1px solid #7a5a1c; border-radius:14px; background:#fbf6e6 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a3b1e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 8px center / 12px 12px; color:var(--ink); -webkit-appearance:none; appearance:none; cursor:pointer; min-height:30px; }
 select.tiny:focus { outline:2px solid rgba(44,79,155,.35); }
-.stat-ico { display:inline-flex; align-items:center; gap:3px; margin-left:8px; font-size:12px; font-weight:700; text-transform:none; letter-spacing:0; padding:1px 7px 1px 5px; border-radius:10px; }
-.stat-ico .ico { display:inline-flex; }
-.stat-ico.injured { background:#c58a1a; color:#fff; }
-.stat-ico.doc { background:#7a5a1c; color:#fff; }
 
-.badge.grudge { background:#7a1f16; color:#fff; } .badge.revenge { background:transparent; color:#7a1f16; border:1px dashed #7a1f16; } /* 적과의 인연은 붉은 한 계열: 원한(그가 앙심)은 채움, 복수(우리 차례)는 점선 (2026-09-17 칩 정리) */
-.enemyline { line-height:1.7; }
+.badge.grudge { background:#7a1f16; color:#fff; } .badge.revenge { background:transparent; color:#7a1f16; border:1px dashed #7a1f16; } /* 적과의 인연은 붉은 한 계열: 원한(그가 앙심)은 채움 */
 
 .seg.off button { opacity:.45; }
-
-.fixedline { min-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 .rivals { display:grid; grid-template-columns:1fr; gap:8px; } /* 파밀리아 시트: 검투사 시트처럼 행당 하나 */
 .rivalcard { display:grid; grid-template-columns:1fr 210px; gap:10px; align-items:stretch; background:#fbf6e6; border:1px solid var(--sand2); border-radius:6px; padding:8px 10px; font-size:13px; } /* 왼쪽 파밀리아 정보, 오른쪽 간판 검투사 카드 (2026-09-17 사용자) */
@@ -386,7 +352,6 @@ details.fold > summary h2 { display:flex; align-items:center; margin:0; }
 details.fold > summary h2::before { content:'▸'; margin-right:6px; font-size:12px; }
 details.fold[open] > summary h2::before { content:'▾'; }
 details.fold[open] > summary h2 { margin-bottom:8px; }
-h2.rowhead { display:flex; align-items:center; gap:4px; }
 
 /* 좁은 화면 (모바일·세로 태블릿) */
 /* 좁은 화면 규칙 (앱 폭이 560px 이하이므로 항상 적용) */
@@ -409,8 +374,6 @@ h2.rowhead { display:flex; align-items:center; gap:4px; }
 
 button.small { padding:3px 8px; font-size:12px; }
 
-.planbadge { font-size:12px; padding:3px 10px; min-height:26px; background:#fff3c4; border-color:#c9a227; }
-
 .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; align-items:start; }
 .segcol .seg { display:flex; flex-direction:column; gap:4px; width:100%; }
 .segcol .seg button { width:100%; text-align:left; }
@@ -419,8 +382,6 @@ button.small { padding:3px 8px; font-size:12px; }
 .badge.rec { background:transparent; color:#2c4f9b; border:1px dashed #2c4f9b; font-weight:600; } /* 추천은 잠깐의 제안 — 채운 색은 상태에만 (2026-09-17 칩 정리) */
 
 .card.contract.detail { cursor:pointer; }
-.card.contract.detail .assignline { margin-top:4px; }
-.card.contract.lineup .bigline { font-size:15px; font-weight:700; margin:4px 0; }
 .card.contract.lineup .slots .slot { min-height:38px; font-size:14px; }
 
 .odds { margin-left:8px; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:700; }
@@ -429,22 +390,14 @@ button.small { padding:3px 8px; font-size:12px; }
 .odds.bad { background:#9b2c1c; color:#fff; }
 
 .card.other { border-style:dashed; border-color:#7a5a1c; }
-
-.fixedrow { min-height:26px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .odds.none { background:transparent; color:var(--dim); border:1px dashed var(--dim); }
 .odds .vs { font-weight:400; font-size:10px; opacity:.85; } .odds b { font-variant-numeric:tabular-nums; }
 .card.contract.lineup .slots { min-height:44px; }
-.card.contract.lineup .betline { min-height:26px; }
 
 /* 준비 화면: 페이지 스크롤 없음. 아래 여백을 없애고 대시보드가 남는 높이를 다 쓴다 (fitDash) */
 #app.fit { padding-bottom:0; }
 #app.fit .dash { margin-bottom:0; }
 body:has(#app.fit) { overflow:hidden; }
-
-/* 준비 화면: 토글을 디스플레이 오른쪽 아래에 (대시보드를 가리지 않게) */
-.yardwrap .sidetools.indisplay { position:absolute; right:8px; top:52px; bottom:auto; z-index:5; gap:8px; } /* 팻말 줄 아래 오른쪽: 시장 판매대·가격표를 가리지 않는다 */
-.yardwrap .sidetools.indisplay button.tool { width:44px; height:44px; min-height:44px; }
-.yardwrap .sidetools.indisplay button.tool svg { width:22px; height:22px; }
 /* 폰(좁은 화면)에서는 디스플레이 안 토글을 조금 작게: 장면을 덜 가린다 */
 @media (max-width: 480px) {
   :root { --seal-right:12px; --seal-bottom:12px; }
@@ -454,9 +407,7 @@ body:has(#app.fit) { overflow:hidden; }
 }
 
 
-/* 편성 페이지 전환: 계약 → 검투사는 오른쪽에서, 돌아올 때는 왼쪽에서 밀려 들어온다 */
-.slide-fwd { animation:slidefwd .24s cubic-bezier(.2,.7,.3,1); }
-.slide-back { animation:slideback .24s cubic-bezier(.2,.7,.3,1); }
+/* 편성 페이지 전환: 계약 → 검투사는 오른쪽에서 */
 @keyframes slidefwd { from { opacity:.4; transform:translateX(40px); } to { opacity:1; transform:none; } }
 @keyframes slideback { from { opacity:.4; transform:translateX(-40px); } to { opacity:1; transform:none; } }
 
@@ -480,9 +431,7 @@ body:has(#app.fit) { overflow:hidden; }
 .card.contract.detail { height:114px; box-sizing:border-box; align-items:flex-start; padding-top:6px; padding-bottom:6px; overflow:hidden; } /* 높이를 완전히 고정: 줄마다 높이를 못 박고 넘치면 자른다 */
 .card.contract.detail > .grow { display:flex; flex-direction:column; gap:2px; height:100%; min-width:0; }
 .card.contract.detail > .grow > div:first-child { height:18px; line-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.card.contract.detail .effrow { height:68px; overflow:hidden; align-content:flex-start; margin:0; } /* 칩 최대(8개 = 3줄) 높이를 늘 유지: 카드 높이가 계약마다 달라지지 않게 (사용자) */ /* 칩 3줄(≈19px×3 + 간격): 폰 폭(255px)에선 한 줄에 3개라 최대 8개면 3줄 */
-.card.contract.detail .fixedline { height:16px; line-height:16px; }
-.card.contract.detail .assignline { height:20px; line-height:20px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card.contract.detail .effrow { height:68px; overflow:hidden; align-content:flex-start; margin:0; }
 
 .arenacol .tierchip { background:#3a2412; color:#f3ead0; } /* 크기는 공통 .tierchip 규칙 하나로 (2026-09-22 사용자: 두 화면의 칩이 같은 칩이어야) */
 
@@ -511,7 +460,7 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land.plan > .tabbar { position:static; background:transparent; }
 #app.land.plan > .panel.contracts { grid-area:main; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; padding:38px 12px 66px; margin:0 6px; min-height:0; overflow:hidden; position:relative; border:0; border-radius:4px;
   background-color:#e2d3ab; background-image:radial-gradient(rgba(58,36,18,.07) 1px, transparent 1.2px), radial-gradient(rgba(155,44,28,.05) 1px, transparent 1.4px), linear-gradient(180deg, transparent calc(100% - 14px), rgba(155,44,28,.5) calc(100% - 14px), rgba(155,44,28,.5) calc(100% - 4px), transparent calc(100% - 4px)); background-size:7px 7px, 11px 11px, 100% 100%; } /* 포룸 공고벽을 줌인한 모습: 회벽 알갱이 + 아래 붉은 띠 */
-#app.land.plan > .panel.contracts > .backbtn { position:absolute; left:8px; top:6px; width:60px; height:26px; padding:0; background:transparent; border:0; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); } /* 벽 왼쪽 위에 긁어 놓은 뒤로가기 화살표 */
+#app.land.plan > .panel.contracts > .backbtn { position:absolute; left:2px; top:6px; width:60px; height:26px; padding:0; background:transparent; border:0; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); } /* 벽 왼쪽 위에 긁어 놓은 뒤로가기 화살표 */
 #app.land.plan > .panel.contracts > .backbtn svg { width:40px; height:28px; } /* 뒤로가기는 모든 페이지에서 같은 자리·크기 (왼쪽 위 8px/6px, 60×26) */
 #app.land > .gfbtn, #app.land.plan > .panel.contracts > .tabletbtn { position:absolute; right:40px; bottom:14px; width:auto; height:auto; padding:0 4px 2px; background:transparent; border:0; box-shadow:none; display:flex; flex-direction:column; align-items:center; gap:0; z-index:2; transform:rotate(-2deg); animation:duelpulse 1.8s ease-in-out infinite; transform-origin:50% 60%; } /* 눌러 달라는 맥박: 천천히 커졌다 작아진다 */
 @keyframes duelpulse { 0%, 100% { transform:rotate(-2deg) scale(1); } 50% { transform:rotate(-2deg) scale(1.07); } }
@@ -553,15 +502,12 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage .lineuptop .ltitle { padding:0 0 0 64px; min-height:24px; display:flex; align-items:center; gap:6px; min-width:0; } /* 화살표 옆 한 줄, 여백 없이 (2026-09-22 사용자) */ /* 뒤로가기 화살표 상자(44)와 같은 높이, 경기장 이름은 화면 가운데 (2026-09-22 사용자: 왼쪽에 치우친 게 어색했다) */ /* 뒤로가기 화살표(왼쪽 위 8px, 높이 44)와 같은 높이 띠 안에 세로 가운데 — 경기장 이름이 화살표보다 내려가 보이던 것 (2026-09-22 사용자) */ /* 제목은 뒤로가기 화살표를 넉넉히 피해 오른쪽으로 (사용자: 화살표 누르기 쉽게) */
 #app.land > .planpage .lineuptop .ltitle .tierchip { flex:none; background:#9b2c1c; color:#f3ead0; } #app.land > .planpage .lineuptop .card.contract.lineup.tier2 .tierchip { background:#7a2a6a; } #app.land > .planpage .lineuptop .card.contract.lineup.tier3 .tierchip { background:#2c4f9b; } /* 공고와 같은 등급 색 */
 #app.land > .planpage .pleft { overflow:auto; min-height:0; padding-bottom:0; }
-#app.land > .planpage .pright { overflow-y:auto; overflow-x:hidden; min-height:0; display:grid; grid-template-columns:repeat(3, var(--gc-w)); justify-content:space-evenly; /* 한 줄에 셋, 카드 폭 고정 (2026-09-22 사용자, 전엔 4열 1fr) */ grid-auto-rows:max-content; gap:6px; align-content:start; padding:2px 6px 52px 2px; } /* 4열 고정, 16명이면 4×4. 검투사 격자만 스크롤 */
-#app.land > .planpage .assign-guide { grid-column:1 / -1; min-height:28px; display:flex; align-items:center; justify-content:center; gap:7px; color:#24447f; background:rgba(44,79,155,.09); border-top:1px solid rgba(44,79,155,.28); border-bottom:1px solid rgba(44,79,155,.2); border-radius:2px; font-size:12px; } /* 긴 코치 문구 대신 후보 카드 묶음의 제목만 남긴다 */
-#app.land > .planpage .assign-guide .arrow { width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; color:#eef2fb; background:#2c4f9b; font-weight:900; box-shadow:0 1px 2px rgba(58,36,18,.25); }
+#app.land > .planpage .pright { overflow-y:auto; overflow-x:hidden; min-height:0; display:grid; grid-template-columns:repeat(3, var(--gc-w)); justify-content:space-evenly; /* 한 줄에 셋, 카드 폭 고정 (2026-09-22 사용자, 전엔 4열 1fr) */ grid-auto-rows:max-content; gap:6px; align-content:start; padding:2px 6px 52px 2px; } /* 4열 고정 */
 #app.land > .planpage .lineuptop { margin:0 -8px 0 -30px; } /* 바깥 패널의 여백까지 뚫고 나가 띠가 화면 끝에 닿는다 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .card.contract.lineup { margin:0; padding:0 0 4px; flex-direction:column; align-items:stretch; background:#f1e7cd; border:0; outline:0; border-radius:0; } /* 테두리 없이 바탕색만 — 상자가 아니라 '자리'로 보이게 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .card.contract.lineup::before { content:''; height:3px; background:#9b2c1c; box-shadow:0 1px 0 rgba(58,36,18,.18); } /* 계약 벽에서 고른 공고가 편성 상단으로 이어지는 붉은 인장선 */
 #app.land > .planpage .lineuptop .card.contract.lineup.tier2::before { background:#7a2a6a; }
 #app.land > .planpage .lineuptop .card.contract.lineup.tier3::before { background:#2c4f9b; }
-#app.land > .planpage .lineuptop .card.contract.lineup .bigline { font-size:14px; }
 #app.land > .planpage .lineuptop .slots { flex-direction:row; flex-wrap:nowrap; justify-content:center; align-items:stretch; gap:5px; padding:0 2px; } /* 하나·둘이면 가운데, 셋이면 꽉 찬다 (2026-09-17 사용자) */
 /* 상대 타일과 우리 자리는 한 규칙을 쓴다 — 갈라 두면 크기가 어긋난다 (2026-09-17 사용자: 우리 파밀리아가 작아 보인다) */
 #app.land > .planpage .lineuptop .slots .slot, #app.land > .planpage .lineuptop .lenemy .etile {
@@ -572,16 +518,12 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage .lineuptop .slots .slot:not(.filled) { align-items:center; justify-content:center; background:none; box-shadow:none; }
 #app.land > .planpage .lineuptop .slots .slot:not(.filled) { border:0; border-radius:6px; color:var(--dim); background:rgba(58,36,18,.08);
   box-shadow:inset 0 2px 4px rgba(58,36,18,.18), inset 0 0 0 1px rgba(58,36,18,.1), inset 0 -1px 0 rgba(255,255,255,.35); } /* 카드가 딱 들어맞는 홈 — 파인 자리 (2026-09-17 사용자) */
-#app.land > .planpage .lineuptop .slots .slot.open { color:#2c4f9b; background:rgba(44,79,155,.1); box-shadow:inset 0 2px 4px rgba(58,36,18,.16), inset 0 0 0 1.5px rgba(44,79,155,.32), inset 0 -1px 0 rgba(255,255,255,.42); } /* 빈 자리와 후보 머리의 파란색을 맞춘다 */
-#app.land > .planpage .lineuptop .slots .slot.open .slotcue { width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:#2c4f9b; color:#eef2fb; font-size:16px; font-weight:900; box-shadow:0 1px 2px rgba(58,36,18,.24); }
+#app.land > .planpage .lineuptop .slots .slot.open { color:#2c4f9b; background:rgba(44,79,155,.1); box-shadow:inset 0 2px 4px rgba(58,36,18,.16), inset 0 0 0 1.5px rgba(44,79,155,.32), inset 0 -1px 0 rgba(255,255,255,.42); }
 #app.land > .planpage .pleft { overflow-x:hidden; }
 #app.land > .planpage .lineuptop .card.contract.lineup { min-width:0; width:100%; box-sizing:border-box; }
 #app.land > .planpage .lineuptop .card.contract.lineup > .grow { min-width:0; }
-#app.land > .planpage .lineuptop .card.contract.lineup .fixedline, #app.land > .planpage .lineuptop .card.contract.lineup .fixedrow { height:auto; white-space:normal; line-height:1.4; }
-#app.land > .planpage .lineuptop .card.contract.lineup .enemyline { font-size:11px; line-height:1.5; }
 #app.land > .planpage .lineuptop .card.contract.lineup > .grow { display:flex; flex-direction:column; gap:4px; }
-#app.land > .planpage .lineuptop .ltitle { font-size:14px; line-height:1.3; }
-#app.land > .planpage .lineuptop .lmeta { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:8px; } /* 인원 칩 줄은 제목에서 살짝 내려 */
+#app.land > .planpage .lineuptop .ltitle { font-size:14px; line-height:1.3; } /* 인원 칩 줄은 제목에서 살짝 내려 */
 /* 전력비: 상대 줄과 우리 줄의 경계에 걸터앉는다 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .lodds { position:relative; z-index:2; align-self:center; margin:-6px auto -16px; /* 조금 아래로 (2026-09-22 사용자) */ padding:1px 12px; width:auto; max-width:60%; text-align:center; font-size:12px; font-weight:700; white-space:nowrap;
   background:none; border-radius:0; box-shadow:none; } /* 흰 알약 대신 벽에 긁어 쓴 낙서 (2026-09-22 사용자) */
@@ -593,8 +535,7 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage .lineuptop .lenemy, #app.land > .planpage .lineuptop .lally { font-size:11.5px; line-height:1.4; padding:5px 0 6px; background:none; border-radius:0; border-top:1px solid rgba(58,36,18,.22); background:rgba(122,42,106,.045); } /* 상자 대신 수평선 + 옅은 바탕 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .lenemy .lfam, #app.land > .planpage .lineuptop .lally .lfam { padding:0 6px; } /* 제목 줄만 안쪽으로 */
 #app.land > .planpage .lineuptop .lally { border-top-color:rgba(44,79,155,.3); background:rgba(44,79,155,.06); } /* 우리 편: 파란 기가 도는 선과 바탕 */
-#app.land > .planpage .lineuptop .lally .lfam { margin-bottom:2px; display:flex; justify-content:flex-end; text-align:right; } /* 우리 편 이름은 오른쪽에 — 상대(왼쪽)와 마주 본다 (2026-09-17 사용자) */
-#app.land > .planpage .lineuptop .lmeta .eff.count { font-size:13px; font-weight:700; padding:2px 9px; line-height:1.3; } #app.land > .planpage .lineuptop .lmeta .eff.count.ok { background:#e4f0dc; border-color:#9cc48a; color:var(--ok); } /* 배정 카드의 인원 칩: 주최자 칩 왼쪽, 계약 카드와 같은 모양 */
+#app.land > .planpage .lineuptop .lally .lfam { margin-bottom:2px; display:flex; justify-content:flex-end; text-align:right; } /* 배정 카드의 인원 칩: 주최자 칩 왼쪽, 계약 카드와 같은 모양 */
 #app.land > .planpage .lineuptop .lenemy .lfam { margin-bottom:2px; display:flex; align-items:center; gap:4px; }
 #app.land > .planpage .lineuptop .lfam { white-space:nowrap; } #app.land > .planpage .lineuptop .lfam .hint { overflow:hidden; text-overflow:ellipsis; min-width:0; }
 #app.land > .planpage .lineuptop .lenemy .etiles { display:flex; flex-wrap:nowrap; justify-content:center; align-items:stretch; gap:5px; padding:0 2px; }
@@ -610,10 +551,7 @@ body:has(#app.fit) { overflow:hidden; }
 #app.land > .planpage .lineuptop .lsyn { display:flex; flex-wrap:wrap; gap:4px; font-size:11px; min-height:20px; }
 /* 배정 카드는 두 덩이: 위는 경기장 정보, 아래는 스틱맨 카드 (2026-09-17 사용자) */
 #app.land > .planpage .lineuptop .larena { display:flex; flex-direction:column; gap:0; padding:2px 6px 0; } /* 위 여백 10 → 2 (2026-09-22 사용자: 띠가 넓다) */ /* 점선은 뺐다 — 아래 줄의 수평선이 이미 가른다 (2026-09-17 사용자) */
-#app.land > .planpage .lineuptop .lcards { display:flex; flex-direction:column; align-items:stretch; gap:4px; padding-top:2px; }
-#app.land > .planpage .lineuptop .larena .lmeta { margin-top:4px; }
-#app.land > .planpage .lineuptop .lcost { font-size:11px; } #app.land > .planpage .lineuptop .lcost:empty, #app.land > .planpage .lineuptop .lsyn:empty { display:none; } /* 비어 있을 땐 자리를 두지 않는다 (사용자: 우리 파밀리아 아래가 너무 빈다) */
-#app.land > .planpage .lineuptop .card.contract.lineup .enemyline .sq { width:14px; height:14px; border-radius:2px; vertical-align:-3px; } #app.land > .planpage .lineuptop .card.contract.lineup .enemyline .sq svg { width:10px; height:10px; } /* 상대 줄 무기 아이콘도 글자 높이로 */
+#app.land > .planpage .lineuptop .lcards { display:flex; flex-direction:column; align-items:stretch; gap:4px; padding-top:2px; } #app.land > .planpage .lineuptop .lsyn:empty { display:none; } /* 상대 줄 무기 아이콘도 글자 높이로 */
 /* 검투사 초상 타일 */
 .badge.skill, .badge.empty { width:64px; box-sizing:border-box; text-align:center; white-space:nowrap; overflow:hidden; } /* 기술 이름은 4글자 이내라 칩 너비를 통일 */
 .gtile { position:relative; display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:2px; padding:5px 6px; width:var(--gc-w); min-height:var(--gc-h); box-sizing:border-box; font-size:11px; overflow:hidden; cursor:pointer; text-align:left; /* 카드 상자와 같은 안쪽 여백·폭 (2026-09-22 사용자: 카드마다 비율이 달랐다) */
@@ -645,11 +583,11 @@ body:has(#app.fit) { overflow:hidden; }
 .offerbox { display:grid; gap:6px; } /* 기술 깨침 모달: 카드 + 제안 줄 */
 /* .mini-name 은 어디서나 한 줄 — 표식은 상자 밖으로 (2026-09-22 사용자) */
 .mini-name .nm { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mini-name .agetag { flex:none; margin-left:4px; font-size:12px; font-weight:600; color:var(--dim); align-self:baseline; } .detailpage .gcwrap.big .mini-name .agetag { font-size:13px; } /* 상세 큰 카드: 이름 옆 작은 나이 (2026-09-22 사용자) */
 .mini-top { display:flex; align-items:stretch; gap:5px; width:100%; min-width:0; }
 .mini-port { position:relative; display:inline-block; line-height:0; flex:none; }
 .mini-port .rank { position:absolute; left:-4px; top:-4px; font-size:9px; line-height:1.3; box-shadow:0 1px 1px rgba(0,0,0,.25); }
-.mini-port .honor { position:absolute; left:-3px; bottom:4px; display:inline-flex; align-items:center; gap:2px; padding:0 4px 0 3px; height:13px; border-radius:7px; background:#e8c96a; color:#3a2412; font-size:9px; font-weight:700; line-height:1; box-shadow:0 1px 1px rgba(0,0,0,.25); } /* 명예: 초상 왼쪽 아래 금색 알약. 카드를 gcard 로 합치며 선택자가 .gport 에 남아 규칙이 붕 떠 있었다 (2026-09-17) */
-.mini-port .portrait { position:relative; z-index:0; border-radius:4px; }
+.mini-port .honor { position:absolute; left:-3px; bottom:4px; display:inline-flex; align-items:center; gap:2px; padding:0 4px 0 3px; height:13px; border-radius:7px; background:#e8c96a; color:#3a2412; font-size:9px; font-weight:700; line-height:1; box-shadow:0 1px 1px rgba(0,0,0,.25); }
 .mini-port .honor svg { display:block; }
 .mini-port .honor i { font-style:normal; line-height:1; position:relative; top:.5px; } /* 숫자가 아이콘보다 조금 떠 보이던 것 */
 .mini-port .rank, .mini-port .honor, .mini-port .wound, .mini-port .tired, .mini-port .tiro { z-index:2; }
@@ -679,14 +617,17 @@ body:has(#app.fit) { overflow:hidden; }
 .handbg svg { width:100%; height:100%; }
 
 .gcard, .gtile, .etile, .slot.filled { position:relative; }
+.gearline { display:flex; flex-wrap:wrap; align-items:center; gap:3px; font-size:12px; } .gearline .gearitem { gap:3px; } .gearline .gearitem .sq { width:15px; height:15px; } .gearline .gearitem .sq svg { width:12px; height:12px; } .gearline .sep { opacity:.55; } .gearline.two { flex-direction:column; align-items:flex-start; gap:2px; } .gearline.two .gl { display:flex; align-items:center; gap:3px; } .gearline.two .gl + .gl { padding-left:12px; } /* 주·보조 줄은 유형 아래로 한 단 들여쓴다 (2026-09-22 사용자) */ /* 상세: 유형 한 줄, 주·보조 한 줄 */ /* 상세의 장비 줄은 작게 — 유형·주장비·보조장비가 한 줄에 들어가게 (2026-09-22 사용자: 줄바꿈이 났다) */
+.help .gearlist { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:3px 14px; margin:2px 0 8px; } .help .gearlegend { display:flex; flex-wrap:wrap; gap:4px 10px; margin:0 0 8px; padding:6px 8px; background:rgba(58,36,18,.06); border-radius:6px; } .help .gearlegend .lbl { font-weight:600; } /* 규칙 시트: 유형별 장비 줄 + 아이콘 범례 (2026-09-22) */ .gearitem { display:inline-flex; align-items:center; gap:4px; } .gearitem .sq { width:18px; height:18px; border-radius:3px; } .gearitem .sq svg { width:14px; height:14px; } .gearitem .lbl { font-weight:700; color:var(--ink); } .gearline .sep { color:var(--dim); } /* 유형·주장비·보조장비 아이콘 + 이름 (2026-09-22) */
 .mini-name .sq { flex:none; width:13px; height:13px; border-radius:2px; } .mini-name .sq svg { width:10px; height:10px; }
 .mini-left { display:flex; flex-direction:column; gap:2px; flex:none; min-width:0; } /* 초상 + 체력바 한 기둥 */
 .hpbar { display:flex; align-items:center; width:calc(100% - 4px); } /* 스틱맨 박스보다 오른쪽을 조금 들여 놓는다 (2026-09-17 사용자) */
 .hpbar .track { position:relative; flex:1; min-width:0; display:flex; height:9px; /* 13 → 9 (2026-09-22 사용자: 이름이 더 잘 보이게) */ border-radius:6px; overflow:hidden; background:rgba(58,36,18,.12); box-shadow:inset 0 1px 1px rgba(58,36,18,.18); }
 .hpbar .track i { display:block; height:100%; }
-.hpbar .track .solid { background:#6fae45; } /* 타고난 몫: 연두 (묻히지 않게 한 단계 진하게) */
-.hpbar .track .cut { background:var(--red); } /* 피로·노쇠·무거운 몸으로 깎인 몫 */
-.hpbar .track .extra { background:#27601b; } /* 보태진 몫(승수 성장·조리장·가벼운 몸): 진한 초록, 막대 왼쪽에 */
+.hpbar .track .fill { border-radius:6px; } /* 채우는 중인 백 단위 색 (바탕 = 채운 백 단위 색, 0 이면 모래) */
+.hpbar .track .cut { position:absolute; top:0; height:100%; background:rgba(155,44,28,.75); } /* 피로로 깎인 몫: 채움 끝에 붉게 */
+.hpbar .track .capmark { display:none; position:absolute; top:-1px; height:calc(100% + 2px); width:2px; transform:translateX(-1px); box-shadow:0 0 0 1px rgba(243,234,208,.9); } /* 작은 카드에선 체력 상한 눈금을 안 보인다 (2026-09-22 사용자) — 상세의 큰 카드에서만 */
+.detailpage .gcwrap.big .hpbar .track .capmark { display:block; } /* 상한: 그 백 단위 색의 세로 눈금 */
 .hpbar .track .n { position:absolute; left:0; right:0; top:0; text-align:center; height:9px; line-height:9px; font-size:8px; font-weight:700; color:#f3ead0; text-shadow:0 1px 1px rgba(58,36,18,.85); } /* 숫자는 막대 안에 (2026-09-17 사용자) */
 .mini-stats { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; font-size:11px; line-height:1.4; color:var(--dim); } /* 아래 줄: 전적 · 전력 */
 .mini-stats.mini-row { display:flex; justify-content:space-between; align-items:center; gap:4px; } /* 아래 줄: 전적은 왼쪽 끝, 전력은 오른쪽 끝에 딱 붙는다 (2026-09-22 사용자) */
@@ -715,10 +656,10 @@ body:has(#app.fit) { overflow:hidden; }
 /* .gtile.ready::after 의 파란 ↑ 원은 뺐다 (2026-09-22 사용자) */
 .gtile.sel { outline:2px solid var(--blue); background:linear-gradient(#eef2fb, #e3ecf9); }
 .gtile.other { position:relative; outline:2px dashed #b08a3a; }
-.gtile .tstamp { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) rotate(-14deg); pointer-events:none; }
+.gtile .tstamp { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) rotate(-14deg); pointer-events:none; z-index:20; } /* 도장은 늘 맨 위 — 피로 알·체력바가 도장 위로 올라왔다 (2026-09-22 사용자) */
 .gtile .tstamp span { display:block; padding:2px 8px; border:3px double #9b2c1c; border-radius:5px; color:#9b2c1c; font:900 15px/1.1 'Georgia','Times New Roman',serif; letter-spacing:.1em; opacity:.8; mix-blend-mode:multiply; } /* 다른 계약에 빌려줌: 붉은 도장 */
 .gtile.dis { opacity:.5; cursor:default; }
-#app.land > .planpage .backbtn { position:absolute; left:8px; top:6px; width:60px; height:26px; /* 제목 띠(30)와 같은 높이 (2026-09-22 사용자: 띠가 두꺼웠다) */ padding:0; background:transparent; border:0; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); }
+#app.land > .planpage .backbtn { position:absolute; left:2px; top:6px; width:60px; height:26px; /* 제목 띠(30)와 같은 높이 (2026-09-22 사용자: 띠가 두꺼웠다) */ padding:0; background:transparent; border:0; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); }
 #app.land > .planpage .pbar { position:absolute; right:12px; bottom:8px; z-index:2; }
 #app.land > .planpage .pbar button { min-width:120px; min-height:38px; }
 /* 계약 카드 = 광고 벽화(edicta): 회벽에 붉은 글씨, 위쪽에 칠 자국 */
@@ -826,7 +767,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .cellpop .two { grid-template-columns:1fr 1fr; }
 
 /* 검투사 상세 페이지: 오른쪽에서 밀려 들어와 장면을 덮는다. 왼쪽 큰 초상, 오른쪽 정보, 오른쪽 아래 돌아가기 */
-#app.land > .detailpage { position:absolute; left:6px; right:6px; top:46px; height:var(--yard-h, 300px); z-index:8; background:#cbb67f; border-radius:6px; display:grid; grid-template-columns:200px 1fr 190px; grid-template-rows:1fr; gap:8px; padding:8px 10px; overflow:hidden; animation:pagein-r .38s cubic-bezier(.16,.84,.3,1) both; transform:translate3d(0,0,0); backface-visibility:hidden; will-change:transform; contain:layout paint; }
+#app.land > .detailpage { position:absolute; left:6px; right:6px; top:46px; height:var(--yard-h, 300px); z-index:8; background:#cbb67f; border-radius:6px; display:grid; grid-template-columns:1fr 190px; grid-template-rows:auto minmax(0, 1fr); /* 위: 넓은 카드(왼쪽 열 전체) · 아래: 정보·성장형·딕타타·상태 (스크롤) · 오른쪽: 행동 (2026-09-22 사용자) */ gap:8px; padding:8px 10px; overflow:hidden; animation:pagein-r .38s cubic-bezier(.16,.84,.3,1) both; transform:translate3d(0,0,0); backface-visibility:hidden; will-change:transform; contain:layout paint; }
 #app.land > .detailpage.confirm { z-index:9; grid-template-columns:200px 1fr; }
 #app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
 .detailpage .talkscene { position:relative; height:220px; flex:none; overflow:hidden; border-radius:6px; }
@@ -855,7 +796,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .detailpage .sealbtn:hover:not(:disabled), .planpage .sealbtn:hover:not(:disabled) { transform:rotate(-4deg) scale(1.04); }
 .detailpage .sealbtn:active:not(:disabled), .planpage .sealbtn:active:not(:disabled) { transform:rotate(-4deg) translate(2px,3px) scale(.96); }
 .detailpage .sealbtn.off { opacity:.45; filter:grayscale(.6); }
-.detailpage.confirm.talk .backbtn { left:8px; top:6px; }
+.detailpage.confirm.talk .backbtn { left:2px; top:6px; }
 /* 도장: 붉은 잉크 테두리 글자가 크게 떠 있다가 쾅 내려찍히며 살짝 흔들린다 (약간 기울고 잉크가 고르지 않게) */
 .detailpage .stamp, .planpage .stamp { position:absolute; left:50%; top:40%; z-index:3; pointer-events:none; transform:translate(-50%,-50%) rotate(-12deg) scale(3); opacity:0; animation:stampin .32s cubic-bezier(.2,1.4,.4,1) forwards; }
 .detailpage .stamp span, .planpage .stamp span { display:block; padding:6px 22px; border:5px double #9b2c1c; border-radius:8px; color:#9b2c1c; font:900 44px/1.1 'Georgia', 'Times New Roman', serif; letter-spacing:.12em; text-transform:uppercase; mix-blend-mode:multiply; opacity:.86; -webkit-mask-image:radial-gradient(circle at 30% 40%, #000 60%, transparent 100%), radial-gradient(circle at 70% 60%, #000 55%, transparent 100%); mask-image:radial-gradient(circle at 30% 40%, #000 60%, transparent 100%), radial-gradient(circle at 70% 60%, #000 55%, transparent 100%); -webkit-mask-composite:source-over; }
@@ -869,16 +810,60 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .detailpage.closing { animation:pageout-r .28s cubic-bezier(.5,0,.8,.4) forwards; }
 @keyframes pagein-r { from { transform:translate3d(calc(100% + 12px),0,0); } to { transform:translate3d(0,0,0); } }
 @keyframes pageout-r { from { transform:translate3d(0,0,0); } to { transform:translate3d(calc(100% + 12px),0,0); } }
-.detailpage .dleft { display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:6px; }
-.detailpage .dleft .portrait.big { width:170px; height:170px; background:transparent; border:0; } /* 배경 판은 캔버스 쪽에서도 안 그린다(bare) */
-.detailpage .dname .age { font-size:12px; color:var(--dim); font-weight:400; margin-left:4px; }
-.detailpage .dname { font-size:16px; display:flex; align-items:center; gap:6px; }
-.detailpage .dmeta { text-align:center; line-height:1.35; white-space:nowrap; }
-.detailpage .dbadges { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
+.detailpage .dleft { display:flex; flex-direction:column; align-items:stretch; gap:8px; padding-top:34px; grid-column:1; grid-row:1; } /* 뒤로가기(위 6, 높이 26) 아래에서 카드가 시작한다 (2026-09-22 사용자) */
+.detailpage .dleft.dtop { grid-column:1 / -1; } /* T 배치: 위 줄은 카드만 가로 전체, 아래 왼쪽 칩+딕타타 · 오른쪽 행동 (2026-09-22 사용자) */
+.detailpage > .dright:not(.side) { grid-column:1; grid-row:2; } .detailpage > .dright.side { grid-column:2; grid-row:2; }
+.detailpage .dinfo { margin-bottom:4px; }
+#app.land > .detailpage { row-gap:0; } .detailpage .dleft { padding-bottom:0; } .detailpage > .dright:not(.side) { padding-top:0; } .detailpage .gearline { margin-top:2px; } /* 카드와 장비 줄 사이 간격을 좁힌다 (2026-09-22 사용자) */
+/* 넓은 카드: 상자가 열 폭을 다 쓰고, 오른쪽 기둥이 막대 다섯 줄 */
+.detailpage .gcwrap.wide, .detailpage .gcwrap.wide .gcard { width:100%; } .detailpage .gcwrap.wide .gc-core { width:100%; }
+.detailpage .gcwrap.wide .mini-top { gap:10px; } .detailpage .gcwrap.wide .mini-stats.mini-col { justify-content:flex-start; gap:6px; padding-top:2px; } /* 줄 사이를 벌리지 않고 위에서부터 (2026-09-22 사용자: 간격이 많다) */
+.mini-stats .sline.gbar { display:grid; grid-template-columns:auto minmax(24px, 1fr) auto; align-items:center; gap:3px; border-bottom:0; width:100%; } /* 이름·칸·값이 한 덩이로 (2026-09-22 사용자: 간격을 좁혀) */ /* 라벨·값은 제 폭, 막대가 남는 폭을 다 쓴다 — 고정 폭이면 좁은 화면에서 막대가 사라졌다 (2026-09-22) */
+.mini-stats .sline.gbar .track { position:relative; overflow:visible; width:100%; min-width:40px; height:10px; border-radius:5px; background:rgba(58,36,18,.12); box-shadow:inset 0 1px 1px rgba(58,36,18,.18); overflow:hidden; }
+.mini-stats .sline.gbar .track i { display:block; height:100%; background:#6fae45; border-radius:5px; }
+.mini-stats .sline.gbar.cells .trackwrap { min-width:0; display:flex; flex-direction:column; gap:1px; }
+.mini-stats .sline.gbar.cells .track { display:grid; grid-template-columns:repeat(20, 1fr); gap:1px; height:6px; min-width:40px; background:transparent; box-shadow:none; border-radius:0; overflow:visible; } /* 스무 칸 한 줄, 얇게 (2026-09-22 사용자: 열 칸 격자에 스무 칸이 두 줄로 접혔다 — 칸 폭을 반으로) */
+.mini-stats .sline.gbar.cells .track i { border-radius:1.5px; background:rgba(58,36,18,.12); box-shadow:inset 0 1px 1px rgba(58,36,18,.18); }
+.mini-stats .sline.gbar.cells .ruler { position:relative; height:7px; border-top:1px solid rgba(58,36,18,.35); } /* 자: 눈금선 */
+.mini-stats .sline.gbar.cells .ruler .tick { position:absolute; top:0; width:1px; background:rgba(58,36,18,.5); } .mini-stats .sline.gbar.cells .ruler .tick.t0 { left:0; height:5px; } .mini-stats .sline.gbar.cells .ruler .tick.t10 { right:0; height:5px; } .mini-stats .sline.gbar.cells .ruler .tick.t5 { left:50%; height:3px; } /* 0·10 은 길게, 5·6 사이 짧게 */
+.mini-stats .sline.gbar.cells .ruler .capmark { position:absolute; top:-1px; transform:translateX(-50%); font-size:7px; line-height:1; text-decoration:none; font-style:normal; pointer-events:none; text-shadow:0 0 1px rgba(58,36,18,.5); }
+.detailpage .gcwrap.big .mini-stats .sline.gbar.cells .track { gap:1.5px; height:9px; } .detailpage .gcwrap.big .mini-stats .sline.gbar.cells .track i { border-radius:2px; } .detailpage .gcwrap.big .mini-stats .sline.gbar.cells .ruler { height:9px; } .detailpage .gcwrap.big .mini-stats .sline.gbar.cells .ruler .capmark { font-size:9px; }
+.detailpage .gcwrap.big .mini-stats .sline.gbar.capped .v { font-weight:800; }
+
+.mini-stats .sline.gbar .v { justify-content:flex-end; text-align:right; white-space:nowrap; min-width:2.2ch; font-variant-numeric:tabular-nums; } .mini-stats .sline.gbar .k { min-width:0; text-align:right; } /* 값은 오른쪽 끝에 맞춘다 (2026-09-22 사용자) */
+.mini-stats.mini-col { align-items:stretch; } .mini-stats .sline.gbar { justify-self:end; }
+.detailpage .gcwrap.big .gcard { padding:5px 6px; } .detailpage .gcwrap.big .mini-stats .sline.gbar .v, .detailpage .gcwrap.big .mini-stats .sline.pw { padding-right:0; } /* 좌우 여백을 같게(6) — 왼쪽 무기 아이콘 자리와 오른쪽 값·전력이 같은 선 (2026-09-22 사용자) */
+.detailpage .gcwrap.big .mini-stats .sline.gbar { gap:4px; } .detailpage .gcwrap.big .mini-stats .sline.gbar .track { height:14px; border-radius:7px; }
+/* 상세의 큰 카드: 같은 부품을 1.6배 — 초상 83, 상자 186×182 (2026-09-22 사용자) */
+.detailpage .gcwrap.big { --gc-w:186px; --gc-h:194px; } /* 초상 104 + 체력바 14 + 이름 32 + 아래 줄 22 + 여백 — 남는 세로를 걷었다 (2026-09-22 사용자) */
+.detailpage .gcwrap.big .gcard, .detailpage .gcwrap.big .gc-core { overflow:visible; } /* 초상이 카드 밖으로 넘친다 */
+.detailpage .gcwrap.big .mini-port { width:104px; height:104px; overflow:visible; z-index:5; } .detailpage .gcwrap.big .mini-port canvas.portrait { position:absolute; left:-8px; bottom:0; width:132px !important; height:176px !important; z-index:4; } /* 위로 72 넘친다 — 창끝까지 담는다 */ .detailpage .gcwrap.big .mini-left { overflow:visible; z-index:5; position:relative; } /* 132 짜리 초상을 104 칸에 — 위로 28, 왼쪽으로 8 넘치고, 검투사가 카드의 어떤 요소보다 앞에 선다 (2026-09-22 사용자) */
+.detailpage .gcwrap.big .linbg { left:-4px; top:-2px; width:170px; height:170px; opacity:.2; } /* 200 → 170 (2026-09-22 사용자: 조금 줄이자) */ .detailpage .gcwrap.big .linbg.nature { opacity:.3; } /* 계보 문양도 크게 */
+.detailpage .gcwrap.big .handbg { width:112px; height:112px; right:-14px; bottom:-6px; } /* 손잡이 글자도 크게 (2026-09-22 사용자) */
+.detailpage .gcwrap.big .gc-core { height:182px; }
+.detailpage .gcwrap.big .mini-top { align-items:flex-start; }
+.detailpage .gcwrap.big .mini-name { font-size:20px; height:28px; margin-top:2px; } .detailpage .gcwrap.big .mini-name .sq { width:20px; height:20px; } .detailpage .gcwrap.big .mini-name .sq svg { width:15px; height:15px; }
+.detailpage .gcwrap.big .mini-stats.mini-col { font-size:15px; } .detailpage .gcwrap.big .mini-stats.mini-col .sline .k { min-width:0; font-size:12px; text-align:right; }
+.detailpage .gcwrap.big .mini-stats.mini-row { font-size:15px; } .detailpage .gcwrap.big .mini-stats .sline.pw .v { font-size:22px; } .detailpage .gcwrap.big .mini-stats .sline.pw .pwi { width:20px; height:20px; } .detailpage .gcwrap.big .mini-stats .sline.pw em.tr { width:13px; } .detailpage .gcwrap.big .mini-stats .sline.pw em.tr i { font-size:10px; }
+.detailpage .gcwrap.big .sline.rec .grown { width:46px; font-size:13px; }
+.detailpage .gcwrap.big .hpbar { width:112px; margin-left:0; } /* 왼쪽 끝을 카드 여백(6)에 맞춘다, 오른쪽은 기둥 사이 틈까지 (2026-09-22 사용자) */ .detailpage .gcwrap.big .hpbar .track { height:14px; border-radius:8px; } /* 체력바 길이 = 초상(132) 너비, 초상과 같은 왼쪽 선에 (2026-09-22 사용자) */ .detailpage .gcwrap.big .hpbar .track .n { height:14px; line-height:14px; font-size:11px; } .detailpage .gcwrap.big .hpbar .track .capmark { width:3px; } /* 체력바는 초상 아래 독자적인 둥근 막대 그대로 (2026-09-22 사용자) */
+.detailpage .gcwrap.big .mini-port .honor { height:19px; font-size:12px; padding:0 6px 0 4px; left:0; } /* 명예 칩도 카드 여백 선에 */ .detailpage .gcwrap.big .mini-port .honor svg { width:13px; height:13px; }
+.detailpage .gcwrap.big .mini-port .tired i { width:7px; height:10px; }
+.detailpage .gcwrap.big .mini-port .tired, .detailpage .gcwrap.big .mini-port .honor, .detailpage .gcwrap.big .mini-port .tiro, .detailpage .gcwrap.big .mini-port .wound { z-index:6; } /* 표식(피로·명예·티로·부상)은 넘치는 검투사보다 앞에 (2026-09-22 사용자: 피로바가 검투사에 가려졌다) */
+.detailpage .gcwrap.big .mini-port .tiro svg { width:22px; height:22px; } .detailpage .gcwrap.big .mini-port .wound svg { width:28px; height:28px; } .detailpage .gcwrap.big .mini-port .wound { right:-8px; top:-8px; }
+.detailpage .drows { display:flex; flex-direction:column; gap:3px; }
+.detailpage .dictsec { display:flex; flex-direction:column; gap:3px; margin-top:4px; } .detailpage .dictsec .dlabel { font-size:11px; font-weight:700; color:#7a3b1e; } .detailpage .dictchips { gap:3px; } /* 딕타타는 상자 없이 이름표 한 줄 + 칩 (2026-09-22 사용자) */ .badge.chip.dict.basic { background:#e6d2b3; border-color:#b08a5a; color:#5a3418; } .badge.chip.dict.legend { background:#e4d6f1; border-color:#a583c8; color:#4a1d70; } .badge.chip.dict.on { background:#f0d0c6; border-color:#c48371; color:#7a2214; } /* 진한 칠 → 연한 바탕에 진한 글씨 (2026-09-22 사용자: 조금 더 연하게) */ .badge.chip.dict.off { background:transparent; border-style:dashed; border-color:rgba(58,36,18,.35); color:var(--dim); } .badge.chip.dict.past { background:transparent; border-style:dashed; border-color:rgba(58,36,18,.2); color:rgba(58,36,18,.35); text-decoration:line-through; } /* 딕타타 칩: 기본(갈색)·전설(보라)·익힘(붉음)·미습득(점선)·밀려남(취소선) (2026-09-22 사용자) */
+.badge.chip.trait.one-hp { background:#d6ecd0; border-color:#3f9b2f; color:#245c1a; } .badge.chip.trait.one-atk { background:#f0d0c6; border-color:#c8281e; color:#7a2214; } .badge.chip.trait.one-def { background:#d3def5; border-color:#1f5fd6; color:#173f8f; } .badge.chip.trait.one-hand { background:#f7e3bd; border-color:#f0a81b; color:#7a5208; } /* 한 우물 칩: 어느 능력치인지 색으로 — 체력 초록·공격 빨강·방어 파랑·손놀림 주황 (2026-09-22 사용자) */
+.badge.chip.hand.scaeva { background:#d9c7ec; border-color:#7a2fb5; color:#4a1d70; } /* 왼손잡이는 귀하니 보라 */
+
+.detailpage .drow { font-size:12px; line-height:1.35; padding:2px 6px; border-radius:4px; background:rgba(155,44,28,.08); border:1px solid rgba(155,44,28,.3); }
+.detailpage .drow.empty { background:transparent; border:1px dashed rgba(58,36,18,.2); color:var(--dim); }
+.detailpage .dmeta { text-align:left; line-height:1.4; white-space:normal; font-size:12px; }
+.detailpage .dbadges { display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-start; }
 .detailpage .dright { overflow:auto; min-height:0; padding:0 8px 6px 0; }
 .detailpage .dright > .panel { border:0; padding:0; background:transparent; }
 .detailpage .dright .card, .detailpage .dright .frow { background:#e8d9b5; }
-.detailpage .backbtn { position:absolute; left:8px; top:6px; width:60px; height:26px; /* 다른 페이지와 같은 자리·크기 (2026-09-22 사용자) */ padding:0; background:transparent; border:0; box-shadow:none; border-radius:0; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); }
+.detailpage .backbtn { position:absolute; left:2px; top:6px; width:60px; height:26px; /* 다른 페이지와 같은 자리·크기 (2026-09-22 사용자) */ padding:0; background:transparent; border:0; box-shadow:none; border-radius:0; display:inline-flex; align-items:center; justify-content:center; z-index:2; transform:rotate(-4deg); }
 .detailpage .backbtn:hover { transform:rotate(-4deg) scale(1.08); }
 .detailpage .backbtn:active { transform:rotate(-4deg) translate(-2px,1px); }
 
@@ -921,14 +906,12 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .scenepanel { padding:0 10px; }
 #app.land > .scenepanel .eave { margin:0 -10px; padding-left:16px; }
 #app.land > .scenepanel .sheetbody .cardgrid { grid-template-columns:1fr; }
-#app.land > .detailpage { grid-template-columns:1fr; grid-template-rows:auto auto auto; overflow:auto; padding:8px 8px 40px; gap:6px; }
+#app.land > .detailpage { grid-template-columns:minmax(0, 1fr) 168px; grid-template-rows:auto auto; align-content:start; overflow:auto; padding:8px 8px 40px; gap:6px; } /* align-content:start — 내용이 페이지보다 짧으면 auto 행 둘이 남는 높이를 나눠 늘어나 카드 아래가 벌어졌다 (2026-09-22 사용자 "가운데 사이가 다시 벌어졌어") */ .detailpage > .dright:not(.side) { grid-column:1; grid-row:2; } .detailpage > .dright.side { grid-column:2; grid-row:2; align-self:start; } /* 세로도 T: 위 카드(가로 전체) · 아래 왼쪽 칩+딕타타 · 아래 오른쪽 행동 168px (2026-09-22 사용자 "아직도 T자로 안 나눠졌어" — 사용자는 세로 폭에서 본다) */ /* (옛 주석) 세로에선 행동 열이 맨 아래 — 가로용 2열·1~2행 지정이 남아 1행(카드)이 늘어나 카드 아래가 비었다 (2026-09-22 사용자: 아직도 넓다) */
 #app.land > .detailpage.confirm { grid-template-columns:1fr; }
 #app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; overflow:hidden; padding:8px 10px 40px; }
-.detailpage .dleft { display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:start; gap:10px 16px; padding:22px 6px 6px 0; } /* 초상이 뒤로가기 화살표와 살짝 겹쳐도 위로 (사용자) */ /* 초상 왼쪽에 붙이고(뒤로가기 줄 아래), 오른쪽 정보, 아래 별칭 칩 — 넓게 */
-.detailpage .dinfo { display:flex; flex-direction:column; gap:8px; min-width:0; padding-top:6px; } .detailpage .dinfo .dname { font-size:19px; } .detailpage .dinfo .dname .age { font-size:13px; } .detailpage .dinfo .dmeta { font-size:13px; line-height:1.4; } .detailpage .dbadges { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:6px; padding:0; } .detailpage .dbadges:empty { display:none; }
-.detailpage .dleft .portrait.big { width:112px; height:112px; }
-.detailpage .dskills { display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:6px; padding-top:2px; } .detailpage .dskills .badge { font-size:11px; width:64px; padding:3px 0; margin:0; text-align:center; letter-spacing:-.02em; } .detailpage .dskills .badge.empty { min-height:20px; background:transparent; border:1px dashed rgba(58,36,18,.4); } /* 상세: 초상 왼쪽, 기술 칩·빈 자리 오른쪽 (편성 타일과 같은 문법) */
-.detailpage .dright { overflow:visible; padding:0; }
+.detailpage .dleft { display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:34px 0 0; } /* 세로도 카드가 열 폭을 다 쓴다 (2026-09-22: 격자 2열이 카드를 좁혀 막대가 안 보였다) */ /* 초상이 뒤로가기 화살표와 살짝 겹쳐도 위로 (사용자) */ /* 초상 왼쪽에 붙이고(뒤로가기 줄 아래), 오른쪽 정보, 아래 별칭 칩 — 넓게 */
+.detailpage .dinfo { display:flex; flex-direction:column; gap:5px; min-width:0; padding-top:0; } /* 줄 사이 2px (2026-09-22 사용자: 카드·장비 줄·칩 줄 간격이 넓었다) */ .detailpage .dinfo .dmeta { font-size:13px; line-height:1.4; } .detailpage .dbadges { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:6px; padding:0; } .detailpage .dbadges:empty { display:none; } /* 상세: 초상 왼쪽, 기술 칩·빈 자리 오른쪽 (편성 타일과 같은 문법) */
+.detailpage .dright { overflow:visible; padding:0; min-height:auto; } /* 세로: min-height:0 이 남아 있으면 페이지 max-height 에 맞춰 2·3행이 내용보다 작게 눌려 행동 칸이 딕타타 위로 겹친다 (2026-09-22 사용자 "전혀 안 되었지") — 자동 최소 높이를 되살려 행이 내용만큼 늘고 페이지가 스크롤된다 */
 .detailpage .bubble { max-width:220px; font-size:12px; }
 .detailpage .cbox.row { flex:0 0 auto; flex-direction:column; align-items:stretch; gap:10px; }
 .detailpage .cbox .cbtns { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
@@ -945,14 +928,11 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .planpage.tablet.n1 .tablets, #app.land > .planpage.tablet.n2 .tablets, #app.land > .planpage.tablet.n3 .tablets, #app.land > .planpage.tablet.n4 .tablets { grid-template-columns:minmax(0, 1fr); }
 #app.land > .planpage.season { padding:40px 10px 8px; }
 #app.land > .planpage.season .scols { grid-template-columns:1fr; overflow:auto; }
-#app.land > .planpage.season .sfoot { left:10px; }
-/* 결과·정산: 한 열 */
-.rlayout { grid-template-columns:1fr; gap:8px; }
-.rcols, .cols2 { grid-template-columns:1fr; }
+#app.land > .planpage.season .sfoot { left:10px; } .cols2 { grid-template-columns:1fr; }
 #app.land > .tabbar button.stage { min-width:100px; }
 #app.land > .tabbar { left:8px; right:8px; }
 #app.land > .yardwrap { overflow:visible; }
-#app.land > .scenepanel, #app.land > .detailpage, #app.land > .planpage { top:calc(var(--top-h, 40px) + 6px); bottom:6px; height:auto; max-height:none; } /* 토글 줄 바로 밑에서 바닥까지: 마을을 덮으며 내려온다 */
+#app.land > .scenepanel, #app.land > .detailpage, #app.land > .planpage { top:var(--top-h, 40px); bottom:6px; height:auto; max-height:none; border-top-left-radius:0; border-top-right-radius:0; left:6px; right:6px; } /* 서판 걸이(처마)의 붉은 처마선 바로 밑에 붙어서 바닥까지 — 처마에서 이어져 내려온 것처럼, 서판 토글은 그대로 누를 수 있다 (2026-09-22 사용자) */
 
 /* ── 마을 아래 길가: 여정표(이티네라리움) + 알붐(회칠 게시벽·붉은 디핀티). 캔버스 바로 아래에 흐름대로 놓인다 ── */
 .roadboard { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; margin:6px 2px 0; transition:opacity .25s, transform .3s; }
@@ -979,7 +959,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .badge, .eff, .rank, .syn, .host, .tierchip, .arenacol .tierchip { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700; line-height:1.3; height:20px; box-sizing:border-box; white-space:nowrap; padding:0 8px; border-radius:8px; vertical-align:middle; box-sizing:border-box; }
 .badge, .rank, .syn, .host, .tierchip { border:1px solid transparent; }
 .syn { margin-right:0; } .badge { margin-right:0; }
-.statrow, .dbadges, .lsyn, .effrow, .cmeta, .lmeta { gap:6px; } /* 칩 사이는 여백 대신 gap 으로 */
+.statrow, .dbadges, .lsyn, .effrow, .cmeta{ gap:6px; } /* 칩 사이는 여백 대신 gap 으로 */
 
 /* 몸 상태 칩과 경기의 분수령 (2026-09-16): 체력·부상 칩과 다르게 한눈에 컨디션으로 읽히게 한다. */
 .hint.turning { position:relative; display:block; margin:-2px 0 10px; padding:6px 10px 7px 30px; max-width:100%; color:#6f2b1c; background:rgba(155,44,28,.07); border:1px solid rgba(155,44,28,.22); border-radius:4px; font:700 12px/1.45 sans-serif; }

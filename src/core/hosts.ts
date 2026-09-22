@@ -12,7 +12,6 @@ export const HOST: Record<HostKind, HostInfo> = {
   gambler: { ko: '도박꾼 부호', short: '도박꾼', prize: 1.0, rent: 1.0, missio: 0, rudis: 0, fameWin: 0, honorAll: 0, bet: true, desc: '내기(스폰시오)를 거는 부호. 받으면 이길 때 상금이 두 배, 지면 상금만큼 물어낸다. 거절해도 불이익은 없다.' },
   imperial: { ko: '황제·총독의 경기', short: '황제', prize: 1.5, rent: 1.1, missio: -0.25, rudis: 0.2, fameWin: 2, honorAll: 0, bet: false, desc: '로마의 황제나 속주 총독이 여는 대규모 경기. 상금·호감도·루디스가 가장 크지만 시네 미시오네(자비 없음)를 내건다.' },
 };
-export const HOST_KINDS = Object.keys(HOST) as HostKind[];
 // 등급별 출현 (등급 3에만 황제)
 export const HOSTS_BY_TIER: Record<1 | 2 | 3, HostKind[]> = {
   1: ['magistrate', 'magistrate', 'magistrate', 'candidate', 'miser', 'mourner', 'gambler'],

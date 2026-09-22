@@ -20,7 +20,6 @@ export const LEGENDS: Legend[] = [
 ];
 export const LEGEND_BY_ID: Record<string, Legend> = Object.fromEntries(LEGENDS.map(l => [l.id, l]));
 export const legendOfType = (type: GType) => LEGENDS.find(l => l.type === type);
-export const isLegend = (g: Gladiator) => !!g.legend;
 // 지금 살아 있는 전설의 id — 이 안에 있으면 풀에서 못 꺼낸다 (켈라·시장·지원자·계약 상대·파밀리아·도전장)
 export function takenLegends(lists: Gladiator[][]): Set<string> { const s = new Set<string>(); for (const l of lists) for (const g of l) if (g.legend && g.alive) s.add(g.legend); return s; }
 // 몇 대인가: 그 이름으로 죽거나 나간 사람 수 + 1 (우리 기록 기준)

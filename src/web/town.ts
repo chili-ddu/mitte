@@ -5,11 +5,11 @@ import { bedPatient, inBed, leavePalus, moveToCell, occupantOf, palusOf, palusTr
 import { sfx } from './sound.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
-import { FORUM, MARKET, MARKET_BELL, MK, YARD, YARD_SIGN, drawMarketBell, drawCityWall, drawCountryside, drawForumScene, drawGraveScene, drawMarketScene, drawMedicScene, drawStreetProps, drawYardScene, marketSlotX, palusPosts } from './scenes.js';
+import { FORUM, MARKET, MARKET_BELL, MK, YARD, YARD_SIGN, drawMarketBell, drawCityWall, drawCountryside, drawForumScene, drawGraveScene, drawSun, drawMarketScene, drawMedicScene, drawStreetProps, drawYardScene, marketSlotX, palusPosts } from './scenes.js';
 import { View, app, render, save } from './main.js';
 import { h } from './dom.js';
 import { roadBoard } from './board.js';
-import { openSeasonConfirm } from './plan.js';
+import { openSeasonFlow } from './plan.js';
 import { cellRects, drawCellsScene } from './cells.js';
 import { openConfirm } from './detail.js';
 
@@ -34,7 +34,8 @@ const clampCam = (x: number) => Math.max(0, Math.min(TOWN.W - S.VW, x));
 // 카메라 기준 위치: 시장은 건물이 화면 가운데 조금 오른쪽. 루두스는 폭이 충분하면 훈련장 전체, 좁으면 라니스타 주변(화면 60% 지점)
 export const placeCenter = (v: View) => v === 'grave' ? TOWN.graveX + TOWN.tailW / 2 - 30 : v === 'market' ? TOWN.marketX + MARKET.W / 2 : v === 'medic' ? TOWN.medicX + MEDIC.W / 2 : v === 'yard' ? TOWN.yardX + 250 : TOWN.forumX + 50; // 장소의 가운데 (월드 x). 훈련소는 안뜰(무기고·연습장·팔루스)만, 정문(문루 470~600)은 포룸 화면에 속한다: 포룸 카메라를 왼쪽으로 당겨 문루 + 그 앞 지원자 + 공고벽이 한 화면에
  // 장소의 가운데 (월드 x). 훈련소는 안뜰(무기고·연습장·팔루스)만, 정문(문루 470~600)은 포룸 화면에 속한다: 포룸 카메라를 왼쪽으로 당겨 문루 + 그 앞 지원자 + 공고벽이 한 화면에
-export const camFor = (v: View) => clampCam(placeCenter(v) - S.VW / 2); // 이동한 장소를 화면 가운데에, 양옆은 이웃 장소가 자연스럽게 이어진다
+export const camFor = (v: View) => clampCam(placeCenter(v) - S.VW / 2);
+export const sunScreen = () => ({ x: TOWN.forumX + FORUM.sun.x - camFor('ludus'), y: GY + FORUM.sun.y }); /* 시즌 넘기기 해의 화면 좌표: 정문(포룸) 화면에서 보이던 자리 그대로 — 거기서 카메라가 움직여도 따라온다 (2026-09-22 사용자) */ // 이동한 장소를 화면 가운데에, 양옆은 이웃 장소가 자연스럽게 이어진다
  // cellsCanvas: 켈라 전용 덮개 캔버스 (마을 위, 처마 밑에서 무대 바닥까지). 마을 캔버스는 켈라를 열어도 크기가 변하지 않는다 // 한 번 만들고 유지 (화면 재구성 때 끊기지 않게)
 export function renderTown() {
   if (S.townCanvas && S.cellsCanvas) return h('div', { class: 'panel yardwrap' }, S.townCanvas, roadBoard());
@@ -76,7 +77,8 @@ export function renderTown() {
     if (S.zoomIn) { const e = Math.min(1, (performance.now() - S.zoomIn.start) / S.zoomIn.dur), ease = 1 - Math.pow(1 - e, 3); const z = 1 + (S.zoomIn.k - 1) * ease; const sx = S.zoomIn.wx - S.camX, sy = S.zoomIn.wy; ctx.translate(sx, sy); ctx.scale(z, z); ctx.translate(-sx, -sy); if (e >= 1 && !S.zoomIn.fired) { S.zoomIn.fired = true; const d = S.zoomIn.done; S.zoomIn = null; d(); } } // 초점(공고벽)을 향해 부드럽게 당긴다
     ctx.translate(-S.camX, 0);
     // ── 배경 층 (마을 전체에 이어짐)
-    { const sky = ctx.createLinearGradient(0, 0, 0, GY - 120); sky.addColorStop(0, '#f1e7c9'); sky.addColorStop(1, '#e6d6ad'); ctx.fillStyle = sky; ctx.fillRect(0, 0, TOWN.W, CH()); } // 하늘: 위가 조금 밝은 회칠빛 (파랑은 낙서풍 팔레트와 어긋난다)
+    { const sky = ctx.createLinearGradient(0, 0, 0, GY - 120); sky.addColorStop(0, '#f1e7c9'); sky.addColorStop(1, '#e6d6ad'); ctx.fillStyle = sky; ctx.fillRect(0, 0, TOWN.W, CH()); }
+    { const p = sunScreen(); ctx.save(); ctx.translate(p.x + S.camX, p.y); drawSun(ctx, t); ctx.restore(); } /* 시즌 넘기기 해: 하늘 바로 위, 건물 뒤 맨 안쪽 층 — 화면 자리는 고정(카메라만큼 되밀어)이라 어디로 가든 따라오되, 덧씌운 HUD 가 아니라 먼 하늘의 해처럼 보인다 (2026-09-22 사용자) */ // 하늘: 위가 조금 밝은 회칠빛 (파랑은 낙서풍 팔레트와 어긋난다)
     // 거리 집 정면 (길 구간 + 시장 뒤까지): 지붕·창·문
     for (let x = TOWN.yardX + YARD.W - 40; x < TOWN.W; x += 118) {
       if (x + 104 > TOWN.marketX - 10) break; // 시장 광장 뒤는 회랑, 그 너머는 성벽과 성문 밖
@@ -145,8 +147,8 @@ export function renderTown() {
   c.onclick = (ev) => { // 켈라 화면이면 방 클릭, 아니면 시장 매물 클릭 (카메라 보정)
     if (dragged) { dragged = false; return; }
     const r = c.getBoundingClientRect();
-    { const su = FORUM.sun, sx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.forumX, sy = (ev.clientY - r.top) * (CH() / r.height) - GY; // 포룸 하늘의 해: 옆 장소에서 걸쳐 보일 때도 눌린다
-      if (Math.hypot(sx - su.x, sy - su.y) <= su.r + 16) { sfx.step(); openSeasonConfirm('manage'); return; } } // 시즌 넘기기: 계약 벽·서판을 건너뛰고 바로 시즌 진행 창
+    { const p = sunScreen(), sx = (ev.clientX - r.left) * (S.VW / r.width) - p.x, sy = (ev.clientY - r.top) * (CH() / r.height) - p.y; // 해는 화면 고정(HUD): 카메라와 무관하게 판정
+      if (Math.hypot(sx, sy) <= FORUM.sun.r + 16 || (sx >= -(FORUM.sun.r + 86) && sx <= 0 && Math.abs(sy) <= 12)) /* 해 둘레 + 왼쪽 글자 띠 */ { sfx.step(); openSeasonFlow('manage'); return; } } // 시즌 넘기기: 배정해 둔 계약이 있으면 서판(서명)부터, 없으면 바로 시즌 진행 창 (2026-09-22 사용자)
     if (S.view === 'grave') { S.sheet = 'chronicle'; render(); return; } // 묘비를 누르면 연대기 서랍
     if (S.view === 'medic') { // 침상 위 부상자를 누르면 치료 (확인 후). 침상이 모자라 탁자 옆에 앉은 부상자도 같다
       const lx = (ev.clientX - r.left) * (S.VW / r.width) + S.camX - TOWN.medicX, ly = (ev.clientY - r.top) * (CH() / r.height) - (GY - 210);

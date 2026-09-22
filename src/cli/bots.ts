@@ -1,6 +1,6 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, pickTrainStat, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient } from '../core/game.js';
+import { available, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient } from '../core/game.js';
 import { classKey } from '../core/classes.js';
 import { fullyGrown } from '../core/growth.js';
 import { HOST } from '../core/hosts.js';

@@ -24,7 +24,8 @@ export const TYPE_STATS: Record<GType, Stats> = {
   laquearius:  { hp: 95,  atk: 14, def: 2, spd: 8, hand: 8 }, // 레티아리우스 변형: 그물 대신 올가미 (이시도루스)
 };
 export const TYPE_KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스', scissor: '스키소르', laquearius: '라쿠에아리우스' };
-export const LINEAGE_KO: Record<Lineage, string> = { nature: '자연', victory: '승리', myth: '신화', nickname: '별명', place: '지명' };
+export const LINEAGE_KO: Record<Lineage, string> = { nature: '자연', victory: '승리', myth: '신화', nickname: '별호', place: '지역' }; // 이름 유래 다섯 갈래 (2026-09-22 사용자: 별명 → 별호, 지명 → 지역 — '별명'은 예명과 헷갈렸다)
+export const LINEAGE_DESC: Record<Lineage, string> = { nature: '짐승·자연에서 온 이름 — 곰·사자·번개, 포로에게 붙이던 힘의 이름', victory: '승리·행운을 비는 이름 — 빅토르·펠릭스, 로마인 자원자', myth: '신·영웅에서 온 이름 — 헤르메스·아킬레우스, 그리스계', nickname: '별호가 굳은 이름 — 싸움꾼·비둘기·넷째, 생김새나 버릇', place: '고향·도시 이름 — 카푸아누스·폼페이아누스' }; // 툴팁·규칙 설명
 
 // 계보 다섯 모두 (2026-09-18 사용자: 그동안 자연·승리 둘만 뽑아 신화·별명·지명 이름 60개와 그 무늬가 한 번도 나오지 않았다)
 const LINEAGES_1ST: Lineage[] = ['nature', 'victory', 'myth', 'nickname', 'place'];

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Rng } from './rng.js';
 import { battle } from './battle.js';
 import { makeGladiator, resetIds } from './gladiator.js';
-import { countTraits, levelOf, traitLevelsOf, unitMods, noTraits, TYPE_TRAITS } from './traits.js';
+import { countTraits, levelOf, traitLevelsOf, unitMods, noTraits } from './traits.js';
 import type { GType, Lineage } from './types.js';
 import { CONFIG } from './config.js';
 

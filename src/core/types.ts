@@ -44,7 +44,8 @@ export interface Gladiator {
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
   revenged?: number;    // 복수 성공 횟수
-  dictata?: string[];     // 익힌 숙련 딕타타 id (최대 셋, docs/09 2-α). 전설의 고유 딕타타(L_*)는 자리를 안 차지한다
+  dictata?: string[];     // 익힌 숙련 딕타타 id (자리 CONFIG.mastery.slots, docs/09 2-α). 전설의 고유 딕타타(L_*)는 자리를 안 차지한다. 자리가 차면 가장 오래된 것이 새것으로 바뀐다 (2026-09-22 사용자)
+  dictataPast?: string[]; // 자리에서 밀려난 딕타타 id — 다시 익히지 않는다 (밀려난 것이 문턱은 넘어 있으므로 되돌아와 핑퐁하는 것을 막는다)
   legend?: string;        // 전설 검투사 id (core/legends.ts) — 천부 자질은 곧 고유 인물 (2026-09-22)
   growth?: { curve: 'normal' | 'early' | 'late' | 'second'; trait?: 'one' | 'field' | 'pupil' | 'even'; one?: 'hp' | 'atk' | 'def' | 'hand'; curveKnown?: boolean; traitKnown?: boolean; trainings?: number; secondDone?: boolean }; // 성장형 (docs/09 §7)
   cap?: { hp: number; atk: number; def: number; hand: number }; // 잠재치(상한) — 닿으면 굵게
@@ -76,16 +77,6 @@ export interface Contract {
 }
 
 // (구) 턴제 전투 유닛. 위치 기반 전투에서는 battle.ts 내부 타입 사용
-export interface BattleUnit {
-  g: Gladiator;
-  side: 'A' | 'B';
-  hp: number;
-  atk: number; def: number; spd: number; range: number;
-  bound: number;        // 속박 남은 턴
-  firstHitShield: boolean;
-  netUsed: boolean;
-  row: 'front' | 'back';
-}
 
 export interface BattleEvent {
   t: number;              // 초

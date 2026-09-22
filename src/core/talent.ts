@@ -5,7 +5,6 @@ import type { Rng } from './rng.js';
 export type Talent = 0 | 1 | 2 | 3;
 export const TALENT_KO = ['평범', '재능', '비범', '천부'] as const;
 export const TALENT_RATE = [0.58, 0.28, 0.10, 0.04] as const; // 2026-09-22 사용자: 천부 2 → 3 → 4% (전설을 더 자주 보고 싶다)
-export const TALENT_TRAIN_BONUS = [0, 0.35, 0.55, 0.70] as const;   // 훈련 때 +1이 더 붙을 확률
 export const TALENT_PRICE_MUL = [1, 1.15, 1.4, 1.8] as const;       // 밝혀진 뒤 값에 반영
 export const AWAKEN_CHANCE = 0.12;                                   // 계기마다 한 단계 오를 확률
 export const AWAKEN_MAX: Talent = 2;                                 // 2026-09-22 사용자: 깨우침은 비범까지 — 천부는 타고나는 것(전설의 자리)

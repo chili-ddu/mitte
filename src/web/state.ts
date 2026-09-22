@@ -1,6 +1,6 @@
 // 화면의 공유 가변 상태. main.ts 의 모듈 수준 let 을 한 객체로 모았다 (2026-09-16 리팩터링). 각 화면 모듈은 여기서 읽고 쓴다
 import type { Action, SeasonEvents, GameState, FightReport, TrainStat } from '../core/game.js';
-import type { Contract, Gladiator, GType } from '../core/types.js';
+import type { Contract, Gladiator } from '../core/types.js';
 import type { View } from './main.js';
 import type { StickPose } from './scenes.js';
 import { ENEMY } from './stickman.js';
@@ -22,6 +22,7 @@ export interface State {
   seasonSummary: { upkeep: number; gift: number; bedCost?: number; trained: { g: Gladiator; gains: Partial<Record<TrainStat, number>> }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
   report: FightReport | null;
   notice: string;
+  helpSec: string | null; /* 특성·규칙 페이지에서 펼친 절 (null 이면 목차) — 2026-09-22 사용자: 뎁스 */
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
   gladSel: number | null;
   detail: { kind: 'roster' | 'market'; id: number; confirm?: 'sell' | 'release' | 'buy' | 'heal'; solo?: boolean } | null;

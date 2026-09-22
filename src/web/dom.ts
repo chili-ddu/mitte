@@ -1,7 +1,9 @@
 // DOM 도우미: h()·모달(ask/tell)·드롭다운·툴팁·칩 판별. 화면 모듈이 모두 쓴다
 import { S } from './state.js';
 import { type GType } from '../core/types.js';
-import { TYPE_COLOR, glyphSvg } from './portrait.js';
+import { TYPE_COLOR, glyphSvg, gearSvg } from './portrait.js';
+import { TYPE_EQUIP, MAIN_HAND, OFF_HAND } from '../core/equipment.js';
+import { TYPE_KO } from '../core/gladiator.js';
 
  // 새 기술 모달: 보고 있는 검투사 순번 // 켈라 화면: 디스플레이 아래에서 위로 올라온다 (0~1) // 화면 위에 여는 시트(모달). 스크롤 대신 시트로 상세를 본다
 export const hintSpan = (t: string) => h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, t);
@@ -28,22 +30,8 @@ export const tell = (msg: string, title?: string) => ask(msg, { cancel: false, t
 // ? 아이콘: 누르면 자세한 설명 모달. 화면에는 짧은 말만 남긴다
 export const helpBtn = (title: string, body: string) => { const b = h('button', { class: 'qmark', title: '설명', onclick: (ev: Event) => { ev.stopPropagation(); void tell(body, title); } });
   b.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>'; return b; }; // 인라인 SVG (Lucide circle-help 형태), 파일 요청 없음
-function dropdown(key: string, options: { value: string; label: string }[], value: string, onPick: (v: string) => void, placeholder = ''): Node {
-  const cur = options.find(o => o.value === value);
-  const wrap = h('div', { class: `dd${S.ddOpen === key ? ' open' : ''}` });
-  const btn = h('button', { class: 'ddbtn', onclick: (ev: Event) => { ev.stopPropagation(); S.ddOpen = S.ddOpen === key ? null : key; wrap.classList.toggle('open', S.ddOpen === key); } }, h('span', { class: 'ddarrow' }), cur ? cur.label : placeholder); // 화살표는 글자 앞
-  const list = h('div', { class: 'ddlist' }, ...options.map(o => h('div', { class: `ddopt${o.value === value ? ' on' : ''}`, onclick: (ev: Event) => { ev.stopPropagation(); S.ddOpen = null; onPick(o.value); } }, o.label)));
-  wrap.append(btn, list); return wrap;
-}
 // 작은 상태 아이콘 (인라인 SVG): cross = 부상(붕대 십자), staff = 독토르(지휘봉)
 // 접이식 패널: 열림 상태를 기억한다
-function foldPanel(key: string, title: string, hint: string, ...kids: (Node | null)[]): Node {
-  const open = localStorage.getItem(`lanista-open-${key}`) !== '0';
-  const d = h('details', { class: 'panel fold', style: 'margin-bottom:10px' }, h('summary', {}, h('h2', {}, title, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, hint))), ...kids) as HTMLDetailsElement;
-  if (open) d.setAttribute('open', '');
-  d.addEventListener('toggle', () => localStorage.setItem(`lanista-open-${key}`, d.open ? '1' : '0'));
-  return d;
-}
  // 편성 화면에서 고른 시즌 행사 // 대시보드 맨 위에 한 번 보여줄 알림
 
 export function h(tag: string, attrs: Record<string, any> = {}, ...kids: (Node | string | null | undefined)[]) { // 함수 선언(호이스팅): 다른 모듈이 초기화 때(headerBox·barBox) 부르므로 모듈 순환에서도 안전
@@ -70,6 +58,9 @@ export const tipTarget = (ev: Event) => (ev.target as Element).closest?.('[data-
 export const isAction = (el: Element) => !!el.closest('button, a, select, .card, .drow, .slot, .ddopt, .gtile');
 export const isChip = (el: Element) => el.matches('.badge, .eff, .tile, .tierchip, .host, .rank, .stars') && !el.closest('button');
 export const sq = (t: GType) => h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, glyphSvg(t));
+// 유형 = 주장비 + 보조장비: 같은 유형 색의 작은 네모 둘 (2026-09-22 사용자) — 상세에서 쓴다
+export const gearLine = (t: GType): Node[] => { const e = TYPE_EQUIP[t]; const box = (icon: Node, label: string, title: string) => h('span', { class: 'gearitem', title }, h('span', { class: 'sq', style: `background:${TYPE_COLOR[t]}` }, icon), h('span', { class: 'lbl' }, label));
+  return [box(glyphSvg(t), TYPE_KO[t], '유형'), h('span', { class: 'sep' }, '·'), box(gearSvg(e.main), MAIN_HAND[e.main].label, '주장비'), h('span', { class: 'sep' }, '·'), box(gearSvg(e.off), OFF_HAND[e.off].label, '보조장비')]; }; /* 유형 = 주장비 + 보조장비: 아이콘과 이름을 나란히, 순서가 곧 자리 (2026-09-22 사용자) */
 // 페이지 왼쪽 위 뒤로가기 (화살표 아이콘)
 export function backBtn(onclick: () => void, title: string): Node {
   const b = h('button', { class: 'backbtn', title, 'aria-label': title, onclick });

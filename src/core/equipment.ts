@@ -71,4 +71,3 @@ export function equipHands(type: GType, scaeva?: boolean): { right: string; left
   const e = TYPE_EQUIP[type], main = MAIN_HAND[e.main].label, off = OFF_HAND[e.off].label;
   return scaeva ? { right: off, left: main } : { right: main, left: off };
 }
-export const equipHandsKo = (type: GType, scaeva?: boolean) => { const h = equipHands(type, scaeva); return `오른손 ${h.right} · 왼손 ${h.left}`; };
