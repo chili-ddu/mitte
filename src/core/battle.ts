@@ -51,7 +51,7 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', L: TraitLevels, hpBonus =
     const s = effectiveStats(g); s.hp += hpBonus; // 조리장(식단) 보너스
     if (boosted?.has(g.id)) s.atk = Math.round(s.atk * boostMul); // 원한: 살려 준 상대가 이를 간다
     const m = unitMods(g, L); // 특성: 편성에서 센 단계 중 이 검투사가 가진 것만
-    const atk = Math.round(s.atk * m.atkMul), def = s.def + m.def; const spd = s.spd + m.spd, hand = s.hand;
+    const atk = Math.round(s.atk * m.atkMul * CONFIG.atkScale), def = s.def + m.def; /* 공격 눈금 ×2 (2026-09-22): 피해 공식은 옛 눈금 그대로 */ const spd = s.spd + m.spd, hand = s.hand;
     const range = rangeOf(g.type); const ms0 = mergeMastery(masteryOf(g)); const reach = reachOf(g.type) * (ms0.mountedRange && basicDictataOf(g.type).some(x => x.id === 'dismount') ? 2 : 1); // 말 위 찌르기: 말 위 돌진은 사거리 2
     const n = team.length;
     const y = ARENA.h / 2 + (i - (n - 1) / 2) * 90;
@@ -161,6 +161,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       }
       // 모든 유닛과 최소 간격 (뭉침 방지)
       for (const o of units) { if (o === u || o.hp <= 0) continue; const dd = dist(u, o); const rad = o.side === u.side ? 52 : 40; if (dd < rad && dd > 0) { const f = (rad - dd) / rad * 1.5; vx += (u.x - o.x) / dd * f; vy += (u.y - o.y) / dd * f; } }
+      if (u.sprint && !u.mounted && (vx * ux + vy * uy) <= 0.3 * Math.hypot(vx, vy)) u.sprint = false; /* 돌진은 상대를 향해 달릴 때만: 넘어졌다 일어나 견제로 물러나거나 이탈 중이면 깃발을 내린다 — 남아 있던 깃발이 뒤로 움직이는 동안 질주 속도를 내고 다음 공격에 '돌진!'을 찍었다 (2026-09-22 사용자) */
       const vlen = holding ? 0 : Math.hypot(vx, vy);
       if (vlen > 0) {
         const sp = u.moveSpeed * (u.sprint ? 1.7 : 1) * (winded ? ST.windedMove : 1) * (t < u.slowUntil ? 1 - u.slowMul : 1) * (t < u.retreatUntil ? (u.ms.retreatMul ?? 1) : 1);

@@ -62,7 +62,7 @@ export function merchantLine(g: Gladiator): string {
   return room >= 0.25 ? '아직 한참 자랄 몸이오' : room >= 0.1 ? '조금은 더 클 몸이오' : '다 큰 몸이오';
 }
 // 독토르의 판단: 밝혀진 곡선·결
-export function growthKo(g: Gladiator): string[] { const gr = g.growth; if (!gr) return []; const out: string[] = []; if (gr.curveKnown) out.push(CURVE_KO[gr.curve]); if (gr.trait && gr.traitKnown) out.push(gr.trait === 'one' && gr.one ? `한 우물(${({ hp: '체력', atk: '공격', def: '방어', hand: '손놀림' } as Record<GrowStat, string>)[gr.one]})` : TRAIT_KO[gr.trait]); return out; }
+export function growthKo(g: Gladiator): string[] { const gr = g.growth; if (!gr) return []; const out: string[] = []; if (gr.curveKnown && gr.curve !== 'normal') out.push(CURVE_KO[gr.curve]); /* '평범' 곡선은 말하지 않는다 (2026-09-22 사용자) */ if (gr.trait && gr.traitKnown) out.push(gr.trait === 'one' && gr.one ? `한 우물(${({ hp: '체력', atk: '공격', def: '방어', hand: '손놀림' } as Record<GrowStat, string>)[gr.one]})` : TRAIT_KO[gr.trait]); return out; }
 
 // 훈련·출전 성장의 단위: 소수점을 prog 에 쌓고 1이 차면 base 가 오른다. 상한에 닿으면 더 안 쌓인다. 돌아온 것 = 실제로 오른 정수
 export function addProgress(g: Gladiator, k: GrowStat, amount: number): number {

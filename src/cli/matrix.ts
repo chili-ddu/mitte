@@ -5,8 +5,8 @@ import { battle } from '../core/battle.js';
 import { makeGladiator, powerOf, TYPES, TYPE_KO } from '../core/gladiator.js';
 import type { GType } from '../core/types.js';
 
-const N = Number(process.argv[2] ?? 120), BAND = Number(process.argv[3] ?? 5);
-const rng = new Rng(7);
+const N = Number(process.argv[2] ?? 120), BAND = Number(process.argv[3] ?? 5), SEED = Number(process.argv[4] ?? 7); // 넷째 인자 = 시드 (2026-09-22: 다른 시드로 재검증)
+const rng = new Rng(SEED);
 const SHORT = (t: GType) => TYPE_KO[t].slice(0, 2);
 const grid: Record<string, Record<string, number>> = {}; const win: Record<string, number> = {}, tot: Record<string, number> = {}, dmg: Record<string, number[]> = {}, dur: number[] = [];
 for (const a of TYPES) { grid[a] = {};

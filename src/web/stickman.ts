@@ -464,9 +464,9 @@ function drawOffhand(ctx: CanvasRenderingContext2D, L: Loadout, x: number, y: nu
 // 부속: 팔보호대(마니카), 정강이받이, 어깨 보호대(갈레루스), 흉갑
 function drawExtras(ctx: CanvasRenderingContext2D, L: Loadout, shX: number, shY: number, _hipY: number, _seed: number) {
   ctx.save(); ctx.lineWidth *= 0.6;
-  if (L.extras.includes('galerus')) { ctx.save(); ctx.fillStyle = '#b08a3a';
-    ctx.beginPath(); ctx.moveTo(shX - 11, shY + 3); ctx.quadraticCurveTo(shX - 11, shY - 6, shX - 4, shY - 7); ctx.quadraticCurveTo(shX + 2, shY - 6, shX + 3, shY + 2); ctx.quadraticCurveTo(shX - 4, shY + 5, shX - 11, shY + 3); ctx.closePath(); ctx.fill(); ctx.stroke(); /* 어깨를 덮는 둥근 갓: 어깨 관절을 위에서 감싸 앞뒤로 내려온다 */
-    ctx.beginPath(); ctx.moveTo(shX - 9, shY - 4); ctx.quadraticCurveTo(shX - 10, shY - 11, shX - 8, shY - 15); ctx.quadraticCurveTo(shX - 10, shY - 17, shX - 12, shY - 16); ctx.quadraticCurveTo(shX - 5, shY - 18, shX - 3, shY - 12); ctx.quadraticCurveTo(shX - 2, shY - 8, shX - 3, shY - 5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } /* 갈레루스: 어깨를 감싸는 청동 갓 + 목·귀까지 올라가는 곡면판, 위 끝이 바깥으로 젖혀진다 (2026-09-22 사용자: 어깨를 감싸는 느낌으로) */
+  if (L.extras.includes('galerus')) { ctx.save(); ctx.fillStyle = '#d9c8a0'; /* 청동색은 뺐다 — 다른 장비는 다 먹선이라 혼자 튀었다. 옷과 같은 밝은 회칠로 뒤를 가리고 먹선으로 그린다 (2026-09-22 사용자) */
+    ctx.beginPath(); ctx.moveTo(shX - 7, shY + 2); ctx.quadraticCurveTo(shX - 7, shY - 4, shX - 2, shY - 5); ctx.quadraticCurveTo(shX + 2, shY - 4, shX + 2, shY + 1); ctx.quadraticCurveTo(shX - 2, shY + 3, shX - 7, shY + 2); ctx.closePath(); ctx.fill(); ctx.stroke(); /* 어깨 갓: 관절만 덮는 작은 반원 (전보다 2/3 크기) */
+    ctx.beginPath(); ctx.moveTo(shX - 5, shY - 1); ctx.quadraticCurveTo(shX - 7, shY - 6, shX - 6, shY - 10); ctx.quadraticCurveTo(shX - 8, shY - 12, shX - 9, shY - 11); ctx.quadraticCurveTo(shX - 3, shY - 13, shX - 1, shY - 8); ctx.quadraticCurveTo(shX - 1, shY - 5, shX - 2, shY - 3); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } /* 갈레루스: 갓 안에서 시작해 겹쳐 올라가는 곡면판, 위 끝이 바깥으로 젖혀진다 (2026-09-22 사용자: 너무 컸고 판이 겹쳐야) */
   if (L.extras.includes('pectorale')) { ctx.beginPath(); ctx.rect(shX - 4, shY + 2, 8, 7); ctx.stroke(); }
   if (L.extras.includes('greaves')) { ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(-3, -6 - i * 3); ctx.lineTo(3, -7 - i * 3); } ctx.stroke(); } // 앞다리 정강이 빗금(대략 위치)
   ctx.restore();

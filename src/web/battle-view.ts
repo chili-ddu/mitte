@@ -809,6 +809,7 @@ function renderResult() {
   const won = r.winner === 'A';
   const net = r.rent - r.expense + r.prize + r.compensation - (r.bet && !r.bet.won ? r.bet.amount : 0);
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${v.toLocaleString()}`));
+  const advance = () => { if (S.phase !== 'result' || S.report !== r) return; S.phase = 'battle'; nextFight(); };
   const bad = r.fates.filter(f => f.fate === 'dead' || f.fate === 'injured');
   // 결과·정산은 칩 대신 문장으로 말한다 (2026-09-17 사용자): 경기가 끝난 자리에서는 한 줄로 읽히는 편이 낫다
   const flags: Node[] = [];
@@ -816,25 +817,26 @@ function renderResult() {
   for (const f of bad) line(f.fate === 'dead' ? `${f.g.name}${eun(f.g.name)} 돌아오지 못했다.` : `${f.g.name}${eun(f.g.name)} ${f.g.injured >= 3 ? '크게 다쳤다. 세 시즌은 눕는다.' : `다쳤다. ${f.g.injured >= 2 ? '두' : '한'} 시즌은 쉬어야 한다.`}`, f.fate === 'dead' ? 'grave' : 'bad');
   for (const g of r.rudis) { line(`${g.name}${eun(g.name)} 목검(루디스)을 받았다 — 자유다.`, 'good'); if (g.status === 'rudiarius') flags.push(h('button', { class: 'tiny', title: '플람마처럼 자유를 물리고 노예로 남는다. 명예 +8', onclick: () => { void ask(`${g.name} 이(가) 루디스를 거절합니까? 노예로 남고 명예 +8`, { ok: '거절' }).then(ok => { if (ok) { refuseRudis(S.st, g); renderResult(); } }); } }, '거절')); }
   for (const g of r.promoted) line(`${g.name}${eun(g.name)} 베테라누스가 되었다.`, 'good');
+  if (r.starBet === 'won') flags.push(h('div', { class: 'rline good' }, `간판 내기에서 이겼다 — 상은 정산에서 고른다.`)); else if (r.starBet === 'lost' && r.stake) flags.push(h('div', { class: 'rline bad' }, `간판 내기에 져 ${r.stake.name}${eul(r.stake.name)} 넘겼다.`)); /* 2026-09-22 */
+  if (r.gift) flags.push(h('div', { class: 'rline good' }, `타지 흥행의 상으로 ${r.gift.name}${eul(r.gift.name)} 받았다 — 켈라에 들어온다.`)); else if (r.giftMoney) flags.push(h('div', { class: 'rline good' }, `타지 흥행의 상 — 켈라가 차서 ${r.giftMoney.toLocaleString()} HS 로 받았다.`)); /* 2026-09-22 */
   for (const nd of r.newDictata) flags.push(h('div', { class: 'rline good', title: `${nd.m.ko} — ${nd.m.cond.ko}` }, `${nd.g.name}${eun(nd.g.name)} 팔루스에서 '${nd.m.name}'${eul(nd.m.name)} 익혔다.${nd.out ? ` '${nd.out.name}' 은 잊었다.` : ''}`));
   for (const ne of r.newEpithets) flags.push(h('div', { class: 'rline good', title: `${ne.e.cond} → ${ne.e.effect}` }, `관중이 ${ne.g.name}${eul(ne.g.name)} '${ne.e.name}' 이라 부르기 시작했다.`));
   const title = won ? '승리' : r.winner === 'draw' ? '무승부' : '패배';
   const tp = turningPoint(r);
-  app.append(h('div', { class: 'panel result' }, // 팝업이 아니라 편성·정산처럼 한 페이지
-    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, title, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${r.contract.size}대${r.contract.size} · ${r.duration.toFixed(1)}초${r.classic ? ' · 전통 짝' : ''}`)),
+  /* 작은 팝업(2026-09-22 사용자: 결과가 짧게 지나가는데 글이 많아 읽을 틈이 없다): 승패·수지·호감 한 줄과 꼭 알려야 할 줄 셋까지만. 수지 표는 정산에 있다. 어디를 눌러도 넘어간다 */
+  const keyFlags = flags.slice(0, 3); const more = flags.length - keyFlags.length;
+  app.append(h('div', { class: 'gfpop', onclick: () => advance() },
+    h('h2', { style: `color:${won ? 'var(--ok)' : r.winner === 'draw' ? 'var(--dim)' : 'var(--red)'}` }, title),
+    h('div', { class: 'hint' }, `${r.contract.size}대${r.contract.size} · ${r.duration.toFixed(1)}초${r.classic ? ' · 전통 짝' : ''}`),
     tp ? h('div', { class: 'hint turning' }, tp) : null,
-    h('div', { class: 'resultbrief' },
-      h('div', { class: 'scoreline' }, h('span', {}, '이번 경기'), h('b', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `호감도 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`)),
-      h('div', { class: 'flagline' }, ...(flags.length ? flags : [h('div', { class: 'rline good' }, '모두 제 발로 걸어 나왔다.')]))),
-    h('details', { class: 'quickdetail' }, h('summary', { class: 'hint' }, '이번 경기 수지 보기'), h('div', { class: 'mtable' }, money('대여료', r.rent), money('출전 경비', r.expense, -1), money(r.bet?.won ? '승리 상금 (내기 ×2)' : '승리 상금', r.prize), r.guestGift ? money('귀족 사례금', r.guestGift) : null, money('사망 배상금', r.compensation), r.salary ? money('자유민 급료', r.salary, -1) : null, r.bet && !r.bet.won ? money('내기 패배', r.bet.amount, -1) : null,
-      h('div', { class: 'mrow total' }, h('span', {}, '수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)))),
-  ));
+    h('div', { class: 'scoreline' }, h('b', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`), h('span', { class: r.fameDelta >= 0 ? 'plus' : 'minus' }, `호감 ${r.fameDelta >= 0 ? '+' : ''}${r.fameDelta}`)),
+    h('div', { class: 'flagline' }, ...(keyFlags.length ? keyFlags : [h('div', { class: 'rline good' }, '모두 제 발로 걸어 나왔다.')]), more > 0 ? h('div', { class: 'rline hint' }, `외 ${more}건 — 정산에서`) : null)));
+  void money;
   app.prepend(headerEl()); window.scrollTo(0, 0);
   const needsChoice = r.rudis.some(g => g.status === 'rudiarius');
-  const advance = () => { if (S.phase !== 'result' || S.report !== r) return; S.phase = 'battle'; nextFight(); };
   if (FIGHT_PARAM) { const again = () => { location.hash = String(DEBUG_SEED() + 1); location.reload(); }; app.append(graffitiBtn('duel', 'ITERVM', `다시 (시드 ${DEBUG_SEED() + 1})`, again)); app.classList.add('land', 'page', 'gf'); return; } /* 디버그 전투: 정산으로 가지 않고 시드를 올려 다시 굴린다 */
   app.append(S.queue.length ? graffitiBtn('duel', 'SEQVENS', `다음 경기 (${S.queue.length}경기 남음)`, advance, S.queue.length) : graffitiBtn('coins', 'RATIONES', '시즌 정산으로', advance)); app.classList.add('land', 'page', 'gf'); // 결과도 무대 안: 아래 띠 자리에 낙서 그림 버튼 (다음 경기 = 결투 SEQVENS, 정산 = 동전 더미 RATIONES)
-  if (!needsChoice) window.setTimeout(advance, flags.length ? 3200 : 2200); // 짧은 결과는 보고만 지나간다. 루디스 거절처럼 즉시 선택이 있으면 자동 넘김을 멈춘다.
+  if (!needsChoice) window.setTimeout(advance, keyFlags.length ? 3000 : 2200); // 짧은 결과는 보고만 지나간다. 루디스 거절처럼 즉시 선택이 있으면 자동 넘김을 멈춘다.
 }
 
 function mountedSkeleton(t: number, thrust = false): Skeleton {

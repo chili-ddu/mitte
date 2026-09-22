@@ -9,8 +9,8 @@ import { CONFIG } from './config.js';
 
 // 시드마다 (승자, 초, 프레임 수, 이벤트 수). 2026-09-21 성장 모델(docs/09 §7): 초기 굴림 없음 · 잠재치 굴림 — 난수 소비가 바뀐다 뒤 다시 기록
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
-  1: { winner: 'A', dur: 20.3, frames: 205, events: 30 }, /* 2026-09-22 몸 상태·예명 능력치 효과 삭제 — 난수 소비가 줄고 보정이 사라져 셋 다 바뀜 */
-  7: { winner: 'A', dur: 13.3, frames: 135, events: 19 },
+  1: { winner: 'B', dur: 16, frames: 162, events: 25 }, /* 2026-09-22 공격 눈금 절반(atkScale 2): 기본치 반올림(14→7·17→9)과 피로 벌점 내림으로 피해가 조금 달라져 시드 1·7 이 바뀜 */
+  7: { winner: 'A', dur: 11.2, frames: 114, events: 18 },
   42: { winner: 'A', dur: 9.3, frames: 95, events: 16 },
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };

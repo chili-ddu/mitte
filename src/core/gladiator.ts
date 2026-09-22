@@ -11,17 +11,18 @@ import { legendOfType, LEGEND_BY_ID, type Legend } from './legends.js';
 import namesJson from '../../data/names.json' with { type: 'json' };
 
 // spd = 걸음(유형 고정) · hand = 손놀림 기본치(굴리고 자란다). 사거리는 classes.ts (2026-09-20)
+// 공격은 2026-09-22 한 자릿수로 다시 쟀다(14~17 → 7~9): 피해 공식이 CONFIG.atkScale(2) 를 곱해 전투는 그대로. 네 능력치가 같은 눈금(2~10)에서 시작해 20칸 막대가 같은 뜻이 되게
 export const TYPE_STATS: Record<GType, Stats> = {
-  murmillo:  { hp: 120, atk: 14, def: 8, spd: 3, hand: 3 },
-  secutor:   { hp: 110, atk: 14, def: 7, spd: 5, hand: 5 },
-  thraex:    { hp: 95,  atk: 17, def: 4, spd: 6, hand: 6 },
-  retiarius: { hp: 95,  atk: 15, def: 2, spd: 8, hand: 8 },
-  hoplomachus: { hp: 100, atk: 15, def: 5, spd: 5, hand: 5 },
-  provocator:  { hp: 115, atk: 14, def: 7, spd: 4, hand: 4 },
-  eques:       { hp: 95,  atk: 15, def: 4, spd: 8, hand: 8 },
-  dimachaerus: { hp: 95,  atk: 17, def: 3, spd: 7, hand: 7 },
-  scissor:     { hp: 105, atk: 16, def: 4, spd: 6, hand: 6 }, // 세쿠토르 변형: 방패 대신 왼팔 관 끝의 반달 날 (부조·모자이크)
-  laquearius:  { hp: 95,  atk: 14, def: 2, spd: 8, hand: 8 }, // 레티아리우스 변형: 그물 대신 올가미 (이시도루스)
+  murmillo:  { hp: 115, atk: 7, def: 8, spd: 3, hand: 3 },
+  secutor:   { hp: 110, atk: 7, def: 7, spd: 5, hand: 5 },
+  thraex:    { hp: 90,  atk: 9, def: 4, spd: 6, hand: 6 },
+  retiarius: { hp: 100, atk: 8, def: 2, spd: 8, hand: 8 },
+  hoplomachus: { hp: 95, atk: 8, def: 5, spd: 5, hand: 5 },
+  provocator:  { hp: 110, atk: 7, def: 7, spd: 4, hand: 4 },
+  eques:       { hp: 100, atk: 8, def: 4, spd: 8, hand: 8 },
+  dimachaerus: { hp: 95,  atk: 9, def: 3, spd: 7, hand: 7 },
+  scissor:     { hp: 110, atk: 8, def: 4, spd: 6, hand: 6 }, // 세쿠토르 변형: 방패 대신 왼팔 관 끝의 반달 날 (부조·모자이크)
+  laquearius:  { hp: 100, atk: 8, def: 3, spd: 8, hand: 8 }, // 레티아리우스 변형: 그물 대신 올가미 (이시도루스)
 };
 export const TYPE_KO: Record<GType, string> = { murmillo: '무르밀로', secutor: '세쿠토르', thraex: '트라엑스', retiarius: '레티아리우스', hoplomachus: '호플로마쿠스', provocator: '프로보카토르', eques: '에퀘스', dimachaerus: '디마카에루스', scissor: '스키소르', laquearius: '라쿠에아리우스' };
 export const LINEAGE_KO: Record<Lineage, string> = { nature: '자연', victory: '승리', myth: '신화', nickname: '별호', place: '지역' }; // 이름 유래 다섯 갈래 (2026-09-22 사용자: 별명 → 별호, 지명 → 지역 — '별명'은 예명과 헷갈렸다)
@@ -57,7 +58,7 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
 export function effectiveStats(g: Gladiator): Stats {
   const grow = 1; // 승수 성장(+2%/승)은 2026-09-20 뺐다 — 능력치는 훈련으로만 자라고, 경기 경험은 숙련 딕타타로 간다(docs/09). 승수는 신분·명예·값에만
   const pen = Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * CONFIG.fatigue.statPenalty; // 피로(첫 1점 무료). 노쇠는 2026-09-22 뺐다
-  return { hp: Math.max(1, Math.round(g.base.hp * grow) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow) - pen), def: Math.max(0, Math.round(g.base.def * grow) - pen), spd: Math.max(1, g.base.spd), hand: Math.max(1, Math.round(g.base.hand * grow)) }; // 예명 능력치 효과는 2026-09-22 뺐다
+  return { hp: Math.max(1, Math.round(g.base.hp * grow) - pen * CONFIG.hpPenPerStat), atk: Math.max(1, Math.round(g.base.atk * grow) - Math.floor(pen / CONFIG.atkScale)), /* 공격은 눈금이 절반이라 피로 벌점도 절반(내림) */ def: Math.max(0, Math.round(g.base.def * grow) - pen), spd: Math.max(1, g.base.spd), hand: Math.max(1, Math.round(g.base.hand * grow)) }; // 예명 능력치 효과는 2026-09-22 뺐다
 }
 // 체력 한 줄을 이루는 몫들 — 화면의 체력바가 이 값으로 초록(기본)·연초록(보너스)·붉은(패널티)을 칠한다 (2026-09-17 사용자)
 export interface HpParts { base: number; bonus: number; pen: number; total: number }

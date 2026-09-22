@@ -36,7 +36,7 @@ export const hostPrize = (c: Contract) => Math.round(CONFIG.prizePerTier * c.tie
 export const hostSpan = (c: Contract) => { const H = HOST[c.host]; return h('span', { class: `host ${c.host}`, title: `${H.ko}: ${H.desc}\n상금 ×${H.prize} · 대여료 ×${H.rent} · 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}% · 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? ` · 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? ` · 출전자 명예 +${H.honorAll}` : ''}${H.bet ? ' · 내기 가능' : ''}` }, H.ko); };
 // 성장형·자질 칩 (상세, 2026-09-22 사용자): 곡선 · 결 · 자질 — 색은 자질 흙빛과 같은 계열
 function growthChips(g: Gladiator): Node[] { const gr = g.growth; const out: Node[] = [];
-  if (gr?.curveKnown) out.push(h('span', { class: `badge chip curve ${gr.curve}`, title: `성장형 — ${CURVE_DESC[gr.curve]}` }, CURVE_KO[gr.curve]));
+  if (gr?.curveKnown && gr.curve !== 'normal') out.push(h('span', { class: `badge chip curve ${gr.curve}`, title: `성장형 — ${CURVE_DESC[gr.curve]}` }, CURVE_KO[gr.curve])); /* 성장형 '평범'은 칩을 안 단다 — 자질 '평범'과 겹쳐 보였다. 특이한 곡선만 (2026-09-22 사용자) */
   if (gr?.trait && gr.traitKnown) { const ONE_KO: Record<string, string> = { hp: '체력', atk: '공격', def: '방어', hand: '손놀림' }; const one = gr.trait === 'one' && gr.one ? ONE_KO[gr.one] : null;
     out.push(h('span', { class: `badge chip trait ${gr.trait}${one ? ` one-${gr.one}` : ''}`, title: `결 — ${GROWTH_TRAIT_KO[gr.trait]}${one ? ` (${one})` : ''}: ${TRAIT_DESC[gr.trait]}` }, GROWTH_TRAIT_KO[gr.trait])); } /* '한 우물(체력)' 대신 '한 우물' — 어느 능력치인지는 칩 색과 툴팁이 말한다 (2026-09-22 사용자) */
   const t = talentOf(g); out.push(h('span', { class: `badge chip talent t${t}`, title: `자질 — 성장 속도 ×${CONFIG.growthModel.talentMul[t]}, 상한 ×${CONFIG.growthModel.talentCap[t]}` }, TALENT_KO[t]));
@@ -188,6 +188,8 @@ export function detailPage(): Node {
       h('span', { class: 'badge chip status', title: '등급 — 티로(첫 경기 전) · 베테라누스 · 프리무스 팔루스(승 8·명예 20)' }, status),
       h('span', { class: 'badge chip age', title: '나이대 — 청년(~23) · 장년(24~29) · 노년(30~)' }, AGE_BAND_KO[ageBand(g.age ?? 24)]) /* 나이 숫자는 카드 이름 옆으로 (2026-09-22 사용자) */,
       g.origin ? h('span', { class: `badge chip origin ${g.origin}`, title: `출신 — ${ORIGIN_DESC[g.origin]}` }, ORIGIN_KO[g.origin]) : null,
+      g.status === 'rudiarius' && g.contractUntil != null ? h('span', { class: 'badge chip contract', title: `자유민 계약 — 급료는 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%. 끝나면 떠난다` }, `계약 ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌`) : null, /* 상태 칸에서 옮겨 온 칩 (2026-09-22 사용자) */
+      d.kind === 'roster' && g.origin === 'damnatus' && g.boughtSeason != null ? h('span', { class: 'badge chip term', title: '형벌 죄수 — 형기가 끝나면 자유민이 된다' }, `형기 ${Math.max(0, CONFIG.origins.damnatus.freeAfter - (S.st.season - g.boughtSeason + 1))}시즌`) : null,
       h('span', { class: `badge chip hand${g.scaeva ? ' scaeva' : ''}`, title: g.scaeva ? '왼손잡이(스카에바) — 비문에 따로 적힐 만큼 귀했다' : '오른손잡이' }, g.scaeva ? '왼손' : '오른손')), /* 손잡이는 기본 정보 줄에 둘 다 (2026-09-22 사용자: 길면 오른손·왼손으로만) */
     h('div', { class: 'dbadges chips rolled' }, /* 둘째 줄 = 굴려서 정해진 것: 이름 유래 · 성장형 · 자질 · 예명 */
       h('span', { class: `badge chip lin ${g.lineage}`, title: `이름 유래 — ${LINEAGE_DESC[g.lineage]}` }, LINEAGE_KO[g.lineage]),
@@ -231,17 +233,11 @@ function detailRight(g: Gladiator, kind: 'roster' | 'market'): { mid: Node; side
     const on = have.has(m.id), past = (g.dictataPast ?? []).includes(m.id), now = career[m.cond.key] ?? 0;
     return chip(on ? 'on' : past ? 'past' : 'off', m.name, `${m.name} — ${m.ko} (${m.cond.ko}${on ? '' : `, 지금 ${now}`})${past ? ' · 자리에서 밀려나 다시 익히지 않는다' : ''}`); });
   const dictRows = h('div', { class: 'dbadges chips dictchips' }, ...basics, ...legends, ...cands);
-  const statusBits: string[] = [];
-  if (g.injured) statusBits.push(`부상 ${g.injured}시즌 남음`);
-  if (g.status === 'rudiarius' && g.contractUntil != null) statusBits.push(`자유민 계약 ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌 남음 · 급료 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%`);
-  if (g.status === 'doctor') statusBits.push(`독토르로 ${TYPE_KO[g.type]} 훈련을 가르친다 · 급료 ${CONFIG.doctorSalary}/시즌`);
-  if (g.fought) statusBits.push('이번 시즌 출전 완료');
-  if (kind === 'roster' && g.origin === 'damnatus' && g.boughtSeason != null) statusBits.push(`형기 ${Math.max(0, CONFIG.origins.damnatus.freeAfter - (S.st.season - g.boughtSeason + 1))}시즌 뒤 자유`);
+  /* 상태 칸은 뺐다 (2026-09-22 사용자): 부상·독토르·출전 완료는 카드 표식·명부가 말하고, 자유민 계약·형기는 기본 정보 칩으로 옮겼다 */
   // 가운데 열: 전적 → 능력치 → 기술 → 상태 → 시즌 행동 (시장: 출신)
   const mid: (Node | null)[] = [
     fat ? dsec('stats', '피로', h('div', { class: 'line' }, `피로 ${fat} — 첫 ${CONFIG.fatigue.free}점은 괜찮고, 그 위로 1점마다 공·방 −${CONFIG.fatigue.statPenalty}`)) : null, /* 능력치 막대는 카드에 (2026-09-22) */
     h('div', { class: 'dictsec' }, h('span', { class: 'dlabel', title: `숙련 ${masterySlotsUsed(g)}/${CONFIG.mastery.slots} — 자리가 차면 문턱을 넘은 새것이 가장 오래된 것과 바뀐다` }, '딕타타'), dictRows), /* 상자 없이 '딕타타' 이름표만 (2026-09-22 사용자). 숙련 수/자리는 툴팁 */ /* 성장 칸은 뺐다 — 상한은 카드 막대의 ▲, 상인 말은 출신 칸으로 (2026-09-22 사용자) */
-    statusBits.length ? dsec('status', '상태', ...statusBits.map(t => h('div', { class: 'line' }, t))) : null,
   ];
   const side: (Node | null)[] = [];
   if (kind === 'market') {

@@ -7,10 +7,10 @@ import { CONFIG } from './config.js';
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['파트로클루스', 14, 7], ['파두스', 14, 2]] /* 2026-09-21 서열 배율 삭제·나이만큼 자란 몸·시작 보정 삭제, 파밀리아 색 굴림으로 난수 이동 */);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['풀구르', 8, 5], ['간니쿠스', 9, 3]] /* 2026-09-22 공격 눈금 절반, 유형 재분배, 파밀리아 한 팀·명단 5 로 시작 — 난수 소비가 바뀜 */ /* 2026-09-21 서열 배율 삭제·나이만큼 자란 몸·시작 보정 삭제, 파밀리아 색 굴림으로 난수 이동 */);
   assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['tiro', 0, 0], ['tiro', 0, 0]], '시작 검투사는 제일 어린 티로, 전적 없음 (2026-09-21 사용자)');
-  assert.equal(st.contracts.length, 2); /* 2026-09-22 몸 상태 굴림이 빠져 난수가 당겨졌다 (4 → 2) */
-  assert.equal(score(st), 27955); /* 2026-09-22 자질이 값에 (28270 → 28935), 할인 30세·priceBase 120 (→ 27955) */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
+  assert.equal(st.contracts.length, 2); /* 2026-09-22 몸 상태 굴림이 빠져 (4 → 2), 파밀리아 열두 집·특징 (3 → 2) */
+  assert.equal(score(st), 28900); /* 2026-09-22 자질이 값에, 할인 30세·priceBase 120, 전력 가중치 재측정, 유형 재분배, 파밀리아 한 팀·명단 5 (→ 28900) */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 

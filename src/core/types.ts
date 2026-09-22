@@ -43,6 +43,7 @@ export interface Gladiator {
   typesWon?: GType[];   // 승리를 거둔 유형들 (유형 전환 별칭)
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
+  fellToUs?: boolean;   // (파밀리아 검투사) 우리 앞에 쓰러진 적이 있다 — 명단 전원이 그러면 그 집이 우리를 피한다 (2026-09-22)
   revenged?: number;    // 복수 성공 횟수
   dictata?: string[];     // 익힌 숙련 딕타타 id (자리 CONFIG.mastery.slots, docs/09 2-α). 전설의 고유 딕타타(L_*)는 자리를 안 차지한다. 자리가 차면 가장 오래된 것이 새것으로 바뀐다 (2026-09-22 사용자)
   dictataPast?: string[]; // 자리에서 밀려난 딕타타 id — 다시 익히지 않는다 (밀려난 것이 문턱은 넘어 있으므로 되돌아와 핑퐁하는 것을 막는다)
@@ -68,6 +69,8 @@ export interface Contract {
   guest?: boolean;        // 초대했던 귀족이 들고 온 계약 (이기면 사례금)
   needVeterans: number;
   challenge?: 'in' | 'out'; // 도전 계약(docs/10): in = 파밀리아가 낸 도전장, out = 우리가 건 도전. 파밀리아가 간판·정예를 세우고 상한이 없다. 수락하면 필수 배정
+  starBet?: boolean;      // 간판 내기(2026-09-22): 우리 출전 검투사를 걸고 그 집 간판과 1대1. 이기면 막 졸업·간판(또는 값)을 받고, 지면 출전 검투사를 넘긴다. 처형 없음
+  foreign?: boolean;      // 타지 흥행 이벤트 계약 (2026-09-22): 타지 라니스타의 검투사, 상금 ×1.6, 이기면 상대를 선물로
   classic?: boolean;      // 주최자가 정식 대결(전통 짝)을 주문한 계약 — 짝이 되는 유형을 세워야 성립, 상금 ×1.4 (2026-09-18 docs/08 4-6)
   powerCap?: number;      // 상대 전력 상한 (경기장 등급별). 내 편은 제한 없음. 없으면 무제한 (옛 저장)
   size: 1 | 2 | 3;        // 경기 규모: 1대1 / 2대2 / 3대3
