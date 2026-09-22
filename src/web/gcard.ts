@@ -3,8 +3,7 @@
 import type { Gladiator, Lineage } from '../core/types.js';
 import { h, sq } from './dom.js';
 import { CONFIG } from '../core/config.js';
-import { atCap, fullyGrown } from '../core/growth.js';
-import { LEGEND_BY_ID } from '../core/legends.js';
+import { atCap } from '../core/growth.js';
 import { portrait } from './portrait.js';
 import { effectiveStats, powerOf, powerNow, hpParts, LINEAGE_KO, LINEAGE_DESC } from '../core/gladiator.js';
 import { overworkChance } from '../core/game.js';
@@ -92,7 +91,7 @@ const statLines = (g: Gladiator, foes: Gladiator[] = [], bars = false, capNums =
   pwLine.prepend(h('em', { class: 'tr' }, h('i', { class: d > 0 ? 'on' : '' }, '▲'), h('i', { class: d < 0 ? 'on' : '' }, '▼'))); pwLine.append(vEl); /* 화살표는 위아래 한 쌍이 늘 있고 해당하는 쪽만 켜진다 (2026-09-22 사용자) · 칼 아이콘 · 값, 오른쪽 정렬 */
   if (rolling) rollTo(pwLine, vEl, prev!, pw, d); // 상성이 붙으면 숫자가 굴러가고 색이 서서히 물든다 /* 화살표는 줄 맨 오른쪽에 못 박는다 — 숫자가 길어져도 자리가 안 흔들린다 (2026-09-17 사용자) */ /* 오름·내림은 화살표와 글자 색으로. 화살표가 없어도 자리는 비워 둔다 (2026-09-17 사용자) */
   return { col: bars ? [bar('atk', 'ATK'), bar('def', 'DEF'), bar('hand', 'DEX'), bar('spd', 'SPD')] : [stat('ATK', e.atk, b.atk, atCap(g, 'atk')), stat('DEF', e.def, b.def, atCap(g, 'def')), stat('DEX', e.hand, b.hand, atCap(g, 'hand')), stat('SPD', e.spd, b.spd)], /* 오른쪽 기둥: 능력치 넷 (2026-09-22 사용자: 딕타타 칩 대신) */
-    row: [h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승${missio ? ` · 미시오 ${g.missios}` : ''}`), g.legend ? null : fullyGrown(g) ? h('span', { class: 'grown', title: '다 컸다 — 네 능력치 모두 상한. 팔거나 독토르로' }, '다 컸다') : null, g.legend ? h('span', { class: 'grown talent t3', title: `전설 — ${LEGEND_BY_ID[g.legend]?.lore ?? ''}\n천부: 성장 속도 ×${CONFIG.growthModel.talentMul[3]}, 상한 ×${CONFIG.growthModel.talentCap[3]}. 고유 딕타타를 타고났다` }, '전설') : null), pwLine] }; }; /* 자질 칩은 뺐다 — 초상 뒤 흙빛이 말한다 (2026-09-22 사용자). 표식 자리엔 전설·다 컸다만 */ /* 자질 표식 (2026-09-22 사용자: 처음부터 공개) */
+    row: [h('div', { class: 'sline rec' }, h('span', { class: 'v' }, `${g.fights}전 ${g.wins}승${missio ? ` · 미시오 ${g.missios}` : ''}`), ), pwLine] }; }; /* 전적 줄엔 칩을 두지 않는다 — 전설·'다 컸다' 둘 다 뺐다. 다 컸다는 어디에도 표현하지 않는다 (2026-09-22 사용자) */ /* 자질 칩은 뺐다 — 초상 뒤 흙빛이 말한다 (2026-09-22 사용자). 표식 자리엔 전설·다 컸다만 */ /* 자질 표식 (2026-09-22 사용자: 처음부터 공개) */
 
 // 부상: 린넨 띠에 피가 배어난다. 단계가 오를수록 얼룩이 커지고 번진다 (1~3시즌, 2026-09-17 사용자)
 const woundMark = (g: Gladiator) => { const lv = Math.max(1, Math.min(3, g.injured)); const el = h('span', { class: `wound w${lv}`, title: `부상: 앞으로 ${g.injured}시즌 쉰다. 치료비를 내면 바로 낫는다` });

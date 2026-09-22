@@ -245,10 +245,12 @@ function offerChallenges(st: GameState): Contract[] {
     st.history.push(`${seasonName(st.season)}: ${r.name}이(가) ${revenge ? '복수의 ' : ''}도전장을 보냈다 (${c.size}대${c.size}, ${c.venue})`); }
   return out;
 }
+/* 공고벽 자리(postersMax)를 넘기면 도전·정식 대결이 아닌 보통 계약 중 등급이 낮고 규모가 작은 것부터 뗀다 (2026-09-22 사용자) */
+function makeRoomOnWall(st: GameState) { while (st.contracts.length >= CONFIG.postersMax) { const cand = st.contracts.filter(c => !c.challenge && !c.classic).sort((a, b) => a.tier - b.tier || a.size - b.size)[0] ?? st.contracts.find(c => !c.challenge); if (!cand) return; st.contracts = st.contracts.filter(c => c !== cand); st.history.push(`${seasonName(st.season)}: 공고벽이 차서 ${cand.venue} 계약을 뗐다`); } }
 export function acceptChallenge(st: GameState, c: Contract): string | null {
   if (!st.pendingChallenges.includes(c)) return '이미 답한 도전장';
   if (!canFulfill(st, c)) return `${c.size}명을 세울 수 없다`;
-  st.pendingChallenges = st.pendingChallenges.filter(x => x !== c); st.contracts.push(c); st.history.push(`${seasonName(st.season)}: ${rivalOf(st.rivals, c.rivalId)?.name ?? '상대'}의 도전을 받았다`); return null;
+  st.pendingChallenges = st.pendingChallenges.filter(x => x !== c); makeRoomOnWall(st); st.contracts.push(c); st.history.push(`${seasonName(st.season)}: ${rivalOf(st.rivals, c.rivalId)?.name ?? '상대'}의 도전을 받았다`); return null;
 }
 export function declineChallenge(st: GameState, c: Contract) {
   if (!st.pendingChallenges.includes(c)) return; st.pendingChallenges = st.pendingChallenges.filter(x => x !== c);
@@ -263,7 +265,7 @@ export function sendChallenge(st: GameState, r: Rival, size: 1 | 2 | 3 = 1): { a
   const cmp = compareRival(r, st.roster.filter(g => g.alive && g.status !== 'doctor')); // 'strong' = 그쪽이 세다
   const p = CH().acceptBase + (r.mood ?? 0) * CH().acceptMood + (cmp === 'weak' ? CH().acceptWeak : cmp === 'strong' ? CH().acceptStrong : 0);
   const c = st.rng.chance(p) ? makeChallenge(st.rng, st.season, r, 'out', size) : null;
-  if (c) { st.contracts.push(c); st.history.push(`${seasonName(st.season)}: ${r.name}이(가) 우리 도전을 받았다 (${c.size}대${c.size}, ${c.venue}) — 섭외비 ${fee}`); return { accepted: true, contract: c, text: `${r.name}이(가) 도전을 받았다. ${c.venue}에서 ${c.size}대${c.size}` }; }
+  if (c) { makeRoomOnWall(st); st.contracts.push(c); st.history.push(`${seasonName(st.season)}: ${r.name}이(가) 우리 도전을 받았다 (${c.size}대${c.size}, ${c.venue}) — 섭외비 ${fee}`); return { accepted: true, contract: c, text: `${r.name}이(가) 도전을 받았다. ${c.venue}에서 ${c.size}대${c.size}` }; }
   st.money += fee; st.fame = Math.min(100, st.fame + 1); st.history.push(`${seasonName(st.season)}: ${r.name}이(가) 우리 도전을 피했다 (호감도 +1)`);
   return { accepted: false, text: `${r.name}이(가) 도전을 피했다. 섭외비는 돌려받았고, 사람들이 이야기한다 (호감도 +1)` };
 }

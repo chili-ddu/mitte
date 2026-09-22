@@ -767,7 +767,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .cellpop .two { grid-template-columns:1fr 1fr; }
 
 /* 검투사 상세 페이지: 오른쪽에서 밀려 들어와 장면을 덮는다. 왼쪽 큰 초상, 오른쪽 정보, 오른쪽 아래 돌아가기 */
-#app.land > .detailpage { position:absolute; left:6px; right:6px; top:46px; height:var(--yard-h, 300px); z-index:8; background:#cbb67f; border-radius:6px; display:grid; grid-template-columns:1fr 190px; grid-template-rows:auto minmax(0, 1fr); /* 위: 넓은 카드(왼쪽 열 전체) · 아래: 정보·성장형·딕타타·상태 (스크롤) · 오른쪽: 행동 (2026-09-22 사용자) */ gap:8px; padding:8px 10px; overflow:hidden; animation:pagein-r .38s cubic-bezier(.16,.84,.3,1) both; transform:translate3d(0,0,0); backface-visibility:hidden; will-change:transform; contain:layout paint; }
+#app.land > .detailpage { position:absolute; left:6px; right:6px; top:46px; height:var(--yard-h, 300px); z-index:8; background:#cbb67f; border-radius:6px; touch-action:pan-y; display:grid; grid-template-columns:1fr 190px; grid-template-rows:auto minmax(0, 1fr); /* 위: 넓은 카드(왼쪽 열 전체) · 아래: 정보·성장형·딕타타·상태 (스크롤) · 오른쪽: 행동 (2026-09-22 사용자) */ gap:8px; padding:8px 10px; overflow:hidden; animation:pagein-r .38s cubic-bezier(.16,.84,.3,1) both; transform:translate3d(0,0,0); backface-visibility:hidden; will-change:transform; contain:layout paint; }
 #app.land > .detailpage.confirm { z-index:9; grid-template-columns:200px 1fr; }
 #app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
 .detailpage .talkscene { position:relative; height:220px; flex:none; overflow:hidden; border-radius:6px; }
@@ -845,7 +845,6 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 .detailpage .gcwrap.big .mini-name { font-size:20px; height:28px; margin-top:2px; } .detailpage .gcwrap.big .mini-name .sq { width:20px; height:20px; } .detailpage .gcwrap.big .mini-name .sq svg { width:15px; height:15px; }
 .detailpage .gcwrap.big .mini-stats.mini-col { font-size:15px; } .detailpage .gcwrap.big .mini-stats.mini-col .sline .k { min-width:0; font-size:12px; text-align:right; }
 .detailpage .gcwrap.big .mini-stats.mini-row { font-size:15px; } .detailpage .gcwrap.big .mini-stats .sline.pw .v { font-size:22px; } .detailpage .gcwrap.big .mini-stats .sline.pw .pwi { width:20px; height:20px; } .detailpage .gcwrap.big .mini-stats .sline.pw em.tr { width:13px; } .detailpage .gcwrap.big .mini-stats .sline.pw em.tr i { font-size:10px; }
-.detailpage .gcwrap.big .sline.rec .grown { width:46px; font-size:13px; }
 .detailpage .gcwrap.big .hpbar { width:112px; margin-left:0; } /* 왼쪽 끝을 카드 여백(6)에 맞춘다, 오른쪽은 기둥 사이 틈까지 (2026-09-22 사용자) */ .detailpage .gcwrap.big .hpbar .track { height:14px; border-radius:8px; } /* 체력바 길이 = 초상(132) 너비, 초상과 같은 왼쪽 선에 (2026-09-22 사용자) */ .detailpage .gcwrap.big .hpbar .track .n { height:14px; line-height:14px; font-size:11px; } .detailpage .gcwrap.big .hpbar .track .capmark { width:3px; } /* 체력바는 초상 아래 독자적인 둥근 막대 그대로 (2026-09-22 사용자) */
 .detailpage .gcwrap.big .mini-port .honor { height:19px; font-size:12px; padding:0 6px 0 4px; left:0; } /* 명예 칩도 카드 여백 선에 */ .detailpage .gcwrap.big .mini-port .honor svg { width:13px; height:13px; }
 .detailpage .gcwrap.big .mini-port .tired i { width:7px; height:10px; }
@@ -906,7 +905,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land > .scenepanel { padding:0 10px; }
 #app.land > .scenepanel .eave { margin:0 -10px; padding-left:16px; }
 #app.land > .scenepanel .sheetbody .cardgrid { grid-template-columns:1fr; }
-#app.land > .detailpage { grid-template-columns:minmax(0, 1fr) 168px; grid-template-rows:auto auto; align-content:start; overflow:auto; padding:8px 8px 40px; gap:6px; } /* align-content:start — 내용이 페이지보다 짧으면 auto 행 둘이 남는 높이를 나눠 늘어나 카드 아래가 벌어졌다 (2026-09-22 사용자 "가운데 사이가 다시 벌어졌어") */ .detailpage > .dright:not(.side) { grid-column:1; grid-row:2; } .detailpage > .dright.side { grid-column:2; grid-row:2; align-self:start; } /* 세로도 T: 위 카드(가로 전체) · 아래 왼쪽 칩+딕타타 · 아래 오른쪽 행동 168px (2026-09-22 사용자 "아직도 T자로 안 나눠졌어" — 사용자는 세로 폭에서 본다) */ /* (옛 주석) 세로에선 행동 열이 맨 아래 — 가로용 2열·1~2행 지정이 남아 1행(카드)이 늘어나 카드 아래가 비었다 (2026-09-22 사용자: 아직도 넓다) */
+#app.land > .detailpage { grid-template-columns:minmax(0, 1fr) 168px; grid-template-rows:auto auto; align-content:start; overflow:auto; overflow-x:hidden; touch-action:pan-y; padding:8px 8px 40px; gap:6px; } /* 가로 넘침 금지·가로 팬은 스와이프 몫 — 손잡이 글자(.handbg)가 오른쪽으로 삐져나와 가로 스크롤이 생기고, 폰에선 브라우저가 가로 끌기를 스크롤로 가져가 스와이프가 죽었다 (2026-09-22 사용자 "좌우 스크롤이 생겨버렸어", "스와이프가 안 먹혀") */ /* align-content:start — 내용이 페이지보다 짧으면 auto 행 둘이 남는 높이를 나눠 늘어나 카드 아래가 벌어졌다 (2026-09-22 사용자 "가운데 사이가 다시 벌어졌어") */ .detailpage > .dright:not(.side) { grid-column:1; grid-row:2; } .detailpage > .dright.side { grid-column:2; grid-row:2; align-self:start; } /* 세로도 T: 위 카드(가로 전체) · 아래 왼쪽 칩+딕타타 · 아래 오른쪽 행동 168px (2026-09-22 사용자 "아직도 T자로 안 나눠졌어" — 사용자는 세로 폭에서 본다) */ /* (옛 주석) 세로에선 행동 열이 맨 아래 — 가로용 2열·1~2행 지정이 남아 1행(카드)이 늘어나 카드 아래가 비었다 (2026-09-22 사용자: 아직도 넓다) */
 #app.land > .detailpage.confirm { grid-template-columns:1fr; }
 #app.land > .detailpage.confirm.talk { display:flex; flex-direction:column; overflow:hidden; padding:8px 10px 40px; }
 .detailpage .dleft { display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:34px 0 0; } /* 세로도 카드가 열 폭을 다 쓴다 (2026-09-22: 격자 2열이 카드를 좁혀 막대가 안 보였다) */ /* 초상이 뒤로가기 화살표와 살짝 겹쳐도 위로 (사용자) */ /* 초상 왼쪽에 붙이고(뒤로가기 줄 아래), 오른쪽 정보, 아래 별칭 칩 — 넓게 */
@@ -982,6 +981,5 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 /* 성장 상한 (docs/09 §7, 2026-09-21): 닿은 능력치는 굵게, 다 크면 표식 */
 .sline.capped .v { font-weight:800; }
 .tile.capped b { font-weight:900; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:2px; }
-.sline.rec .grown { margin-left:4px; font-size:9px; padding:0 3px; border-radius:4px; background:#3a2412; color:#f3ead0; font-weight:700; width:30px; box-sizing:border-box; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:clip; flex:none; } /* 표식 자리 하나, 폭 고정 (2026-09-22) */
 .sline.rec .talent.t1 { background:#6b4a22; } .sline.rec .talent.t2 { background:#9b2c1c; } .sline.rec .talent.t3 { background:#b8860b; color:#3a2412; } /* 자질: 재능 흙빛 · 비범 주사 · 천부 황금 */
 .tile.growth b { font-size:11px; }
