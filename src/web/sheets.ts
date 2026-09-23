@@ -5,7 +5,7 @@ import { TYPE_TRAITS, TRAIT_KO, type Trait } from '../core/traits.js';
 import { DICTATA, MASTERY } from '../core/dictata.js';
 import { COMPARE_KO } from '../core/rivals.js';
 import { merchantLine, CURVE_KO, CURVE_DESC, TRAIT_KO as GROWTH_TRAIT_KO, TRAIT_DESC } from '../core/growth.js';
-import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, backToArena, buy, canRetire, deserialize, doctorFor, canStarBet, starBetRival, sendStarBet, rivalStance, facilityUpkeep, gymBonus, bedCostOf, hireDoctor, inBed, injurySeasons, mortality, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge, recommendTrainees, autoPalus } from '../core/game.js';
+import { EVENT_KEYS, EVENT_KO, ORIGIN_KO, available, canFight, eventOf, setEvent, backToArena, buy, canRetire, deserialize, doctorFor, canStarBet, starBetRival, sendStarBet, rivalStance, facilityUpkeep, gymBonus, bedCostOf, hireDoctor, inBed, injurySeasons, mortality, palusTrainees, priceOf, recordVsMe, release, retire, rivalStar, rosterCap, seasonName, serialize, trainCap, trainGain, type Facility, type SeasonEvents, upgrade, upgradeCost, upkeepOf, rerollsLeft, compareRival, canSendChallenge, challengeFee, sendChallenge, recommendTrainees, autoPalus } from '../core/game.js';
 import { type Gladiator, type GType } from '../core/types.js';
 import { LINEAGE_KO, TYPE_KO, TYPES, LINEAGE_DESC } from '../core/gladiator.js';
 import { CONFIG } from '../core/config.js';
@@ -148,7 +148,7 @@ function rivalsPanel(): Node {
             h('div', { class: 'meta' }, `${recordVsMe(rv)} · 명단 ${rv.roster.filter(g => g.alive).length}명 (부상 ${rv.roster.filter(g => g.injured > 0).length})`),
             (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('div', { class: `meta stance ${st.kind}`, title: st.kind === 'scorn' ? `제${S.st.stage}막을 간판 내기로 졸업하면 이 집이 우리를 상대로 친다` : '명단 전원이 우리 앞에 쓰러진 적이 있다' }, st.line) : null; })(), /* 파밀리아의 눈 (2026-09-22 사용자) */
             (() => { const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const mood = rv.mood ?? 0; return h('div', { class: `meta rvmood ${cmp}` }, h('b', {}, COMPARE_KO[cmp]), h('span', { class: 'flames', title: `기세 ${mood > 0 ? '+' : ''}${mood}: 이기면 오르고 간판이 죽으면 떨어진다. 높을수록 큰 도전장을 낸다` }, ' ' + (mood > 0 ? '🔥'.repeat(mood) : mood < 0 ? '🌫'.repeat(-mood) : '—')), rv.refused ? h('span', { class: 'hint' }, ` · 우리가 피한 도전 ${rv.refused}`) : null); })(), /* 세다/비슷/약하다 + 기세 (docs/10) */
-            S.phase === 'manage' ? (() => { const ok = canSendChallenge(S.st, rv); const fee = challengeFee(S.st, rv); const already = S.st.contracts.find(c => c.challenge && c.rivalId === rv.id); const queued = (S.st.queued ?? []).find(q => q.rivalId === rv.id); return h('div', { class: 'meta' }, queued ? h('span', { class: 'hint' }, `다음 시즌 공고벽에 ${queued.starBet ? '간판 내기' : '우리가 건 도전'}가 걸린다`) : already ? h('span', { class: 'hint' }, `이번 시즌 ${already.challenge === 'out' ? '우리가 건 도전' : '그들의 도전장'} — ${already.venue}`) : h('button', { class: 'small', disabled: !ok, title: S.st.challengeSent != null ? '이번 시즌 도전장은 하나뿐' : `섭외비 ${fee.toLocaleString()} HS. 상대가 받으면 간판이 나온다 — 우리 전력에 맞추지 않는다. 받아 놓고 안 나가면 기세 +2·호감도 −2`, onclick: () => { const r = sendChallenge(S.st, rv); sfx.coin(); toast(r.text, r.accepted ? 'good' : undefined); render(); } }, `도전장을 보낸다 ${fee.toLocaleString()}`)); })() : null,
+            S.phase === 'manage' ? (() => { const ok = canSendChallenge(S.st, rv); const fee = challengeFee(S.st, rv); const already = S.st.contracts.find(c => c.challenge && c.rivalId === rv.id); const queued = (S.st.queued ?? []).find(q => q.rivalId === rv.id); return h('div', { class: 'meta' }, queued ? h('span', { class: 'hint' }, `다음 시즌 공고벽에 ${queued.starBet ? '간판 내기' : '우리가 건 도전'}가 걸린다`) : already ? h('span', { class: 'hint' }, `이번 시즌 ${already.challenge === 'out' ? '우리가 건 도전' : '그들의 도전장'} — ${already.venue}`) : h('button', { class: 'small', disabled: !ok, title: S.st.challengeSent != null ? '이번 시즌 도전장은 하나뿐' : `섭외비 ${fee.toLocaleString()} HS — 값을 치르면 반드시 받는다. 그들의 간판·정예가 나오고 우리 전력에 맞추지 않는다. 걸어 놓고 안 나가면 기세 +2·호감도 −2`, onclick: () => { const r = sendChallenge(S.st, rv); if (r.accepted) sfx.coin(); toast(r.text, r.accepted ? 'good' : 'bad'); save(); render(); } }, `도전장을 보낸다 ${fee.toLocaleString()}`)); })() : null,
             S.phase === 'manage' ? (() => { const why = canStarBet(S.st, rv); const mine = S.st.contracts.find(c => c.starBet && c.rivalId === rv.id) ?? ((S.st.queued ?? []).some(q => q.starBet && q.rivalId === rv.id) ? { venue: '다음 시즌' } : null); const def = rivalDef(rv); return h('div', { class: 'meta' }, mine ? h('span', { class: 'hint' }, `간판 내기 — ${mine.venue}. 편성에서 세운 검투사가 판돈이다`) : h('button', { class: `small${starBetRival(S.st, rv) ? ' primary' : ''}`, disabled: !!why, title: why ?? `우리 검투사를 걸고 간판 ${rivalStar(rv)?.name ?? ''}과(와) 1대1. 이기면 제${def?.stage ?? S.st.stage}막 졸업, 간판을 데려오거나 값을 받는다. 지면 세운 검투사를 넘긴다. 처형은 없다`, onclick: () => { if (sendStarBet(S.st, rv)) { sfx.drum(1); toast(`${rv.name}에 간판 내기를 걸었다 — 다음 시즌 공고벽에 걸린다`, 'good'); save(); render(); } } }, `간판 내기${def ? ` · 제${def.stage}막` : ''}`)); })() : null, /* 간판 내기 (2026-09-22 사용자): 판돈은 검투사, 이기면 막 졸업 */
             h('div', { class: 'meta rivalroster' }, ...rv.roster.filter(g => g.alive).map(g => h('span', { class: `rmini${g.injured ? ' inj' : ''}`, title: `${g.name} · ${TYPE_KO[g.type]} · ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.injured ? ' · 부상' : ''}` }, h('span', { class: 'sq small', style: `background:${TYPE_COLOR[g.type]}` }, glyphSvg(g.type, 12)), ` ${g.name}`)))),
           h('div', { class: `rvstar${named ? '' : ' none'}` }, /* 오른쪽: 간판 검투사 카드 */
@@ -176,9 +176,9 @@ function renderHelp(): Node {
       row('접근 방식', '무르밀로·호플로마쿠스·프로보카토르는 옆걸음으로 신중하게, 세쿠토르·에퀘스·스키소르는 곧장 돌진, 트라엑스·디마카에루스는 지그재그, 레티아리우스·라쿠에아리우스는 거리를 두려 한다.'),
       row('장비 수치', `사거리: 창·삼지창 2, 나머지 1 (사거리 2 는 ${CONFIG.gear.reach[2]}px 에서 닿는다). 막기: 큰방패 ${Math.round(CONFIG.gear.block.bigShield * 100)}% · 작은방패 ${Math.round(CONFIG.gear.block.smallShield * 100)}% · 맨몸 0% — 막으면 피해 −${Math.round(CONFIG.gear.blockCut * 100)}%. 닳지 않는다.`)),
     sec('딕타타 (팔루스에서 익힌 규정 동작 — 주장비·보조장비·유형 하나씩, 유형이면 곧 안다)',
-      hsub('주장비'), ...(['gladius', 'sica', 'spear'] as const).map(o => irow(ownerIcons('main', o), ownerName('main', o), DICTATA.filter(d => d.layer === 'main' && d.owner === o).map(d => `${d.name}: ${d.desc}`).join(' / '))), /* 층마다 아이콘 + 이름 (2026-09-22 사용자) */
-      hsub('보조장비'), ...(['bigShield', 'smallShield', 'bare'] as const).map(o => irow(ownerIcons('off', o), ownerName('off', o), DICTATA.filter(d => d.layer === 'off' && d.owner === o).map(d => `${d.name}: ${d.desc}`).join(' / '))),
-      hsub('유형'), ...TYPES.map(t => irow(ownerIcons('type', t), TYPE_KO[t], DICTATA.filter(d => d.layer === 'type' && d.owner === t).map(d => `${d.name}: ${d.desc}`).join(' / ')))),
+      hsub('주장비'), ...(['gladius', 'sica', 'spear'] as const).map(o => irow(ownerIcons('main', o), ownerName('main', o), DICTATA.filter(d => d.layer === 'main' && d.owner === o).map(d => `${d.name}: ${d.desc}${d.group ? ` [무리경기] ${d.group}` : ''}`).join(' / '))), /* 층마다 아이콘 + 이름 (2026-09-22 사용자) */
+      hsub('보조장비'), ...(['bigShield', 'smallShield', 'bare'] as const).map(o => irow(ownerIcons('off', o), ownerName('off', o), DICTATA.filter(d => d.layer === 'off' && d.owner === o).map(d => `${d.name}: ${d.desc}${d.group ? ` [무리경기] ${d.group}` : ''}`).join(' / '))),
+      hsub('유형'), ...TYPES.map(t => irow(ownerIcons('type', t), TYPE_KO[t], DICTATA.filter(d => d.layer === 'type' && d.owner === t).map(d => `${d.name}: ${d.desc}${d.group ? ` [무리경기] ${d.group}` : ''}`).join(' / ')))),
     sec('성장 (초기 굴림 없음 — 현재치는 유형 × 서열, 개체 차이는 잠재치·나이·성장형·자질)',
       row('나이대', '청년(~23) 빨리 자라고 상한이 높게 잡힌다 · 장년(24~29) 보통 속도 · 노년(30~) 더디게 자라고 상한이 낮다. 상세의 성장 줄 첫 낱말이 나이대. 노쇠로 능력치가 깎이진 않는다 — 대신 30세부터 해마다 부상 확률 +10%(최대 ×1.6), 방치 회복이 느려진다. 값 할인은 30세부터'),
       row('훈련', '팔루스에 세우면 네 능력치가 클래스 풀 비율로 같이 오른다(무르밀로 방 40 · 체 30 · 공 20 · 손 10%). 상한에 닿은 능력치의 몫은 나머지로. 고른 몸은 균등, 한 우물은 그 능력치 ×1.8·나머지 ×0.6'),
@@ -232,7 +232,7 @@ function renderHelp(): Node {
       row('독토르', `자유민을 교관으로 고용하면 출전하지 않고 시즌 급료 ${CONFIG.doctorSalary} HS 를 받는다. 같은 유형 훈련에서 독토르의 해당 능력치가 훈련생보다 ${CONFIG.doctorBonus.gapSmall} 이상 높으면 +1, ${CONFIG.doctorBonus.gapBig} 이상이면 +2 추가 (스승을 넘어서면 보너스 없음).`),
       row('시설', `켈라 칸 수 = 로스터 상한(3→15, 한 줄 3칸씩 증축). 칸마다 숙소 질 ★1 피로 회복 −2, ★2 피로 덜 쌓임, ★3 명예 +1/시즌 (★마다 유지비 +100). 시설은 단계마다 유지비가 붙는다(조리장·훈련 시설·약재 150, 의술·침상·팔루스·증축 칸 50~100). 조리장 출전 HP +5/단계. 의무실: 침상(1→4, 모자라면 부상 +1시즌)·의술(2단계 부상 1시즌, 4단계 치료 250)·약재(피로 면제 20%/단계). 훈련장: 팔루스 = 시즌당 훈련 인원(2→6)·훈련 시설(3·5단계 훈련 폭 +1).`),
       row('시즌 행동', `출전하지 않는 검투사는 편성에서 행동을 고른다. 휴식(피로 −1, ★1 숙소면 −2) · 훈련 공/방(팔루스 자리) · 시범(훈련장 공개, 명예 +${CONFIG.actions.show.honor}). 부상자는 요양(무료, 회복 +${CONFIG.actions.recover.extra}시즌 가속) 또는 치료.`),
-      row('시즌 행사', `편성 화면에서 선택. 공개 만찬(케나 리베라) ${CONFIG.events.cena.cost}: 출전 검투사 명예 +${CONFIG.events.cena.honor}, 호감도 +${CONFIG.events.cena.fame}. 행렬(폼파) ${CONFIG.events.pompa.cost}: 명예 +${CONFIG.events.pompa.honor}, 호감도 +${CONFIG.events.pompa.fame}. 네메시스 봉헌 ${CONFIG.events.votum.cost}: 이번 시즌 미시오 +${Math.round(CONFIG.events.votum.missio * 100)}%. 벽화 광고(에딕타) ${CONFIG.events.edicta.cost}: 출전 검투사 명예 +${CONFIG.events.edicta.honor}. 귀족 손님 초대 ${CONFIG.events.guests.cost}: 출전 가능 검투사 명예 +${CONFIG.events.guests.honor}, 호감도 +${CONFIG.events.guests.fame}, 사례금 +${CONFIG.events.guests.gift}.`),
+      row('시즌 행사', `시즌을 시작하기 전에 **하나만** 고릅니다 (2026-09-23). 케나 리베라 ${CONFIG.events.cena.cost}: 이번 시즌 미시오 +${Math.round(CONFIG.events.cena.missio * 100)}%p. 운크티오 ${CONFIG.events.unctio.cost}: 이번 시즌 피로가 능력치·미시오를 깎지 않음. 메디쿠스 동행 ${CONFIG.events.medicus.cost}: 부상 ${CONFIG.events.medicus.injuredUpTo}시즌짜리도 출전 가능(능력치 ×${CONFIG.events.medicus.hurtMul}), 쓰러진 뒤 부상 확률 절반. 폼파 ${CONFIG.events.pompa.cost}: 명예 +${CONFIG.events.pompa.honor}·호감도 +${CONFIG.events.pompa.fame}. 네메시스 봉헌 ${CONFIG.events.votum.cost}: 미시오 +${Math.round(CONFIG.events.votum.missio * 100)}%p. 에딕타 ${CONFIG.events.edicta.cost}: 명예 +${CONFIG.events.edicta.honor}. 귀족 손님 ${CONFIG.events.guests.cost}: 명예 +${CONFIG.events.guests.honor}·호감도 +${CONFIG.events.guests.fame}, 다음 시즌 선거 경기 계약`),
       row('명예', `검투사 개인의 인기. 승리 +${CONFIG.honor.win} (등급마다 +${CONFIG.honor.perTier}), 전통 짝 +${CONFIG.honor.classic}, 화관(주최자 만족) +${CONFIG.honor.crown}, 패배 ${CONFIG.honor.lose}. 미시오 생존 +${CONFIG.honor.missioPer * 100}%/점, 대여료 +${CONFIG.honor.rentPer * 100}%/점 (스타는 비싸다). 폼페이 낙서의 팬심과 비싼 스타를 죽이기 꺼린 주최자가 근거.`),
       row('출전', `계약마다 규모가 다름 (1대1 · 2대2 · 3대3). 검투사는 시즌당 1회만 출전. ${CONFIG.promoteWins}승이면 베테라누스로 승격.`),
       row('피로', `출전 뒤 피로가 쌓일 확률: 힘든 경기 ${Math.round(CONFIG.fatigue.chanceHard * 100)}%, 가벼운 경기(쓰러지지 않고 HP ${Math.round(CONFIG.fatigue.cleanWinHp * 100)}%↑ 남기며 이김) ${Math.round(CONFIG.fatigue.chanceClean * 100)}%, 숙소 ★마다 −${Math.round(CONFIG.fatigue.perCellStar * 100)}%. 쉬는 시즌마다 −1(★1 숙소 −2). 첫 ${CONFIG.fatigue.free}점은 괜찮고 그 위로 1점마다 공·방 −${CONFIG.fatigue.statPenalty}, 미시오 −${Math.round(CONFIG.fatigue.missioPenalty * 100)}%. 피로 ${CONFIG.fatigue.overworkAt} 이상인 채 시즌을 넘기면 (피로−${CONFIG.fatigue.overworkAt - 1})×${Math.round(CONFIG.fatigue.overworkPer * 100)}% 로 과로사. 로스터를 돌려 쉬게 할 것.`)));
@@ -315,19 +315,32 @@ export function renderDash(v: View = S.view, forNews = false): Node[] {
   if (S.st.market.length) out.push(item('idle', `시장 매물 ${S.st.market.length}명 (${Math.min(...S.st.market.map(m => m.buyPrice)).toLocaleString()} HS 부터)`));
   return out; // 지원자 카드는 '지원자' 서랍(장면의 지원자를 누르면)
 }
+/* 행사 효과 한 줄 — 카드와 시즌 시작 확인이 같은 문구를 쓴다 */
+export const EVENT_EFFECT: Record<keyof SeasonEvents, string> = (() => { const E = CONFIG.events; return {
+  cena: `이번 시즌 미시오 +${Math.round(E.cena.missio * 100)}%p — 얼굴을 아는 검투사는 살려 달라 외쳐 준다`,
+  unctio: '이번 시즌 피로가 능력치도 미시오도 깎지 않는다 (피로는 그대로 쌓인다)',
+  medicus: `가벼운 부상(${E.medicus.injuredUpTo}시즌)도 출전 가능 — 능력치 ×${E.medicus.hurtMul} · 쓰러진 뒤 부상 확률 절반`,
+  pompa: `출전 검투사 명예 +${E.pompa.honor} · 호감도 +${E.pompa.fame}`,
+  votum: `이번 시즌 미시오 +${Math.round(E.votum.missio * 100)}%p`,
+  edicta: `출전 검투사 명예 +${E.edicta.honor}`,
+  guests: `출전 가능 검투사 명예 +${E.guests.honor} · 호감도 +${E.guests.fame} · 다음 시즌 그 귀족의 선거 경기 계약, 이기면 사례금 +${E.guests.gift}`,
+}; })();
+const EVENT_DESC: Record<keyof SeasonEvents, string> = { cena: '경기 전날 시민 앞에서 여는 공개 만찬', unctio: '경기 전 기름을 바르고 안마로 몸을 푼다', medicus: '의사를 경기장에 데려간다', pompa: '경기 당일 도시를 도는 행렬에 참여', votum: '경기장 곁 사당에 봉헌', edicta: '화공을 사서 거리 벽에 출전 검투사 이름을 그림', guests: '귀족을 루두스로 초대해 연습을 보이고 연회' };
+/* 행사를 바꾸면(메디쿠스를 물리면) 다친 채 자리에 든 검투사는 편성에서 빠진다 */
+const pruneAssign = () => { for (const cid in S.assign) S.assign[cid] = S.assign[cid].filter(id => { const g = S.st.roster.find(x => x.id === id); return !!g && canFight(S.st, g); }); };
 export function eventRows(): Node[] {
-  const E = CONFIG.events;
-  // 행사 줄: 라틴 이름 굵게 + 설명 한 줄, 그 아래 효과 한 줄('· ')
-  const ev = (k: keyof SeasonEvents, desc: string, effect: string) => h('label', { class: `evrow${S.eventPlan[k] ? ' on' : ''}` }, h('input', { type: 'checkbox', checked: S.eventPlan[k] ? 'checked' : undefined, onchange: (e: Event) => { S.eventPlan[k] = (e.target as HTMLInputElement).checked; render(); } }), h('span', { class: 'grow' }, h('div', {}, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, desc)), h('div', { class: 'effect' }, `· ${effect}`)), h('span', {}, `${E[k].cost.toLocaleString()} HS`));
-  return [
-    ev('cena', '경기 전날 시민 앞에서 여는 공개 만찬', `출전 검투사 명예 +${E.cena.honor} · 호감도 +${E.cena.fame}`),
-    ev('pompa', '경기 당일 도시를 도는 행렬에 참여', `출전 검투사 명예 +${E.pompa.honor} · 호감도 +${E.pompa.fame}`),
-    ev('votum', '경기장 곁 사당에 봉헌', `이번 시즌 미시오 +${Math.round(E.votum.missio * 100)}%`),
-    ev('edicta', '화공을 사서 거리 벽에 출전 검투사 이름을 그림', `출전 검투사 명예 +${E.edicta.honor}`),
-    ev('guests', '귀족을 루두스로 초대해 연습을 보이고 연회', `출전 가능 검투사 명예 +${E.guests.honor} · 호감도 +${E.guests.fame} · 다음 시즌 그 귀족의 선거 경기 계약이 오고, 이기면 사례금 +${E.guests.gift}`)];
+  const E = CONFIG.events; const cur = eventOf(S.st);
+  /* 행사 카드: 시즌에 하나 (2026-09-23 사용자). 누르면 그것만 켜지고, 다시 누르면 물린다 — 고르는 즉시 결제하고 바꾸면 돌려받는다 */
+  const pick = (k: keyof SeasonEvents) => { const err = setEvent(S.st, cur === k ? null : k); if (err) { toast(err, 'bad'); return; } pruneAssign(); save(); render(); };
+  const ev = (k: keyof SeasonEvents) => { const on = cur === k, poor = !on && S.st.money + (cur ? E[cur].cost : 0) < E[k].cost;
+    return h('button', { class: `evrow card${on ? ' on' : ''}${poor ? ' poor' : ''}`, disabled: poor ? 'disabled' : undefined, title: poor ? `자금이 모자란다 (${E[k].cost.toLocaleString()} HS)` : EVENT_DESC[k], onclick: () => pick(k) },
+      h('span', { class: 'grow' }, h('div', {}, h('b', {}, EVENT_KO[k]), ' ', h('span', { class: 'meta' }, EVENT_DESC[k])), h('div', { class: 'effect' }, `· ${EVENT_EFFECT[k]}`)), h('span', { class: 'evcost' }, `${E[k].cost.toLocaleString()} HS`)); };
+  return EVENT_KEYS.map(ev);
 }
+
 function eventsPanel(): Node {
-  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? E[k].cost : 0), 0);
-  return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '전투 밖에서 명예·호감도를 올리는 행사입니다. \'전투\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 폼페이 낙서와 비문에 남은 실제 관행입니다.')),
-    ...eventRows(), evCost ? h('div', { class: 'hint' }, `행사 비용 −${evCost.toLocaleString()} HS`) : null);
+  const E = CONFIG.events; const cur = eventOf(S.st); const evCost = cur ? E[cur].cost : 0;
+  return h('div', { class: 'panel' }, h('h2', {}, '시즌 행사', helpBtn('시즌 행사', '시즌을 시작하기 전에 하나만 고릅니다. \'전투\' 를 누를 때 결제되고, 그 시즌에만 효과가 있습니다. 케나 리베라(공개 만찬)·운크티오(기름·안마)·메디쿠스 동행·폼파(행렬)·네메시스 봉헌·에딕타(벽화 광고)·귀족 초대는 모두 기록에 남은 실제 관행입니다.')),
+    h('div', { class: 'hint', style: 'margin-bottom:6px' }, '이번 시즌에 하나만 고릅니다. 고르는 즉시 값을 치르고, 바꾸면 그대로 돌려받습니다 — 편성에 영향을 주는 행사가 있어 편성 전에 정합니다.'),
+    ...eventRows(), h('div', { class: 'hint' }, evCost ? `행사 비용 −${evCost.toLocaleString()} HS · 잔액 ${S.st.money.toLocaleString()} HS` : `고르지 않았습니다 · 잔액 ${S.st.money.toLocaleString()} HS`));
 }

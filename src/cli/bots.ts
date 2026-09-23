@@ -1,6 +1,6 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient, canStarBet, sendStarBet, claimStarPrize } from '../core/game.js';
+import { available, setEvent, type SeasonEvents, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient, canStarBet, sendStarBet, claimStarPrize } from '../core/game.js';
 import { classKey } from '../core/classes.js';
 import { fullyGrown } from '../core/growth.js';
 import { HOST } from '../core/hosts.js';
@@ -89,6 +89,11 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: C
       { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || canStarBet(st, rv)) continue; if (best >= power(star) * 1.1) { sendStarBet(st, rv); break; } } } // 간판 내기: 지금 막의 간판보다 우리 으뜸이 1할 세면 건다 (막 졸업)
       if (st.pendingStarPrize) claimStarPrize(st, st.roster.length < rosterCap(st)); // 지난 시즌의 상: 자리가 있으면 데려온다
       for (const c of [...st.pendingChallenges]) { const rv = rivalOf(st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined; const best = Math.max(0, ...available(st).map(power)); if (star && best >= power(star) * 0.9 && !acceptChallenge(st, c)) continue; declineChallenge(st, c); } // 도전장: 우리 으뜸이 간판의 90% 이상이면 받는다
+      /* 시즌 행사는 하나 (2026-09-23): 피로가 쌓였으면 운크티오, 눕는 사람이 많으면 메디쿠스 동행, 아니면 케나 리베라(미시오). 여윳돈이 있을 때만 */
+      { const tired = available(st).filter(g => (g.fatigue ?? 0) > CONFIG.fatigue.free).length, hurt = st.roster.filter(g => g.injured > 0).length;
+        const risky = st.contracts.some(c => c.challenge || c.starBet || c.tier >= 3); /* 목숨이 걸린 시즌에만 미시오를 산다 */
+        const k: keyof SeasonEvents | null = tired >= 2 ? 'unctio' : hurt >= 2 ? 'medicus' : risky ? 'cena' : null;
+        if (k && st.money >= reserve + CONFIG.events[k].cost) setEvent(st, k); }
       const cs = [...st.contracts].sort((a, b) => (b.challenge ? 1 : 0) - (a.challenge ? 1 : 0) || b.tier - a.tier); // 도전 계약부터 (받았으면 반드시 세운다)
       let fought = false; const fightedIds = new Set<number>();
       for (const c of cs) {

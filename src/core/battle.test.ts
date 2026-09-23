@@ -11,7 +11,7 @@ import { CONFIG } from './config.js';
 const GOLDEN: Record<number, { winner: string; dur: number; frames: number; events: number }> = {
   1: { winner: 'B', dur: 16, frames: 162, events: 25 }, /* 2026-09-22 공격 눈금 절반(atkScale 2): 기본치 반올림(14→7·17→9)과 피로 벌점 내림으로 피해가 조금 달라져 시드 1·7 이 바뀜 */
   7: { winner: 'A', dur: 11.2, frames: 114, events: 18 },
-  42: { winner: 'A', dur: 9.3, frames: 95, events: 16 },
+  42: { winner: 'A', dur: 9.2, frames: 94, events: 16 }, /* 2026-09-23 손잡이가 엇갈리면 서로 막기 어렵다: 시드 42 의 트라엑스가 왼손잡이라 양쪽 방패가 덜 먹혀 9.3 → 9.2초 */
 };
 const duel = (seed: number) => { resetIds(); const rng = new Rng(seed); const A = [makeGladiator(rng, 'veteranus', { type: 'murmillo' })], B = [makeGladiator(rng, 'tiro', { type: 'thraex' })]; return { r: battle(rng, A, B), A, B }; };
 

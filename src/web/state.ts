@@ -40,7 +40,6 @@ export interface State {
   palusMode: boolean;
   offerPage: number;
   ddOpen: string | null;
-  eventPlan: SeasonEvents;
   tipEl: HTMLElement | null;
   tipFor: Element | null;
   tipTimer: number;

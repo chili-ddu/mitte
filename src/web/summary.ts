@@ -1,6 +1,6 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S, randomColor, teamColorOf } from './state.js';
-import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, activeRivals, unlockedRivals, rivalLocked, rivalStance, claimStarPrize, rosterCap, type FightReport } from '../core/game.js';
+import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, SEASON_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, activeRivals, unlockedRivals, rivalLocked, rivalStance, chooseRivals, yearOf, claimStarPrize, rosterCap, type FightReport } from '../core/game.js';
 import { valueOf } from '../core/gladiator.js';
 import { compareRival, rivalStar, recordVsMe, COMPARE_KO, rivalTraits, rivalDef, RIVAL_TRAIT_KO, RIVAL_TRAIT_DESC, type Rival } from '../core/rivals.js';
 import { CONFIG } from '../core/config.js';
@@ -25,13 +25,33 @@ export function renderSuccession(): Node {
       h('div', { class: 'grow' }, h('div', {}, h('b', {}, o.label), o.from ? h('span', { class: 'meta' }, ` ${o.from.age ?? '?'}세`) : null), h('div', { class: 'meta' }, o.desc), o.from ? h('div', { class: 'meta' }, `명예 ${o.from.honor ?? 0} → 호감도 계승 +${Math.round((o.from.honor ?? 0) * CONFIG.lanista.fameFromHonor)}`) : null),
       h('button', { class: 'primary' }, '승계')))));
 }
+/* 파밀리아 한 줄 카드 — 정산(보여 주기)과 포룸의 연차 고르기 모달이 함께 쓴다 */
+function rivalCard(rv: Rival, on: boolean, onclick?: () => void): Node {
+  const locked = rivalLocked(S.st, rv); const star = rivalStar(rv); const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const def = rivalDef(rv);
+  return h('button', { class: `rvpick${on ? ' on' : ''}${locked ? ' locked' : ''}`, title: locked ? `제${def?.stage}막 — 제${S.st.stage}막을 졸업해야 붙을 수 있다` : '', onclick: () => { if (onclick && !locked) onclick(); } },
+    h('span', { class: 'sq small', style: `background:${teamColorOf(rv.color).ink}` }), h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}` }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), ...rivalTraits(rv).map(t => h('span', { class: `badge chip rvtrait ${t}`, title: RIVAL_TRAIT_DESC[t] }, RIVAL_TRAIT_KO[t])),
+    h('span', { class: 'meta' }, `제${def?.stage ?? '?'}막`), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null);
+}
+/* 연차 첫 시즌, 포룸에 돌아오면: 이 해에 상대할 파밀리아를 고른다 (2026-09-23 사용자). 고르기 전에는 공고벽이 비어 있다 */
+export function renderRivalPick(): Node {
+  const MAXR = CONFIG.activeRivalsMax; const open = unlockedRivals(S.st); const need = Math.min(MAXR, open.length);
+  const sel = (S.st.chosenRivals ?? []).filter(id => open.some(r => r.id === id));
+  if (sel.length > need) sel.length = need;
+  const toggle = (id: number) => { const next = sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]; if (next.length > need) next.shift(); S.st.chosenRivals = next; render(); };
+  return h('div', { class: 'overlay' }, h('div', { class: 'modal rivalpick' },
+    h('h2', {}, `${yearOf(S.st.season)}년차 — 올해의 상대`),
+    h('p', {}, `이 해 동안 붙을 파밀리아 `, h('b', {}, `${need}곳`), `을 고른다. 공고벽의 계약은 고른 집의 명단에서 나온다 — 네 시즌(${SEASON_KO.join('·')}) 내내 이 상대와 붙는다.`),
+    h('div', { class: 'rvpicks' }, ...S.st.rivals.map(rv => rivalCard(rv, sel.includes(rv.id), () => toggle(rv.id)))),
+    h('p', { class: 'hint' }, `고른 곳: ${sel.length}/${need}`),
+    h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: sel.length !== need, onclick: () => { const err = chooseRivals(S.st, sel); if (err) { toast(err, 'bad'); return; } toast('올해의 상대를 정했다 — 공고벽을 보라', 'good'); save(); render(); } }, '이 상대로 간다'))));
+}
 export function renderSummary() {
   const sum = S.seasonSummary!;
   const W = S.seasonReports.filter(r => r.winner === 'A').length, L = S.seasonReports.filter(r => r.winner === 'B').length, D = S.seasonReports.filter(r => r.winner === 'draw').length;
   const salary = S.seasonReports.reduce((a, r) => a + r.salary, 0);
   const betLoss = S.seasonReports.reduce((a, r) => a + (r.bet && !r.bet.won ? r.bet.amount : 0), 0);
   const rent = S.seasonReports.reduce((a, r) => a + r.rent, 0), expense = S.seasonReports.reduce((a, r) => a + r.expense, 0), prize = S.seasonReports.reduce((a, r) => a + r.prize, 0), comp = S.seasonReports.reduce((a, r) => a + r.compensation, 0);
-  const evHeld = EVENT_KEYS.filter(k => sum.events[k]); const evCost = evHeld.reduce((a, k) => a + CONFIG.events[k].cost, 0); const evFame = (sum.events.cena ? CONFIG.events.cena.fame : 0) + (sum.events.pompa ? CONFIG.events.pompa.fame : 0) + (sum.events.guests ? CONFIG.events.guests.fame : 0);
+  const evHeld = EVENT_KEYS.filter(k => sum.events[k]); const evCost = evHeld.reduce((a, k) => a + CONFIG.events[k].cost, 0); const evFame = (sum.events.pompa ? CONFIG.events.pompa.fame : 0) + (sum.events.guests ? CONFIG.events.guests.fame : 0);
   const net = S.st.money - sum.before;
   const fameFights = S.seasonReports.reduce((a, r) => a + r.fameDelta, 0);
   const money = (label: string, v: number, sign: 1 | -1 = 1) => h('div', { class: 'mrow' }, h('span', {}, label), h('span', { class: v ? (sign > 0 ? 'plus' : 'minus') : '' }, `${sign > 0 ? '+' : '−'}${Math.abs(v).toLocaleString()}`));
@@ -68,21 +88,18 @@ export function renderSummary() {
   if (dead.length) rosterItems.push(h('div', { class: 'ditem warn' }, h('span', { class: 'dot' }), h('span', {}, `묘비에 새 이름: ${dead.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(', ')} — 관중은 침묵했다`)));
   if (evHeld.length) rosterItems.push(h('div', { class: 'ditem todo' }, h('span', { class: 'dot' }), h('span', {}, `행사: ${evHeld.map(k => EVENT_KO[k]).join(', ')} — 출전 검투사 명예·호감도 상승`)));
   if (!rosterItems.length) rosterItems.push(h('div', { class: 'ditem idle' }, h('span', { class: 'dot' }), h('span', {}, '로스터 변화 없음')));
-  /* 파밀리아 (2026-09-22 사용자: 스테이지를 넘기는 느낌): 새로 나타난 파밀리아는 '제N막'으로 알리고, 넷 이상이면 다음 시즌 상대 셋을 고른다 */
-  const MAXR = CONFIG.activeRivalsMax; const open = unlockedRivals(S.st); const needPick = open.length > MAXR; const activeIds = new Set(activeRivals(S.st).map(r => r.id)); /* 셋 고르기는 시즌을 넘길 때마다 보인다 — 열린 집이 셋 이하면 전부 자동 (2026-09-22 사용자) */
-  const rivalCard = (rv: Rival) => { const locked = rivalLocked(S.st, rv); const on = !locked && activeIds.has(rv.id); const star = rivalStar(rv); const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const def = rivalDef(rv);
-    return h('button', { class: `rvpick${on ? ' on' : ''}${locked ? ' locked' : ''}`, title: locked ? `제${def?.stage}막 — 제${S.st.stage}막을 졸업해야 붙을 수 있다` : '', onclick: () => { if (!needPick || locked) return; const ids = [...activeIds]; if (on) { if (ids.length <= 1) return; S.st.chosenRivals = ids.filter(x => x !== rv.id); } else { if (ids.length >= MAXR) ids.shift(); S.st.chosenRivals = [...ids, rv.id]; } save(); render(); } },
-      h('span', { class: 'sq small', style: `background:${teamColorOf(rv.color).ink}` }), h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}` }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), ...rivalTraits(rv).map(t => h('span', { class: `badge chip rvtrait ${t}`, title: RIVAL_TRAIT_DESC[t] }, RIVAL_TRAIT_KO[t])),
-      h('span', { class: 'meta' }, `제${def?.stage ?? '?'}막`), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null); };
+  /* 파밀리아 (2026-09-22 사용자: 스테이지를 넘기는 느낌): 새로 나타난 파밀리아를 '제N막'으로 알린다. 고르기는 포룸에서 (2026-09-23 사용자) */
+  const MAXR = CONFIG.activeRivalsMax; const open = unlockedRivals(S.st); const activeIds = new Set(activeRivals(S.st).map(r => r.id)); /* 정산에서는 보여 주기만 한다 — 고르기는 연차가 바뀐 뒤 포룸에서 (2026-09-23 사용자) */
+  const nextPick = !!S.st.pendingRivalPick; /* 정산 시점엔 이미 다음 시즌이다 — 새 연차면 포룸에서 고른다 */
   const sp = S.st.pendingStarPrize; const prizeRv = sp ? S.st.rivals.find(r => r.id === sp.rivalId) : undefined; const prizeG = prizeRv?.roster.find(g => g.id === sp!.gladId); const cap = rosterCap(S.st), full = S.st.roster.length >= cap; /* 간판 내기의 상 (2026-09-22 사용자: 검투사를 기본으로 걸고 안 데려오면 돈으로) */
   const prizeBox = sp && prizeG ? h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '간판 내기의 상', h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `${prizeRv!.name}의 간판을 꺾었다`)),
     h('div', { class: 'offerbox' }, gladCard(prizeG, { enemy: true, size: CARD_PORTRAIT })),
     h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: full, title: full ? `켈라가 가득 찼다 (${S.st.roster.length}/${cap})` : '포로 출신으로 켈라에 들어온다', onclick: () => { toast(claimStarPrize(S.st, true), 'good'); save(); render(); } }, full ? `데려온다 (켈라 ${S.st.roster.length}/${cap} 가득)` : '데려온다'), h('button', { onclick: () => { toast(claimStarPrize(S.st, false), 'good'); save(); render(); } }, `값으로 받는다 (${valueOf(prizeG).toLocaleString()} HS)`))) : null;
   const rivalsBox = h('div', { class: 'panel', style: 'margin-bottom:10px' },
-    h('h2', {}, needPick ? `다음 시즌 상대 파밀리아 (${MAXR}곳)` : '다음 시즌 상대 파밀리아', h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, needPick ? '눌러서 고른다 — 고른 곳의 검투사가 공고벽에 걸린다' : `열린 ${open.length}곳 전부와 붙는다 · 제${S.st.stage}막`)),
+    h('h2', {}, `${yearOf(S.st.season)}년차 상대 파밀리아`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, nextPick ? `${MAXR}곳은 포룸에 돌아가서 고른다` : open.length > MAXR ? `이 해의 상대 · 제${S.st.stage}막` : `열린 ${open.length}곳 전부와 붙는다 · 제${S.st.stage}막`)),
     S.st.lastGraduated ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, h('b', {}, `제${S.st.lastGraduated}막 졸업`), ` — 이제 제${S.st.stage}막이다`)) : null,
     S.st.lastArrived?.length ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, `제${S.st.stage}막 — ${S.st.lastArrived.join(', ')} 이(가) 이 지방에 나타났다`)) : null,
-    h('div', { class: 'rvpicks' }, ...S.st.rivals.map(rivalCard)));
+    h('div', { class: 'rvpicks' }, ...S.st.rivals.map(rv => rivalCard(rv, activeIds.has(rv.id) && !rivalLocked(S.st, rv)))));
   // 다음 시즌 예고는 뺐다: 새 계약·매물·유지비는 다음 시즌에 들어가서 본다
   return h('div', {}, coach(),
     h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, `${sum.label} 정산`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, `경기 ${S.seasonReports.length}회 · ${W}승 ${L}패 ${D}무`)),

@@ -40,15 +40,17 @@ interface Unit {
   lastD: number; pokeAt: Record<number, number>; // 길목 찌르기: 지난 틱 거리 · 상대별 마지막 찌르기 시각
   netUsed: boolean; lassoAt: number;    // 그물(한 번) · 올가미(간격)
   shieldUpUntil: number; shieldUpDone: boolean; // 무르밀로 방패 세우기
+  chestWallDone: boolean; freedAt: number;      // 무리경기: 가슴판 버티기를 알린 적 있나 · 아군이 풀어 준 묶임
   mounted: boolean;             // 에퀘스: 말 위 (첫 돌진까지)
   guardUntil: number;           // 창 벽에 밀려 공격이 무산된 직후
   s: UnitStats;
 }
 
 const newStats = (): UnitStats => ({ dmgDealt: 0, dmgTaken: 0, blocks: 0, blockedOn: 0, crits: 0, critsTaken: 0, combos: 0, charges: 0, chargedOn: 0, kills: 0, boundKills: 0, misses: 0, boundTimes: 0, flanked: 0, rangedDmg: 0, inside: 0, nearAllySec: 0, dictata: {} });
-function makeUnits(team: Gladiator[], side: 'A' | 'B', L: TraitLevels, hpBonus = 0, boosted?: Set<number>, boostMul = 1): Unit[] {
+function makeUnits(team: Gladiator[], side: 'A' | 'B', L: TraitLevels, hpBonus = 0, boosted?: Set<number>, boostMul = 1, fresh = false, hurt?: Set<number>, hurtMul = 1): Unit[] {
   return team.map((g, i) => {
-    const s = effectiveStats(g); s.hp += hpBonus; // 조리장(식단) 보너스
+    const s = effectiveStats(fresh ? { ...g, fatigue: 0 } : g); s.hp += hpBonus;
+    if (hurt?.has(g.id)) { s.hp = Math.max(1, Math.round(s.hp * hurtMul)); s.atk = Math.max(1, Math.round(s.atk * hurtMul)); s.def = Math.max(0, Math.round(s.def * hurtMul)); } /* 메디쿠스 동행으로 부상을 안고 나온 몸 (2026-09-23) */ /* fresh: 운크티오(기름·안마) — 이번 시즌은 피로가 몸을 깎지 않는다 (2026-09-23 사용자) */ // 조리장(식단) 보너스
     if (boosted?.has(g.id)) s.atk = Math.round(s.atk * boostMul); // 원한: 살려 준 상대가 이를 간다
     const m = unitMods(g, L); // 특성: 편성에서 센 단계 중 이 검투사가 가진 것만
     const atk = Math.round(s.atk * m.atkMul * CONFIG.atkScale), def = s.def + m.def; /* 공격 눈금 ×2 (2026-09-22): 피해 공식은 옛 눈금 그대로 */ const spd = s.spd + m.spd, hand = s.hand;
@@ -64,13 +66,13 @@ function makeUnits(team: Gladiator[], side: 'A' | 'B', L: TraitLevels, hpBonus =
       cooldown: 1.0 + ((i * 0.37 + (side === 'A' ? 0 : 0.2)) % 1.0) * 1.2, // 시작은 견제부터 (1.0~2.2초)
       retreatUntil: 0, circleDir: (i % 2 === 0 ? 1 : -1) as 1 | -1, feintUntil: 0, feintIn: true, holdUntil: 0, sprint: false,
       boundUntil: 0, stamina: CONFIG.stamina.max + m.staminaMax, openUntil: 0,
-      lastD: 999, pokeAt: {}, netUsed: !d.has('net'), lassoAt: -99, shieldUpUntil: 0, shieldUpDone: false, mounted: d.has('dismount'), guardUntil: 0, s: newStats(),
+      lastD: 999, pokeAt: {}, netUsed: !d.has('net'), lassoAt: -99, shieldUpUntil: 0, shieldUpDone: false, chestWallDone: false, freedAt: -99, mounted: d.has('dismount'), guardUntil: 0, s: newStats(),
     };
   });
 }
 
-export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { hpBonusA?: number; boostedB?: Set<number>; boostMul?: number; traitsA?: TraitLevels; traitsB?: TraitLevels } = {}): BattleResult { // traitsA/B: 각 편성에서 센 특성 단계 (없으면 0 — 시뮬·테스트)
-  const units = [...makeUnits(teamA, 'A', opts.traitsA ?? noTraits(), opts.hpBonusA ?? 0), ...makeUnits(teamB, 'B', opts.traitsB ?? noTraits(), 0, opts.boostedB, opts.boostMul ?? 1)];
+export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: { hpBonusA?: number; boostedB?: Set<number>; boostMul?: number; traitsA?: TraitLevels; traitsB?: TraitLevels; freshA?: boolean; hurtA?: Set<number>; hurtMul?: number } = {}): BattleResult { // traitsA/B: 각 편성에서 센 특성 단계 (없으면 0 — 시뮬·테스트)
+  const units = [...makeUnits(teamA, 'A', opts.traitsA ?? noTraits(), opts.hpBonusA ?? 0, undefined, 1, opts.freshA, opts.hurtA, opts.hurtMul), ...makeUnits(teamB, 'B', opts.traitsB ?? noTraits(), 0, opts.boostedB, opts.boostMul ?? 1)];
   /* 몸 상태(form) 보정은 2026-09-22 뺐다 — 능력치는 훈련이 만든 값 그대로 싸운다 */
   const byId = new Map(units.map(u => [u.g.id, u]));
   const log: string[] = [];
@@ -82,9 +84,14 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
   const dist = (a: Unit, b: Unit) => Math.hypot(a.x - b.x, a.y - b.y);
   const natureFirst = { A: true, B: true }; // 자연 계보 2단계: 첫 공격에 붙듦 (편당 한 번)
   const fmt = (t: number) => t.toFixed(1) + 's';
-  const D = CONFIG.dictata, ST = CONFIG.stamina;
+  const D = CONFIG.dictata, ST = CONFIG.stamina, G = CONFIG.dictata.group;
+  /* 무리경기(홑경기가 아닌 경기): 편에 둘 이상이면 딕타타의 다른 얼굴이 돈다 (2026-09-23 사용자) */
+  const manyA = teamA.length > 1, manyB = teamB.length > 1; const many = (u: Unit) => u.side === 'A' ? manyA : manyB;
   const used = (u: Unit, id: DictataId) => { u.s.dictata[id] = (u.s.dictata[id] ?? 0) + 1; };
   const clamp = (u: Unit) => { u.x = Math.max(ARENA.margin, Math.min(ARENA.w - ARENA.margin, u.x)); u.y = Math.max(ARENA.margin, Math.min(ARENA.h - ARENA.margin, u.y)); };
+  /* 무리경기: 곁의 아군을 치고 있는 적 (내 사거리 안) — 엄호 밀치기의 대상 */
+  const enemiesNear = (u: Unit) => alive(u.side === 'A' ? 'B' : 'A').filter(e => dist(u, e) <= G.chestNear).length;
+  const allyUnderFire = (u: Unit): Unit | undefined => alive(u.side === 'A' ? 'B' : 'A').find(e => dist(u, e) <= u.reach + G.shoveAlly && alive(u.side).some(a => a !== u && a.lastAttacker === e.g.id && dist(a, e) <= e.reach + 12));
   const push = (a: Unit, b: Unit, px: number) => { const dd = Math.max(1, dist(a, b)); b.x += (b.x - a.x) / dd * px; b.y += (b.y - a.y) / dd * px; clamp(b); };
   const ev = (e: Omit<BattleEvent, 't' | 'turn'>) => events.push({ t: +t.toFixed(2), turn: Math.floor(t) + 1, ...e });
   const pOf = (u: Unit, id: DictataId, base: number) => base * (u.ms.pMuls[id] ?? 1); // 숙달: 기본 딕타타 확률 ×
@@ -105,6 +112,9 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       if (u.hp <= 0) continue;
       const enemies = alive(u.side === 'A' ? 'B' : 'A');
       if (!enemies.length) break;
+      if (t < u.boundUntil && many(u) && u.freedAt < u.boundUntil) { /* 무리경기: 곁의 아군이 그물·올가미를 끊어 준다 — 속박이 수적 우위가 되는 것을 줄인다 (2026-09-23) */
+        const helper = alive(u.side).find(a => a !== u && t >= a.boundUntil && dist(a, u) < G.freeRange);
+        if (helper) { u.freedAt = u.boundUntil; u.boundUntil = t + (u.boundUntil - t) * (1 - G.freeCut); ev({ kind: 'dictata', actor: helper.g.id, target: u.g.id, dictata: 'free_ally' }); log.push(`${fmt(t)} ${helper.g.name} 이(가) ${u.g.name} 의 그물을 끊어 줌`); } }
       if (t < u.boundUntil) continue; // 넘어짐·붙듦·그물
       u.cooldown -= DT;
       u.stamina = Math.min(ST.max + u.m.staminaMax, u.stamina + ST.regen * u.m.regenMul * DT); const winded = u.stamina < u.m.windedAt && t >= u.ignoreUntil; // 숨은 늘 조금씩 돌아온다. 바닥이면 지침 (숨 참기 동안은 무시)
@@ -116,7 +126,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       // ── 대상 선택: 가까운 적 우선. 추격(세쿠토르)은 창 든·묶인 적 우선. 아군 보호(위험한 아군을 때리는 근처 적)
       const trait = TYPE_TRAIT[u.g.type];
       let cands = enemies;
-      if (u.d.has('pursue')) { const prey = enemies.filter(e => e.range >= 2 || t < e.boundUntil); if (prey.length) cands = prey; }
+      if (u.d.has('pursue')) { const prey = enemies.filter(e => e.range >= 2 || t < e.boundUntil || t < e.retreatUntil); if (prey.length) cands = prey; } /* 물러서는 적도 먹이로 (2026-09-23) */
       let target = cands.reduce((m, e) => dist(u, e) < dist(u, m) ? e : m);
       const allies = alive(u.side).filter(a => a !== u);
       for (const a of allies) {
@@ -182,6 +192,10 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
           ev({ kind: 'attack', actor: u.g.id, target: target.g.id, dmg: pk, targetHp: Math.max(0, target.hp), counter: true, net: false, blocked: false, combo: false, charge: false, crit: false, downed: target.hp <= 0, dictata: 'poke' });
           log.push(`${fmt(t)} ${u.g.name} 창끝으로 막아섬 → ${target.g.name} ${pk}${target.hp <= 0 ? ' 쓰러짐' : ''}`); if (target.hp <= 0) u.s.kills++;
           else follow(u, target, 'poke'); }
+        else if (many(u) && u.d.has('shove') && !holding && u.cooldown > 0.25 && rng.chance(D.shove.p) && allyUnderFire(u)) { /* 무리경기: 아군을 노리는 적을 밀어낸다 — 엄호 밀치기 (2026-09-23) */
+          const e = allyUnderFire(u)!; push(u, e, D.shove.push); e.stamina = Math.max(0, e.stamina - D.shove.stamina); e.holdUntil = Math.max(e.holdUntil, t + 0.3); used(u, 'shove');
+          ev({ kind: 'shove', actor: u.g.id, target: e.g.id, dictata: 'shove_ally' }); u.lastShove = t;
+          log.push(`${fmt(t)} ${u.g.name} 이(가) 아군을 치던 ${e.g.name} 을(를) 밀어냄`); }
         else if (u.d.has('shove') && d2 <= u.reach + 8 && !holding && u.cooldown > 0.25 && rng.chance(D.shove.p)) { // 방패 밀기: 공격 사이에 상대를 밀어 숨을 깎는다
           push(u, target, D.shove.push); target.stamina = Math.max(0, target.stamina - D.shove.stamina); target.holdUntil = Math.max(target.holdUntil, t + 0.15); used(u, 'shove');
           ev({ kind: 'shove', actor: u.g.id, target: target.g.id, dictata: 'shove' }); u.lastShove = t;
@@ -191,6 +205,11 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
       if (u.cooldown > 0) continue;
       if (dist(u, target) > u.reach) { if (!(u.ms.chaseHit && t < target.retreatUntil && dist(u, target) <= u.reach + 30 && rng.chance(u.ms.chaseHit))) continue; } // 끝까지 쫓기: 이탈하는 상대를 따라가 한 타
       if (t < target.guardUntil || t < u.guardUntil) continue;
+      { const wallAlly = many(target) && !target.d.has('spear_wall') && u.range < 2 && !u.mounted ? alive(target.side).find(a => a !== target && a.d.has('spear_wall') && t >= a.boundUntil && dist(a, u) <= G.wallAlly && rng.chance(pOf(a, 'spear_wall', D.spearWall.p * G.wallAllyMul))) : undefined; /* 무리경기: 곁의 아군을 치려는 적에게도 창끝이 닿는다 — 밀집 창 (2026-09-23) */
+        if (wallAlly) { u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; used(wallAlly, 'spear_wall');
+          const poke = Math.max(2, Math.round(wallAlly.atk * D.spearWall.poke - u.def * 0.5)); u.hp -= poke; u.lastAttacker = wallAlly.g.id; wallAlly.s.dmgDealt += poke; u.s.dmgTaken += poke; push(wallAlly, u, D.spearWall.push);
+          ev({ kind: 'attack', actor: wallAlly.g.id, target: u.g.id, dmg: poke, targetHp: Math.max(0, u.hp), counter: true, net: false, blocked: false, combo: false, charge: false, crit: false, downed: u.hp <= 0, dictata: 'wall_ally' });
+          log.push(`${fmt(t)} ${wallAlly.g.name} 밀집 창 → ${u.g.name} ${poke}${u.hp <= 0 ? ' 쓰러짐' : ''}`); if (u.hp <= 0) wallAlly.s.kills++; continue; } }
       if (target.d.has('spear_wall') && u.range < 2 && !u.mounted && rng.chance(pOf(target, 'spear_wall', D.spearWall.p))) { // 호플로마쿠스 창 벽: 붙은 근접 상대의 공격을 창으로 밀어 무산시키고 찌른다
         u.sprint = false; u.retreatUntil = t + 0.7; u.holdUntil = t + 0.3; u.cooldown = u.interval * 0.6; used(target, 'spear_wall');
         const poke = Math.max(2, Math.round(target.atk * D.spearWall.poke - u.def * 0.5)); u.hp -= poke; u.lastAttacker = target.g.id; target.s.dmgDealt += poke; u.s.dmgTaken += poke; push(target, u, D.spearWall.push);
@@ -214,8 +233,9 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         if (target.hp / initialHp[target.g.id] < 0.15) mult *= u.m.finishMul; // 승리 계보 2단계: 끝을 낸다
         if (u.ms.finishMul && target.hp / initialHp[target.g.id] < 0.2) mult *= u.ms.finishMul; // 마무리 찌르기
         if (charge && !combo) { mult *= 1.15 * u.m.chargeMul; // 돌진 공격: 기세 보너스
-          if (u.d.has('pursue') && (target.range >= 2 || t < target.boundUntil)) { mult *= t < target.boundUntil ? D.pursue.bound : D.pursue.ranged; dictata = 'pursue'; used(u, 'pursue'); } // 세쿠토르 추격
+          if (u.d.has('pursue') && (target.range >= 2 || t < target.boundUntil || t < target.retreatUntil)) { mult *= t < target.boundUntil ? D.pursue.bound : target.range >= 2 ? D.pursue.ranged : D.pursue.fleeing; dictata = 'pursue'; used(u, 'pursue'); } // 세쿠토르 추격: 창 든·묶인·등을 보인 적
           if (mountedCharge) { mult *= D.dismount.mult; dictata = 'dismount'; } }
+        else if (u.d.has('pursue') && !combo && t < target.retreatUntil) { mult *= D.pursue.chase; dictata = 'pursue'; used(u, 'pursue'); } /* 추격은 돌진이 아니어도 — 등을 보이거나 묶인 적을 놓지 않는다 (2026-09-23 측정: 돌진 때만이라 발동 27.8%) */
         let defUsed = target.def;
         if (!combo && u.d.has('feint') && rng.chance(pOf(u, 'feint', D.feint.p))) { defUsed = 0; dictata = 'feint'; used(u, 'feint'); } // 트라엑스 허초: 방어 무시
         else if (!combo && u.d.has('thrust') && rng.chance(pOf(u, 'thrust', D.thrust.p))) { defUsed = Math.round(defUsed * D.thrust.defMul); dictata = 'thrust'; used(u, 'thrust'); } // 글라디우스 찌르기: 방어 절반
@@ -228,15 +248,23 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         { const dg = target.ms.dodges.find(dd => (!dd.only || (dd.only === 'crit' && crit) || (dd.only === 'charge' && charge && !combo)) && t >= target.boundUntil && rng.chance(dd.p)); if (dg) { ev({ kind: 'dictata', actor: target.g.id, target: u.g.id, dictata: dg.only === 'crit' ? 'c_bc_duck' : dg.only === 'charge' ? 'small_roll' : 'bare_sway' }); legendEv(target, ['columbus']); break; } } // 회피: 그 타격을 통째로 피한다
         let blocked = false;
         if (t < target.wallUntil) { dmg = 1; blocked = true; target.s.blocks++; u.s.blockedOn++; } // 방패 벽: 모든 타격을 막는다
-        { const bc = target.blockChance * (t < target.shieldUpUntil ? D.shieldUp.mul : 1); /* 매 타 방패 막기: 치명타·말 위 돌진은 넘어간다. 닳지 않는다 */
+        { const bc = target.blockChance * (t < target.shieldUpUntil ? D.shieldUp.mul : 1) * (!!u.g.scaeva === !!target.g.scaeva ? 1 : target.g.scaeva ? CONFIG.gear.crossHand.lefty : CONFIG.gear.crossHand.block); /* 손잡이가 엇갈리면 서로 막기 어렵다 — 왼손잡이는 늘 겪어 봐서 덜 당황한다 (2026-09-23 사용자) */ /* 매 타 방패 막기: 치명타·말 위 돌진은 넘어간다. 닳지 않는다 */
           if (!blocked && bc > 0 && !crit && !mountedCharge && t >= target.boundUntil && rng.chance(Math.min(0.95, bc))) {
             const full = dmg; dmg = Math.max(1, Math.round(dmg * (1 - CONFIG.gear.blockCut))); blocked = true; target.s.blocks++; u.s.blockedOn++;
             if (u.d.has('sica_over') && rng.chance(pOf(u, 'sica_over', D.sicaOver.p))) { dmg += Math.round((full - dmg) * D.sicaOver.share); dictata = 'sica_over'; used(u, 'sica_over'); } } } // 곡도 방패 뒤 찍기: 막힌 몫의 일부를 방패 너머로
+        if (many(target) && !blocked) { /* 무리경기 방패 그늘: 곁에서 방패를 세운 아군이 가려 준다 (2026-09-23) */
+          const shade = alive(target.side).find(a => a !== target && a.d.has('shield_up') && t >= a.boundUntil && dist(a, target) < G.shadeRange); /* 큰 방패는 곁을 가린다 — 방패를 세우고 있으면 더 깊게 */
+          if (shade) { dmg = Math.max(1, Math.round(dmg * (1 - (t < shade.shieldUpUntil ? G.shadeCut : G.shadeBase)))); ev({ kind: 'dictata', actor: shade.g.id, target: target.g.id, dictata: 'shield_ally' }); } }
+        if (many(target) && target.d.has('chest') && enemiesNear(target) >= 2) { /* 무리경기 가슴판: 둘 이상에게 둘러싸이면 몸으로 버틴다 (2026-09-23) */
+          dmg = Math.max(1, Math.round(dmg * (1 - G.chestCut)));
+          if (!target.chestWallDone) { target.chestWallDone = true; used(target, 'chest'); ev({ kind: 'dictata', actor: target.g.id, dictata: 'chest_wall' }); } }
         // 아군 보호(어깨 걸기·밀집 창): 곁의 아군이 맞을 때 끼어들어 막는다
         if (!blocked) { const guard = alive(target.side).find(a => a !== target && a.ms.allyGuard && dist(a, target) < 70 && t >= a.boundUntil && rng.chance(a.ms.allyGuard!)); if (guard) { dmg = Math.max(1, Math.round(dmg * (1 - CONFIG.gear.blockCut))); blocked = true; guard.s.blocks++; u.s.blockedOn++; ev({ kind: 'dictata', actor: guard.g.id, target: u.g.id, dictata: guard.ms.allyGuard === 0.3 && guard.d.has('poke') ? 't_hop_wall' : 'c_bg_shoulder' }); } }
         let deflected = false;
         if (!blocked && !crit && t >= target.boundUntil && target.ms.parry && rng.chance(target.ms.parry)) { dmg = Math.max(1, Math.round(dmg * 0.5)); deflected = true; ev({ kind: 'dictata', actor: target.g.id, target: u.g.id, dictata: target.d.has('twin') ? 't_dim_parry' : 't_sci_guard' }); } // 양손 막기 · 관 방패
-        if (!blocked && !deflected && !crit && t >= target.boundUntil && target.d.has('deflect') && rng.chance(pOf(target, 'deflect', D.deflect.p))) { dmg = Math.max(1, Math.round(dmg * (1 - D.deflect.cut))); deflected = true; used(target, 'deflect'); const sx = -uy * D.deflect.step * target.circleDir, sy = ux * D.deflect.step * target.circleDir; target.x += sx; target.y += sy; clamp(target); ev({ kind: 'dictata', actor: target.g.id, target: u.g.id, dictata: 'deflect' }); } // 작은방패 흘리기
+        if (!blocked && !deflected && !crit && t >= target.boundUntil && target.d.has('deflect') && rng.chance(pOf(target, 'deflect', D.deflect.p))) { dmg = Math.max(1, Math.round(dmg * (1 - D.deflect.cut))); deflected = true; used(target, 'deflect');
+          if (u.d.has('sica_over') && rng.chance(pOf(u, 'sica_over', D.sicaOver.p))) { const back = Math.round(dmg / (1 - D.deflect.cut) - dmg); dmg += Math.round(back * D.sicaOver.share); dictata = 'sica_over'; used(u, 'sica_over'); } /* 곡도는 흘린 것도 방패 너머로 찍는다 (2026-09-23 측정: 막혔을 때만이라 발동 36% 였다) */
+          const sx = -uy * D.deflect.step * target.circleDir, sy = ux * D.deflect.step * target.circleDir; target.x += sx; target.y += sy; clamp(target); ev({ kind: 'dictata', actor: target.g.id, target: u.g.id, dictata: 'deflect' }); } // 작은방패 흘리기
         if (target.m.lowCut && target.hp / initialHp[target.g.id] < 0.30) dmg = Math.max(1, Math.round(dmg * (1 - target.m.lowCut))); // 승리 계보: 벼랑에서 버틴다
         target.hp -= dmg; target.lastAttacker = u.g.id; target.holdUntil = Math.max(target.holdUntil, t + 0.3); u.s.dmgDealt += dmg; target.s.dmgTaken += dmg; if (u.range >= 2) u.s.rangedDmg += dmg;
         if (target.hp > 0 && target.ms.secondWind && !target.windUsed && target.hp < initialHp[target.g.id] * 0.25) { target.windUsed = true; target.hp += Math.round(initialHp[target.g.id] * 0.25); target.guardUntil = t + 2; target.retreatUntil = t + 2; u.retreatUntil = Math.max(u.retreatUntil, t + 1.2); ev({ kind: 'dictata', actor: target.g.id, dictata: 'bare_wind' }); legendEv(target, ['flamma', 'priscus']); } // 숨고르기: 심판이 잠시 멈춘다
@@ -245,7 +273,7 @@ export function battle(rng: Rng, teamA: Gladiator[], teamB: Gladiator[], opts: {
         let net = false, netMiss = false, stun = false;
         if (!u.netUsed && !combo) { u.netUsed = true; /* 레티아리우스 그물: 던지면 그만이다 — 빗나가면 그물을 잃는다 */ used(u, 'net');
           if (rng.chance(Math.max(D.net.min, D.net.base - target.spd * D.net.perSpd))) { target.boundUntil = t + D.net.sec * target.m.boundMul * (target.ms.boundCut ?? 1); net = true; target.s.boundTimes++; } else { netMiss = true; u.s.misses++; if (u.ms.netRecover) { u.netUsed = false; legendEv(u, ['crescens']); } } dictata = 'net'; } // 그물 회수: 빗나가면 거둬 한 번 더 · 그물 자르기: 묶임 절반
-        else if (u.d.has('lasso') && !combo && t >= u.lassoAt + D.lasso.gap) { u.lassoAt = t; used(u, 'lasso'); /* 라쿠에아리우스 올가미: 빗나가도 잃지 않는다 */
+        else if (u.d.has('lasso') && !combo && t >= u.lassoAt + D.lasso.gap * (many(u) ? G.lassoGapMul : 1)) { u.lassoAt = t; used(u, 'lasso'); /* 라쿠에아리우스 올가미: 빗나가도 잃지 않는다 */
           if (rng.chance(pOf(u, 'lasso', D.lasso.p))) { target.boundUntil = t + D.lasso.sec * (u.ms.lassoSecMul ?? 1) * target.m.boundMul * (target.ms.boundCut ?? 1); net = true; target.s.boundTimes++; if (u.ms.lassoPull) { const dd = Math.max(1, dist(u, target)); target.x = u.x + (target.x - u.x) / dd * (u.reach - 6); target.y = u.y + (target.y - u.y) / dd * (u.reach - 6); clamp(target); } if (u.ms.lassoTrip && rng.chance(u.ms.lassoTrip)) { target.openUntil = Math.max(target.openUntil, target.boundUntil + 0.6); target.holdUntil = Math.max(target.holdUntil, target.boundUntil + 0.6); legendEv(u, ['prudens']); } } /* 발 걸기: 속박이 풀리는 순간 넘어진다 (Codex 리뷰) */ else { netMiss = true; u.s.misses++; } dictata = 'lasso'; }
         if (u.m.bindFirst && natureFirst[u.side]) { natureFirst[u.side] = false; target.boundUntil = Math.max(target.boundUntil, t + 0.8); stun = true; }
         const downed = target.hp <= 0;

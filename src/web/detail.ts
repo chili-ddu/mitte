@@ -175,7 +175,7 @@ export function detailPage(): Node {
       g.origin ? h('span', { class: `badge chip origin ${g.origin}`, title: `출신 — ${ORIGIN_DESC[g.origin]}` }, ORIGIN_KO[g.origin]) : null,
       g.status === 'rudiarius' && g.contractUntil != null ? h('span', { class: 'badge chip contract', title: `자유민 계약 — 급료는 출전마다 대여료의 ${Math.round(CONFIG.rudiariusShare * 100)}%. 끝나면 떠난다` }, `계약 ${Math.max(0, g.contractUntil - S.st.season + 1)}시즌`) : null, /* 상태 칸에서 옮겨 온 칩 (2026-09-22 사용자) */
       d.kind === 'roster' && g.origin === 'damnatus' && g.boughtSeason != null ? h('span', { class: 'badge chip term', title: '형벌 죄수 — 형기가 끝나면 자유민이 된다' }, `형기 ${Math.max(0, CONFIG.origins.damnatus.freeAfter - (S.st.season - g.boughtSeason + 1))}시즌`) : null,
-      h('span', { class: `badge chip hand${g.scaeva ? ' scaeva' : ''}`, title: g.scaeva ? '왼손잡이(스카에바) — 비문에 따로 적힐 만큼 귀했다' : '오른손잡이' }, g.scaeva ? '왼손' : '오른손')), /* 손잡이는 기본 정보 줄에 둘 다 (2026-09-22 사용자: 길면 오른손·왼손으로만) */
+      h('span', { class: `badge chip hand${g.scaeva ? ' scaeva' : ''}`, title: g.scaeva ? `왼손잡이(스카에바) — 비문에 따로 적힐 만큼 귀했다. 손잡이가 엇갈린 대결은 칼이 반대쪽에서 들어와 서로 방패로 막기 어렵다: 상대의 막기 ×${CONFIG.gear.crossHand.block}, 내 막기 ×${CONFIG.gear.crossHand.lefty} (늘 오른손잡이를 상대해 봐서 덜 당황한다). 왼손잡이끼리는 상쇄` : `오른손잡이 — 보통. 왼손잡이를 만나면 서로 막기 어려워진다 (내 막기 ×${CONFIG.gear.crossHand.block})` }, g.scaeva ? '왼손' : '오른손')), /* 손잡이는 기본 정보 줄에 둘 다 (2026-09-22 사용자: 길면 오른손·왼손으로만) */
     h('div', { class: 'dbadges chips rolled' }, /* 둘째 줄 = 굴려서 정해진 것: 이름 유래 · 성장형 · 자질 · 예명 */
       h('span', { class: `badge chip lin ${g.lineage}`, title: `이름 유래 — ${LINEAGE_DESC[g.lineage]}` }, LINEAGE_KO[g.lineage]),
       ...growthChips(g),
@@ -211,7 +211,7 @@ function detailRight(g: Gladiator, kind: DetailKind): { mid: Node; side: Node } 
   /* 딕타타 칸: 전부 칩으로 (2026-09-22 사용자). 처음부터 아는 기본 셋(주장비·보조장비·유형)과 전설 고유는 진한 칩, 숙련 후보 열둘은 익힌 것만 칠하고 나머지는 점선. 자리가 차면 문턱을 넘은 새것이 가장 오래된 것과 바뀐다 */
   const have = new Set(g.dictata ?? []); const career = g.career ?? {};
   const chip = (cls: string, name: string, title: string) => h('span', { class: `badge chip dict ${cls}`, title }, name);
-  const basics = basicDictataOf(g.type).map(d => chip('basic', d.name, `${d.name} — 처음부터 안다. ${d.desc}`));
+  const basics = basicDictataOf(g.type).map(d => chip('basic', d.name, `${d.name} — 처음부터 안다.\n홑경기: ${d.desc}${d.group ? `\n무리경기: ${d.group}` : ''}`)); /* 무리경기에서 얼굴이 다른 딕타타가 있다 (2026-09-23 사용자) */
   const legends = masteryOf(g).filter(m => m.layer === 'legend').map(m => chip('lgd', m.name, /* 'legend' 클래스는 범례(.legend) 규칙에 걸려 딕타타 줄이 깨졌다 (2026-09-22 사용자) */ `${m.name} — 전설의 고유 딕타타. ${m.ko}${g.legend ? ` · 전설 ${legendGen(g.legend, S.st.graveyard, S.st.hall?.map(x => x.name) ?? [])}대: ${LEGEND_BY_ID[g.legend]?.lore ?? ''}` : ''}`));
   const seen = new Set<string>(); const cands = masteryCandidates(g.type).filter(m => { const dup = seen.has(m.name); seen.add(m.name); return !dup; }).map(m0 => { const same = masteryCandidates(g.type).filter(x => x.name === m0.name); const m = same.find(x => have.has(x.id)) ?? same.find(x => (g.dictataPast ?? []).includes(x.id)) ?? m0; /* 같은 이름이 두 층에 걸리면(클래스·유형의 '재돌격'·'뛰어넘기') 칩은 하나 — 익히는 것도 이름당 하나다 */
     const on = have.has(m.id), past = (g.dictataPast ?? []).includes(m.id), now = career[m.cond.key] ?? 0;

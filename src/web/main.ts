@@ -18,7 +18,7 @@ import { coach, headerBox, headerEl } from './header.js';
 import { renderSheet, renderSheetBody } from './sheets.js';
 import { confirmPage, detailPage } from './detail.js';
 import { cellsGrid, cellsSortSelect } from './cells.js';
-import { renderOver, renderSuccession, renderSummary } from './summary.js';
+import { renderOver, renderRivalPick, renderSuccession, renderSummary } from './summary.js';
 import { renderPlan, seasonConfirmPage, seasonWarnings, tabletsPage } from './plan.js';
 import { CELLS_MIN_H, TOWN_H, VIEW_W, renderTown } from './town.js';
 import { gladCard, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 한 종류 (2026-09-17) */
@@ -125,7 +125,7 @@ S.offerPage = 0; // 새 기술 모달: 보고 있는 검투사 순번 // 켈라 
 // 커스텀 드롭다운: 네이티브 select 는 펼친 목록을 꾸밀 수 없어서 버튼 + 목록으로 만든다. 열림 상태는 key 로 기억 (render 가 다시 그려도 유지)
 S.ddOpen = null;
 document.addEventListener('pointerdown', (ev) => { if (S.ddOpen && !(ev.target as Element).closest?.('.dd')) { S.ddOpen = null; document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open')); } }, { capture: true });
-S.eventPlan = { cena: false, pompa: false, votum: false, edicta: false, guests: false }; // 편성 화면에서 고른 시즌 행사 // 대시보드 맨 위에 한 번 보여줄 알림
+// 대시보드 맨 위에 한 번 보여줄 알림
 // ── 말풍선(툴팁): data-tip 이 있는 요소를 폰에서 길게 누르거나(450ms), 버튼이 아닌 요소는 탭하면, PC 에서는 마우스를 올리면 보인다
 S.tipEl = null;
  S.tipFor = null;
@@ -172,7 +172,8 @@ function renderScreen() {
     let h2: Element | null = null; for (const n of [...nodes].reverse()) { if (n instanceof HTMLElement) { h2 = n.tagName === 'H2' ? n : n.querySelector('h2'); if (h2) break; } }
     app.append(h('div', { class: `scenepanel key-${key}${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h2 ?? h('h2', {}, ''), h('button', { class: 'close', title: '닫기', 'aria-label': '닫기', onclick: () => { S.sheet = null; S.helpSec = null; render(); } }, '✕')), h('div', { class: 'sheetbody' }, ...nodes.filter(n => n !== h2)))); // 켈라와 같은 틀: 제목 띠 오른쪽에 닫기 — 토글 서판이 없는 시트(지원자·시장·소식·의무실·훈련소)는 세로 무대에서 장면을 덮어 달리 닫을 길이 없었다
   } else if (S.sheet) app.append(renderSheet());
-  if (S.phase === 'manage' && !S.showIntro && !S.setup && !S.st.pendingSuccession && S.st.pendingChallenges.length) { /* 색 고르기(설정)가 떠 있으면 그 뒤로 숨지 않게 기다린다 */ // 도전장(docs/10): 계약보다 먼저 답한다 — 수락하면 필수 배정, 거절하면 그쪽 기세 +1
+  if (S.phase === 'manage' && !S.showIntro && !S.setup && !S.st.pendingSuccession && S.st.pendingRivalPick) app.append(renderRivalPick()); /* 연차 첫 시즌: 올해의 상대부터 고른다 — 공고벽은 그 뒤에 걸린다 (2026-09-23 사용자) */
+  else if (S.phase === 'manage' && !S.showIntro && !S.setup && !S.st.pendingSuccession && S.st.pendingChallenges.length) { /* 색 고르기(설정)가 떠 있으면 그 뒤로 숨지 않게 기다린다 */ // 도전장(docs/10): 계약보다 먼저 답한다 — 수락하면 필수 배정, 거절하면 그쪽 기세 +1
     const c = S.st.pendingChallenges[0]; const rv = rivalOf(S.st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined;
     const cannot = (() => { const a = S.st.roster.filter(g => g.alive && g.injured === 0 && g.status !== 'doctor').length; return a < c.size ? `${c.size}명을 세울 수 없다 (출전 가능 ${a}명)` : null; })();
     app.append(h('div', { class: 'overlay' }, h('div', { class: 'modal challenge' },
@@ -206,7 +207,7 @@ function renderScreen() {
   if (S.phase === 'plan') { app.append(renderPlan()); return; }
   if (S.phase === 'summary') { const n = renderSummary(); app.append(n); const bar = (n as HTMLElement).querySelector('.tabbar'); if (bar) app.append(bar); app.classList.add('land', 'page'); return; } // 정산도 무대 안: 아래 바는 본문 밖으로 꺼내 고정
   if (S.st.pendingSuccession) { app.append(renderSuccession()); return; } // 정산을 본 뒤 관리 화면에 들어올 때 후계자를 정한다
-  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { const was = S.cellsOpen; closeOverlays(); S.sheet = null; S.cellsOpen = !was; S.cellsOrder = null; render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }, ...(S.view === 'medic' ? [{ key: 'medic' as const, icon: 'place' as const, title: '의무실' }] : [])])); app.append(town); /* 장소 서판: 그 장소의 안내·버튼(상인 다시 부르기·훈련 추천 배치·침상). 2026-09-22 사용자: 시트가 있는데 여는 길이 없었다 */
+  { const town = renderTown(); app.append(sideToolsLand([{ icon: 'cells', title: '켈라', on: S.cellsOpen, onclick: () => { const was = S.cellsOpen; closeOverlays(); S.sheet = null; S.cellsOpen = !was; S.cellsOrder = null; render(); } /* 켈라를 닫으면 그 안에서 연 검투사 상세도 같이 닫는다 */ }, { key: 'facilities', icon: 'facilities', title: '시설 강화' }, { key: 'doctors', icon: 'doctors', title: '독토르', badge: S.st.roster.filter(g => g.status === 'doctor').length }, { key: 'rivals', icon: 'rivals', title: '파밀리아' }, ...(S.view === 'ludus' ? [{ key: 'events' as const, icon: 'events' as const, title: '시즌 행사' }] : []), ...(S.view === 'medic' ? [{ key: 'medic' as const, icon: 'place' as const, title: '의무실' }] : [])])); app.append(town); /* 장소 서판: 그 장소의 안내·버튼(상인 다시 부르기·훈련 추천 배치·침상). 2026-09-22 사용자: 시트가 있는데 여는 길이 없었다 */
     if (S.cellsOpen) { const inj = S.st.roster.filter(g => g.injured).length, docs = S.st.roster.filter(g => g.status === 'doctor').length; // 켈라 = 시트의 하나: 다른 시트와 같은 틀(처마 제목 띠·✕·같은 모션). 본문은 켈라 캔버스
       const title = S.bedPick != null ? `침상 ${S.bedPick + 1}에 눕힐 부상자를 누르세요` : S.palusMode ? `훈련 ${palusTrainees(S.st).length}/${S.st.ludus.palus} — 훈련시킬 검투사를 누르세요. 훈련 중인 검투사를 누르면 뺍니다` : `켈라 ${S.st.roster.length}/${S.st.ludus.cells.length} · 출전 가능 ${available(S.st).length}${inj ? ` · 부상 ${inj}` : ''}${docs ? ` · 독토르 ${docs}` : ''}`;
       app.append(h('div', { class: `scenepanel key-cells${stillOpen ? ' still' : ''}` }, h('div', { class: 'eave' }, h('h2', {}, title, S.bedPick == null && !S.palusMode ? h('span', { class: 'hint' }, ' 카드를 누르면 상세') : null),

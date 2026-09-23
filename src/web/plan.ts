@@ -1,7 +1,7 @@
 // 편성: 계약 카드·배정·서판·시즌 확정·시즌 진행(시작→경기→정산)
 import { S } from './state.js';
 import { type Contract, type GType, type Gladiator } from '../core/types.js';
-import { ACTION_KO, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, inBed, holdEvents, isImportant, palusOf, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, type Action, validTeam, forfeitChallenges } from '../core/game.js';
+import { ACTION_KO, canFight, overworkChance, type TrainStat, EVENT_KEYS, EVENT_KO, available, canFulfill, doRecover, doShow, endSeason, fight, fightExpense, inBed, eventOf, isImportant, palusOf, recordVsMe, refuseAll, rivalOf, rivalStar, seasonName, train, type Action, validTeam, forfeitChallenges } from '../core/game.js';
 
 
 import { CONFIG } from '../core/config.js';
@@ -20,7 +20,7 @@ import { arenaIcon } from './scenes.js';
 import { graffitiCheck, renderBattle } from './battle-view.js';
 
 import { gladCardParts as miniGlad, CARD_PORTRAIT } from './gcard.js'; /* 검투사 카드는 gcard.ts 한 곳 (2026-09-17) */
-import { eventRows } from './sheets.js';
+import { EVENT_EFFECT } from './sheets.js';
 
  // gladiator id → 시즌 행동 (켈라에서 정한다, 새로고침해도 유지)
 const savePlan = () => { try { localStorage.setItem('lanista-plan', JSON.stringify(S.trainPlan)); } catch {} };
@@ -227,16 +227,16 @@ export function renderPlan() {
     const elsewhere0 = at != null && selC != null && at !== selC.id; // 다른 계약에 배정됨
     const unfulfillable = !!selC && at == null && !canFulfill(S.st, selC); // 치를 수 없는 계약(베테라누스·인원 부족)이면 아무도 넣지 않는다
     const vetBlock = (() => { if (!selC || (at != null && !elsewhere0) || g.rank === 'veteranus') return false; const team = (S.assign[selC.id] ?? []).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const left = selC.size - team.length, vetsLeft = selC.needVeterans - team.filter(x => x.rank === 'veteranus').length;
-      const freeVets = S.st.roster.filter(v => v.rank === 'veteranus' && v.alive && !v.injured && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
+      const freeVets = S.st.roster.filter(v => v.rank === 'veteranus' && v.alive && canFight(S.st, v) && !v.fought && v.status !== 'doctor' && assignedTo(v.id) == null).length; // 아직 넣을 수 있는 베테라누스
       return left > 0 && vetsLeft > 0 && (vetsLeft >= left || freeVets < vetsLeft); })(); // 다른 계약에 있는 티로도 이 계약의 베테 몫 자리에는 못 온다
     const pairBlock = !!selC?.classic && at == null && !fitsClassic([...(S.assign[selC.id] ?? []).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x).map(x => x.type), g.type], selC.enemy.map(e => e.type)); /* 정식 대결: 주최자가 주문한 짝이 아니면 애초에 못 세운다 (2026-09-22 사용자: 세운 뒤 '짝이 아닙니다' 대신) */
-    const canAssign = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable && !pairBlock;
+    const canAssign = canFight(S.st, g) && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) < selC.size && !vetBlock && !unfulfillable && !pairBlock;
     // 교체 뒤에도 베테라누스 조건을 채우는가 (마지막 자리의 베테라누스를 티로로 바꾸면 안 된다)
     // 교체 대상: 화면의 마지막 자리 = 마지막에 넣은 티로. 티로가 없으면 마지막 베테라누스. (베테를 왼쪽 대장 자리에 두므로 '마지막에 넣은 사람'이 아니라 자리 순서로)
     const swapTarget = (() => { if (!selC) return null; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return null; const gl = ids.map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const tiros = gl.filter(x => x.rank !== 'veteranus'); return (tiros.length ? tiros[tiros.length - 1] : gl[gl.length - 1]) ?? null; })();
     const swapKeepsVets = (() => { if (!selC) return false; const ids = S.assign[selC.id] ?? []; if (ids.length < selC.size) return true; if (!swapTarget) return false; const team = ids.filter(id => id !== swapTarget.id).map(id => S.st.roster.find(x => x.id === id)).filter((x): x is Gladiator => !!x); const vets = team.filter(x => x.rank === 'veteranus').length + (g.rank === 'veteranus' ? 1 : 0); return vets >= selC.needVeterans; })();
-    const canSwap = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && swapKeepsVets; // 자리가 다 찼으면 마지막 자리(티로)와 교체
-    const swapVetBlock = !g.injured && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && !swapKeepsVets;
+    const canSwap = canFight(S.st, g) && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && swapKeepsVets; // 자리가 다 찼으면 마지막 자리(티로)와 교체
+    const swapVetBlock = canFight(S.st, g) && !g.fought && !isDoc && at == null && selC != null && (S.assign[selC.id]?.length ?? 0) >= selC.size && !unfulfillable && !swapKeepsVets;
     if (isDoc) continue; // 독토르는 배정 목록에 서지 않는다 — 가르치는 사람이다 (2026-09-17 사용자)
     const elsewhere = at != null && selC != null && at !== selC.id; // 다른 계약에 배정됨: 누르면 그 계약에서 빼고 이 계약에 넣는다 (자리가 없으면 마지막과 교체)
     const rec = elsewhere ? recommend(g) : null;
@@ -247,12 +247,12 @@ export function renderPlan() {
     // 못 나가는 까닭은 칩이 아니라 흐려진 카드 위에 한 줄로 적는다 (2026-09-17 사용자)
     // 못 나가는 까닭은 하나씩만 적는다. 인원이 모자라 계약이 안 서는 것은 사람의 사정이 아니므로 흐리게만 두고 말하지 않는다 (2026-09-17 사용자)
     const vetShort = !!selC && g.rank !== 'veteranus' && available(S.st).filter(x => x.rank === 'veteranus').length < selC.needVeterans; // 베테라누스가 모자라 티로가 낄 자리가 없다 = '티로는 못 나감' 과 같은 말
-    const why: { t: string; tip: string } | null = g.injured ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 침상에 눕혀야 낫는다` }
+    const why: { t: string; tip: string } | null = g.injured && !canFight(S.st, g) ? { t: '부상', tip: `앞으로 ${g.injured}시즌 쉰다. 침상에 눕혀야 낫는다` }
       : g.fought ? { t: '출전중', tip: '이번 시즌에 이미 모래를 밟았다 — 한 시즌에 한 번만 나간다' }
       : vetBlock || swapVetBlock || vetShort ? { t: '출전불가', tip: '주최자가 신참을 받지 않는다 — 남은 자리는 티로가 채울 수 없다' }
       : elseSwapBlock ? { t: '교체불가', tip: '지금 자리를 바꾸면 티로가 한도를 넘는다' }
       : pairBlock ? { t: '짝 아님', tip: `주최자가 주문한 짝이 아니다 — ${selC!.enemy.map(e => `${TYPE_KO[e.type]}에게 ${partnersOf(e.type).map(t => TYPE_KO[t]).join('·')}`).join(', ')}` } : null;
-    const dis = !!g.injured || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || pairBlock || (!!selC && at == null && !!g.fought);
+    const dis = !canFight(S.st, g) || isDoc || vetBlock || swapVetBlock || elseSwapBlock || unfulfillable || pairBlock || (!!selC && at == null && !!g.fought);
     const ready = !dis && (canAssign || canSwap || (elsewhere && !!selC && !unfulfillable && swapKeepsVets)); // 누르면 위 자리로 들어갈 수 있는 카드: 빈 홈과 같은 파란 신호
     const revengeOn = selC ? selC.enemy.filter(e => (g.beatenBy ?? []).includes(e.id)) : []; // 복수 기회는 우리 검투사 타일에
     const tip = `${TYPE_KO[g.type]} · ${g.rank === 'tiro' ? '티로' : '베테라누스'} · ${LINEAGE_KO[g.lineage]} · ${g.age ?? '?'}세\nHP ${g.base.hp} 공 ${g.base.atk} 방 ${g.base.def} 손놀림 ${g.base.hand} 걸음 ${g.base.spd}\n${g.wins}승/${g.fights}전 · 미시오 ${g.missios} · 명예 ${g.honor ?? 0}\n시즌 행동: ${ACTION_KO[planOf(g)]}`;
@@ -281,14 +281,16 @@ export function openSeasonFlow(from: 'plan' | 'manage') {
 export function openSeasonConfirm(from: 'plan' | 'manage') { S.seasonFrom = from; S.seasonConfirm = true; S.shownSeason = false; if (from === 'manage') { S.sheet = null; S.cellsOpen = false; S.cellPop = null; S.bedPick = null; S.palusMode = false; } render(); }
 function closeSeasonConfirm() { const el = document.querySelector('.planpage.season'); S.shownSeason = false; const done = () => { S.seasonConfirm = false; render(); }; if (!el) { done(); return; } el.classList.add('closing'); window.setTimeout(done, 280); } /* 뒤로가기: 온 곳(계약 벽이든 마을이든)이 그대로 남아 있으므로 창만 닫는다 */
 export function seasonConfirmPage(warn: string[]): Node {
-  const E = CONFIG.events; const evCost = EVENT_KEYS.reduce((a, k) => a + (S.eventPlan[k] ? E[k].cost : 0), 0);
+  const E = CONFIG.events; const ev = eventOf(S.st), evCost = ev ? E[ev].cost : 0; /* 행사는 포룸에서 이미 골라 값을 치렀다 — 여기서는 확인만 (2026-09-23 사용자) */
   const again = S.shownSeason; S.shownSeason = true;
   let stamped = false; const stampText = 'INCIPIT'; // 시작하다 — 경기의 막이 오른다
   const start = () => { if (stamped) return; stamped = true; const page = document.querySelector('.planpage.season'); if (page) page.append(h('div', { class: 'stamp' }, h('span', {}, stampText))); sfx.down(); window.setTimeout(() => sfx.drum(1), 40);
     window.setTimeout(() => { S.seasonConfirm = false; S.shownSeason = false; S.seasonFrom = 'plan'; startSeason(); }, 900); };
   const left = h('div', { class: 'scol warn' }, h('h3', {}, '시즌 시작 전에'),
     ...(warn.length ? warn.map(w => { const [f, ...rest] = w.split('\n'); return h('div', { class: 'wblock' }, h('div', { class: 'flavor' }, f), ...rest.map(r => h('div', { class: 'effect' }, r))); }) : [h('div', { class: 'flavor' }, '준비가 끝났습니다. 검투사들이 문 앞에 서 있습니다.')]));
-  const right = h('div', { class: 'scol events' }, h('h3', {}, '시즌 행사', h('span', { class: 'hint', style: 'margin-left:6px' }, '이 시즌에만 효과')), ...eventRows());
+  const right = h('div', { class: 'scol events' }, h('h3', {}, '시즌 행사', h('span', { class: 'hint', style: 'margin-left:6px' }, '이 시즌에만')),
+    ev ? h('div', { class: 'evrow on' }, h('span', { class: 'grow' }, h('div', {}, h('b', {}, EVENT_KO[ev])), h('div', { class: 'effect' }, `· ${EVENT_EFFECT[ev]}`)), h('span', { class: 'evcost' }, `${evCost.toLocaleString()} HS`))
+      : h('div', { class: 'wblock' }, h('div', { class: 'flavor' }, '이번 시즌은 아무 준비도 하지 않았다'), h('div', { class: 'effect' }, '포룸의 「시즌 행사」에서 하나를 고를 수 있다 — 편성에 영향을 주므로 편성 전에 정한다')));
   return h('div', { class: `planpage season${again ? ' still' : ''}` }, h('div', { class: 'scols' }, left, right),
     h('div', { class: 'cbox row sfoot' }, evCost ? moneyRow({ amount: evCost, verb: '지불' }) : h('div'), // 행사가 없으면 빈 자리, 있으면 금액만
       h('div', { class: 'cbtns' }, h('button', { class: 'sealbtn', title: '도장을 찍어 시즌을 시작합니다', onclick: start }, h('span', { class: 'latin' }, stampText), h('span', { class: 'ko' }, '시즌 시작')))),
@@ -296,9 +298,9 @@ export function seasonConfirmPage(warn: string[]): Node {
 }
 // ── 3단계: 시즌 진행
 function startSeason() {
-  const moneyBefore = S.st.money; // 행사 결제 전 잔액 (정산 기준)
-  const held = holdEvents(S.st, S.eventPlan); S.eventPlan = { cena: false, pompa: false, votum: false, edicta: false, guests: false };
-  if (EVENT_KEYS.some(k => held[k])) S.notice = `행사: ${EVENT_KEYS.filter(k => held[k]).map(k => EVENT_KO[k]).join(', ')}`;
+  const held = S.st.events ?? { cena: false, unctio: false, medicus: false, pompa: false, votum: false, edicta: false, guests: false }; /* 행사는 관리 단계에서 고를 때 이미 결제했다 (2026-09-23 사용자) */
+  const moneyBefore = S.st.money + EVENT_KEYS.reduce((a, k) => a + (held[k] ? CONFIG.events[k].cost : 0), 0); // 정산은 행사비를 이 시즌 지출로 잡는다
+  if (EVENT_KEYS.some(k => held[k])) { S.notice = `행사: ${EVENT_KEYS.filter(k => held[k]).map(k => EVENT_KO[k]).join(', ')}`; S.st.history.push(`${seasonName(S.st.season)}: ${EVENT_KEYS.filter(k => held[k]).map(k => EVENT_KO[k]).join(', ')}`); }
   S.queue = S.st.contracts.map(c => ({ c, team: (S.assign[c.id] ?? []).map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean) })).filter(q => q.team.length === q.c.size && !validTeam(S.st, q.c, q.team)).sort((a, b) => (a.c.challenge ? 1 : 0) - (b.c.challenge ? 1 : 0)); // 도전 경기는 그 시즌의 마지막 — 메인 이벤트 (docs/10)
   { const queued = new Set(S.queue.map(q => q.c)); const lost = forfeitChallenges(S.st, S.st.contracts.filter(c => !queued.has(c))); if (lost.length) S.notice = lost.join('\n'); } // 걸어 놓고 안 나간 도전: 기세·호감도 벌
   S.seasonReports = []; S.skipped = []; S.seasonSummary = { upkeep: 0, gift: 0, trained: [], acted: [], before: moneyBefore, fameBefore: S.st.fame, refused: 0, skipped: [], label: seasonName(S.st.season), events: { ...held } };
@@ -330,7 +332,7 @@ function finishSeason() {
   const skippedNow = [...S.skipped];
   if (S.skipped.length) S.st.contracts = S.st.contracts.filter(c => !S.skipped.includes(c)); // 무산된 계약은 벌점 없이 소멸
   const refused = S.st.contracts.length ? refuseAll(S.st) : 0;
-  const eventsHeld = { ...(S.st.events ?? { cena: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
+  const eventsHeld = { ...(S.st.events ?? { cena: false, unctio: false, medicus: false, pompa: false, votum: false, edicta: false, guests: false }) }; // endSeason 이 초기화하므로 미리 보관
   const { upkeep, gift, bedCost } = endSeason(S.st);
   S.seasonSummary = { upkeep, gift, bedCost, trained, acted, before: S.seasonSummary?.before ?? S.st.money, fameBefore: fameBefore0, refused, skipped: skippedNow, label, events: eventsHeld };
   S.assign = {}; S.trainPlan = {}; savePlan(); S.planSel = null; // 시즌 행동은 시즌마다 다시 (기본 휴식). 팔루스에 선 검투사는 그대로 서 있다
