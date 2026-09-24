@@ -2,7 +2,7 @@ import type { Contract, GType, HostKind, Gladiator } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator } from './gladiator.js';
-import { pickEnemies, type Rival } from './rivals.js';
+import { pickEnemies, rivalDef, dojoOrder, type Rival } from './rivals.js';
 import { teamPower } from './gladiator.js';
 
 const VENUES: Record<number, string[]> = {
@@ -16,6 +16,8 @@ export const HOST_KO: Record<HostKind, string> = Object.fromEntries(Object.entri
 
 let cid = 1;
 export function resetContractIds() { cid = 1; }
+export function nextContractId() { return cid++; }
+export function venueFor(rng: Rng, tier: 1 | 2 | 3) { return rng.pick(VENUES[tier]); }
 
 // 난이도 분포: 내 로스터 전력을 기준으로 약·중·중·강 (계약 3개면 약·중·강, 2개면 중·강). 목표 = 내 검투사 평균 전력 × 인원 × 비율
 export type Difficulty = 'weak' | 'even' | 'strong';
@@ -27,7 +29,14 @@ function closestCombo(pool: Gladiator[], size: number, target: number): Gladiato
   const rec = (start: number, cur: Gladiator[]) => { if (cur.length === size) { const d = Math.abs(teamPower(cur) - target); if (d < bd) { bd = d; best = [...cur]; } return; } for (let i = start; i < pool.length; i++) { cur.push(pool[i]); rec(i + 1, cur); cur.pop(); } };
   rec(0, []); return best;
 }
+// 지금 도장(졸업 전인 파밀리아 중 순서가 앞선 집)의 조합: 아직 못 꺾은 사람이 많이 든 조합을 목표 전력 +30% 아래에서 고른다 (약한 쪽은 제한 없음: 내 로스터가 커져도 그 집의 남은 사람을 만나야 졸업이 된다. 승률은 소속의 서열 비율로 잡는다). 일반 계약이 도장 진행을 끌고 가게 한다
+function dojoCombo(pool: Gladiator[], size: number, target: number): Gladiator[] | null {
+  if (pool.length < size) return null; let best: Gladiator[] | null = null, bu = -1, bd = Infinity;
+  const rec = (start: number, cur: Gladiator[]) => { if (cur.length === size) { const d = Math.abs(teamPower(cur) - target); if (teamPower(cur) > target * 1.3) return; const u = cur.filter(g => !(g.lostToMe ?? 0)).length; if (u > bu || (u === bu && d < bd)) { bu = u; bd = d; best = [...cur]; } return; } for (let i = start; i < pool.length; i++) { cur.push(pool[i]); rec(i + 1, cur); cur.pop(); } };
+  rec(0, []); return bu > 0 ? best : null; // 못 꺾은 사람이 하나도 없으면 도장 우선은 의미 없다
+}
 export function offerContracts(rng: Rng, season: number, fame: number, rivals: Rival[] = [], roster: Gladiator[] = []): Contract[] {
+  const dojo = rivals.filter(r => !r.graduated && rivalDef(r)).sort((a, b) => dojoOrder(a) - dojoOrder(b))[0]; let dojoUsed = 0; // 시즌당 도장 우선 계약 최대 2건
   const n = rng.int(2, 4); // 1대1 위주라 계약 수를 늘려 시즌 총 출전 자리를 유지
   const out: Contract[] = [];
   const mine = roster.filter(g => g.alive && g.status !== 'doctor'); const ref = mine.length ? teamPower(mine) / mine.length : 0; // 내 검투사 한 명의 평균 전력 (없으면 옛 방식)
@@ -44,7 +53,9 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     let rivalId: number | undefined; let enemy: Gladiator[] | null = null;
     const diff = dist[i]; const target = ref * size * DIFF_RATIO()[diff];
     if (rivals.length) {
-      if (ref > 0) { let bd = Infinity; for (const rv of rivals) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0), size, target); if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
+      if (ref > 0 && dojo && dojoUsed < 2) { const combo = dojoCombo(dojo.roster.filter(g => g.alive && g.injured === 0 && g.id !== dojo.starId && !g.pledged), size, target); if (combo) { enemy = combo; rivalId = dojo.id; dojoUsed++; } }
+      if (enemy) { /* 도장 우선 */ }
+      else if (ref > 0) { let bd = Infinity; for (const rv of rivals) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0 && g.id !== rv.starId && !g.pledged), size, target); /* 간판은 졸업전에서만 만난다 */ if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
         if (enemy && bd > target * 0.15) { enemy = null; rivalId = undefined; } } // 목표에 가장 가까운 파밀리아 조합. 15% 넘게 벗어나면 파밀리아 밖에서 (주최자가 다른 라니스타에게서 빌려 온 검투사 — 고증: 지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
       else { const order = [...rivals].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy) { rivalId = rv.id; break; } } }
     }

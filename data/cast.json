@@ -1,0 +1,747 @@
+[
+ {
+  "id": "set-murmillo-0",
+  "name": "발렌스",
+  "type": "murmillo",
+  "lineage": "victory",
+  "talent": 3,
+  "role": "market",
+  "seed": 166769276
+ },
+ {
+  "id": "set-murmillo-1",
+  "name": "루푸스",
+  "type": "murmillo",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 62115286
+ },
+ {
+  "id": "set-murmillo-2",
+  "name": "빅토르",
+  "type": "murmillo",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 41133891
+ },
+ {
+  "id": "set-murmillo-3",
+  "name": "사쿰",
+  "type": "murmillo",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 133304327
+ },
+ {
+  "id": "set-murmillo-4",
+  "name": "펠릭스",
+  "type": "murmillo",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 133360939
+ },
+ {
+  "id": "set-murmillo-5",
+  "name": "리파누스",
+  "type": "murmillo",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 97165708
+ },
+ {
+  "id": "set-murmillo-6",
+  "name": "크라수스",
+  "type": "murmillo",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 42791929
+ },
+ {
+  "id": "set-secutor-0",
+  "name": "티그리스",
+  "type": "secutor",
+  "lineage": "nature",
+  "talent": 3,
+  "role": "market",
+  "seed": 194157221
+ },
+ {
+  "id": "set-secutor-1",
+  "name": "레오",
+  "type": "secutor",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 148723998
+ },
+ {
+  "id": "set-secutor-2",
+  "name": "인빅투스",
+  "type": "secutor",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 110118481
+ },
+ {
+  "id": "set-secutor-3",
+  "name": "이그니스",
+  "type": "secutor",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 221600636
+ },
+ {
+  "id": "set-secutor-4",
+  "name": "포르투나투스",
+  "type": "secutor",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 66766951
+ },
+ {
+  "id": "set-secutor-5",
+  "name": "시루스",
+  "type": "secutor",
+  "lineage": "place",
+  "talent": 0,
+  "role": "market",
+  "seed": 137246211
+ },
+ {
+  "id": "set-secutor-6",
+  "name": "롱구스",
+  "type": "secutor",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 157055975
+ },
+ {
+  "id": "set-thraex-0",
+  "name": "트리움푸스",
+  "type": "thraex",
+  "lineage": "victory",
+  "talent": 3,
+  "role": "market",
+  "seed": 47736037
+ },
+ {
+  "id": "set-thraex-1",
+  "name": "파르두스",
+  "type": "thraex",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 5649654
+ },
+ {
+  "id": "set-thraex-2",
+  "name": "아우다크스",
+  "type": "thraex",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 265297659
+ },
+ {
+  "id": "set-thraex-3",
+  "name": "페룸",
+  "type": "thraex",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 27479924
+ },
+ {
+  "id": "set-thraex-4",
+  "name": "파우스투스",
+  "type": "thraex",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 200598163
+ },
+ {
+  "id": "set-thraex-5",
+  "name": "삼니스",
+  "type": "thraex",
+  "lineage": "place",
+  "talent": 0,
+  "role": "market",
+  "seed": 13527142
+ },
+ {
+  "id": "set-thraex-6",
+  "name": "크리스푸스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 58701555
+ },
+ {
+  "id": "set-retiarius-0",
+  "name": "프로켈라",
+  "type": "retiarius",
+  "lineage": "nature",
+  "talent": 3,
+  "role": "market",
+  "seed": 44658267
+ },
+ {
+  "id": "set-retiarius-1",
+  "name": "플루멘",
+  "type": "retiarius",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 196573654
+ },
+ {
+  "id": "set-retiarius-2",
+  "name": "콘스탄스",
+  "type": "retiarius",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 169153105
+ },
+ {
+  "id": "set-retiarius-3",
+  "name": "아프리카누스",
+  "type": "retiarius",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 268344014
+ },
+ {
+  "id": "set-retiarius-4",
+  "name": "살부스",
+  "type": "retiarius",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 226873295
+ },
+ {
+  "id": "set-retiarius-5",
+  "name": "무스",
+  "type": "retiarius",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 233652615
+ },
+ {
+  "id": "set-retiarius-6",
+  "name": "마케르",
+  "type": "retiarius",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 14285437
+ },
+ {
+  "id": "set-hoplomachus-0",
+  "name": "페르티낙스",
+  "type": "hoplomachus",
+  "lineage": "victory",
+  "talent": 3,
+  "role": "market",
+  "seed": 16954778
+ },
+ {
+  "id": "set-hoplomachus-1",
+  "name": "토니트루스",
+  "type": "hoplomachus",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 109626883
+ },
+ {
+  "id": "set-hoplomachus-2",
+  "name": "피르무스",
+  "type": "hoplomachus",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 151722178
+ },
+ {
+  "id": "set-hoplomachus-3",
+  "name": "아스티부스",
+  "type": "hoplomachus",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 11444291
+ },
+ {
+  "id": "set-hoplomachus-4",
+  "name": "비길",
+  "type": "hoplomachus",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 31166938
+ },
+ {
+  "id": "set-hoplomachus-5",
+  "name": "루스티쿠스",
+  "type": "hoplomachus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 140215148
+ },
+ {
+  "id": "set-hoplomachus-6",
+  "name": "발부스",
+  "type": "hoplomachus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 175880171
+ },
+ {
+  "id": "set-provocator-0",
+  "name": "루페스",
+  "type": "provocator",
+  "lineage": "nature",
+  "talent": 3,
+  "role": "market",
+  "seed": 31307534
+ },
+ {
+  "id": "set-provocator-1",
+  "name": "실바누스",
+  "type": "provocator",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 191647804
+ },
+ {
+  "id": "set-provocator-2",
+  "name": "노빌리오르",
+  "type": "provocator",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 12228643
+ },
+ {
+  "id": "set-provocator-3",
+  "name": "마테르누스",
+  "type": "provocator",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 195315718
+ },
+ {
+  "id": "set-provocator-4",
+  "name": "포르티스",
+  "type": "provocator",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 236738379
+ },
+ {
+  "id": "set-provocator-5",
+  "name": "브루투스",
+  "type": "provocator",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 249920527
+ },
+ {
+  "id": "set-provocator-6",
+  "name": "칼부스",
+  "type": "provocator",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 242447532
+ },
+ {
+  "id": "set-eques-0",
+  "name": "셀레르",
+  "type": "eques",
+  "lineage": "victory",
+  "talent": 3,
+  "role": "market",
+  "seed": 228788861
+ },
+ {
+  "id": "set-eques-1",
+  "name": "아퀼라",
+  "type": "eques",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 178444551
+ },
+ {
+  "id": "set-eques-2",
+  "name": "빅토리누스",
+  "type": "eques",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 124511367
+ },
+ {
+  "id": "set-eques-3",
+  "name": "벤투스",
+  "type": "eques",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 235648856
+ },
+ {
+  "id": "set-eques-4",
+  "name": "아마빌리스",
+  "type": "eques",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 74066458
+ },
+ {
+  "id": "set-eques-5",
+  "name": "파르부스",
+  "type": "eques",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 18219961
+ },
+ {
+  "id": "set-eques-6",
+  "name": "루피누스",
+  "type": "eques",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 58082347
+ },
+ {
+  "id": "set-dimachaerus-0",
+  "name": "풀구르",
+  "type": "dimachaerus",
+  "lineage": "nature",
+  "talent": 3,
+  "role": "market",
+  "seed": 179853781
+ },
+ {
+  "id": "set-dimachaerus-1",
+  "name": "아르덴스",
+  "type": "dimachaerus",
+  "lineage": "nature",
+  "talent": 2,
+  "role": "market",
+  "seed": 17987247
+ },
+ {
+  "id": "set-dimachaerus-2",
+  "name": "아케르",
+  "type": "dimachaerus",
+  "lineage": "victory",
+  "talent": 2,
+  "role": "market",
+  "seed": 177497384
+ },
+ {
+  "id": "set-dimachaerus-3",
+  "name": "그란도",
+  "type": "dimachaerus",
+  "lineage": "nature",
+  "talent": 1,
+  "role": "market",
+  "seed": 77535247
+ },
+ {
+  "id": "set-dimachaerus-4",
+  "name": "프로스페르",
+  "type": "dimachaerus",
+  "lineage": "victory",
+  "talent": 1,
+  "role": "market",
+  "seed": 62947405
+ },
+ {
+  "id": "set-dimachaerus-5",
+  "name": "클라우두스",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 243551750
+ },
+ {
+  "id": "set-dimachaerus-6",
+  "name": "파이투스",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "market",
+  "seed": 27136774
+ },
+ {
+  "id": "fam4-0",
+  "name": "스카에바",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 4,
+  "seed": 91788789,
+  "scaeva": true
+ },
+ {
+  "id": "fam4-1",
+  "name": "타키투스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 4,
+  "seed": 121362236
+ },
+ {
+  "id": "fam4-2",
+  "name": "쿠마누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 4,
+  "seed": 221177624
+ },
+ {
+  "id": "fam4-3",
+  "name": "히스파누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 4,
+  "seed": 142918192
+ },
+ {
+  "id": "fam2-0",
+  "name": "폼페이아누스",
+  "type": "secutor",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 2,
+  "seed": 97847903
+ },
+ {
+  "id": "fam2-1",
+  "name": "베수비우스",
+  "type": "retiarius",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 2,
+  "seed": 161375783
+ },
+ {
+  "id": "fam2-2",
+  "name": "캄파누스",
+  "type": "secutor",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 2,
+  "seed": 179087812
+ },
+ {
+  "id": "fam2-3",
+  "name": "사르두스",
+  "type": "retiarius",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 2,
+  "seed": 5252233
+ },
+ {
+  "id": "fam5-0",
+  "name": "푸스쿠스",
+  "type": "hoplomachus",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 5,
+  "seed": 119352609
+ },
+ {
+  "id": "fam5-1",
+  "name": "파세르",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 5,
+  "seed": 203958737
+ },
+ {
+  "id": "fam5-2",
+  "name": "시쿨루스",
+  "type": "hoplomachus",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 5,
+  "seed": 261731896
+ },
+ {
+  "id": "fam5-3",
+  "name": "콜룸부스",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 5,
+  "seed": 173846169
+ },
+ {
+  "id": "fam3-0",
+  "name": "마르스",
+  "type": "murmillo",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 3,
+  "seed": 54050732
+ },
+ {
+  "id": "fam3-1",
+  "name": "불카누스",
+  "type": "provocator",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 3,
+  "seed": 203412257
+ },
+ {
+  "id": "fam3-2",
+  "name": "디오메데스",
+  "type": "secutor",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 3,
+  "seed": 177952462
+ },
+ {
+  "id": "fam3-3",
+  "name": "압투스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 3,
+  "seed": 207596993
+ },
+ {
+  "id": "fam6-0",
+  "name": "카푸아누스",
+  "type": "provocator",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 6,
+  "seed": 121591583
+ },
+ {
+  "id": "fam6-1",
+  "name": "페르세우스",
+  "type": "eques",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 6,
+  "seed": 198483
+ },
+ {
+  "id": "fam6-2",
+  "name": "테세우스",
+  "type": "eques",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 6,
+  "seed": 6196665
+ },
+ {
+  "id": "fam6-3",
+  "name": "쿠피도",
+  "type": "retiarius",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 6,
+  "seed": 17356644
+ },
+ {
+  "id": "fam1-0",
+  "name": "오리온",
+  "type": "retiarius",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 1,
+  "seed": 1384177
+ },
+ {
+  "id": "fam1-1",
+  "name": "아폴로니우스",
+  "type": "hoplomachus",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 1,
+  "seed": 261212681
+ },
+ {
+  "id": "fam1-2",
+  "name": "티베리누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 1,
+  "seed": 41231397
+ },
+ {
+  "id": "fam1-3",
+  "name": "로마누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 1,
+  "seed": 221937613
+ }
+]

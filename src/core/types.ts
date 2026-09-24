@@ -28,6 +28,7 @@ export interface Gladiator {
   age?: number;         // 나이. 봄마다 +1. 31세부터 속도, 33세부터 공·방이 서서히 줄어든다
   talent?: 0 | 1 | 2 | 3; // 자질: 평범·재능·비범·천부 (성장 가중치. 능력치 자체는 아님)
   talentKnown?: boolean;  // 자질이 밝혀졌는가 (첫 훈련·첫 경기 뒤). 시장에서는 상인의 한 줄로만 짐작
+  trainGain?: number;     // 훈련으로 오른 공·방 총량. 자질 상한(CONFIG.talentCap)까지만 오른다
   lastMissio?: boolean;   // 직전 경기에서 미시오로 살아남음 (다음 경기 승리 = 깨우침 계기)
   epithets?: string[];  // 별칭 id 목록 (core/epithets.ts)
   skills?: string[];      // 기술 id 목록 (core/skills.ts)
@@ -45,6 +46,9 @@ export interface Gladiator {
   typesWon?: GType[];   // 승리를 거둔 유형들 (유형 전환 별칭)
   spared?: number[];    // 내가 이기고 살려 준 상대 id (원한)
   beatenBy?: number[];  // 나를 쓰러뜨린 상대 id (복수 대상)
+  lostToMe?: number;    // (상대 파밀리아 검투사) 내 검투사에게 쓰러진 횟수 — 졸업전 조건 (그 집 검투사를 전부 이겨 봤는가)
+  castId?: string;      // 고정 명부 항목 id (data/cast.json). 없으면 랜덤 생성(옛 저장·대체 인원)
+  pledged?: boolean;    // (상대 파밀리아 간판) 졸업전 판돈으로 내게 넘어오기로 했으나 켈라가 없어 기다리는 중. 경기에 안 나온다
   revenged?: number;    // 복수 성공 횟수
   honor?: number;       // 명예(인기) 0~100: 승리·전통 짝·화관으로 오르고 패배로 조금 깎임. 미시오 생존·대여료에 반영
   status?: 'slave' | 'rudiarius' | 'doctor'; // 노예(기본) / 루디스를 받은 자유민 (급료 받고 출전) / 교관 (출전 안 함, 같은 유형 훈련 강화)
@@ -66,6 +70,7 @@ export interface Contract {
   enemy: Gladiator[];
   enemyPreview: GType[];  // 공개 정보 (에딕타처럼 상대 전원 공개)
   rivalId?: number;       // 상대 파밀리아
+  challenge?: { rivalId: number; stakeId?: number }; // 졸업전(간판내기): 상대 간판 ↔ 내 검투사(stakeId)를 판돈으로 건다. 이기면 간판이 내 사람, 지면 내 검투사가 그 집으로
 }
 
 // (구) 턴제 전투 유닛. 위치 기반 전투에서는 battle.ts 내부 타입 사용

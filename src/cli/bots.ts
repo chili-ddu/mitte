@@ -1,13 +1,13 @@
 // 자동 플레이 전략. 밸런스 검증용.
 import type { GameState, FightReport } from '../core/game.js';
-import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable } from '../core/game.js';
+import { available, buy, canBuy, endSeason, fight, heal, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, doSkillTrain, skillTrainable, sell, rerollMarket, successorOptions, succeed } from '../core/game.js';
 import { learnSkill, skillsOf } from '../core/skills.js';
 import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
 import { CONFIG } from '../core/config.js';
 import { computeSynergies, describeSynergies } from '../core/synergy.js';
 
-export type Bot = (st: GameState, onFight?: (r: FightReport) => void) => void;
+export type Bot = (st: GameState, onFight?: (r: FightReport) => void, onSeason?: (st: GameState) => void) => void;
 
 function power(g: Gladiator) { return g.base.hp / 10 + g.base.atk + g.base.def + g.wins * 2; }
 
@@ -38,7 +38,7 @@ function buyPolicy(st: GameState, mode: 'cheap' | 'vets' | 'balanced', reserve: 
   const list = [...st.market].sort((a, b) => mode === 'cheap' ? a.buyPrice - b.buyPrice : mode === 'vets' ? b.buyPrice - a.buyPrice : power(b) / b.buyPrice - power(a) / a.buyPrice);
   for (const g of list) {
     if (mode === 'vets' && g.rank !== 'veteranus' && available(st).length >= 3) continue;
-    if (st.roster.length >= Math.min(6, rosterCap(st))) break;
+    if (st.roster.length >= Math.min(6, rosterCap(st)) - (st.contracts.some(c => c.challenge) || st.rivals.some(r => r.roster.some(g => g.pledged)) ? 1 : 0)) break; // 졸업전이 있거나 기다리는 간판이 있으면 칸 하나를 비워 둔다
     if (st.money - g.buyPrice < reserve) continue;
     if (canBuy(st, g)) buy(st, g);
   }
@@ -47,25 +47,29 @@ function buyPolicy(st: GameState, mode: 'cheap' | 'vets' | 'balanced', reserve: 
 function healAll(st: GameState) { for (const g of st.roster) if (g.injured > 0 && st.money > CONFIG.healCost + 2000) heal(st, g); }
 
 function makeBot(buyMode: 'cheap' | 'vets' | 'balanced', team: 'strong' | 'synergy', accept: (c: Contract) => boolean): Bot {
-  return (st, onFight) => {
+  return (st, onFight, onSeason) => {
     while (!st.over && st.season <= CONFIG.simSeasons) { // 시즌 제한이 없으므로 시뮬은 고정 길이
       const reserve = st.roster.length * CONFIG.upkeepPerGladiator * 2;
       { const c = upgradeCost(st, 'cells'); if (c != null && st.roster.length >= rosterCap(st) && rosterCap(st) < 6 && st.money > c + reserve + 4000) upgrade(st, 'cells'); } // 감방이 차면 증축
       { const c = upgradeCost(st, 'palus'); if (c != null && st.money > 25000 + c) upgrade(st, 'palus'); } // 여유 자금은 팔루스
+      if (st.rivals.some(r => r.roster.some(g => g.pledged)) && st.roster.length >= rosterCap(st)) { const weakest = [...st.roster].filter(g => g.alive && (g.status ?? 'slave') === 'slave').sort((a, b) => power(a) - power(b))[0]; if (weakest) sell(st, weakest); } // 기다리는 간판이 있으면 가장 약한 사람을 팔아 칸을 비운다
+      if (st.money > 20000 + reserve && st.roster.length < Math.min(6, rosterCap(st)) && !st.market.some(g => (g.talent ?? 0) >= 2)) rerollMarket(st); // 돈이 있고 자리가 있는데 상위 자질이 없으면 한 번 리롤 (봇은 자질을 본다 — 사람은 상인의 말로 짐작)
       buyPolicy(st, buyMode, reserve);
       healAll(st);
       if (st.money > 15000) for (const g of st.roster) { if (st.money < 15000) break; if (skillTrainable(st, g) && !g.trained) { const r = doSkillTrain(st, g); if (r?.ok) learnSkill(g, r.id, skillsOf(g)[0]); continue; } train(st, g, g.base.atk <= g.base.def + 6 ? 'atk' : 'def'); } // 여유 자금은 훈련에 (기술 훈련 우선)
-      const cs = [...st.contracts].sort((a, b) => b.tier - a.tier);
+      const cs = [...st.contracts].sort((a, b) => (b.challenge ? 1 : 0) - (a.challenge ? 1 : 0) || b.tier - a.tier); // 졸업전이 있으면 먼저
       let fought = false;
       for (const c of cs) {
         if (!accept(c)) continue;
         const t = pickTeam(st, c, team);
         if (!t) continue;
+        if (c.challenge) { const mine = t.reduce((a, g) => a + power(g), 0), theirs = c.enemy.reduce((a, g) => a + power(g), 0); if (mine < theirs * 1.0) continue; c.challenge.stakeId = [...t].sort((a, b) => power(a) - power(b))[0].id; if (validTeam(st, c, t)) continue; } // 졸업전: 전력이 밀리지 않을 때만, 판돈은 팀에서 가장 약한 사람
         if (HOST[c.host].bet) { const mine = t.reduce((a, g) => a + power(g), 0) / t.length, theirs = c.enemy.reduce((a, g) => a + power(g), 0) / c.enemy.length; c.bet = mine > theirs * 1.15; } // 우세하면 내기를 받는다
         const r = fight(st, c, t); onFight?.(r); fought = true; // 검투사는 시즌당 1회 출전이므로 사실상 인원이 허락하는 만큼
       }
       if (!fought) refuseAll(st);
-      endSeason(st);
+      endSeason(st); onSeason?.(st);
+      if (st.pendingSuccession) { const opts = successorOptions(st); succeed(st, opts.find(o => o.from && o.from.age != null && o.from.age < 36) ?? opts[0]); } // 의무 계승: 젊은 후보 우선
     }
   };
 }

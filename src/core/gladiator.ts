@@ -29,11 +29,12 @@ export function resetIds() { nextId = 1; }
 export function peekNextId() { return nextId; }
 export function setNextId(n: number) { nextId = n; }
 
-export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number } = {}): Gladiator {
+export const RESERVED_NAMES = new Set<string>(); // 이야기 인물의 이름 (rivals.ts 가 등록). 랜덤 생성이 같은 이름을 쓰지 않도록
+export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number; name?: string } = {}): Gladiator {
   const type = opts.type ?? rng.pick(TYPES);
   const lineage = opts.lineage ?? rng.pick(LINEAGES_1ST);
   const pool = (namesJson as Record<string, { ko: string }[]>)[lineage];
-  const name = rng.pick(pool).ko;
+  let name = opts.name ?? rng.pick(pool).ko; if (!opts.name) for (let k = 0; k < 8 && RESERVED_NAMES.has(name); k++) name = rng.pick(pool).ko; // 지정 이름(파밀리아 간판·두 번째)은 랜덤 풀에서 뺀다
   const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; const age = rng.int(a0, a1);
   const s = TYPE_STATS[type]; const R = CONFIG.statRoll[rank]; const A = CONFIG.statRoll.age; const ageHi = A.hiBonus * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); // 나이가 들수록 위쪽 폭이 열린다 (단련했을 수도)
   const roll = (v: number, [lo, hi]: readonly [number, number]) => Math.round(v * rng.range(lo, hi + ageHi)); // 스탯마다 범위를 따로 굴린다
@@ -81,3 +82,10 @@ export function powerOf(g: Gladiator): number {
   return b.hp * 0.38 + b.atk * 4 + b.def * 4.5 + b.spd * 2.2 + skills - Math.max(0, (g.fatigue ?? 0) - CONFIG.fatigue.free) * 8.5;
 }
 export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);
+// 절대 강도 맞추기: 공·방·HP 를 같은 비율로 곱해 전력을 목표에 맞춘다 (속도·기술은 그대로). 파밀리아 간판은 시즌·내 호감도와 무관하게 정해진 강도로 선다
+export function fitPower(g: Gladiator, target: number): Gladiator {
+  const b = g.base; const fixed = b.spd * 2.2 + (g.skills ?? []).reduce((a, id) => a + (SKILL_WORTH[id as keyof typeof SKILL_WORTH] ?? 0), 0);
+  const k = Math.max(0.3, (target - fixed) / Math.max(1, b.hp * 0.38 + b.atk * 4 + b.def * 4.5));
+  b.hp = Math.max(30, Math.round(b.hp * k)); b.atk = Math.max(1, Math.round(b.atk * k)); b.def = Math.max(0, Math.round(b.def * k));
+  g.buyPrice = valueOf(g); return g;
+}
