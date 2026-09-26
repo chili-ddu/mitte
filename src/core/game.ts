@@ -11,12 +11,12 @@ import { computeSynergies, classicMatchup } from './synergy.js';
 import { TYPE_KO as TYPE_LABEL, TYPE_STATS } from './gladiator.js';
 import { grantEpithets, type EpithetDef } from './epithets.js';
 import { SKILLS, SKILL_BY_ID, hasSkill, procChance, addMastery, offerSkill, eligibleSkills, skillFits, type SkillId } from './skills.js';
-import { makeRivals, replenishRivals, arriveRivals, memberById, rivalOf, rivalStar, recordVsMe, rivalDef, promoteStar, makeStar, makeSecond, challengeProgress, dojoOrder, type Rival } from './rivals.js';
+import { makeRivals, replenishRivals, arriveRivals, memberById, rivalOf, rivalStar, recordVsMe, rivalDef, promoteStar, makeStar, makeSecond, challengeProgress, dojoOrder, kindOf, type Rival } from './rivals.js';
 import { HOST, migrateHost, FANS_STAR } from './hosts.js';
 import { CLAUSES, acceptedOf } from './clauses.js';
 import { awaken, talentOf, TALENT_KO, TALENT_TRAIN_BONUS, TALENT_SKILL_MUL } from './talent.js';
 import { fansOf, powerOf, teamPower } from './gladiator.js';
-export { rivalOf, memberById, rivalStar, recordVsMe, rivalDef, challengeProgress, dojoOrder };
+export { rivalOf, memberById, rivalStar, recordVsMe, rivalDef, challengeProgress, dojoOrder, kindOf };
 import { offerClauses } from './clauses.js';
 
 export interface FightReport {
@@ -307,6 +307,7 @@ export function fightExpense(team: Gladiator[], tier: number): number { const re
 // 졸업전(간판내기) 계약. 조건: 그 집이 나타났고 졸업 전 · 간판을 뺀 로스터 전원을 내가 쓰러뜨려 봄 · 간판 생존·부상 없음 · 등급 3 도장은 등급 3 주최자(호감도) · 켈라에 빈 칸. 시즌당 1건, 도장 순서가 앞선 집부터
 export function canChallenge(st: GameState, r: Rival): { ok: boolean; why?: string } {
   const def = rivalDef(r); if (!def) return { ok: false, why: '정의 없음' };
+  if (kindOf(def) === 'damnati') return { ok: false, why: '간판 없음' };
   if (r.graduated) return { ok: false, why: '졸업' };
   const star = r.roster.find(g => g.id === r.starId); if (!star || !star.alive) return { ok: false, why: '간판 없음' }; if (star.injured > 0) return { ok: false, why: '간판 부상' };
   if (!def.visitor) { const p = challengeProgress(r); if (p.total === 0 || p.beaten < p.total) return { ok: false, why: `꺾은 사람 ${p.beaten}/${p.total}` }; } // 방문단은 오자마자 걸어온다
@@ -551,7 +552,7 @@ export function serialize(st: GameState): SaveData {
 function migrateRivals(rng: Rng, rivals: Rival[], season: number): Rival[] {
   return rivals.map(r0 => {
     const r: Rival = { ...r0, vsMe: r0.vsMe ?? { wins: 0, losses: 0, draws: 0 } }; const def = rivalDef(r);
-    if (def && r.starId == null) { const star = makeStar(rng, season, def), second = makeSecond(rng, season, def); r.roster = [star, second, ...r.roster.sort((a, b) => powerOf(b) - powerOf(a))].slice(0, 6); r.starId = star.id; r.secondId = second.id; }
+    if (def && r.starId == null && kindOf(def) !== 'damnati') { const star = makeStar(rng, season, def), second = makeSecond(rng, season, def); r.roster = [star, ...(second ? [second] : []), ...r.roster.sort((a, b) => powerOf(b) - powerOf(a))].slice(0, 6); r.starId = star.id; r.secondId = second?.id; }
     for (const g of r.roster) g.boughtSeason ??= 1;
     return r;
   });

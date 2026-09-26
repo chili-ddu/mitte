@@ -34,7 +34,7 @@ export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineag
   const type = opts.type ?? rng.pick(TYPES);
   const lineage = opts.lineage ?? rng.pick(LINEAGES_1ST);
   const pool = (namesJson as Record<string, { ko: string }[]>)[lineage];
-  let name = opts.name ?? rng.pick(pool).ko; if (!opts.name) for (let k = 0; k < 8 && RESERVED_NAMES.has(name); k++) name = rng.pick(pool).ko; // 지정 이름(파밀리아 간판·두 번째)은 랜덤 풀에서 뺀다
+  const free = pool.filter(n => !RESERVED_NAMES.has(n.ko)); const name = opts.name ?? rng.pick(free.length ? free : pool).ko; // 명부·간판 이름은 랜덤 풀에서 뺀다 (남은 이름이 없을 때만 겹침 허용)
   const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; const age = rng.int(a0, a1);
   const s = TYPE_STATS[type]; const R = CONFIG.statRoll[rank]; const A = CONFIG.statRoll.age; const ageHi = A.hiBonus * Math.max(0, Math.min(1, (age - A.from) / (A.to - A.from))); // 나이가 들수록 위쪽 폭이 열린다 (단련했을 수도)
   const roll = (v: number, [lo, hi]: readonly [number, number]) => Math.round(v * rng.range(lo, hi + ageHi)); // 스탯마다 범위를 따로 굴린다

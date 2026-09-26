@@ -2,7 +2,7 @@ import type { Contract, GType, HostKind, Gladiator } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator } from './gladiator.js';
-import { pickEnemies, rivalDef, dojoOrder, type Rival } from './rivals.js';
+import { pickEnemies, rivalDef, dojoOrder, kindOf, type Rival } from './rivals.js';
 import { teamPower } from './gladiator.js';
 
 const VENUES: Record<number, string[]> = {
@@ -36,7 +36,8 @@ function dojoCombo(pool: Gladiator[], size: number, target: number): Gladiator[]
   rec(0, []); return bu > 0 ? best : null; // 못 꺾은 사람이 하나도 없으면 도장 우선은 의미 없다
 }
 export function offerContracts(rng: Rng, season: number, fame: number, rivals: Rival[] = [], roster: Gladiator[] = []): Contract[] {
-  const dojo = rivals.filter(r => !r.graduated && rivalDef(r)).sort((a, b) => dojoOrder(a) - dojoOrder(b))[0]; let dojoUsed = 0; // 시즌당 도장 우선 계약 최대 2건
+  const dojo = rivals.filter(r => !r.graduated && rivalDef(r) && kindOf(rivalDef(r)!) === 'main').sort((a, b) => dojoOrder(a) - dojoOrder(b))[0]; let dojoUsed = 0; // 시즌당 도장 우선 계약 최대 2건 (메인만)
+  const pool = rivals.filter(r => { const d = rivalDef(r); return !(r.graduated && d && kindOf(d) !== 'main'); }); // 졸업한 서브는 계약이 끊긴다 (메인은 졸업 뒤에도 계약 공급원)
   const n = rng.int(2, 4); // 1대1 위주라 계약 수를 늘려 시즌 총 출전 자리를 유지
   const out: Contract[] = [];
   const mine = roster.filter(g => g.alive && g.status !== 'doctor'); const ref = mine.length ? teamPower(mine) / mine.length : 0; // 내 검투사 한 명의 평균 전력 (없으면 옛 방식)
@@ -55,9 +56,9 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
     if (rivals.length) {
       if (ref > 0 && dojo && dojoUsed < 2) { const combo = dojoCombo(dojo.roster.filter(g => g.alive && g.injured === 0 && g.id !== dojo.starId && !g.pledged), size, target); if (combo) { enemy = combo; rivalId = dojo.id; dojoUsed++; } }
       if (enemy) { /* 도장 우선 */ }
-      else if (ref > 0) { let bd = Infinity; for (const rv of rivals) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0 && g.id !== rv.starId && !g.pledged), size, target); /* 간판은 졸업전에서만 만난다 */ if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
+      else if (ref > 0) { let bd = Infinity; for (const rv of pool) { const combo = closestCombo(rv.roster.filter(g => g.alive && g.injured === 0 && g.id !== rv.starId && !g.pledged), size, target); /* 간판은 졸업전에서만 만난다 */ if (!combo) continue; const d = Math.abs(teamPower(combo) - target); if (d < bd) { bd = d; enemy = combo; rivalId = rv.id; } }
         if (enemy && bd > target * 0.15) { enemy = null; rivalId = undefined; } } // 목표에 가장 가까운 파밀리아 조합. 15% 넘게 벗어나면 파밀리아 밖에서 (주최자가 다른 라니스타에게서 빌려 온 검투사 — 고증: 지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
-      else { const order = [...rivals].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy) { rivalId = rv.id; break; } } }
+      else { const order = [...pool].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy) { rivalId = rv.id; break; } } }
     }
     if (!enemy) enemy = Array.from({ length: size }, () => { // 타지 라니스타의 검투사: 서열로만 난이도를 맞춘다 (약 = 형 선고자 티로 · 중 = 티로/베테라누스 반반 · 강 = 베테라누스). 능력치를 따로 깎거나 올리지 않는다
       if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
@@ -66,7 +67,8 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
       const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
     });
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
-    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier >= 2 ? 1 : 0, size, enemy, enemyPreview, rivalId, clauses: offerClauses(rng, host, tier), accepted: [] });
+    const rvd = rivalId != null ? rivalDef({ id: rivalId } as Rival) : undefined; const clauses = rvd && kindOf(rvd) === 'damnati' ? ['sine_missione' as const, ...offerClauses(rng, host, tier).filter(x => x !== 'sine_missione')].slice(0, 2) : offerClauses(rng, host, tier); // 죄수단 경기는 시네 미시오네를 내건다
+    out.push({ id: cid++, tier, venue: rng.pick(VENUES[tier]), host, needVeterans: tier >= 2 ? 1 : 0, size, enemy, enemyPreview, rivalId, clauses, accepted: [] });
   }
   // 매 시즌 등급 1 계약이 최소 하나는 있어야 한다 (베테라누스 없는 루두스가 한 시즌을 날리지 않도록)
   if (!out.some(c => c.tier === 1)) { out[0].tier = 1; out[0].venue = rng.pick(VENUES[1]); out[0].needVeterans = 0; }
