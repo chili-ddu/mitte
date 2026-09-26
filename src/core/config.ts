@@ -12,6 +12,7 @@ export const CONFIG = {
   upkeepSmallLudus: 0.75,   // 켈라 4칸 이하 작은 루두스는 검투사 유지비 −25% (초반 완화)
   upkeepFame: { from: 60, per: 40 },
   contractDiff: { ratio: { weak: 0.85, even: 1.1, strong: 1.4 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
+  regionMul: { campania: 1, roma: 1.25 } as Record<'campania' | 'roma', number>, // 지역별 파밀리아 소속 전력 배율: 로마는 수준이 다르다 (데려온 로스터 + 갈루스로 2회차 승률 90%가 나와 1.25로. 05 참고)
   challenge: { fameWin: 10, fameLose: -4, basePower: 149, secondPowerMul: 0.85, secondHonorMul: 0.5, starWinsPerHonor: 5 }, // 졸업전(간판내기): 승리 호감도 +10(도장 하나가 일반 승리 여럿보다 큼) · 패배 −4 · 간판 절대 강도 = basePower(시즌 1 베테라누스 평균 전력 149 = 기술 포함, 2026-09-23 2,000명 측정) × 파밀리아 계수 · 두 번째는 간판의 0.85배 전력·절반 명예 · 간판 승수 = 명예÷5
   rivalFameGrow: 0.004,     // 경쟁 파밀리아 보충 검투사 강도: 내 호감도 50 위로 1점당 // 명성 유지비: 호감도 60부터 (호감도−50)×40 (연회·선물·후원 없이는 이름이 안 남는다)
   statRoll: { // 시장·상대 검투사의 초기 능력치: 유형 기본치에 스탯마다 [lo, hi] 배율을 따로 굴린다 (전력은 그 결과로 계산). 속도는 유형 고정

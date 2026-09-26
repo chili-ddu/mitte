@@ -2,7 +2,7 @@
 import type { Gladiator, GType, Lineage } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { makeGladiator, fitPower, RESERVED_NAMES } from './gladiator.js';
+import { makeGladiator, fitPower, powerOf, RESERVED_NAMES } from './gladiator.js';
 import { CAST, castState, makeFromCast, type CastBook } from './cast.js';
 import { eligibleSkills } from './skills.js';
 
@@ -22,7 +22,12 @@ export interface RivalDef {
   size?: number;                 // 정원 (기본 6 = 간판+두 번째+소속 4. 서브는 4 = 얼굴+소속 3)
   second?: { name: string; type: GType; lineage: Lineage }; // 서브는 없을 수 있다
   color?: string;                // 서브의 색 (한 줄)
+  region?: Region;               // 지역 (기본 캄파니아). 2회차 로마는 별도 세트
+  finale?: boolean;              // 최종전(로마 근위대): 간판·판돈 없음, 오자마자 걸어온다. 이기고 병사를 죽이지 않으면 황제가 만족 → 금반지(2회차 엔딩)
 }
+export type Region = 'campania' | 'roma';
+export const REGION_KO: Record<Region, string> = { campania: '캄파니아', roma: '로마' };
+export const regionOf = (d: RivalDef): Region => d.region ?? 'campania';
 export const VISITOR_ID = 7;
 export const kindOf = (d: RivalDef) => d.kind ?? 'main';
 export const sizeOf = (d: RivalDef) => d.size ?? 6;
@@ -42,6 +47,18 @@ export const RIVAL_DEFS: RivalDef[] = [
   { id: 16, kind: 'sub', size: 4, name: '푸테올리 항구 파밀리아', profile: 'major', desc: '항구의 거친 포로들. 강하고 부상이 잦다', color: '항구의 포로', order: 106, after: 3, star: { name: '우르비쿠스', type: 'secutor', lineage: 'place', honor: 60 }, typeWeights: { secutor: 3, dimachaerus: 3, hoplomachus: 2 }, challenge: { size: 3, strength: 1.25, tier: 2 } },
   { id: 17, kind: 'sub', size: 3, name: '여성 검투사단', profile: 'local', desc: '아마존과 아킬리아의 짝(할리카르나소스 부조). 셋뿐인 작은 단', color: '작은 단', order: 107, after: 3, star: { name: '아마존', type: 'provocator', lineage: 'myth', honor: 50 }, second: { name: '아킬리아', type: 'provocator', lineage: 'myth' }, typeWeights: { provocator: 4, retiarius: 2 }, challenge: { size: 1, strength: 1.2, tier: 2 } },
   { id: 18, kind: 'sub', size: 4, name: '베네벤툼 파밀리아', profile: 'major', desc: '노장들. 기술은 많고 체력은 없다', color: '노장', order: 108, after: 6, star: { name: '푸그낙스', type: 'thraex', lineage: 'nickname', honor: 70 }, typeWeights: { thraex: 3, hoplomachus: 3, provocator: 2 }, challenge: { size: 1, strength: 1.35, tier: 3 } },
+  // ── 2회차 로마 (docs/08 10-4): 직영 루두스 넷 + 사설 스타틸리우스, 최종전 근위대. 서브 넷 + 죄수단. 갈루스는 1회차 엔딩에서 내게 넘어와 갈리쿠스 간판은 브리토
+  { id: 21, region: 'roma', name: '루두스 갈리쿠스', profile: 'major', desc: '황제 직영. 갈리아·브리타니아 포로. 1회차 방문단으로 이미 한 번 꺾은 집 — 간판 갈루스를 잃고 브리토가 잇는다', order: 1, star: { name: '브리토', type: 'provocator', lineage: 'place', honor: 60 }, second: { name: '아르베르누스', type: 'murmillo', lineage: 'place' }, typeWeights: { murmillo: 3, provocator: 3, thraex: 2 }, challenge: { size: 1, strength: 1.4, tier: 1 } },
+  { id: 22, region: 'roma', name: '루두스 다쿠스', profile: 'major', desc: '황제 직영. 다키아 포로, 시카', order: 2, after: 21, star: { name: '다쿠스', type: 'thraex', lineage: 'place', honor: 70 }, second: { name: '게타', type: 'dimachaerus', lineage: 'place' }, typeWeights: { thraex: 4, dimachaerus: 3 }, challenge: { size: 1, strength: 1.5, tier: 1 } },
+  { id: 23, region: 'roma', name: '루두스 마투티누스', profile: 'major', desc: '황제 직영. 아침 경기 = 사냥꾼 양성소. 창과 말', order: 3, after: 22, star: { name: '카르포포루스', type: 'hoplomachus', lineage: 'nickname', honor: 80 }, second: { name: '이아쿨라토르', type: 'retiarius', lineage: 'nickname' }, typeWeights: { hoplomachus: 3, eques: 3, retiarius: 3 }, challenge: { size: 1, strength: 1.6, tier: 2 } },
+  { id: 24, region: 'roma', name: '스타틸리우스 파밀리아', profile: 'grand', desc: '로마 최초 석조 경기장을 지은 가문의 사설 검투사단(묘지 비문 실존). 간판 헤르메스는 세 유형을 다 싸운다', order: 4, after: 23, star: { name: '헤르메스', type: 'provocator', lineage: 'myth', honor: 85 }, second: { name: '아킬레스', type: 'secutor', lineage: 'myth' }, typeWeights: {}, challenge: { size: 1, strength: 1.7, tier: 2 } },
+  { id: 25, region: 'roma', name: '루두스 마그누스', profile: 'grand', desc: '콜로세움 옆 최대 직영 루두스. 프리스쿠스와 베루스 — 개장전에서 함께 루디스를 받은 짝', order: 5, after: 24, star: { name: '프리스쿠스', type: 'murmillo', lineage: 'victory', honor: 95 }, second: { name: '베루스', type: 'thraex', lineage: 'victory' }, typeWeights: {}, challenge: { size: 2, strength: 1.85, tier: 3 } },
+  { id: 26, region: 'roma', name: '근위대 정예', profile: 'grand', desc: '황제의 여흥 — 근위대 병사 셋과 3대3. 간판도 판돈도 없다. 이기되 병사를 죽이지 않으면 황제가 만족해 금반지를 내린다', order: 6, after: 25, star: { name: '백인대장', type: 'murmillo', lineage: 'nickname', honor: 0 }, typeWeights: { murmillo: 1 }, challenge: { size: 3, strength: 2.0, tier: 3 }, finale: true, size: 3 },
+  { id: 31, region: 'roma', kind: 'sub', size: 3, name: '아피아 가도 순회단', profile: 'local', desc: '모자이크의 짝 칼렌디오와 아스티아낙스. 시장에서 안 팔린 사람들이 여기로 온다', color: '떠돌이단', order: 101, star: { name: '칼렌디오', type: 'retiarius', lineage: 'nickname', honor: 50 }, typeWeights: {}, challenge: { size: 1, strength: 1.3, tier: 1 } },
+  { id: 32, region: 'roma', kind: 'sub', size: 4, name: '수부라 뒷골목단', profile: 'local', desc: '빈민가 흥행. 규칙을 잘 어긴다', color: '뒷골목', order: 102, star: { name: '나수스', type: 'murmillo', lineage: 'nickname', honor: 45 }, typeWeights: { thraex: 3, retiarius: 2, dimachaerus: 3 }, challenge: { size: 1, strength: 1.35, tier: 1 } },
+  { id: 33, region: 'roma', kind: 'sub', size: 3, name: '도미티아누스 야간 경기단', profile: 'local', desc: '횃불 아래 밤 경기의 여성단 (도미티아누스의 야간 경기 기록). 메비아는 유베날리스의 여성 사냥꾼', color: '밤 경기', order: 103, after: 22, star: { name: '메비아', type: 'provocator', lineage: 'myth', honor: 55 }, typeWeights: { provocator: 4, retiarius: 2 }, challenge: { size: 1, strength: 1.45, tier: 2 } },
+  { id: 34, region: 'roma', kind: 'damnati', size: 4, name: '담나티 (죄수단)', profile: 'local', desc: '로마의 죄수단은 규모가 크다. 시네 미시오네', color: '죄수단', order: 104, after: 22, star: { name: '죄수', type: 'dimachaerus', lineage: 'nickname', honor: 0 }, typeWeights: { dimachaerus: 3, thraex: 3 }, challenge: { size: 1, strength: 1.3, tier: 1 } },
+  { id: 35, region: 'roma', kind: 'sub', size: 4, name: '히스파니아 속주단', profile: 'major', desc: '속주에서 올라온 검투사단. 3회차 순회의 예고편', color: '속주', order: 105, after: 23, star: { name: '프루덴스', type: 'murmillo', lineage: 'victory', honor: 65 }, typeWeights: { hoplomachus: 3, retiarius: 3, secutor: 2 }, challenge: { size: 2, strength: 1.55, tier: 2 } },
   { id: VISITOR_ID, name: '황제 루두스 방문단', profile: 'grand', desc: '로마 직영 루두스 갈리쿠스의 사절. 동네 짱의 소문을 듣고 왔다. 간판 갈루스를 걸고 3대3 — 이기면 초청장과 갈루스를 얻어 로마로', order: 7, after: 1, star: { name: '갈루스', type: 'murmillo', lineage: 'place', honor: 95 }, second: { name: '브리토', type: 'provocator', lineage: 'place' }, typeWeights: {}, challenge: { size: 3, strength: 1.6, tier: 3 }, visitor: true },
 ];
 for (const d of RIVAL_DEFS) { RESERVED_NAMES.add(d.star.name); if (d.second) RESERVED_NAMES.add(d.second.name); }
@@ -72,9 +89,10 @@ export function makeStar(rng: Rng, season: number, def: RivalDef): Gladiator { r
 export function makeSecond(rng: Rng, season: number, def: RivalDef): Gladiator | undefined { return def.second ? makeNamed(rng, season, def.second, Math.round(def.star.honor * CONFIG.challenge.secondHonorMul), CONFIG.challenge.basePower * def.challenge.strength * CONFIG.challenge.secondPowerMul, def.profile) : undefined; }
 function makeRival(rng: Rng, season: number, def: RivalDef, book?: CastBook): Rival {
   if (kindOf(def) === 'damnati') { const r: Gladiator[] = []; while (r.length < sizeOf(def)) r.push(makeDamnatus(rng, season, r, def)); return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season }; } // 죄수단: 간판 없음
+  if (def.finale) { const r: Gladiator[] = []; for (let k = 0; k < sizeOf(def); k++) { const g = makeNamed(rng, season, { name: k === 0 ? '백인대장' : '근위병', type: 'murmillo', lineage: 'nickname' }, 0, CONFIG.challenge.basePower * def.challenge.strength, def.profile); g.origin = 'auctoratus'; const base = g.name; let j = 0; while (r.some(o => o.name === g.name) && j < ORD.length - 1) { j++; g.name = base + ORD[j]; } r.push(g); } return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season, starId: r[0].id }; } // 최종전: 군단병 셋 (스쿠툼·글라디우스 = 무르밀로로 근사. 필룸·규율은 미구현). 백인대장이 간판 자리 (판돈은 아니다)
   const star = makeStar(rng, season, def), second = makeSecond(rng, season, def);
   const r: Gladiator[] = second ? [star, second] : [star];
-  if (book) for (const e of CAST.filter(e => e.role === 'member' && e.familia === def.id)) { castState(book, e.id).taken = true; r.push(makeFromCast(e, season, { member: true })); } // 소속은 명부에서
+  if (book) for (const e of CAST.filter(e => e.role === 'member' && e.familia === def.id)) { castState(book, e.id).taken = true; const g = makeFromCast(e, season, { member: true }); const P = PROFILE[def.profile]; if (P.grow) { g.base.atk += P.grow; g.base.def += P.grow; } const mul = CONFIG.regionMul[regionOf(def)]; if (mul !== 1) fitPower(g, powerOf(g) * mul); r.push(g); } // 소속은 명부에서. 큰 루두스는 공·방 가산, 로마는 지역 배율
   while (r.length < sizeOf(def)) r.push(makeMember(rng, season, r, def.profile, 0, def.typeWeights));
   return { id: def.id, name: def.name, roster: r, vsMe: { wins: 0, losses: 0, draws: 0 }, profile: def.profile, since: season, starId: star.id, secondId: second?.id };
 }
@@ -82,7 +100,7 @@ function makeRival(rng: Rng, season: number, def: RivalDef, book?: CastBook): Ri
 function makeDamnatus(rng: Rng, season: number, roster: Gladiator[], def: RivalDef): Gladiator { const g = makeGladiator(rng, 'tiro', { season, type: weightedType(rng, def.typeWeights), name: '죄수' }); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); g.boughtSeason = season; const base = g.name; let k = 0; while (roster.some(o => o.name === g.name) && k < ORD.length - 1) { k++; g.name = base + ORD[k]; } return g; }
 // 간판이 빠지면 두 번째가, 둘 다 없으면 소속 중 명예 최고가 잇는다. 파밀리아는 무너지지 않는다 (해체·자동 졸업으로 두면 간판을 죽이는 게 지름길이 된다)
 export function promoteStar(r: Rival) {
-  { const d = rivalDef(r); if (d && kindOf(d) === 'damnati') return; } // 죄수단은 간판이 없다
+  { const d = rivalDef(r); if (d && (kindOf(d) === 'damnati' || d.finale)) return; } // 죄수단·근위대는 승격이 없다
   const alive = (id?: number) => id != null && r.roster.some(g => g.id === id && g.alive);
   const best = (skip: (number | undefined)[]) => [...r.roster].filter(g => g.alive && !skip.includes(g.id)).sort((a, b) => ((b.honor ?? 0) - (a.honor ?? 0)) || (b.wins - a.wins))[0];
   if (!alive(r.starId)) { r.starId = alive(r.secondId) ? r.secondId : best([])?.id; if (r.starId === r.secondId) r.secondId = undefined; }
@@ -90,11 +108,11 @@ export function promoteStar(r: Rival) {
 }
 export const namedCount = (r: Rival) => [r.starId, r.secondId].filter(id => id != null && r.roster.some(g => g.id === id)).length;
 // 새 게임: 앞 집이 없는 파밀리아만 (처음엔 지방 둘)
-export function makeRivals(rng: Rng, season = 1, book?: CastBook): Rival[] { return RIVAL_DEFS.filter(d => d.after == null).map(d => makeRival(rng, season, d, book)); }
+export function makeRivals(rng: Rng, season = 1, book?: CastBook, region: Region = 'campania'): Rival[] { return RIVAL_DEFS.filter(d => d.after == null && regionOf(d) === region).map(d => makeRival(rng, season, d, book)); }
 // 시즌 시작: 앞 집을 졸업했으면 다음 집이 이 지방에 나타난다 (도장 사슬). 돌아온 목록 = 이번에 나타난 파밀리아
-export function arriveRivals(rng: Rng, rivals: Rival[], season: number, book?: CastBook): Rival[] {
+export function arriveRivals(rng: Rng, rivals: Rival[], season: number, book?: CastBook, region: Region = 'campania'): Rival[] {
   const out: Rival[] = [];
-  for (const d of RIVAL_DEFS) { if (rivals.some(r => r.id === d.id)) continue; const prev = d.after == null ? undefined : rivals.find(r => r.id === d.after); if (d.after == null || prev?.graduated) { const r = makeRival(rng, season, d, book); rivals.push(r); out.push(r); } }
+  for (const d of RIVAL_DEFS) { if (regionOf(d) !== region || rivals.some(r => r.id === d.id)) continue; const prev = d.after == null ? undefined : rivals.find(r => r.id === d.after); if (d.after == null || prev?.graduated) { const r = makeRival(rng, season, d, book); rivals.push(r); out.push(r); } }
   return out;
 }
 export const rivalDef = (r: Rival): RivalDef | undefined => RIVAL_DEFS.find(d => d.id === r.id);
@@ -102,9 +120,10 @@ export const rivalDef = (r: Rival): RivalDef | undefined => RIVAL_DEFS.find(d =>
 export function replenishRivals(rng: Rng, rivals: Rival[], season: number, fame = 0, book?: CastBook) {
   for (const r of rivals) {
     for (const g of r.roster) { if (g.injured > 0) g.injured--; if ((season - 1) % 4 === 0) g.age = (g.age ?? 22) + 1; }
+    { const d = rivalDef(r); if (d?.finale) { while (r.roster.filter(g => g.alive).length < sizeOf(d)) { const g = makeNamed(rng, season, { name: '근위병', type: 'murmillo', lineage: 'nickname' }, 0, CONFIG.challenge.basePower * d.challenge.strength, d.profile); g.origin = 'auctoratus'; const base = g.name; let j = 0; while (r.roster.some(o => o.name === g.name) && j < ORD.length - 1) { j++; g.name = base + ORD[j]; } r.roster.push(g); } r.roster = r.roster.filter(g => g.alive); continue; } } // 근위대: 병사는 얼마든지 있다 — 죽은 자리는 새 병사로
     promoteStar(r); const def = rivalDef(r); const slots = def ? sizeOf(def) - (def.second ? 2 : 1) : 4; const damnati = !!def && kindOf(def) === 'damnati';
     while (r.roster.length - namedCount(r) < (damnati ? sizeOf(def!) : slots)) { // 보충은 소속 자리만. 간판·두 번째 자리는 승격으로만 채운다. 시장에서 안 팔려 떠난 사람(gone)은 순회단(13)이 있으면 순회단으로, 없으면 아무 집에나 — "안 사면 적이 된다"
-      const tourOpen = rivals.some(x => x.id === 13); const gone = book && (r.id === 13 || !tourOpen) ? CAST.filter(e => e.role === 'market' && castState(book, e.id).gone && !castState(book, e.id).taken) : [];
+      const tourOpen = rivals.some(x => x.id === 13 || x.id === 31); const gone = book && (r.id === 13 || r.id === 31 || !tourOpen) ? CAST.filter(e => e.role === 'market' && castState(book, e.id).gone && !castState(book, e.id).taken) : [];
       if (damnati) r.roster.push(makeDamnatus(rng, season, r.roster, def!));
       else if (gone.length) { const e = rng.pick(gone); castState(book!, e.id).taken = true; const g = makeFromCast(e, season); g.origin = 'slave'; r.roster.push(g); }
       else r.roster.push(makeMember(rng, season, r.roster, r.profile ?? 'local', fame, def?.typeWeights ?? {})); }

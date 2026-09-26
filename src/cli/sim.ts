@@ -1,19 +1,22 @@
-import { newGame, score } from '../core/game.js';
+import { newGame, score, newGameRome, makeLegacy, successorOptions, type GameState } from '../core/game.js';
+import { powerOf } from '../core/gladiator.js';
 import { BOTS } from './bots.js';
 import { CONFIG } from '../core/config.js';
 import { rivalDef, kindOf } from '../core/rivals.js';
 
 const N = Number(process.argv[2] ?? 1000);
 const S = Number(process.argv[3] ?? CONFIG.simSeasons); (CONFIG as { simSeasons: number }).simSeasons = S; // 두 번째 인자: 시즌 수 (기본 12)
-console.log(`전략별 ${N}판 × ${S}시즌 시뮬레이션\n`);
+const ROMA = process.argv.includes('roma'); // 세 번째 인자 'roma': 캄파니아를 초청까지(최대 60시즌) 돌린 뒤 계승 데이터로 로마 2회차를 S 시즌 돈다. 봇은 후계자 = 젊은 후보, 데려갈 둘 = 전력 상위
+function toRome(bot: (st: GameState) => void, seed: number): GameState | null { (CONFIG as { simSeasons: number }).simSeasons = 60; const st = newGame(seed); bot(st); (CONFIG as { simSeasons: number }).simSeasons = S; if (!st.invited) return null; const opts = successorOptions(st); const heir = opts.find(o => o.from && (o.from.age ?? 99) < 36) ?? opts[0]; const picks = st.roster.filter(g => g.alive && g !== heir.from && !(g.name === '갈루스' && g.castId == null)).sort((a, b) => powerOf(b) - powerOf(a)).slice(0, 2); return newGameRome(seed + 7, makeLegacy(st, heir, picks)); }
+console.log(`전략별 ${N}판 × ${S}시즌 시뮬레이션${ROMA ? ' — 2회차 로마 (캄파니아 초청 뒤)' : ''}\n`);
 console.log('전략'.padEnd(18), '파산율', '평균점수', '평균자금', '평균호감', '출전당사망', '평균사망수', '완주시 검투사수', '경기수', '승률', '평균규모', '졸업수', '6졸업률', '6졸업시즌', '간판이적', '판돈상실', '간판사고', '초청률', '초청시즌', '서브졸업');
 for (const [name, bot] of Object.entries(BOTS)) {
   const fameByYear: number[] = []; const fameN: number[] = [];
   let bankrupt = 0, sc = 0, money = 0, fame = 0, deaths = 0, fights = 0, roster = 0, done = 0, games = 0, wins = 0, grads = 0, full = 0, fullSeason = 0, gained = 0, lost = 0, starDied = 0, invited = 0, invitedSeason = 0, subGrad = 0;
   for (let i = 0; i < N; i++) {
-    const st = newGame(1000 + i);
+    const st0 = ROMA ? toRome(bot, 1000 + i) : newGame(1000 + i); if (!st0) continue; const st = st0;
     let f = 0;
-    let g6 = 0; bot(st, r => { f += r.team.length; games++; if (r.winner === 'A') wins++; if (r.challenge) { if (r.challenge.graduated) { const d = rivalDef(r.challenge.rival); if (d && kindOf(d) === 'main') { g6++; if (g6 === 6) { full++; fullSeason += st.season; } } else subGrad++; } if (r.challenge.gained) gained++; if (r.challenge.lost) lost++; if (r.challenge.starDied) starDied++; } }, s2 => { if ((s2.season - 1) % 4 === 0 && s2.season > 1) { const y = (s2.season - 1) / 4 - 1; fameByYear[y] = (fameByYear[y] ?? 0) + s2.fame; fameN[y] = (fameN[y] ?? 0) + 1; } }); grads += g6; if (st.invited) { invited++; invitedSeason += st.invited; }
+    let g6 = 0; bot(st, r => { f += r.team.length; games++; if (r.winner === 'A') wins++; if (r.challenge) { if (r.challenge.graduated) { const d = rivalDef(r.challenge.rival); if (d && kindOf(d) === 'main') { g6++; if (g6 === 6) { full++; fullSeason += st.season; } } else subGrad++; } if (r.challenge.gained) gained++; if (r.challenge.lost) lost++; if (r.challenge.starDied) starDied++; } }, s2 => { if ((s2.season - 1) % 4 === 0 && s2.season > 1) { const y = (s2.season - 1) / 4 - 1; fameByYear[y] = (fameByYear[y] ?? 0) + s2.fame; fameN[y] = (fameN[y] ?? 0) + 1; } }); grads += g6; if (ROMA ? st.reason === '금반지' : st.invited) { invited++; invitedSeason += ROMA ? st.season : st.invited!; }
     if (st.reason === '파산') bankrupt++; else { done++; roster += st.roster.length; }
     sc += score(st); money += st.money; fame += st.fame; deaths += st.graveyard.length; fights += f;
   }

@@ -3,7 +3,7 @@ import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
 import { makeGladiator } from './gladiator.js';
 import { pickEnemies, rivalDef, dojoOrder, kindOf, type Rival } from './rivals.js';
-import { teamPower } from './gladiator.js';
+import { teamPower, fitPower } from './gladiator.js';
 
 const VENUES: Record<number, string[]> = {
   1: ['놀라 목조 경기장', '누케리아 목조 경기장', '헤르쿨라네움 광장'],
@@ -60,11 +60,14 @@ export function offerContracts(rng: Rng, season: number, fame: number, rivals: R
         if (enemy && bd > target * 0.15) { enemy = null; rivalId = undefined; } } // 목표에 가장 가까운 파밀리아 조합. 15% 넘게 벗어나면 파밀리아 밖에서 (주최자가 다른 라니스타에게서 빌려 온 검투사 — 고증: 지방 무누스는 여러 라니스타의 검투사를 섞어 세웠다)
       else { const order = [...pool].sort(() => rng.next() - 0.5); for (const rv of order) { enemy = pickEnemies(rng, rv, size); if (enemy) { rivalId = rv.id; break; } } }
     }
-    if (!enemy) enemy = Array.from({ length: size }, () => { // 타지 라니스타의 검투사: 서열로만 난이도를 맞춘다 (약 = 형 선고자 티로 · 중 = 티로/베테라누스 반반 · 강 = 베테라누스). 능력치를 따로 깎거나 올리지 않는다
-      if (ref <= 0) return makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
-      if (diff === 'strong') return makeGladiator(rng, 'veteranus', { season });
-      if (diff === 'even') return makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season });
-      const g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); return g; // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
+    if (!enemy) enemy = Array.from({ length: size }, () => { // 타지 라니스타의 검투사: 서열로 난이도를 맞추고, 내 전력이 있으면 목표 전력에 맞춘다 (파밀리아 조합이 없을 때 약한 상대만 오면 강한 로스터의 승률이 90%까지 오른다 — 2026-09-26 로마 측정)
+      let g: Gladiator;
+      if (ref <= 0) g = makeGladiator(rng, rng.chance(Math.min(0.8, strength - 0.6)) ? 'veteranus' : 'tiro', { season });
+      else if (diff === 'strong') g = makeGladiator(rng, 'veteranus', { season });
+      else if (diff === 'even') g = makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season });
+      else { g = makeGladiator(rng, 'tiro'); const O = CONFIG.origins.damnatus; g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.stat); g.base.def = Math.max(0, g.base.def + O.stat); } // 고증: 형 선고자(담나티 아드 루둠)는 훈련이 짧은 값싼 싸움꾼이었다
+      if (ref > 0) fitPower(g, target / size);
+      return g;
     });
     const enemyPreview: GType[] = enemy.map(e => e.type); // 에딕타(경기 광고)에 짝이 전부 실렸듯 상대는 공개
     const rvd = rivalId != null ? rivalDef({ id: rivalId } as Rival) : undefined; const clauses = rvd && kindOf(rvd) === 'damnati' ? ['sine_missione' as const, ...offerClauses(rng, host, tier).filter(x => x !== 'sine_missione')].slice(0, 2) : offerClauses(rng, host, tier); // 죄수단 경기는 시네 미시오네를 내건다

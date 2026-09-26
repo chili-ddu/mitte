@@ -70,7 +70,7 @@ export interface Contract {
   enemy: Gladiator[];
   enemyPreview: GType[];  // 공개 정보 (에딕타처럼 상대 전원 공개)
   rivalId?: number;       // 상대 파밀리아
-  challenge?: { rivalId: number; stakeId?: number }; // 졸업전(간판내기): 상대 간판 ↔ 내 검투사(stakeId)를 판돈으로 건다. 이기면 간판이 내 사람, 지면 내 검투사가 그 집으로
+  challenge?: { rivalId: number; stakeId?: number; finale?: boolean }; // 졸업전(간판내기). finale: 최종전(판돈 없음, 황제의 만족): 상대 간판 ↔ 내 검투사(stakeId)를 판돈으로 건다. 이기면 간판이 내 사람, 지면 내 검투사가 그 집으로
 }
 
 // (구) 턴제 전투 유닛. 위치 기반 전투에서는 battle.ts 내부 타입 사용

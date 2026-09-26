@@ -8,7 +8,7 @@ import { makeGladiator, valueOf, RESERVED_NAMES } from './gladiator.js';
 import { grantRandomSkills } from './skills.js';
 import type { Talent } from './talent.js';
 
-export interface CastEntry { id: string; name: string; type: GType; lineage: Lineage; talent: Talent; role: 'market' | 'member'; familia?: number; seed: number; scaeva?: boolean }
+export interface CastEntry { id: string; name: string; type: GType; lineage: Lineage; talent: Talent; role: 'market' | 'member'; familia?: number; seed: number; scaeva?: boolean; region?: 'campania' | 'roma' }
 export const CAST: CastEntry[] = castJson as CastEntry[];
 export const castById = (id: string): CastEntry | undefined => CAST.find(e => e.id === id);
 for (const e of CAST) RESERVED_NAMES.add(e.name);
