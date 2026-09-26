@@ -13,7 +13,7 @@ export const CONFIG = {
   upkeepFame: { from: 60, per: 40 },
   contractDiff: { ratio: { weak: 0.85, even: 1.1, strong: 1.4 }, lateFrom: 12, lateWeakToStrong: 0.5 }, // 계약 상대 강도(내 최선 팀 전력 대비) · 후반(lateFrom 시즌부터) 약한 계약이 강한 계약으로 바뀔 확률
   regionMul: { campania: 1, roma: 1.25 } as Record<'campania' | 'roma', number>, // 지역별 파밀리아 소속 전력 배율: 로마는 수준이 다르다 (데려온 로스터 + 갈루스로 2회차 승률 90%가 나와 1.25로. 05 참고)
-  challenge: { fameWin: 10, fameLose: -4, basePower: 149, secondPowerMul: 0.85, secondHonorMul: 0.5, starWinsPerHonor: 5 }, // 졸업전(간판내기): 승리 호감도 +10(도장 하나가 일반 승리 여럿보다 큼) · 패배 −4 · 간판 절대 강도 = basePower(시즌 1 베테라누스 평균 전력 149 = 기술 포함, 2026-09-23 2,000명 측정) × 파밀리아 계수 · 두 번째는 간판의 0.85배 전력·절반 명예 · 간판 승수 = 명예÷5
+  challenge: { fameWin: 10, fameLose: -4, basePower: 149, secondPowerMul: 0.85, secondHonorMul: 0.5, starWinsPerHonor: 5, starAge: [22, 26] as [number, number] }, // 졸업전(간판내기): 승리 호감도 +10(도장 하나가 일반 승리 여럿보다 큼) · 패배 −4 · 간판 절대 강도 = basePower(시즌 1 베테라누스 평균 전력 149 = 기술 포함, 2026-09-23 2,000명 측정) × 파밀리아 계수 · 두 번째는 간판의 0.85배 전력·절반 명예 · 간판 승수 = 명예÷5 · 간판·두 번째 나이 22~26 (베테라누스 띠 24~32로 두면 6년차 영입 때 이미 33~38세라 노쇠 — 8차 플레이테스트)
   rivalFameGrow: 0.004,     // 경쟁 파밀리아 보충 검투사 강도: 내 호감도 50 위로 1점당 // 명성 유지비: 호감도 60부터 (호감도−50)×40 (연회·선물·후원 없이는 이름이 안 남는다)
   statRoll: { // 시장·상대 검투사의 초기 능력치: 유형 기본치에 스탯마다 [lo, hi] 배율을 따로 굴린다 (전력은 그 결과로 계산). 속도는 유형 고정
     tiro:      { hp: [0.80, 0.92], atk: [0.80, 0.92], def: [0.75, 0.92] },   // 어린 티로: 단련이 없으니 약하다
@@ -60,7 +60,7 @@ export const CONFIG = {
   origins: { // 검투사 확보 경로 (고증: 노예 매매, 전쟁 포로, 형벌 담나티 아드 루둠, 자유민 아욱토라티)
     captive:    { price: 0.65, atk: 2, hp: 10, missio: -0.05 },   // 포로: 싸고 강하지만 관중이 이방인에게 냉담 (미시오 −5%)
     damnatus:   { price: 0.4, stat: -2, comp: 0.5, freeAfter: 12 }, // 죄수: 매우 싸고 약함, 배상 절반, 3년(12시즌) 뒤 자유(루디아리우스)
-    auctoratus: { price: 0.8, term: 8, renew: 0.5, base: 0.3, perFame: 0.005, second: 0.25 }, // 자유민 지원자: 시장이 아니라 루두스 문 앞에 찾아온다. 시즌마다 확률 base+호감도×perFame, 그 뒤 second 확률로 한 명 더. 계약금(가격×0.8), 급료, 8시즌 계약, 재계약 = 계약금×0.5
+    auctoratus: { price: 0.8, term: 8, renew: 0.5, base: 0, perFame: 0, second: 0 }, /* 지원자 채널 폐지(2026-09-27): base·perFame·second 는 0. term·renew 는 루디스 뒤 자유민 계약에 쓴다 */ // 자유민 지원자: 시장이 아니라 루두스 문 앞에 찾아온다. 시즌마다 확률 base+호감도×perFame, 그 뒤 second 확률로 한 명 더. 계약금(가격×0.8), 급료, 8시즌 계약, 재계약 = 계약금×0.5
     mix: { captive: 0.3, damnatus: 0.25 },                        // 시장 매물 비율 (나머지는 노예 상인). 자유민은 시장에 서지 않는다
   },
   age: { tiro: [17, 30], veteran: [24, 32], applicant: [24, 34], spdFrom: 31, spdEvery: 3, statFrom: 33, statEvery: 2 }, // 검투사 나이와 노쇠 (비문의 사망 연령은 대부분 20~30대, 30대 중반 넘겨 싸운 예는 드묾)

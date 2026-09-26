@@ -139,6 +139,76 @@
       "meaning": "산사람",
       "attested": true,
       "note": "(실) 폼페이 낙서, 10승"
+    },
+    {
+      "ko": "니베우스",
+      "la": "Niveus",
+      "meaning": "눈처럼 흰",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "아르보르",
+      "la": "Arbor",
+      "meaning": "나무",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "루멘",
+      "la": "Lumen",
+      "meaning": "빛",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "글라키에스",
+      "la": "Glacies",
+      "meaning": "얼음",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "실렉스",
+      "la": "Silex",
+      "meaning": "부싯돌",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "볼투르",
+      "la": "Vultur",
+      "meaning": "독수리",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "아페르",
+      "la": "Aper",
+      "meaning": "멧돼지",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "라피스",
+      "la": "Lapis",
+      "meaning": "돌",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "임베르",
+      "la": "Imber",
+      "meaning": "소나기",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "카니스",
+      "la": "Canis",
+      "meaning": "개",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
     }
   ],
   "victory": [
@@ -281,6 +351,76 @@
       "meaning": "무사한",
       "attested": false,
       "note": "(창작)"
+    },
+    {
+      "ko": "라우다투스",
+      "la": "Laudatus",
+      "meaning": "칭송받은",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "코로나투스",
+      "la": "Coronatus",
+      "meaning": "화관 쓴",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "벨록스",
+      "la": "Velox",
+      "meaning": "빠른",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "인테게르",
+      "la": "Integer",
+      "meaning": "온전한",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "프로부스",
+      "la": "Probus",
+      "meaning": "정직한",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "스타빌리스",
+      "la": "Stabilis",
+      "meaning": "굳은",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "아니모수스",
+      "la": "Animosus",
+      "meaning": "용감한",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "데코루스",
+      "la": "Decorus",
+      "meaning": "품위 있는",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "페르빅스",
+      "la": "Pervix",
+      "meaning": "끈질긴",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
+    },
+    {
+      "ko": "아우다쿨루스",
+      "la": "Audaculus",
+      "meaning": "겁 없는",
+      "attested": false,
+      "note": "(창작) 2026-09-27 랜덤 풀 보충 — 기존 20개가 전부 명부에 예약됨"
     }
   ],
   "myth": [

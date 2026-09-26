@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 import { battle } from './battle.js';
 import { judgeLoser, judgeWinnerDowned, type Fate } from './missio.js';
 import { offerContracts, resetContractIds, nextContractId, venueFor } from './contracts.js';
-import { offerMarket, offerApplicants, starters, drawMarket } from './market.js';
+import { offerMarket, starters, drawMarket } from './market.js';
 import { castState, type CastBook } from './cast.js';
 import { label, maybePromote, rentFee, resetIds, sellPrice, valueOf, peekNextId, setNextId, makeGladiator } from './gladiator.js';
 import { computeSynergies, classicMatchup } from './synergy.js';
@@ -45,7 +45,7 @@ export interface FightReport {
   enemyFates: { g: Gladiator; fate: Fate; wound?: boolean }[]; // 상대 쓰러진 검투사의 운명 (실제 판정)
   grudges: { mine: Gladiator; enemy: Gladiator }[]; // 이번 경기의 원한 재대결
   revenges: { mine: Gladiator; enemy: Gladiator }[]; // 복수 성공
-  challenge?: { rival: Rival; won: boolean; graduated: boolean; gained?: Gladiator; lost?: Gladiator; starDied?: boolean; noRoom?: boolean }; // 졸업전 결과: 간판 이적 / 판돈 상실 / 간판 사고사 / 켈라가 없어 못 데려옴
+  challenge?: { rival: Rival; won: boolean; graduated: boolean; gained?: Gladiator; lost?: Gladiator; starDied?: boolean; noRoom?: boolean; stantes?: boolean }; // 졸업전 결과: 간판 이적 / 판돈 상실 / 간판 사고사 / 켈라가 없어 못 데려옴
 }
 
 export interface GameState {
@@ -192,7 +192,7 @@ export function startSeason(st: GameState) {
   offerChallenge(st); // 졸업전(간판내기): 조건을 채운 파밀리아 중 도장 순서가 앞선 하나
   if (st.guestPromise && st.contracts.length) { st.contracts[0].host = 'candidate'; st.contracts[0].guest = true; st.guestPromise = false; st.history.push(`${seasonName(st.season)}: 초대했던 귀족이 선거 경기 계약을 들고 왔다 (${st.contracts[0].venue})`); } // 귀족 손님 초대의 인연
   st.market = offerMarket(st.rng, st.season, st.fame, st.cast, st.market);
-  st.applicants = offerApplicants(st.rng, st.season, st.fame);
+  st.applicants = []; // 자유민 지원자 채널 폐지 (2026-09-27): 확보 경로는 명부 시장 하나. 자유민 계약(급료·기간·재계약)은 루디스를 받은 자유민에게만 남는다
 }
 
 export function available(st: GameState): Gladiator[] { return st.roster.filter(g => g.alive && g.injured === 0 && !g.fought && g.status !== 'doctor'); }
@@ -451,6 +451,10 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
         const mine = team.find(g => g.id === c.challenge!.stakeId); let lost: Gladiator | undefined;
         if (mine && mine.alive) { st.roster = st.roster.filter(r => r !== mine); mine.cell = undefined; pruneBeds(st); mine.status = 'slave'; mine.fought = true; mine.lostToMe = undefined; mine.boughtSeason = st.season; rv.roster.push(mine); lost = mine; st.history.push(`${seasonName(st.season)}: 판돈 ${mine.name} 을(를) ${rv.name} 에 빼앗겼다`); }
         promoteStar(rv); challenge = { rival: rv, won: false, graduated: false, lost, starDied };
+      } else if (rivalDef(rv)?.stantesMissi) { // 스탄테스 미시: 프리스쿠스·베루스 — 둘 다 서서 끝나면 황제가 둘 다 루디스를 내린다. 졸업으로 인정, 판돈은 오가지 않는다 (마르티알리스 『구경거리의 책』 29)
+        rv.graduated = st.season; const freed = rv.roster.filter(g => (g.id === rv.starId || g.id === rv.secondId) && g.alive); for (const g of freed) { g.status = 'rudiarius'; g.rudisSeason = st.season; hallAdd(st, g, 'rudis'); } rv.roster = rv.roster.filter(g => !freed.includes(g)); rv.starId = undefined; rv.secondId = undefined; promoteStar(rv);
+        st.history.push(`${seasonName(st.season)}: ${rv.name} 과 스탄테스 미시 — ${freed.map(g => g.name).join('·')} 이(가) 함께 루디스를 받았다. 졸업으로 인정`);
+        challenge = { rival: rv, won: true, graduated: true, starDied, stantes: true };
       } else { promoteStar(rv); challenge = { rival: rv, won: false, graduated: false, starDied }; }
     }
   }

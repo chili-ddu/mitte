@@ -1,9 +1,7 @@
 import type { Gladiator } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { grantRandomSkills } from './skills.js';
-import { valueOf, makeGladiator } from './gladiator.js';
-import { rollTalent } from './talent.js';
+import { valueOf } from './gladiator.js';
 
 import { CAST, castState, makeFromCast, type CastBook } from './cast.js';
 import type { Talent } from './talent.js';
@@ -30,15 +28,4 @@ export function starters(rng: Rng, book: CastBook): Gladiator[] {
   const felix = CAST.find(e => e.name === '펠릭스')!; const others = CAST.filter(e => e.role === 'market' && e.talent === 0 && e.type !== 'murmillo');
   return [felix, rng.pick(others)].map(e => { castState(book, e.id).taken = true; const g = makeFromCast(e, 1); g.origin = 'slave'; g.buyPrice = valueOf(g); return g; });
 }
-// 자유민 지원자(아욱토라티): 호민관 앞에서 선서하고 라니스타와 직접 계약. 루두스 문 앞에 찾아온다
-export function offerApplicants(rng: Rng, season: number, fame: number): Gladiator[] {
-  const O = CONFIG.origins.auctoratus; const out: Gladiator[] = [];
-  if (season <= 1) return out;
-  const n = rng.chance(O.base + fame * O.perFame) ? (rng.chance(O.second) ? 2 : 1) : 0;
-  for (let i = 0; i < n; i++) {
-    const g = makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season }); g.origin = 'auctoratus'; g.talent = rollTalent(rng, 0.5); // 자유민 지원자는 자질이 한 단계 위일 확률 50% g.buyPrice = Math.round(g.buyPrice * O.price); g.age = rng.int(CONFIG.age.applicant[0], CONFIG.age.applicant[1]);
-    if (g.rank === 'veteranus') { g.wins = Math.max(g.wins, 3); g.fights = Math.max(g.fights, 5); grantRandomSkills(rng, g, rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1])); g.buyPrice = Math.round(valueOf(g) * O.price); }
-    out.push(g);
-  }
-  return out;
-}
+// 자유민 지원자(아욱토라티) 채널은 2026-09-27 폐지 — 랜덤 생성이라 명부 원칙 밖이었고, 명부로 옮기면 한 번뿐인 천부가 계약 만료로 떠난다. 아욱토라티는 루디스 뒤 자유민 계약(급료·재계약)으로만 남긴다

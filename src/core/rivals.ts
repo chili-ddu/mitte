@@ -2,9 +2,9 @@
 import type { Gladiator, GType, Lineage } from './types.js';
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { makeGladiator, fitPower, powerOf, RESERVED_NAMES } from './gladiator.js';
+import { makeGladiator, fitPower, powerOf, RESERVED_NAMES, TYPE_STATS } from './gladiator.js';
 import { CAST, castState, makeFromCast, type CastBook } from './cast.js';
-import { eligibleSkills } from './skills.js';
+import { eligibleSkills, skillFits, type SkillId } from './skills.js';
 
 export type RivalProfile = 'local' | 'major' | 'grand'; // 지방 파밀리아 · 큰 루두스 · 최대 루두스
 export interface Rival { id: number; name: string; roster: Gladiator[]; vsMe?: { wins: number; losses: number; draws: number }; profile?: RivalProfile; since?: number; starId?: number; secondId?: number; graduated?: number; challengeSince?: number } // vsMe: 그 파밀리아가 나를 상대로 거둔 전적 · since: 나타난 시즌 · starId/secondId: 지정 간판·두 번째 · graduated: 졸업(간판내기 승리) 시즌 · challengeSince: 졸업전이 처음 뜬 시즌
@@ -22,6 +22,8 @@ export interface RivalDef {
   size?: number;                 // 정원 (기본 6 = 간판+두 번째+소속 4. 서브는 4 = 얼굴+소속 3)
   second?: { name: string; type: GType; lineage: Lineage }; // 서브는 없을 수 있다
   color?: string;                // 서브의 색 (한 줄)
+  starTypes?: GType[];           // 간판이 시즌마다 바꿔 드는 유형 (헤르메스: "혼자서 세 유형을 다 싸우는 자")
+  stantesMissi?: boolean;        // 졸업전이 무승부(스탄테스 미시)로 끝나면 간판·두 번째 모두 루디스를 받고 졸업으로 인정 (프리스쿠스·베루스, 콜로세움 개장전 기록)
   region?: Region;               // 지역 (기본 캄파니아). 2회차 로마는 별도 세트
   finale?: boolean;              // 최종전(로마 근위대): 간판·판돈 없음, 오자마자 걸어온다. 이기고 병사를 죽이지 않으면 황제가 만족 → 금반지(2회차 엔딩)
 }
@@ -51,8 +53,8 @@ export const RIVAL_DEFS: RivalDef[] = [
   { id: 21, region: 'roma', name: '루두스 갈리쿠스', profile: 'major', desc: '황제 직영. 갈리아·브리타니아 포로. 1회차 방문단으로 이미 한 번 꺾은 집 — 간판 갈루스를 잃고 브리토가 잇는다', order: 1, star: { name: '브리토', type: 'provocator', lineage: 'place', honor: 60 }, second: { name: '아르베르누스', type: 'murmillo', lineage: 'place' }, typeWeights: { murmillo: 3, provocator: 3, thraex: 2 }, challenge: { size: 1, strength: 1.4, tier: 1 } },
   { id: 22, region: 'roma', name: '루두스 다쿠스', profile: 'major', desc: '황제 직영. 다키아 포로, 시카', order: 2, after: 21, star: { name: '다쿠스', type: 'thraex', lineage: 'place', honor: 70 }, second: { name: '게타', type: 'dimachaerus', lineage: 'place' }, typeWeights: { thraex: 4, dimachaerus: 3 }, challenge: { size: 1, strength: 1.5, tier: 1 } },
   { id: 23, region: 'roma', name: '루두스 마투티누스', profile: 'major', desc: '황제 직영. 아침 경기 = 사냥꾼 양성소. 창과 말', order: 3, after: 22, star: { name: '카르포포루스', type: 'hoplomachus', lineage: 'nickname', honor: 80 }, second: { name: '이아쿨라토르', type: 'retiarius', lineage: 'nickname' }, typeWeights: { hoplomachus: 3, eques: 3, retiarius: 3 }, challenge: { size: 1, strength: 1.6, tier: 2 } },
-  { id: 24, region: 'roma', name: '스타틸리우스 파밀리아', profile: 'grand', desc: '로마 최초 석조 경기장을 지은 가문의 사설 검투사단(묘지 비문 실존). 간판 헤르메스는 세 유형을 다 싸운다', order: 4, after: 23, star: { name: '헤르메스', type: 'provocator', lineage: 'myth', honor: 85 }, second: { name: '아킬레스', type: 'secutor', lineage: 'myth' }, typeWeights: {}, challenge: { size: 1, strength: 1.7, tier: 2 } },
-  { id: 25, region: 'roma', name: '루두스 마그누스', profile: 'grand', desc: '콜로세움 옆 최대 직영 루두스. 프리스쿠스와 베루스 — 개장전에서 함께 루디스를 받은 짝', order: 5, after: 24, star: { name: '프리스쿠스', type: 'murmillo', lineage: 'victory', honor: 95 }, second: { name: '베루스', type: 'thraex', lineage: 'victory' }, typeWeights: {}, challenge: { size: 2, strength: 1.85, tier: 3 } },
+  { id: 24, region: 'roma', name: '스타틸리우스 파밀리아', profile: 'grand', desc: '로마 최초 석조 경기장을 지은 가문의 사설 검투사단(묘지 비문 실존). 간판 헤르메스는 세 유형을 다 싸운다', order: 4, after: 23, star: { name: '헤르메스', type: 'provocator', lineage: 'myth', honor: 85 }, second: { name: '아킬레스', type: 'secutor', lineage: 'myth' }, typeWeights: {}, challenge: { size: 1, strength: 1.7, tier: 2 }, starTypes: ['provocator', 'retiarius', 'hoplomachus'] },
+  { id: 25, region: 'roma', name: '루두스 마그누스', profile: 'grand', desc: '콜로세움 옆 최대 직영 루두스. 프리스쿠스와 베루스 — 개장전에서 함께 루디스를 받은 짝', order: 5, after: 24, star: { name: '프리스쿠스', type: 'murmillo', lineage: 'victory', honor: 95 }, second: { name: '베루스', type: 'thraex', lineage: 'victory' }, typeWeights: {}, challenge: { size: 2, strength: 1.85, tier: 3 }, stantesMissi: true },
   { id: 26, region: 'roma', name: '근위대 정예', profile: 'grand', desc: '황제의 여흥 — 근위대 병사 셋과 3대3. 간판도 판돈도 없다. 이기되 병사를 죽이지 않으면 황제가 만족해 금반지를 내린다', order: 6, after: 25, star: { name: '백인대장', type: 'murmillo', lineage: 'nickname', honor: 0 }, typeWeights: { murmillo: 1 }, challenge: { size: 3, strength: 2.0, tier: 3 }, finale: true, size: 3 },
   { id: 31, region: 'roma', kind: 'sub', size: 3, name: '아피아 가도 순회단', profile: 'local', desc: '모자이크의 짝 칼렌디오와 아스티아낙스. 시장에서 안 팔린 사람들이 여기로 온다', color: '떠돌이단', order: 101, star: { name: '칼렌디오', type: 'retiarius', lineage: 'nickname', honor: 50 }, typeWeights: {}, challenge: { size: 1, strength: 1.3, tier: 1 } },
   { id: 32, region: 'roma', kind: 'sub', size: 4, name: '수부라 뒷골목단', profile: 'local', desc: '빈민가 흥행. 규칙을 잘 어긴다', color: '뒷골목', order: 102, star: { name: '나수스', type: 'murmillo', lineage: 'nickname', honor: 45 }, typeWeights: { thraex: 3, retiarius: 2, dimachaerus: 3 }, challenge: { size: 1, strength: 1.35, tier: 1 } },
@@ -81,7 +83,7 @@ function makeMember(rng: Rng, season: number, roster: Gladiator[] = [], profile:
 function makeNamed(rng: Rng, season: number, spec: { name: string; type: GType; lineage: Lineage }, honor: number, power: number, profile: RivalProfile, scaeva?: boolean): Gladiator {
   const P = PROFILE[profile]; const C = CONFIG.challenge;
   const g = makeGladiator(rng, 'veteranus', { season, type: spec.type, lineage: spec.lineage, name: spec.name });
-  g.honor = honor; g.wins = Math.max(3, Math.round(honor / C.starWinsPerHonor)); g.fights = g.wins + rng.int(0, 3); g.talent = 3; g.talentKnown = true; if (scaeva) g.scaeva = true; g.boughtSeason = season;
+  g.age = rng.int(C.starAge[0], C.starAge[1]); g.honor = honor; g.wins = Math.max(3, Math.round(honor / C.starWinsPerHonor)); g.fights = g.wins + rng.int(0, 3); g.talent = 3; g.talentKnown = true; if (scaeva) g.scaeva = true; g.boughtSeason = season;
   const n = rng.int(CONFIG.skills.rivalSkillsVet[0], CONFIG.skills.rivalSkillsVet[1]) + P.skills; for (let k = 0; k < n; k++) { const e = eligibleSkills(g); if (!e.length) break; (g.skills ??= []).push(rng.pick(e).id); }
   return fitPower(g, power);
 }
@@ -122,6 +124,7 @@ export function replenishRivals(rng: Rng, rivals: Rival[], season: number, fame 
     for (const g of r.roster) { if (g.injured > 0) g.injured--; if ((season - 1) % 4 === 0) g.age = (g.age ?? 22) + 1; }
     { const d = rivalDef(r); if (d?.finale) { while (r.roster.filter(g => g.alive).length < sizeOf(d)) { const g = makeNamed(rng, season, { name: '근위병', type: 'murmillo', lineage: 'nickname' }, 0, CONFIG.challenge.basePower * d.challenge.strength, d.profile); g.origin = 'auctoratus'; const base = g.name; let j = 0; while (r.roster.some(o => o.name === g.name) && j < ORD.length - 1) { j++; g.name = base + ORD[j]; } r.roster.push(g); } r.roster = r.roster.filter(g => g.alive); continue; } } // 근위대: 병사는 얼마든지 있다 — 죽은 자리는 새 병사로
     promoteStar(r); const def = rivalDef(r); const slots = def ? sizeOf(def) - (def.second ? 2 : 1) : 4; const damnati = !!def && kindOf(def) === 'damnati';
+    if (def?.starTypes && r.starId != null) { const s = r.roster.find(g => g.id === r.starId); if (s && s.alive && s.name === def.star.name) { const t = rng.pick(def.starTypes); if (t !== s.type) { s.type = t; s.base.spd = TYPE_STATS[t].spd; s.base.range = TYPE_STATS[t].range; s.skills = (s.skills ?? []).filter(id => skillFits(s, id as SkillId)); } } } // 헤르메스: 시즌마다 무장을 바꿔 든다 (마르티알리스 5.24)
     while (r.roster.length - namedCount(r) < (damnati ? sizeOf(def!) : slots)) { // 보충은 소속 자리만. 간판·두 번째 자리는 승격으로만 채운다. 시장에서 안 팔려 떠난 사람(gone)은 순회단(13)이 있으면 순회단으로, 없으면 아무 집에나 — "안 사면 적이 된다"
       const tourOpen = rivals.some(x => x.id === 13 || x.id === 31); const gone = book && (r.id === 13 || r.id === 31 || !tourOpen) ? CAST.filter(e => e.role === 'market' && castState(book, e.id).gone && !castState(book, e.id).taken) : [];
       if (damnati) r.roster.push(makeDamnatus(rng, season, r.roster, def!));
