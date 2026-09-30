@@ -1,0 +1,13 @@
+{
+  "name": "미테! — 라니스타",
+  "short_name": "미테!",
+  "description": "로마 검투사 양성소를 경영하는 자동전투 게임. 오프라인에서도 된다.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e3d1a6",
+  "theme_color": "#3f2916",
+  "lang": "ko",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

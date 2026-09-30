@@ -77,7 +77,7 @@ export const CONFIG = {
   maxTurns: 30,
   combo: { base: 0.12, perSpd: 0.01 },
   crit: { base: 0.08, perSpd: 0.005, mult: 1.6 }, // 치명타: 확률 = base + 속도×perSpd (× 피격자 투구 보정). 피해 ×1.6, 방패 반감 무시 // 연속 공격 확률 = base + 속도 × perSpd (한 턴 1회)
-  startFame: 30,
+  startFame: 30, // 20 으로 내리면 강한 봇 초청률 89 → 59%, 파산 2 → 15% (2026-09-27) — 옛 주인 집안의 검투사단을 산 것이라 이름은 조금 있다. 25 문턱 사건은 시작부터 넘은 것으로 표시
   fameTierReq: { 1: 0, 2: 25, 3: 60 } as Record<number, number>,
   missio: { tierBonus: { 1: 0.10, 2: 0.05, 3: 0 } as Record<number, number>, classic: 0.05, base: 0.64, perFame: 0.003, perWin: 0.02, maxWins: 5, victorySynergy: 0.1, injuryChance: 0.5, instantDeath: { base: 0.03, crit: 0.08 } }, // instantDeath: 쓰러뜨리는 타격이 그 자리에서 목숨을 앗을 확률 (치명타면 더). 판정과 별개, 승리 측도 해당
   fame: { win: 3, classic: 1, lose: -1, refuse: -1, refuseFrom: 40, decayRate: 0.05 }, // 호감도 = 유지해야 하는 평판 (docs/08 7절, 2026-09-24 재정의): 계약 승리 +3×등급 · 전통 짝 +1 · 패배 −1 (승률 45% 봇 기준 승 +2·패 −2 는 등급 1 평형이 20 아래로 내려가 관중이 패배를 더 오래 기억하는 꼴이었다) · 거절 −1(시즌 1회, 호감도 40부터) · 망각 매 시즌 현재값의 5%(평형점 = 시즌 수입의 20배: 소화하는 계약 등급이 곧 천장) · 졸업전 ±는 challenge · 주최자는 배율(hosts.fameMul) · 행사는 events

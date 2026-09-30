@@ -799,3 +799,13 @@ src/web/stickman.ts     attackClipForLoadout(오른손→공격 동작) · offha
 
 ## 자유민 지원자 폐지 (2026-09-27)
 - `startSeason` 이 지원자를 비운다. `offerApplicants` 제거, 규칙 팝업 '확보 경로' 문구 갱신. 웹의 지원자 표시 코드는 비어 있으면 안 그리므로 그대로 둠(옛 저장 호환).
+
+## 캠페인 10단계: 개인 사건·서브 스토리 문턱 (2026-09-27)
+- `core/story.ts`: 시즌 시작(`storySeasonStart`)과 경기 뒤(`storyAfterFight`) 훅. 결과는 `st.notices`(정문 대시보드 한 줄, 시즌마다 비움)와 history. 한 번짜리 사건은 `st.flags`. 저장에 둘 다.
+- 사건: 라니스타 야망 도입(1회차·로마 첫 시즌), 호감도 문턱 25/40/60/80 사건(이름·귀족 초대 응함/문전박대·큰 경기 주최자·로마 소문; 시작부터 넘은 문턱은 조용히 표시), 켈라두스+크레스켄스 짝(함께 있는 시즌마다 호감도 +1), 아틸리우스가 힐라루스를 꺾음(명예 +10·호감도 +3), 살려 준 자에게 죽음(우르비쿠스의 경고 — 모든 검투사에 적용, 40판 봇에 5회), 플람마 루디스 자동 거절(4회째 문구). 이야기 인물은 `castId` 가 없는 것으로 구분.
+- 시작 호감도 20 실험: 강한 봇 초청률 89 → 59%, 파산 2 → 15% 로 되돌림(30).
+- 봇은 서브 얼굴을 거의 얻지 않아 짝·결투·플람마 사건은 시뮬에서 0회. 사람 플레이에서 확인할 것.
+
+## 오프라인 모드 — PWA (2026-09-30)
+- `public/sw.js`(의존성 없음): 설치 때 껍데기와 index.html 이 가리키는 자산을 미리 캐시, 같은 출처 GET 은 캐시 우선 + 뒤에서 갱신. 새 배포는 `CACHE` 이름을 올려 옛 캐시를 지운다. `public/manifest.webmanifest`·`public/icon.svg`(스틱맨 검투사, 벽화 팔레트), index.html 에 manifest·theme-color·아이콘 링크. `main.ts` 는 프로덕션 빌드에서만 등록(`import.meta.env.PROD`, 개발 서버 HMR 과 충돌 방지). `src/vite-env.d.ts` 로 vite/client 타입.
+- 확인(에고, `vite preview`): 등록·캐시 목록·오프라인 재로드에서 게임 화면이 뜸. GitHub Pages 의 base(`/저장소명/`)는 `import.meta.env.BASE_URL` 로 따라간다. 저장은 localStorage 라 오프라인 영향 없음. iOS 홈 화면 설치는 SVG 아이콘을 쓰므로 iOS 가 PNG 를 요구하면 나중에 PNG 를 더한다.

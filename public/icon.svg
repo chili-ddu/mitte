@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 미테(살려 줘라)의 판정: 엄지 하나. 회벽 바탕에 붉은 황토 먹선, 폼페이 낙서풍 -->
+  <rect width="512" height="512" rx="110" fill="#e8d9b3"/>
+  <rect x="22" y="22" width="468" height="468" rx="92" fill="none" stroke="#c8ad73" stroke-width="6" opacity=".7"/>
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- 엄지: 둥근 마디 (굵은 먹선 위에 바탕색으로 속을 비워 윤곽만) -->
+    <path d="M200 262 L232 132" stroke="#7a3b1e" stroke-width="98"/>
+    <path d="M200 262 L232 132" stroke="#e8d9b3" stroke-width="46"/>
+    <!-- 주먹 -->
+    <path d="M150 268 h134 q26 0 26 26 v104 q0 30 -30 30 h-96 q-30 0 -36 -30 l-20 -90 q-6 -40 22 -40 z" stroke="#7a3b1e" stroke-width="26" fill="#e8d9b3"/>
+    <!-- 손가락 마디 -->
+    <path d="M310 330 h-26 M310 374 h-26" stroke="#7a3b1e" stroke-width="22"/>
+  </g>
+</svg>

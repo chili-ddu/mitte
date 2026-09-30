@@ -54,6 +54,8 @@ function fitStage() {
 addEventListener('resize', fitStage); addEventListener('orientationchange', () => setTimeout(fitStage, 50)); fitStage();
 document.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
 const SAVE_KEY = 'lanista-save';
+// 오프라인: 서비스 워커 등록 (public/sw.js). 프로덕션 빌드에서만 — 개발 서버는 HMR 과 충돌한다. 실패해도 게임은 그대로 돈다
+if (import.meta.env.PROD && 'serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined); });
 const DEBUG = /[?&]debug/.test(location.search); // 테스트용 버튼(건너뛰기·결과 보기) 표시
 if (DEBUG && /[?&]proc/.test(location.search)) setForceProc(true); // ?debug&proc: 기술이 조건만 맞으면 반드시 발동 (연출 확인용)
 function loadSave(): GameState | null { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? deserialize(JSON.parse(raw)) : null; } catch { return null; } }
@@ -967,6 +969,7 @@ function renderDash(v: View = view): Node[] {
   const out: Node[] = [h('h3', {}, '정문', h('span', { class: 'hint', style: 'margin-left:8px;text-transform:none' }, `${seasonName(st.season)} · ${st.money.toLocaleString()} HS`))];
   const injured = st.roster.filter(g => g.injured); const avail = available(st);
   const upkeep = upkeepOf(st);
+  for (const n of st.notices ?? []) out.push(item('todo', n)); // 사건 (story.ts)
   if (!st.roster.length) out.push(item('warn', '검투사가 없습니다. 시장에서 검투사를 사들이세요.'));
   for (const rv of st.rivals.filter(r => r.since === st.season && st.season > 1)) out.push(item('todo', `${rv.name} 이(가) 이 지방에 나타났다 — ${rivalDef(rv)?.desc ?? ''}. 앞으로 계약 상대로 만난다.`)); // 앞 집을 졸업해 다음 집이 온 시즌
   for (const c of st.contracts.filter(c => c.challenge)) { const rv = rivalOf(st.rivals, c.challenge!.rivalId); const star = rv ? rivalStar(rv) : undefined; out.push(item('todo', `${rv?.name ?? '파밀리아'} 이(가) 간판 ${star?.name ?? ''} 을(를) 걸고 졸업전을 제안했다 (${c.size}대${c.size}). 내 검투사 하나를 판돈으로 건다 — 이기면 간판이 우리 루두스로, 지면 그를 빼앗긴다.`)); }
