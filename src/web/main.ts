@@ -1177,8 +1177,8 @@ function startTravel(to: View) {
 
 // ── 검투사 시장: 판매대(카타스타) 위에 사슬로 묶인 매물이 한 줄로 서 있다. 클릭하면 앞으로 나와 강조, 아래에 상세·구매
 // 시민(구경꾼·행인): 짧은 튜닉 스틱맨. pose: watch(팔짱) / point(손가락질) / child(아이) / tiptoe(까치발) / walk
-function drawCivilian(ctx: CanvasRenderingContext2D, x: number, y: number, sc: number, pose: 'watch' | 'point' | 'child' | 'tiptoe' | 'walk', t: number, seed: number, facing: 1 | -1 = 1) {
-  // 기본 리그 + 튜닉. 자세만 다르다
+function drawCivilian(ctx: CanvasRenderingContext2D, x: number, y: number, sc: number, pose: 'watch' | 'point' | 'child' | 'tiptoe' | 'walk', t: number, seed: number, facing: 1 | -1 = 1, toga = false) {
+  // 기본 리그 + 튜닉(로마 광장의 일부 성인은 흰 토가). 자세만 다르다
   const tint = ['#c9b283', '#b9c2a8', '#c8a878', '#a8b6c2'][seed % 4];
   let sk: Skeleton; let scale = sc;
   if (pose === 'watch') sk = NPC_POSES.watch;
@@ -1186,7 +1186,7 @@ function drawCivilian(ctx: CanvasRenderingContext2D, x: number, y: number, sc: n
   else if (pose === 'tiptoe') sk = { ...NPC_POSES.tiptoe, lift: Math.abs(Math.sin(t * 3 + seed)) * 4 };
   else if (pose === 'walk') sk = walkSkeleton(t * 8 + seed);
   else { sk = NPC_POSES.stand; scale *= 0.62; }
-  drawStickman(ctx, 'murmillo', { x, y, scale, facing, skeleton: sk, t: t + seed, ink: INK, bare: true, garment: 'tunic', garmentColor: tint });
+  drawStickman(ctx, 'murmillo', { x, y, scale, facing, skeleton: sk, t: t + seed, ink: INK, bare: true, garment: toga ? 'toga' : 'tunic', garmentColor: toga ? ROMA.marble : tint });
 }
 const MARKET = { W: 400, H: 250 }; // 폰 화면 폭에 맞춰 좁힘. 매물 최대 4명이 한 줄
 const MK = { sc: 0.8, get ox() { return (MARKET.W * (1 - this.sc)) / 2; } }; // 시장 장면 축소 배율과 가운데 정렬 여백
@@ -1252,6 +1252,15 @@ function drawCountryside(ctx: CanvasRenderingContext2D, x0: number, w: number, t
   void t; ctx.restore();
 }
 // 포룸(광장): 뒤 회랑(열주·엔타블러처), 왼쪽 회벽에 이번 시즌 계약 공고문(에딕타: 붉은 글자, 등급이 높을수록 큼, 배정이 끝났으면 낙서 체크), 가운데 작은 제단, 공고 앞 심부름꾼, 오른쪽에 자유민 지원자. 기준점 = 광장 왼쪽 끝, 발 = 0
+const ROMA = {
+  plaster: '#e7dbc2', // 오래된 회벽: 캄파니아의 모래빛과 이어지는 로마 공통 바탕
+  marble: '#efe6d3', // 트라베르틴·대리석: 열주와 문틀을 밝게 해 수도의 석조 규모를 드러낸다
+  shadow: '#b5a68b', // 따뜻한 석재 그늘: 먼 건축은 인물의 황토 먹선보다 옅게 물린다
+  brick: '#9a4b33', // 벽돌 붉은빛: 임대 루두스와 인술라의 생활 공간을 구분한다
+  mortar: '#c18c70', // 옅은 줄눈: 벽돌을 작은 반복 획으로 표현하고 낙서의 밀도를 넘지 않는다
+  basalt: '#777568', // 가도 포석: 묘지로 멀어지는 길에만 쓰는 낮은 채도의 회색
+  cypress: '#48533a', // 사이프러스: 묘역의 수직 실루엣을 잡는 탁한 녹색, 자주색은 쓰지 않는다
+} as const;
 const FORUM = { wallW: 320, posterW: 52, posterH: 72, posterGap: 68, posterX0: 32, posterY: -122 }; // 공고벽: 공고 4장이 한 줄에, 계약 카드와 같은 세로 비율 (줌인하면 카드로 이어진다)
 // 공고문 = 계약 카드의 축소판. 위: 붉은 등급 칩 · 벽화풍 경기장 · 배정 수 / 가운데: 붉은 경기장 이름 / 아래: 효과 칩 줄(작은 알약). 배정이 끝나면 낙서 체크
 function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: number, py0: number, pw0: number, ph0: number) {
@@ -1284,16 +1293,34 @@ function drawMiniContract(ctx: CanvasRenderingContext2D, c: Contract, px0: numbe
   ctx.restore();
 }
 function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = TOWN.forumW, ink = INK;
-  // 회랑: 뒤 벽 + 기둥 + 엔타블러처·지붕
-  ctx.fillStyle = '#d9c9a2'; ctx.fillRect(0, -150, W, 136); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, -162, W + 16, 12); ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -150, W, 6);
-  for (let x = FORUM.wallW + 10; x < W - 10; x += 52) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(x, -144, 10, 130); ctx.fillStyle = '#a58f60'; ctx.fillRect(x - 2, -144, 14, 5); ctx.fillRect(x - 2, -18, 14, 4); } // 열주
-  for (let x = FORUM.wallW + 36; x < W - 20; x += 52) { ctx.fillStyle = '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 12, -18); ctx.lineTo(x - 12, -60); ctx.arc(x, -60, 12, Math.PI, 0); ctx.lineTo(x + 12, -18); ctx.closePath(); ctx.fill(); } // 기둥 사이 아치 그늘
-  // 공고벽(왼쪽): 회벽 + 붉은 띠
-  ctx.fillStyle = '#e2d3ab'; ctx.fillRect(0, -144, FORUM.wallW, 130); ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.5; ctx.fillRect(0, -32, FORUM.wallW, 8); ctx.globalAlpha = 1;
-  ctx.fillStyle = ink; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('MVNERA', 8, -134); // 벽 머리에 긁어 쓴 글자
+  const W = TOWN.forumW, ink = INK, roma = st.region === 'roma';
+  if (roma) {
+    // 지리적 배치보다 한 화면의 인지를 우선한 압축 원경: 콜로세움의 타원 상단·아치 두 단·벨라리움 돛대
+    ctx.save(); ctx.globalAlpha = 0.65; ctx.fillStyle = ROMA.shadow;
+    ctx.beginPath(); ctx.ellipse(286, -208, 136, 32, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ROMA.marble; ctx.lineWidth = 2;
+    for (const yy of [-222, -204]) { ctx.beginPath(); ctx.ellipse(286, yy, 128, 12, 0, 0, Math.PI); ctx.stroke();
+      for (let k = 0; k < 13; k++) { const x = 166 + k * 20, y = yy + 6 + Math.sin(k / 12 * Math.PI) * 8; ctx.beginPath(); ctx.moveTo(x - 4, y + 9); ctx.lineTo(x - 4, y); ctx.quadraticCurveTo(x, y - 7, x + 4, y); ctx.lineTo(x + 4, y + 9); ctx.stroke(); } }
+    ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let k = 0; k < 10; k++) { const x = 168 + k * 26, y = -226 - Math.sin(k / 9 * Math.PI) * 13; ctx.moveTo(x, y); ctx.lineTo(x, y - 13); } ctx.stroke(); ctx.restore();
+    // 큰 석조 회랑은 공고 위로만 드러난다. 포스터 여섯 자리의 기존 간격·크기는 유지한다
+    ctx.fillStyle = ROMA.shadow; ctx.fillRect(0, -182, W, 168);
+    ctx.fillStyle = ROMA.marble; ctx.fillRect(-8, -194, W + 16, 12); ctx.fillRect(-4, -179, W + 8, 5);
+    for (let x = 8; x < W; x += 69) { ctx.fillStyle = ROMA.marble; ctx.fillRect(x, -173, 13, 157); ctx.fillRect(x - 4, -174, 21, 7); ctx.fillRect(x - 4, -22, 21, 8); ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 8, -165); ctx.lineTo(x + 8, -28); ctx.stroke(); }
+    ctx.fillStyle = ROMA.plaster; ctx.fillRect(0, -144, W, 112); ctx.fillStyle = ROMA.marble; ctx.fillRect(0, -32, W, 18);
+    ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -145); ctx.lineTo(W, -145); ctx.moveTo(0, -36); ctx.lineTo(W, -36); ctx.stroke();
+    ctx.fillStyle = ROMA.brick; ctx.fillRect(0, -30, W, 4);
+  } else {
+    // 회랑: 뒤 벽 + 기둥 + 엔타블러처·지붕
+    ctx.fillStyle = '#d9c9a2'; ctx.fillRect(0, -150, W, 136); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, -162, W + 16, 12); ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -150, W, 6);
+    for (let x = FORUM.wallW + 10; x < W - 10; x += 52) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(x, -144, 10, 130); ctx.fillStyle = '#a58f60'; ctx.fillRect(x - 2, -144, 14, 5); ctx.fillRect(x - 2, -18, 14, 4); } // 열주
+    for (let x = FORUM.wallW + 36; x < W - 20; x += 52) { ctx.fillStyle = '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 12, -18); ctx.lineTo(x - 12, -60); ctx.arc(x, -60, 12, Math.PI, 0); ctx.lineTo(x + 12, -18); ctx.closePath(); ctx.fill(); } // 기둥 사이 아치 그늘
+    // 공고벽(왼쪽): 회벽 + 붉은 띠
+    ctx.fillStyle = '#e2d3ab'; ctx.fillRect(0, -144, FORUM.wallW, 130); ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.5; ctx.fillRect(0, -32, FORUM.wallW, 8); ctx.globalAlpha = 1;
+  }
+  ctx.fillStyle = ink; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(roma ? '경기 공고' : 'MVNERA', 8, -134); // 벽 머리에 긁어 쓴 글자
   // 공고문: 계약마다 하나. 등급이 높을수록 크고 붉은 글자 줄이 많다. 배정이 끝난 계약엔 낙서 체크
-  for (let i = st.contracts.length; i < 4; i++) { const px = FORUM.posterX0 + i * FORUM.posterGap; ctx.strokeStyle = 'rgba(155,44,28,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.strokeRect(px + 0.5, FORUM.posterY + 0.5, FORUM.posterW, FORUM.posterH); ctx.setLineDash([]); } // 빈 자리: 옛 공고를 긁어낸 자국
+  for (let i = st.contracts.length; i < (roma ? 6 : 4); i++) { const px = FORUM.posterX0 + i * FORUM.posterGap; ctx.strokeStyle = 'rgba(155,44,28,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.strokeRect(px + 0.5, FORUM.posterY + 0.5, FORUM.posterW, FORUM.posterH); ctx.setLineDash([]); } // 빈 자리: 옛 공고를 긁어낸 자국
   st.contracts.forEach((c, i) => { const px = FORUM.posterX0 + i * FORUM.posterGap, py = FORUM.posterY, pw = FORUM.posterW, ph = FORUM.posterH; drawMiniContract(ctx, c, px, py, pw, ph); });
   // 제단(가운데): 돌 제단 + 불
   { const ax = FORUM.wallW + 92; ctx.fillStyle = '#b39c6a'; ctx.fillRect(ax - 12, -26, 24, 26); ctx.fillStyle = '#a58f60'; ctx.fillRect(ax - 15, -30, 30, 5); ctx.fillStyle = '#e8c96a'; ctx.beginPath(); ctx.ellipse(ax, -34 + Math.sin(t * 9) * 0.8, 3, 5, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -1304,26 +1331,41 @@ function drawForumScene(ctx: CanvasRenderingContext2D, t: number) {
     for (const w of walkers) { const u = ((t + w.off) % w.period) / w.period; const L = -40, R = FORUM.wallW + 60; const pa = posterX(w.a) + 14, pb = posterX(w.b) - 14; const dir: 1 | -1 = pa <= pb ? 1 : -1; // 왼쪽에서 들어와 두 공고를 들르고 오른쪽으로 나간다 (b 가 앞이면 되돌아간다)
       const ease = (k: number) => k * k * (3 - 2 * k); let x: number, walking = true, pose: 'watch' | 'point' | 'tiptoe' = w.pose, facing: 1 | -1 = 1;
       if (u < 0.2) { x = L + (pa - L) * ease(u / 0.2); } else if (u < 0.42) { x = pa; walking = false; facing = w.face; } else if (u < 0.62) { x = pa + (pb - pa) * ease((u - 0.42) / 0.2); facing = dir; } else if (u < 0.82) { x = pb; walking = false; pose = w.pose === 'watch' ? 'point' : 'watch'; facing = -w.face as 1 | -1; } else { x = pb + (R - pb) * ease((u - 0.82) / 0.18); }
-      drawCivilian(ctx, x, 0, w.scale, walking ? 'walk' : pose, t, w.seed, facing); } }
+      drawCivilian(ctx, x, 0, w.scale, walking ? 'walk' : pose, t, w.seed, facing, roma && w.seed !== 21); } }
+  if (roma) for (const [x, seed] of [[18, 32], [302, 33]]) drawCivilian(ctx, x, 16, 0.68, 'watch', t, seed, 1, true); // 공고 아래 낮은 앞줄, 카드 면은 비워 둔다
   // 자유민 지원자: 광장 오른쪽에 서서 기다린다
 }
 function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = MARKET.W, H = MARKET.H;
+  const W = MARKET.W, H = MARKET.H, roma = st.region === 'roma';
   const items = st.market;
   const slotX = (i: number) => marketSlotX(items.length, i);
   const ink = INK;
-    ctx.clearRect(0, 0, W, H);
-    // 야외 노예 시장(포룸 광장): 뒤에 열주 회랑, 판매대 위에만 장대 차양. 벽 없음
-    // 회랑: 땅(판매대 뒤)에서 선 기둥 + 뒤 그늘진 벽 + 엔타블러처·지붕
-    ctx.fillStyle = '#c9b283'; ctx.fillRect(-10, 40, W + 20, H - 108);            // 회랑 안쪽 벽(그늘)
-    ctx.fillStyle = '#b39c6a'; ctx.fillRect(-10, H - 74, W + 20, 8);              // 기단
-    for (let x = 12; x <= W - 12; x += 62) { ctx.fillStyle = '#d9c69a'; ctx.fillRect(x - 6, 46, 12, H - 120); ctx.fillStyle = '#b39c6a'; ctx.fillRect(x - 9, 40, 18, 6); ctx.fillRect(x - 9, H - 78, 18, 5); } // 열주
-    ctx.fillStyle = '#b39c6a'; ctx.fillRect(-10, 28, W + 20, 12); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-14, 18, W + 28, 10); // 엔타블러처·지붕
+    if (roma) {
+      // 인술라 세 층: 위 두 층의 작은 창과 아래층 상점 회랑, 판매대 뒤의 높이로 인구 밀도를 표현한다
+      ctx.fillStyle = ROMA.plaster; ctx.fillRect(-10, -60, W + 20, H + 60);
+      ctx.fillStyle = ROMA.brick; ctx.fillRect(-10, -60, W + 20, 142); ctx.fillStyle = ROMA.shadow; ctx.fillRect(-10, 82, W + 20, H - 150);
+      ctx.strokeStyle = ROMA.mortar; ctx.lineWidth = 0.8;
+      for (let y = -52, row = 0; y < 82; y += 12, row++) { ctx.beginPath(); ctx.moveTo(-10, y); ctx.lineTo(W + 10, y); for (let x = -10 + (row % 2) * 18; x < W + 10; x += 36) { ctx.moveTo(x, y); ctx.lineTo(x, Math.min(y + 12, 82)); } ctx.stroke(); }
+      for (const y of [-44, 16]) for (let x = 24; x < W; x += 66) { ctx.fillStyle = ROMA.shadow; ctx.fillRect(x - 3, y - 3, 27, 32); ctx.fillStyle = ink; ctx.fillRect(x, y, 21, 26); ctx.fillStyle = ROMA.mortar; ctx.fillRect(x + 2, y + 2, 7, 22); ctx.fillStyle = ROMA.marble; ctx.fillRect(x - 4, y + 26, 29, 3); }
+      ctx.fillStyle = ROMA.marble; for (const y of [-64, 0, 63]) ctx.fillRect(-14, y, W + 28, 5);
+      for (let x = 12; x <= W - 12; x += 62) { ctx.fillRect(x - 6, 86, 12, H - 160); ctx.fillRect(x - 9, 82, 18, 5); }
+      ctx.fillRect(-10, H - 74, W + 20, 8);
+      for (const [x, seed] of [[16, 34], [W - 12, 35]]) drawCivilian(ctx, x, H - 76, 0.66, 'watch', t, seed, x < W / 2 ? 1 : -1, true); // 가격표 바깥 회랑의 구매자
+    } else {
+      ctx.clearRect(0, 0, W, H);
+      // 야외 노예 시장(포룸 광장): 뒤에 열주 회랑, 판매대 위에만 장대 차양. 벽 없음
+      // 회랑: 땅(판매대 뒤)에서 선 기둥 + 뒤 그늘진 벽 + 엔타블러처·지붕
+      ctx.fillStyle = '#c9b283'; ctx.fillRect(-10, 40, W + 20, H - 108);            // 회랑 안쪽 벽(그늘)
+      ctx.fillStyle = '#b39c6a'; ctx.fillRect(-10, H - 74, W + 20, 8);              // 기단
+      for (let x = 12; x <= W - 12; x += 62) { ctx.fillStyle = '#d9c69a'; ctx.fillRect(x - 6, 46, 12, H - 120); ctx.fillStyle = '#b39c6a'; ctx.fillRect(x - 9, 40, 18, 6); ctx.fillRect(x - 9, H - 78, 18, 5); } // 열주
+      ctx.fillStyle = '#b39c6a'; ctx.fillRect(-10, 28, W + 20, 12); ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-14, 18, W + 28, 10); // 엔타블러처·지붕
+    }
     for (const px of [44, W - 44]) { ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px, H - 60); ctx.lineTo(px, 84); ctx.stroke(); } // 차양 장대
-    ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.moveTo(30, 84); ctx.lineTo(W - 30, 84); ctx.lineTo(W - 40, 100); ctx.lineTo(40, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9b2c1c'; ctx.beginPath(); ctx.moveTo(roma ? 12 : 30, roma ? 66 : 84); ctx.lineTo(W - (roma ? 12 : 30), roma ? 66 : 84); ctx.lineTo(W - (roma ? 22 : 40), 100); ctx.lineTo(roma ? 22 : 40, 100); ctx.closePath(); ctx.fill();
+    if (roma) { ctx.fillStyle = ROMA.marble; for (let x = 30; x < W - 30; x += 42) { ctx.beginPath(); ctx.moveTo(x, 66); ctx.lineTo(x + 18, 66); ctx.lineTo(x + 15, 100); ctx.lineTo(x + 2, 100); ctx.closePath(); ctx.fill(); } ctx.fillStyle = ROMA.brick; ctx.fillRect(W / 2 - 48, 81, 96, 20); }
     ctx.strokeStyle = '#e8c96a'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 42; x < W - 38; x += 12) { ctx.moveTo(x, 100); ctx.lineTo(x, 106); } ctx.stroke();
     ctx.strokeStyle = '#7a5a2c'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(44, 84); ctx.lineTo(60, 70); ctx.moveTo(W - 44, 84); ctx.lineTo(W - 60, 70); ctx.stroke(); // 장대 당김줄
-    ctx.fillStyle = '#e8d9b5'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('VENALICIUM', W / 2, 96);
+    ctx.fillStyle = '#e8d9b5'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(roma ? '노예 시장' : 'VENALICIUM', W / 2, 96);
     // 판매대 (카타스타): 윗면 띠 + 앞면
     ctx.fillStyle = '#c4ad76'; ctx.fillRect(30, H - 68, W - 60, 8); ctx.fillStyle = '#a89064'; ctx.fillRect(30, H - 60, W - 60, 20); ctx.fillStyle = '#8f7a4e'; ctx.fillRect(30, H - 40, W - 60, 40);
     // 상인 (오른쪽 끝, 라니스타가 왼쪽에 서므로): 줄무늬 튜닉에 두루마리를 든 스틱맨 (기본 리그)
@@ -1388,7 +1430,7 @@ function drawMarketScene(ctx: CanvasRenderingContext2D, t: number) {
       else crowd.push({ x: cx, y: H + 10, sc: 0.92, pose: 'child', f }); }); // 좁은 틈엔 아이만
     crowd.push({ x: W - 40, y: H - 62, sc: 0.85, pose: 'tiptoe', f: -1 }); // 판매대 옆 까치발
   }
-  crowd.forEach((c, i) => drawCivilian(ctx, c.x, c.y, c.sc, c.pose, t, i * 7 + 1, c.f));
+  crowd.forEach((c, i) => drawCivilian(ctx, c.x, c.y, c.sc, c.pose, t, i * 7 + 1, c.f, roma && c.pose !== 'child' && i % 2 === 0));
 }
 
 const YARD = { W: 600, H: 230 }; // 안뜰 0~470 + 문루 470~600(폭 130). 정문 화면은 문루부터 시작해 훈련소가 보이지 않는다 // 훈련소(대련장·무기고·팔루스·급식소)가 폰 한 화면(≈400)에 들어오고, 정문 화면은 문루+바깥 길 // 좁은 화면에 맞춰 훈련장을 좁히고 정문(문루)을 넓혔다
@@ -1401,17 +1443,26 @@ type StickPose = 'stand' | 'point' | 'stir' | 'tend' | 'whip' | 'walk' | 'grind'
 let stickFn: ((x: number, y: number, sc: number, pose: StickPose, t: number, seed: number, facing?: 1 | -1) => void) | null = null; // 훈련장이 매 프레임 넘겨 주는 보조 인물 그리기
 // 의무실 장면 (0,0) 기준, 발 = H-20. 침상은 시설 수(최대 4)만큼, 부상자가 그 위에 눕고 넘치면 벽가에 앉는다. 의사는 탁자와 침상을 오간다
 function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = MEDIC.W, H = MEDIC.H; const stick = stickFn; if (!stick) return;
+  const W = MEDIC.W, H = MEDIC.H, roma = st.region === 'roma'; const stick = stickFn; if (!stick) return;
   const beds0 = Math.max(1, Math.min(4, st.ludus.beds)); const occupied = Array.from({ length: beds0 }, (_, i) => bedPatient(st, i)); const occIdx = occupied.map((g, i) => g ? i : -1).filter(i => i >= 0); // 침상마다 누운 부상자 (없으면 빈 침상)
-  // 건물: 기와 지붕선, 회벽, 붉은 띠(하단 장식), 바닥 돌
-  ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 30, W, H - 50);
-  ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, 22, W + 16, 10);
-  ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, 32, W, 6);
-  ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.55; ctx.fillRect(0, 84, W, 10); ctx.globalAlpha = 1;
-  ctx.fillStyle = '#a58f60'; ctx.fillRect(-14, 30, 14, H - 50); ctx.fillRect(W, 30, 14, H - 50); // 양쪽 벽
-  ctx.fillStyle = '#b8a67a'; ctx.fillRect(0, H - 20, W, 60); ctx.strokeStyle = '#a58f60'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H - 20); ctx.lineTo(x, H + 40); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, H); ctx.moveTo(0, H + 20); ctx.lineTo(W, H + 20); ctx.stroke(); // 돌바닥 (디스플레이 바닥까지)
+  if (roma) {
+    // 침상 뒤로 얕은 석조 회랑: 기둥은 침상 사이가 아니라 후벽에 두어 치료 팻말과 겹치지 않는다
+    ctx.fillStyle = ROMA.plaster; ctx.fillRect(0, 30, W, H - 50); ctx.fillStyle = ROMA.shadow; ctx.fillRect(0, 34, W, 64);
+    for (let x = 18; x < W - 60; x += 80) { ctx.fillStyle = ROMA.marble; ctx.fillRect(x - 9, 35, 9, 64); ctx.fillRect(x - 12, 32, 15, 6); ctx.strokeStyle = ROMA.marble; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(x + 3, 90); ctx.lineTo(x + 3, 68); ctx.arc(x + 31, 68, 28, Math.PI, 0); ctx.lineTo(x + 59, 90); ctx.stroke(); }
+    ctx.fillStyle = ROMA.marble; ctx.fillRect(-8, 20, W + 16, 13); ctx.fillRect(0, 96, W, 8); ctx.fillRect(-14, 30, 14, H - 50); ctx.fillRect(W, 30, 14, H - 50);
+    ctx.fillStyle = ROMA.brick; ctx.fillRect(-8, 17, W + 16, 3); ctx.fillRect(0, 104, W, 4);
+    ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1; for (let x = 0; x < W; x += 64) { ctx.beginPath(); ctx.moveTo(x, 110); ctx.lineTo(x, 130); ctx.lineTo(Math.min(W, x + 64), 130); ctx.stroke(); }
+  } else {
+    // 건물: 기와 지붕선, 회벽, 붉은 띠(하단 장식), 바닥 돌
+    ctx.fillStyle = '#cbb67f'; ctx.fillRect(0, 30, W, H - 50);
+    ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, 22, W + 16, 10);
+    ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, 32, W, 6);
+    ctx.fillStyle = '#9b2c1c'; ctx.globalAlpha = 0.55; ctx.fillRect(0, 84, W, 10); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#a58f60'; ctx.fillRect(-14, 30, 14, H - 50); ctx.fillRect(W, 30, 14, H - 50); // 양쪽 벽
+  }
+  ctx.fillStyle = roma ? ROMA.shadow : '#b8a67a'; ctx.fillRect(0, H - 20, W, 60); ctx.strokeStyle = '#a58f60'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H - 20); ctx.lineTo(x, H + 40); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, H); ctx.moveTo(0, H + 20); ctx.lineTo(W, H + 20); ctx.stroke(); // 돌바닥 (디스플레이 바닥까지)
   // 창 (빛)
-  for (const wx of [70, 210]) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(wx, 46, 30, 26); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.strokeRect(wx, 46, 30, 26); ctx.beginPath(); ctx.moveTo(wx + 15, 46); ctx.lineTo(wx + 15, 72); ctx.stroke(); }
+  if (!roma) for (const wx of [70, 210]) { ctx.fillStyle = '#e6d6ad'; ctx.fillRect(wx, 46, 30, 26); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.strokeRect(wx, 46, 30, 26); ctx.beginPath(); ctx.moveTo(wx + 15, 46); ctx.lineTo(wx + 15, 72); ctx.stroke(); }
   // 침상 (시설 수만큼, 최대 4): 폭 74, 다리
   const beds = Math.max(1, Math.min(4, st.ludus.beds)); const bedX = Array.from({ length: beds }, (_, i) => 16 + i * 80);
   ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath();
@@ -1420,6 +1471,10 @@ function drawMedicScene(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = '#e8d9b5'; for (const bx of bedX) ctx.fillRect(bx + 2, H - 45, 70, 5); // 매트리스
   // 의사 탁자(약절구) + 선반(약병) + 약재 다발 (약재 단계만큼 천장에 매달림)
   const TX = 350;
+  if (roma) { // 늘어난 벽 선반의 빈 사발·붕대: 약재 시설 단계와 혼동하지 않도록 약병 수는 기존 표시를 따른다
+    for (const y of [72, 95]) { ctx.fillStyle = ROMA.marble; ctx.fillRect(TX - 16, y, 78, 4); ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) { const x = TX - 7 + k * 18; ctx.fillStyle = k % 2 ? ROMA.plaster : ROMA.mortar; ctx.beginPath(); ctx.ellipse(x, y - 4, 6, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y - 5); ctx.stroke(); } }
+  }
   ctx.strokeStyle = '#6b4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(TX - 6, H - 46); ctx.lineTo(TX + 38, H - 46); ctx.moveTo(TX - 2, H - 46); ctx.lineTo(TX - 2, H - 24); ctx.moveTo(TX + 34, H - 46); ctx.lineTo(TX + 34, H - 24); ctx.stroke();
   ctx.fillStyle = '#8f7a4e'; ctx.beginPath(); ctx.moveTo(TX + 6, H - 46); ctx.lineTo(TX + 26, H - 46); ctx.lineTo(TX + 23, H - 55); ctx.lineTo(TX + 9, H - 55); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#8a6a44'; ctx.fillRect(TX - 10, 118, 58, 3); for (let k = 0; k < 2 + Math.min(3, st.ludus.medicine); k++) { ctx.fillStyle = ['#b9a26f', '#9b2c1c', '#b9a26f', '#5a4224', '#3b7a2c'][k % 5]; ctx.fillRect(TX - 6 + k * 11, 108, 7, 10); }
@@ -1471,25 +1526,36 @@ function drawCityWall(ctx: CanvasRenderingContext2D) {
 }
 // 묘지: 성문 밖 길가 묘역 (폼페이 누케리아 문 밖처럼). 묘비(스텔라)는 죽은 검투사 수만큼(최대 8), 사이프러스 두 그루, 담. 누르면 연대기
 function drawGraveScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = TOWN.tailW; const dead = st.graveyard;
-  ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -96, W, 8); ctx.fillStyle = '#c9b283'; ctx.fillRect(0, -88, W, 74); // 담 (낮은 벽)
-  ctx.strokeStyle = '#b39c6a'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x, -88); ctx.lineTo(x, -14); ctx.stroke(); }
+  const W = TOWN.tailW, roma = st.region === 'roma'; const dead = st.graveyard;
+  if (roma) {
+    // 아피아 가도: 소실점은 오른쪽 먼 곳, 묘비의 기존 x·y는 길 왼편에 그대로 남긴다
+    ctx.fillStyle = ROMA.shadow; ctx.beginPath(); ctx.moveTo(W - 50, -174); ctx.lineTo(W - 36, -174); ctx.lineTo(W + 8, 42); ctx.lineTo(150, 42); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = ROMA.basalt; ctx.lineWidth = 1.2;
+    for (let k = 0; k < 9; k++) { const u = k / 8, y = -174 + u * u * 216, l = W - 50 + (150 - W + 50) * u * u, r = W - 36 + 44 * u * u; ctx.beginPath(); ctx.moveTo(l, y); ctx.lineTo(r, y + Math.sin(k * 2) * 2); ctx.stroke(); if (k) { const x = l + (r - l) * (k % 2 ? 0.38 : 0.65); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 3, y + 7 + u * 10); ctx.stroke(); } }
+    ctx.strokeStyle = ROMA.marble; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(W - 50, -174); ctx.lineTo(150, 42); ctx.moveTo(W - 36, -174); ctx.lineTo(W + 8, 42); ctx.stroke();
+    // 큰 묘당은 이름 없는 후경 건축, 플레이어의 작은 묘비와 구분한다
+    for (const [x, h, w] of [[68, 136, 62], [153, 110, 42]]) { ctx.fillStyle = ROMA.shadow; ctx.fillRect(x - w / 2 - 4, -32, w + 8, 18); ctx.fillStyle = ROMA.marble; ctx.fillRect(x - w / 2, -h, w, h - 32); ctx.beginPath(); ctx.moveTo(x - w / 2 - 5, -h); ctx.lineTo(x, -h - 20); ctx.lineTo(x + w / 2 + 5, -h); ctx.closePath(); ctx.fill(); ctx.strokeStyle = ROMA.shadow; ctx.lineWidth = 1.4; ctx.strokeRect(x - w / 2 + 7, -h + 12, w - 14, h - 52); ctx.fillStyle = ROMA.shadow; ctx.fillRect(x - 8, -h + 29, 16, 24); }
+    ctx.fillStyle = ROMA.plaster; ctx.fillRect(0, -18, 174, 8);
+  } else {
+    ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, -96, W, 8); ctx.fillStyle = '#c9b283'; ctx.fillRect(0, -88, W, 74); // 담 (낮은 벽)
+    ctx.strokeStyle = '#b39c6a'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x, -88); ctx.lineTo(x, -14); ctx.stroke(); }
+  }
   for (const cx of [26, W - 30]) { // 사이프러스
-    ctx.fillStyle = '#3f4a2c'; ctx.beginPath(); ctx.moveTo(cx, -150); ctx.quadraticCurveTo(cx + 13, -90, cx + 9, -16); ctx.lineTo(cx - 9, -16); ctx.quadraticCurveTo(cx - 13, -90, cx, -150); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = roma ? ROMA.cypress : '#3f4a2c'; ctx.beginPath(); ctx.moveTo(cx, roma ? -202 : -150); ctx.quadraticCurveTo(cx + 13, -90, cx + 9, -16); ctx.lineTo(cx - 9, -16); ctx.quadraticCurveTo(cx - 13, -90, cx, roma ? -202 : -150); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#4a3418'; ctx.fillRect(cx - 2, -16, 4, 16);
   }
   const n = Math.min(7, dead.length); const gap = Math.min(40, (W - 120) / Math.max(1, n));
   for (let i = 0; i < n; i++) { const g = dead[i]; const x = 58 + i * gap, sway = Math.sin(t * 0.8 + i) * 0.4;
-    ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(x - 13, 0); ctx.lineTo(x - 13, -52); ctx.arc(x, -52, 13, Math.PI, 0); ctx.lineTo(x + 13, 0); ctx.closePath(); ctx.fill(); // 묘비
+    ctx.fillStyle = roma ? ROMA.marble : '#d9c69a'; ctx.beginPath(); ctx.moveTo(x - 13, 0); ctx.lineTo(x - 13, -52); ctx.arc(x, -52, 13, Math.PI, 0); ctx.lineTo(x + 13, 0); ctx.closePath(); ctx.fill(); // 묘비
     ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#5a3a1c'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(g.name.slice(0, 5), x, -28); ctx.font = '6px sans-serif'; ctx.fillText(`${g.wins}승 ${g.fights}전`, x, -18); { const ep = (g.epithets ?? [])[0]; const nm = ep ? EPITHET_BY_ID[ep as EpithetId]?.name : ''; if (nm) { ctx.font = '5px sans-serif'; ctx.fillText(nm.slice(0, 7), x, -10); } } // 비문에 별칭도 새긴다 // 비문: 이름과 전적 (폼페이 묘비처럼)
     ctx.fillStyle = '#5f7a3c'; ctx.beginPath(); ctx.ellipse(x + sway, -2, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill(); // 화환 자리의 풀
   }
-  if (!n) { ctx.fillStyle = '#d9c69a'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, 0); ctx.lineTo(W / 2 - 12, -40); ctx.arc(W / 2, -40, 12, Math.PI, 0); ctx.lineTo(W / 2 + 12, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke(); } // 빈 묘역: 루두스 공동 묘비 하나
+  if (!n) { ctx.fillStyle = roma ? ROMA.marble : '#d9c69a'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, 0); ctx.lineTo(W / 2 - 12, -40); ctx.arc(W / 2, -40, 12, Math.PI, 0); ctx.lineTo(W / 2 + 12, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 1.5; ctx.stroke(); } // 빈 묘역: 루두스 공동 묘비 하나
 }
 // 훈련장 장면을 (0,0) 기준으로 그린다. 타운 캔버스가 카메라 오프셋을 적용해 호출
 function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
-  const W = YARD.W, H = YARD.H;
+  const W = YARD.W, H = YARD.H, roma = st.region === 'roma';
   const roster = st.roster;
   const ink = INK;
   // ── 채찍 물리 (베를레 사슬): 손잡이 쪽 고리가 끝으로 달려가며 빨라지고 팁이 땅을 친다.
@@ -1566,22 +1632,23 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
     drawStickman(ctx, 'murmillo', { x, y, scale: sc, facing, skeleton: sk, t: t + seed, ink, bare: true, garment: 'tunic', garmentColor: tunic, garmentStripe: pose === 'point' ? '#9b2c1c' : undefined, apron: pose === 'stir', hands });
   };
     // (배경은 타운이 깐다) 2층 주랑 회랑: 위층 난간 + 아래층 아치 + 켈라 문
-    ctx.fillStyle = '#b39c6a'; ctx.fillRect(0, 0, W, 78);
-    ctx.fillStyle = '#a58f60'; ctx.fillRect(0, 0, W, 26);            // 2층 벽
-    ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 12; x < W; x += 24) { ctx.moveTo(x, 8); ctx.lineTo(x, 24); } ctx.stroke(); // 2층 난간
-    ctx.fillStyle = '#8f7a4e'; ctx.fillRect(0, 26, W, 4);
+    ctx.fillStyle = roma ? ROMA.brick : '#b39c6a'; ctx.fillRect(0, 0, W, 78);
+    ctx.fillStyle = roma ? ROMA.brick : '#a58f60'; ctx.fillRect(0, 0, W, 26);            // 2층 벽
+    ctx.strokeStyle = roma ? ROMA.mortar : '#8f7a4e'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 12; x < W; x += 24) { ctx.moveTo(x, 8); ctx.lineTo(x, 24); } ctx.stroke(); // 2층 난간
+    ctx.fillStyle = roma ? ROMA.shadow : '#8f7a4e'; ctx.fillRect(0, 26, W, 4);
+    if (roma) { ctx.strokeStyle = ROMA.mortar; ctx.lineWidth = 0.8; for (let y = 6, row = 0; y < 78; y += 10, row++) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); for (let x = (row % 2) * 20; x < W; x += 40) { ctx.moveTo(x, y); ctx.lineTo(x, Math.min(y + 10, 78)); } ctx.stroke(); } }
     const cellCap = rosterCap(st); let cellK = 0;
     for (let x = 34; x < W; x += 68) {                                // 1층 아치 + 열주
-      ctx.fillStyle = '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 18, 78); ctx.lineTo(x - 18, 48); ctx.arc(x, 48, 18, Math.PI, 0); ctx.lineTo(x + 18, 78); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = roma ? ROMA.shadow : '#7a6743'; ctx.beginPath(); ctx.moveTo(x - 18, 78); ctx.lineTo(x - 18, 48); ctx.arc(x, 48, 18, Math.PI, 0); ctx.lineTo(x + 18, 78); ctx.closePath(); ctx.fill();
       const isDoor = x === 34; // 맨 왼쪽 아치 = 의무실로 통하는 통로 (의무실은 담 너머 독립 건물). 바닥에 문을 따로 세우지 않고 회랑 벽에 낸다
       const isCell = !isDoor && Math.abs(x - W / 2) > 40 && cellK < cellCap; if (isCell) cellK++; // 켈라은 상한 수만큼 열려 있고, 나머지는 막힌 벽
       if (isDoor) { ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(x - 12, 78); ctx.lineTo(x - 12, 56); ctx.arc(x, 56, 12, Math.PI, 0); ctx.lineTo(x + 12, 78); ctx.closePath(); ctx.fill(); // 열린 통로
         ctx.strokeStyle = '#3b7a2c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, 34); ctx.stroke(); ctx.beginPath(); ctx.arc(x, 37, 3.5, 0.3, Math.PI * 1.7); ctx.stroke(); } // 문 위 작은 표지: 지팡이에 감긴 뱀(아스클레피오스)
       else if (isCell) { const q = st.ludus.cells[cellK - 1] ?? 0; ctx.fillStyle = q >= 2 ? '#5a3a1c' : '#3a2412'; ctx.fillRect(x - 7, 56, 14, 22); ctx.fillStyle = q >= 1 ? '#e8c96a' : '#5a4224'; ctx.fillRect(x - 5, 60, 10, 2); ctx.fillRect(x - 5, 64, 10, 2); if (q >= 3) { ctx.fillStyle = '#9b2c1c'; ctx.fillRect(x - 9, 52, 18, 3); } } // 켈라 문: 질 1 창에 불빛, 2 나무문, 3 붉은 차양
-      else { ctx.fillStyle = '#8f7a4e'; ctx.fillRect(x - 10, 52, 20, 26); } // 막힌 아치 (증축 전)
-      ctx.fillStyle = '#d9c69a'; ctx.fillRect(x + 26, 32, 8, 46);     // 기둥
+      else { ctx.fillStyle = roma ? ROMA.shadow : '#8f7a4e'; ctx.fillRect(x - 10, 52, 20, 26); } // 막힌 아치 (증축 전)
+      ctx.fillStyle = roma ? ROMA.marble : '#d9c69a'; ctx.fillRect(x + 26, 32, 8, 46);     // 기둥
     }
-    ctx.fillStyle = '#8f7a4e'; ctx.fillRect(0, 78, W, 5);
+    ctx.fillStyle = roma ? ROMA.shadow : '#8f7a4e'; ctx.fillRect(0, 78, W, 5);
     // 네메시스 사당 (회랑 가운데): 감실 + 상 + 화환
     { const sx = W / 2; ctx.fillStyle = '#9b2c1c'; ctx.fillRect(sx - 22, 40, 44, 38); ctx.fillStyle = '#e8d9b5'; ctx.fillRect(sx - 18, 44, 36, 34);
       ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, 76); ctx.lineTo(sx, 58); ctx.moveTo(sx - 7, 66); ctx.lineTo(sx + 7, 66); ctx.stroke(); ctx.beginPath(); ctx.arc(sx, 53, 4, 0, Math.PI * 2); ctx.stroke();
@@ -1627,15 +1694,20 @@ function drawYardScene(ctx: CanvasRenderingContext2D, t: number) {
       drawStickman(ctx, g.type, { x: px - 44, y: H - 20, scale: 0.9, skeleton: clipSkeleton(clip, el), t, team, accessories: accessoriesOf(g) });
     });
     // 루두스 건물 마감: 회랑 지붕선, 왼쪽 담, 오른쪽 정문(문루)
-    ctx.fillStyle = '#9b4a2c'; ctx.fillRect(-8, -6, W + 16, 8);                       // 기와 지붕선
-    ctx.fillStyle = '#a58f60'; ctx.fillRect(-14, -6, 14, H - 40);                      // 왼쪽 담
-    ctx.fillStyle = '#a58f60'; ctx.fillRect(W - 130, -22, 144, H + 2);                 // 문루 (폭 130) — 바닥은 땅선(H−20)에 닿는다
-    ctx.fillStyle = '#8f7a4e'; ctx.fillRect(W - 130, 110, 144, 4); ctx.fillRect(W - 130, 160, 144, 4); // 석재 줄눈
-    ctx.fillStyle = '#9b4a2c'; ctx.fillRect(W - 138, -30, 160, 10);                    // 문루 지붕
-    ctx.strokeStyle = '#8f7a4e'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = W - 124; x < W + 12; x += 12) { ctx.moveTo(x, -20); ctx.lineTo(x, -6); } ctx.stroke(); // 문루 난간
+    ctx.fillStyle = roma ? ROMA.marble : '#9b4a2c'; ctx.fillRect(-8, -6, W + 16, 8);                       // 기와 지붕선
+    ctx.fillStyle = roma ? ROMA.brick : '#a58f60'; ctx.fillRect(-14, -6, 14, H - 40);                      // 왼쪽 담
+    ctx.fillStyle = roma ? ROMA.brick : '#a58f60'; ctx.fillRect(W - 130, -22, 144, H + 2);                 // 문루 (폭 130) — 바닥은 땅선(H−20)에 닿는다
+    ctx.fillStyle = roma ? ROMA.mortar : '#8f7a4e'; ctx.fillRect(W - 130, 110, 144, 4); ctx.fillRect(W - 130, 160, 144, 4); // 석재 줄눈
+    ctx.fillStyle = roma ? ROMA.marble : '#9b4a2c'; ctx.fillRect(W - 138, -30, 160, 10);                    // 문루 지붕
+    ctx.strokeStyle = roma ? ROMA.mortar : '#8f7a4e'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = W - 124; x < W + 12; x += 12) { ctx.moveTo(x, -20); ctx.lineTo(x, -6); } ctx.stroke(); // 문루 난간
+    if (roma) {
+      ctx.strokeStyle = ROMA.mortar; ctx.lineWidth = 0.8; for (let y = -4, row = 0; y < H - 20; y += 10, row++) { ctx.beginPath(); ctx.moveTo(W - 130, y); ctx.lineTo(W + 14, y); for (let x = W - 130 + (row % 2) * 16; x < W + 14; x += 32) { ctx.moveTo(x, y); ctx.lineTo(x, y + 10); } ctx.stroke(); }
+      ctx.fillStyle = ROMA.marble; ctx.fillRect(W - 130, -22, 10, H + 2); ctx.fillRect(W + 4, -22, 10, H + 2); ctx.fillRect(W - 106, 20, 82, 29);
+      ctx.strokeStyle = ROMA.marble; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(W - 97, H - 20); ctx.lineTo(W - 97, 84); ctx.arc(W - 65, 84, 32, Math.PI, 0); ctx.lineTo(W - 33, H - 20); ctx.stroke();
+    }
     for (const wx of [W - 110, W - 10]) { ctx.fillStyle = '#3a2412'; ctx.fillRect(wx - 5, 30, 10, 16); } // 작은 창
     ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.moveTo(W - 92, H - 20); ctx.lineTo(W - 92, 84); ctx.arc(W - 65, 84, 27, Math.PI, 0); ctx.lineTo(W - 38, H - 20); ctx.closePath(); ctx.fill(); // 아치 문(열림), 바닥까지
-    ctx.fillStyle = '#e8d9b5'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('LUDUS', W - 65, 40);
+    ctx.fillStyle = roma ? ink : '#e8d9b5'; ctx.font = roma ? 'bold 11px sans-serif' : 'bold 13px sans-serif'; ctx.textAlign = 'center'; if (roma) ctx.fillText(st.lanista.name, W - 65, 40, 74); else ctx.fillText('LUDUS', W - 65, 40); // 후계자의 현재 이름, 긴 이름도 석판 안에 맞춘다
 }
 
 // 계약 카드용 경기장 아이콘: 등급별 크기·재질
