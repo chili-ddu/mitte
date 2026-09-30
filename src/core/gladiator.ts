@@ -6,7 +6,7 @@ import { classKey } from './classes.js';
 import { TYPE_MATCHUP } from './matchup-table.js';
 import { matchupOwner } from './matchup.js';
 import { epithetMods } from './epithets.js';
-import { rollTalent, talentOf, TALENT_PRICE_MUL } from './talent.js';
+import { rollTalent, talentOf, TALENT_PRICE_MUL, type Talent } from './talent.js';
 import { legendOfType, LEGEND_BY_ID, type Legend } from './legends.js';
 import namesJson from '../../data/names.json' with { type: 'json' };
 
@@ -30,6 +30,7 @@ export const LINEAGE_DESC: Record<Lineage, string> = { nature: '짐승·자연�
 
 // 계보 다섯 모두 (2026-09-18 사용자: 그동안 자연·승리 둘만 뽑아 신화·별명·지명 이름 60개와 그 무늬가 한 번도 나오지 않았다)
 const LINEAGES_1ST: Lineage[] = ['nature', 'victory', 'myth', 'nickname', 'place'];
+export const RESERVED_NAMES = new Set<string>(); // 고정 명부(cast.ts)와 파밀리아 얼굴이 쓰는 이름 — 랜덤 생성이 이 이름을 뽑지 않는다 (2026-09-30)
 export const TYPES: GType[] = ['murmillo', 'secutor', 'thraex', 'retiarius', 'hoplomachus', 'provocator', 'eques', 'dimachaerus', 'scissor', 'laquearius'];
 
 let nextId = 1;
@@ -37,17 +38,17 @@ export function resetIds() { nextId = 1; }
 export function peekNextId() { return nextId; }
 export function setNextId(n: number) { nextId = n; }
 
-export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number; age?: number; taken?: Set<string>; legend?: string } = {}): Gladiator { /* legend: 디버그용 — 이 전설을 강제로 */ /* taken: 살아 있는 전설 id — 넘기면 천부가 전설로 나올 수 있고, 꺼낸 전설은 여기에 더한다. 안 넘기면(시작 검투사·타지 검투사·측정) 천부는 비범으로 내린다 */
+export function makeGladiator(rng: Rng, rank: Rank, opts: { type?: GType; lineage?: Lineage; season?: number; age?: number; taken?: Set<string>; legend?: string; name?: string; talent?: Talent } = {}): Gladiator { /* name·talent: 고정 명부 항목(cast.ts) — 이름은 그대로, 자질은 굴리지 않고 지정값(상한도 그 자질로 굴린다). 굴림은 소비해 항목 seed 의 뒤 굴림이 안 밀린다 */ /* legend: 디버그용 — 이 전설을 강제로 */ /* taken: 살아 있는 전설 id — 넘기면 천부가 전설로 나올 수 있고, 꺼낸 전설은 여기에 더한다. 안 넘기면(시작 검투사·타지 검투사·측정) 천부는 비범으로 내린다 */
   const type = opts.legend ? LEGEND_BY_ID[opts.legend].type : opts.type ?? rng.pick(TYPES);
   const lineage = opts.lineage ?? rng.pick(LINEAGES_1ST);
-  const pool = (namesJson as Record<string, { ko: string }[]>)[lineage];
-  const name = rng.pick(pool).ko;
+  const pool0 = (namesJson as Record<string, { ko: string }[]>)[lineage]; const pool = pool0.filter(n => !RESERVED_NAMES.has(n.ko)); /* 명부의 이름은 랜덤 풀에서 뺀다 */
+  const name = opts.name ?? rng.pick(pool.length ? pool : pool0).ko;
   const [a0, a1] = rank === 'tiro' ? CONFIG.age.tiro : CONFIG.age.veteran; let age = opts.age ?? rng.int(a0, a1); // 나이가 곧 자란 정도 (2026-09-21)
   const s = TYPE_STATS[type]; /* 서열 배율 없음 (2026-09-21): 현재치는 유형 기본에서 나이만큼 상한 쪽으로 자라 있다 */
   const base: Stats = { hp: s.hp, atk: s.atk, def: s.def, spd: s.spd, hand: s.hand };
   const wins = rank === 'veteranus' ? rng.int(3, 6) : 0;
   const g: Gladiator = { id: nextId++, name, lineage, type, rank, base, fights: wins + rng.int(0, 2), wins, missios: 0, injured: 0, buyPrice: 0, alive: true, age, scaeva: rng.chance(CONFIG.gear.scaevaP) || undefined }; // 왼손잡이 (비문에 따로 표기될 만큼 귀했다) — 비율은 config
-  g.talent = rollTalent(rng); g.talentKnown = true; /* 2026-09-22 사용자: 자질도 처음부터 보인다 (성장형·상한과 같이) — 값에도 처음부터 들어간다 */ g.growth = rollGrowth(rng);
+  g.talent = rollTalent(rng); if (opts.talent != null) g.talent = opts.talent; g.talentKnown = true; /* 2026-09-22 사용자: 자질도 처음부터 보인다 (성장형·상한과 같이) — 값에도 처음부터 들어간다 */ g.growth = rollGrowth(rng);
   let legend: Legend | undefined; if (opts.legend) { legend = LEGEND_BY_ID[opts.legend]; g.talent = 3; } else if (g.talent === 3) { const l = legendOfType(type); if (l && opts.taken && !opts.taken.has(l.id) && rng.chance(CONFIG.legend.p)) { legend = l; opts.taken.add(l.id); } } /* 천부 중 확률로 전설 (2026-09-22 사용자): 그 유형의 인물이 비어 있어야 한다. 아니면 그냥 천부 */
   if (legend) { const F = legend.fixed; g.legend = legend.id; g.name = legend.name; age = legend.age; g.age = age; g.growth = { ...legend.growth }; g.dictata = [legend.dictata]; g.scaeva = undefined; g.lineage = F.lineage; g.rank = F.rank; g.wins = F.wins; g.fights = F.fights; g.base = { hp: F.hp, atk: F.atk, def: F.def, hand: F.hand, spd: s.spd }; } /* 전설은 전부 고정 (2026-09-22 사용자): 시작 능력치·서열·전적·유래까지 */
   g.cap = rollCaps(rng, type, g.base, age, g.growth, s, g.talent, legend?.pot); secondWind(g); /* 서른 넘은 늦바람 매물은 만들 때 바로 상한 +15% (2026-09-22) */

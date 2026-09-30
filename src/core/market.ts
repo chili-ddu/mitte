@@ -1,40 +1,41 @@
-import type { Gladiator, GType } from './types.js';
+import type { Gladiator } from './types.js';
 import { retalentCaps } from './growth.js';
-
 import { Rng } from './rng.js';
 import { CONFIG } from './config.js';
-import { valueOf, makeGladiator, TYPES } from './gladiator.js';
-import { rollTalent } from './talent.js';
+import { valueOf, makeGladiator } from './gladiator.js';
+import { rollTalent, type Talent } from './talent.js';
+import { CAST, castState, makeFromCast, type CastBook } from './cast.js';
 
-// 판매대: 이미 나온 유형은 가중치를 낮춰 뽑는다 (2026-09-18: 무조건 배제 → 확률, 주무기 → 유형 기준. 같은 유형 둘이 나란히 서는 일이 드물되, 같은 무장을 모을 길은 열어 둔다)
-function pickType(rng: Rng, used: Set<GType>): GType {
-  const w = TYPES.map(t => used.has(t) ? CONFIG.market.dupWeight : 1); const total = w.reduce((a, b) => a + b, 0);
-  let r = rng.next() * total; for (let i = 0; i < TYPES.length; i++) { r -= w[i]; if (r <= 0) return TYPES[i]; } return TYPES[TYPES.length - 1];
+// 시장 = 오토체스 상점 (docs/11 8절). 호감도 단계가 등급 확률을 정하고, 명부(cast.ts)에서 아직 팔리지 않은 사람을 세운다. 시즌마다 정해진 수, 종(리롤)으로 다시 뽑는다
+function tierProbs(fame: number): readonly [number, number, number, number] { let p = CONFIG.market.tierTable[0][1]; for (const [at, v] of CONFIG.market.tierTable) if (fame >= at) p = v; return p; }
+function eligible(book: CastBook, t: Talent, shown: Set<string>) { return CAST.filter(e => e.role === 'market' && e.talent === t && !shown.has(e.id) && !castState(book, e.id).taken && !castState(book, e.id).gone && castState(book, e.id).app < CONFIG.market.maxApp[t]); }
+export function drawMarket(rng: Rng, season: number, fame: number, book: CastBook, n: number, shown: Set<string> = new Set()): Gladiator[] {
+  const out: Gladiator[] = []; const probs = tierProbs(fame);
+  for (let i = 0; i < n; i++) {
+    let r = rng.next() * 100; let t: Talent = 0; for (let k = 0; k < 4; k++) { r -= probs[k]; if (r < 0) { t = k as Talent; break; } }
+    let pool = eligible(book, t, shown); for (let k = t - 1; k >= 0 && !pool.length; k--) pool = eligible(book, k as Talent, shown); /* 그 등급이 다 팔렸으면 아래 등급 */
+    if (!pool.length) break;
+    const e = rng.pick(pool); shown.add(e.id); castState(book, e.id).app++; out.push(makeFromCast(e, season));
+  }
+  return out;
 }
-export function offerMarket(rng: Rng, season = 1, taken?: Set<string>): Gladiator[] {
-  const list: Gladiator[] = []; const used = new Set<GType>();
-  const add = (g: Gladiator) => { used.add(g.type); list.push(g); };
-  const nTiro = rng.int(2, 3); // 첫 시즌 혜택은 없앴다 (2026-09-16: 시작 검투사 둘을 직접 고르므로 그 역할이 끝났다)
-  for (let i = 0; i < nTiro; i++) add(withOrigin(rng, makeGladiator(rng, 'tiro', { type: pickType(rng, used), taken }), season));
-  if (rng.chance(0.5)) { const v = withOrigin(rng, makeGladiator(rng, 'veteranus', { season, type: pickType(rng, used), taken }), season); v.buyPrice = valueOf(v); add(v); } // 베테라누스는 절반 확률
-  return list;
+// 시즌 시작: 앞 시즌에 안 팔린 사람은 등장 횟수를 다 썼으면 떠난다(gone)
+export function offerMarket(rng: Rng, season: number, fame: number, book: CastBook, prev: Gladiator[] = []): Gladiator[] {
+  for (const g of prev) if (g.castId) { const st = castState(book, g.castId); const e = CAST.find(x => x.id === g.castId); if (e && st.app >= CONFIG.market.maxApp[e.talent]) st.gone = true; }
+  return drawMarket(rng, season, fame, book, season === 1 ? CONFIG.market.firstSeason : CONFIG.market.perSeason);
 }
-// 출신 부여: 첫 시즌은 노예 상인만 (규칙을 익힐 때 변수를 줄인다)
-function withOrigin(rng: Rng, g: Gladiator, season: number): Gladiator {
-  const O = CONFIG.origins; g.origin = 'slave';
-  if (season <= 1) return g;
-  const r = rng.next();
-  if (r < O.mix.captive) { g.origin = 'captive'; g.base.atk += O.captive.atk; g.base.hp += O.captive.hp; if (g.cap) { g.cap.atk += O.captive.atk; g.cap.hp += O.captive.hp; } g.buyPrice = valueOf(g); } /* 출신 보정은 상한도 같이 옮긴다 — 안 그러면 포로가 사자마자 '다 큰 몸'(현재치 > 상한)이 된다 (2026-09-22 사용자 지적) */
-  else if (r < O.mix.captive + O.mix.damnatus) { g.origin = 'damnatus'; g.base.atk = Math.max(1, g.base.atk + O.damnatus.stat); g.base.def = Math.max(0, g.base.def + O.damnatus.stat); if (g.cap) { g.cap.atk = Math.max(g.base.atk, g.cap.atk + O.damnatus.stat); g.cap.def = Math.max(g.base.def, g.cap.def + O.damnatus.stat); } g.buyPrice = valueOf(g); }
-  return g;
+// 시작 로스터 (docs/11 8절): 펠릭스(재능 무르밀로, 루두스에 딸려 온 사람, 20세) + 평범 중 무르밀로 아닌 유형 하나. 둘 다 전적 없는 티로
+export function starters(rng: Rng, book: CastBook): Gladiator[] {
+  const felix = CAST.find(e => e.name === '펠릭스')!; const others = CAST.filter(e => e.role === 'market' && e.talent === 0 && e.type !== 'murmillo');
+  return [felix, rng.pick(others)].map((e, i) => { castState(book, e.id).taken = true; const g = makeFromCast(e, 1, { plain: true, age: i === 0 ? CONFIG.market.starterAge[0] : rng.int(CONFIG.market.starterAge[1], CONFIG.market.starterAge[2]) }); g.rank = 'tiro'; g.wins = 0; g.fights = 0; g.origin = 'slave'; g.buyPrice = valueOf(g); return g; });
 }
-// 자유민 지원자(아욱토라티): 호민관 앞에서 선서하고 라니스타와 직접 계약. 루두스 문 앞에 찾아온다
-export function offerApplicants(rng: Rng, season: number, fame: number, taken?: Set<string>): Gladiator[] {
+// 자유민 지원자(아욱토라티): 호민관 앞에서 선서하고 라니스타와 직접 계약. 루두스 문 앞에 찾아온다. 명부 밖의 랜덤 생성 — 유지하기로 함 (2026-09-30). 전설로는 안 나온다(taken 을 안 넘긴다: 전설은 파밀리아 얼굴)
+export function offerApplicants(rng: Rng, season: number, fame: number): Gladiator[] {
   const O = CONFIG.origins.auctoratus; const out: Gladiator[] = [];
   if (season <= 1) return out;
   const n = rng.chance(O.base + fame * O.perFame) ? (rng.chance(O.second) ? 2 : 1) : 0;
   for (let i = 0; i < n; i++) {
-    const g = makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season, taken }); g.origin = 'auctoratus'; if (!g.legend) { const t0 = g.talent ?? 0; g.talent = rollTalent(rng, 0.5); retalentCaps(g, t0, g.talent ?? 0); } /* 전설이 아니면 한 단계 위일 확률 50% */ // 자유민 지원자는 자질이 한 단계 위일 확률 50% (상한도 따라간다) g.buyPrice = Math.round(g.buyPrice * O.price); g.age = rng.int(CONFIG.age.applicant[0], CONFIG.age.applicant[1]);
+    const g = makeGladiator(rng, rng.chance(0.5) ? 'veteranus' : 'tiro', { season }); g.origin = 'auctoratus'; const t0 = g.talent ?? 0; g.talent = rollTalent(rng, 0.5); retalentCaps(g, t0, g.talent ?? 0); /* 자유민 지원자는 자질이 한 단계 위일 확률 50% (상한도 따라간다) */ g.buyPrice = Math.round(g.buyPrice * O.price); g.age = rng.int(CONFIG.age.applicant[0], CONFIG.age.applicant[1]);
     if (g.rank === 'veteranus') { g.wins = Math.max(g.wins, 3); g.fights = Math.max(g.fights, 5); g.buyPrice = Math.round(valueOf(g) * O.price); }
     out.push(g);
   }

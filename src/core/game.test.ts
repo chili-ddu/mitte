@@ -1,16 +1,16 @@
 // 게임 진행 골든 테스트: 새 게임·시즌·저장이 시드대로 재현되는가
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, score, serialize, deserialize, endSeason, available, canReroll, rerollMarket } from './game.js';
+import { newGame, score, serialize, deserialize, endSeason, available, canReroll, rerollMarket, buy } from './game.js';
 import { CONFIG } from './config.js';
 
 test('새 게임은 시드대로 재현된다 (골든)', () => {
   const st = newGame(2026);
   assert.equal(st.money, CONFIG.startMoney);
-  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['풀구르', 8, 5], ['간니쿠스', 9, 3]] /* 2026-09-22 공격 눈금 절반, 유형 재분배, 파밀리아 한 팀·명단 5 로 시작 — 난수 소비가 바뀜 */ /* 2026-09-21 서열 배율 삭제·나이만큼 자란 몸·시작 보정 삭제, 파밀리아 색 굴림으로 난수 이동 */);
+  assert.deepEqual(st.roster.map(g => [g.name, g.base.atk, g.base.def]), [['펠릭스', 7, 9], ['브루투스', 7, 7]] /* 2026-09-30 고정 명부: 시작은 펠릭스(재능 무르밀로 20세) + 명부의 평범 하나 — 항목 seed 로 굴려 게임 시드와 무관하게 같은 몸 */ /* 2026-09-22 공격 눈금 절반, 유형 재분배, 파밀리아 한 팀·명단 5 로 시작 — 난수 소비가 바뀜 */ /* 2026-09-21 서열 배율 삭제·나이만큼 자란 몸·시작 보정 삭제, 파밀리아 색 굴림으로 난수 이동 */);
   assert.deepEqual(st.roster.map(g => [g.rank, g.wins, g.fights]), [['tiro', 0, 0], ['tiro', 0, 0]], '시작 검투사는 제일 어린 티로, 전적 없음 (2026-09-21 사용자)');
   assert.equal(st.contracts.length, 2); /* 2026-09-22 몸 상태 굴림이 빠져 (4 → 2), 파밀리아 열두 집·특징 (3 → 2) */
-  assert.equal(score(st), 28900); /* 2026-09-22 자질이 값에, 할인 30세·priceBase 120, 전력 가중치 재측정, 유형 재분배, 파밀리아 한 팀·명단 5 (→ 28900) */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
+  assert.equal(score(st), 29250); /* 2026-09-30 고정 명부 시작 검투사 (→ 29250) */ /* 2026-09-22 자질이 값에, 할인 30세·priceBase 120, 전력 가중치 재측정, 유형 재분배, 파밀리아 한 팀·명단 5 (→ 28900) */ // 2026-09-17 시작 검투사를 티로에서 일반 검투사(전적 3~6승)로 바꾸며 값이 올랐다. 난수 소비가 늘어 계약 수·몸 상태도 다시 굴려진다
   assert.deepEqual(newGame(2026).roster.map(g => g.name), st.roster.map(g => g.name), '두 번 만들어도 같다');
 });
 
@@ -39,4 +39,14 @@ test('상인을 다시 부른다 — 값을 치르고 시즌당 한 번, 판매�
   assert.notDeepEqual(st.market.map(g => g.id), before);
   assert.equal(canReroll(st), false, '시즌당 한 번'); assert.equal(rerollMarket(st), false);
   endSeason(st); assert.ok(canReroll(st), '새 시즌이면 다시 부를 수 있다');
+});
+
+test('고정 명부: 시장은 명부에서만 뽑고, 산 사람은 다시 서지 않으며, 등장 횟수를 다 쓰면 떠난다', () => {
+  const st = newGame(5);
+  assert.ok(st.market.every(g => g.castId), '시장 매물은 전부 명부 항목');
+  assert.equal(st.market.length, CONFIG.market.firstSeason);
+  const first = st.market[0]; assert.ok(buy(st, first)); assert.equal(st.cast[first.castId!].taken, true);
+  for (let i = 0; i < 12; i++) { endSeason(st); assert.ok(!st.market.some(g => g.castId === first.castId), '산 사람은 시장에 안 선다'); assert.ok(st.market.every(g => g.castId), '시장 매물은 전부 명부 항목'); assert.ok(st.market.length <= CONFIG.market.perSeason); }
+  assert.ok(Object.values(st.cast).some(c => c.gone), '안 팔린 재능 이상은 등장 횟수를 다 쓰고 떠난다');
+  assert.ok(st.roster.every(g => g.name !== '풀구르' || g.castId), '명부의 이름은 랜덤 생성이 쓰지 않는다');
 });

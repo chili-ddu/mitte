@@ -4,7 +4,8 @@ import { CONFIG } from './config.js';
 import { battle } from './battle.js';
 import { judgeLoser, judgeWinnerDowned, type Fate } from './missio.js';
 import { offerContracts, resetContractIds, makeChallenge, challengeSize } from './contracts.js';
-import { offerMarket, offerApplicants } from './market.js';
+import { offerMarket, offerApplicants, starters } from './market.js';
+import { castState, type CastBook } from './cast.js';
 import { equipOf } from './equipment.js';
 import { TYPES } from './gladiator.js';
 import { label, maybePromote, rentFee, resetIds, sellPrice, valueOf, peekNextId, setNextId, makeGladiator } from './gladiator.js';
@@ -64,7 +65,8 @@ export interface GameState {
   graveyard: Gladiator[];
   contracts: Contract[];
   market: Gladiator[];
-  marketRerolls?: number; // 이번 시즌 상인을 다시 부른 횟수 (CONFIG.market.reroll.perSeason 까지)
+  marketRerolls?: number;
+  cast: CastBook;       // 고정 명부 장부: 항목별 등장 횟수·떠남·소속 (core/cast.ts, 2026-09-30) // 이번 시즌 상인을 다시 부른 횟수 (CONFIG.market.reroll.perSeason 까지)
   applicants: Gladiator[]; // 루두스 문 앞의 자유민 지원자 (시즌마다 갱신)
   rivals: Rival[];     // 상대 파밀리아 (시즌을 넘어 유지)
   stage: number;           // 지금 막 (1부터). 간판 내기를 이기면 +1 → 다음 막 파밀리아가 나타난다 (2026-09-22)
@@ -224,10 +226,9 @@ export function moveToCell(st: GameState, g: Gladiator, k: number) { if (k < 0 |
 export function newGame(seed: number, opts: { types?: GType[]; color?: string } = {}): GameState {
   resetIds(); resetContractIds();
   const rng = new Rng(seed);
-  const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], applicants: [], stage: 1, rivals: makeRivals(rng, 1, CONFIG.startFame, opts.color, new Set<string>()), pendingChallenges: [], history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1) };
+  const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], cast: {}, applicants: [], stage: 1, rivals: makeRivals(rng, 1, CONFIG.startFame, opts.color, new Set<string>()), pendingChallenges: [], history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1) };
   st.color = opts.color; // 고르지 않으면 화면의 기본 색
-  const used = new Set<string>(); /* 시작 검투사 둘은 주무기가 겹치지 않게 (2026-09-18 사용자: 유형을 고르는 설정은 없앴다 — 물려받는 것이지 고르는 것이 아니다) */
-  for (let i = 0; i < CONFIG.startGladiators; i++) { const free = TYPES.filter(t => !used.has(equipOf(t).main)); const type = opts.types?.[i] ?? rng.pick(free); used.add(equipOf(type).main); const g = makeGladiator(rng, 'tiro', { type, age: rng.int(CONFIG.age.tiro[0], CONFIG.age.tiro[0] + 1) }); g.wins = 0; g.fights = 0; /* 2026-09-21 사용자: 처음 받는 둘은 제일 어리고 전적이 없는 티로 — 키워서 쓰는 검투사. 나이만큼 자라는 모델이라 시작 보정(×1.08)은 뺐다 */ g.buyPrice = valueOf(g); g.origin = 'slave'; /* 전적 없음 (09-21) */ g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 능력치는 갓 들어온 자의 폭으로 굴리되 전적은 여느 검투사의 기본값(3~6승·0~2패) — 처음부터 '일반 검투사'다 (2026-09-17 사용자) — 선택은 개성이지 힘이 아니다 */ // 전임자에게 물려받은 검투사
+  for (const g of starters(rng, st.cast)) { g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 시작 검투사 (docs/11 8절, 2026-09-30): 펠릭스(재능 무르밀로 20세, 루두스에 딸려 온 사람) + 명부의 평범 중 무르밀로 아닌 하나. 둘 다 전적 없는 티로 — 키워서 쓰는 검투사. 유형을 고르는 설정은 없다(물려받는 것) */ // 전임자에게 물려받은 검투사
   startSeason(st);
   return st;
 }
@@ -245,8 +246,8 @@ export function startSeason(st: GameState) {
   st.contracts = [...queuedNow];
   st.pendingRivalPick = needRivalPick(st) || undefined; /* 연차가 바뀌었고 고를 집이 넘친다 — 포룸에서 고른 뒤에 공고벽을 건다 (2026-09-23 사용자) */
   if (!st.pendingRivalPick) openWall(st);
-  st.market = offerMarket(st.rng, st.season, taken); st.marketRerolls = 0;
-  st.applicants = offerApplicants(st.rng, st.season, st.fame, taken);
+  st.market = offerMarket(st.rng, st.season, st.fame, st.cast, st.market); st.marketRerolls = 0; /* 명부 상점: 앞 시즌에 안 팔린 사람의 등장 횟수를 정산하고 새로 뽑는다 */
+  st.applicants = offerApplicants(st.rng, st.season, st.fame);
   for (const g of [...st.market, ...st.applicants]) if (g.legend) st.history.push(`${seasonName(st.season)}: ${g.name}이(가) ${st.market.includes(g) ? '노예 시장에 나왔다' : '문 앞에 찾아왔다'} — 전설의 이름`);
 }
 
@@ -360,7 +361,7 @@ export const rerollsLeft = (st: GameState) => CONFIG.market.reroll.perSeason - (
 export const canReroll = (st: GameState) => !st.over && rerollsLeft(st) > 0 && st.money >= CONFIG.market.reroll.cost;
 export function rerollMarket(st: GameState): boolean {
   if (!canReroll(st)) return false;
-  st.money -= CONFIG.market.reroll.cost; st.marketRerolls = (st.marketRerolls ?? 0) + 1; st.market = offerMarket(st.rng, st.season, takenNow(st));
+  st.money -= CONFIG.market.reroll.cost; st.marketRerolls = (st.marketRerolls ?? 0) + 1; st.market = offerMarket(st.rng, st.season, st.fame, st.cast, st.market); /* 종: 판매대에 섰던 사람은 등장 횟수를 하나 쓴다 — 풀 소모 속도는 플레이어의 몫 */
   st.history.push(`${seasonName(st.season)}: 상인을 다시 불렀다 (${CONFIG.market.reroll.cost} HS, 매물 ${st.market.length}명)`); return true;
 }
 export function canBuy(st: GameState, g: Gladiator): boolean { return st.money >= priceOf(st, g) && st.roster.length < rosterCap(st); } // 켈라이 차면 못 산다
@@ -375,7 +376,7 @@ function disambiguate(st: GameState, g: Gladiator) {
 export function buy(st: GameState, g: Gladiator): boolean {
   if (!canBuy(st, g)) return false;
   disambiguate(st, g);
-  st.money -= priceOf(st, g); st.roster.push(g); st.market = st.market.filter(m => m !== g); st.applicants = st.applicants.filter(m => m !== g);
+  st.money -= priceOf(st, g); st.roster.push(g); st.market = st.market.filter(m => m !== g); st.applicants = st.applicants.filter(m => m !== g); if (g.castId) castState(st.cast, g.castId).taken = true; /* 명부: 이제 누군가의 사람 — 다시는 시장에 서지 않는다 */
   g.boughtSeason = st.season;
   if (g.origin === 'auctoratus') { g.status = 'rudiarius'; g.contractUntil = st.season + CONFIG.origins.auctoratus.term - 1; } // 자유민 계약자: 급료 받는 자유민, 계약 기간
   st.history.push(g.origin === 'auctoratus' ? `${seasonName(st.season)}: ${label(g)} 자유민 계약 (계약금 ${priceOf(st, g)})` : `${seasonName(st.season)}: ${label(g)} 들여옴 (${ORIGIN_KO[g.origin ?? 'slave']}, ${priceOf(st, g)} HS)`); // 검투사를 들인 일은 연혁의 특별한 일
@@ -631,9 +632,9 @@ export function score(st: GameState): number {
 }
 
 // ---------- 저장 ----------
-export interface SaveData { v: 1; rng: number; color?: string; season: number; money: number; fame: number; roster: Gladiator[]; graveyard: Gladiator[]; contracts: Contract[]; market: Gladiator[]; marketRerolls?: number; pendingChallenges?: Contract[]; challengeSent?: number; chosenRivals?: number[]; rivalPickYear?: number; pendingRivalPick?: boolean; lastArrived?: string[]; stage?: number; starBetSent?: number; queued?: { rivalId: number; size: 1 | 2 | 3; starBet?: boolean }[]; pendingStarPrize?: { rivalId: number; gladId: number; stage: number }; lastGraduated?: number; history: string[]; over: boolean; reason?: string; nextId: number; ludus?: unknown; events?: SeasonEvents; applicants?: Gladiator[]; rivals?: Rival[]; lanista?: Lanista; pendingSuccession?: boolean; lineageLog?: string[]; hall?: HallEntry[]; guestPromise?: boolean; }
+export interface SaveData { v: 1; rng: number; color?: string; season: number; money: number; fame: number; roster: Gladiator[]; graveyard: Gladiator[]; contracts: Contract[]; market: Gladiator[]; marketRerolls?: number; cast?: CastBook; pendingChallenges?: Contract[]; challengeSent?: number; chosenRivals?: number[]; rivalPickYear?: number; pendingRivalPick?: boolean; lastArrived?: string[]; stage?: number; starBetSent?: number; queued?: { rivalId: number; size: 1 | 2 | 3; starBet?: boolean }[]; pendingStarPrize?: { rivalId: number; gladId: number; stage: number }; lastGraduated?: number; history: string[]; over: boolean; reason?: string; nextId: number; ludus?: unknown; events?: SeasonEvents; applicants?: Gladiator[]; rivals?: Rival[]; lanista?: Lanista; pendingSuccession?: boolean; lineageLog?: string[]; hall?: HallEntry[]; guestPromise?: boolean; }
 export function serialize(st: GameState): SaveData {
-  return { v: 1, rng: st.rng.state, color: st.color, season: st.season, money: st.money, fame: st.fame, roster: st.roster, graveyard: st.graveyard, contracts: st.contracts, market: st.market, marketRerolls: st.marketRerolls, pendingChallenges: st.pendingChallenges, challengeSent: st.challengeSent, chosenRivals: st.chosenRivals, rivalPickYear: st.rivalPickYear, pendingRivalPick: st.pendingRivalPick, lastArrived: st.lastArrived, stage: st.stage, starBetSent: st.starBetSent, queued: st.queued, pendingStarPrize: st.pendingStarPrize, lastGraduated: st.lastGraduated, history: st.history, over: st.over, reason: st.reason, nextId: peekNextId(), ludus: st.ludus, events: st.events, applicants: st.applicants, rivals: st.rivals, lanista: st.lanista, pendingSuccession: st.pendingSuccession, lineageLog: st.lineageLog, hall: st.hall, guestPromise: st.guestPromise };
+  return { v: 1, rng: st.rng.state, color: st.color, season: st.season, money: st.money, fame: st.fame, roster: st.roster, graveyard: st.graveyard, contracts: st.contracts, market: st.market, marketRerolls: st.marketRerolls, cast: st.cast, pendingChallenges: st.pendingChallenges, challengeSent: st.challengeSent, chosenRivals: st.chosenRivals, rivalPickYear: st.rivalPickYear, pendingRivalPick: st.pendingRivalPick, lastArrived: st.lastArrived, stage: st.stage, starBetSent: st.starBetSent, queued: st.queued, pendingStarPrize: st.pendingStarPrize, lastGraduated: st.lastGraduated, history: st.history, over: st.over, reason: st.reason, nextId: peekNextId(), ludus: st.ludus, events: st.events, applicants: st.applicants, rivals: st.rivals, lanista: st.lanista, pendingSuccession: st.pendingSuccession, lineageLog: st.lineageLog, hall: st.hall, guestPromise: st.guestPromise };
 }
 // 구 저장(cells 숫자·infirmary·yard) → 새 구조
 function migrateLudus(l: unknown): Ludus {
@@ -649,7 +650,7 @@ export function deserialize(d: SaveData): GameState {
   const contracts = d.contracts.map(c => ({ ...c, host: migrateHost(c.host as string), size: (c.size ?? c.enemy.length) as 1 | 2 | 3 })); // 구 저장: size 없음
   for (const g of [...d.roster, ...d.market, ...(d.applicants ?? []), ...contracts.flatMap(c => c.enemy), ...(d.rivals ?? []).flatMap(r => r.roster), ...(d.pendingChallenges ?? []).flatMap(c => c.enemy)]) { /* 파밀리아 명단과 도전장 상대도 보정 (Codex 리뷰: 빠지면 상한 없이 무한 성장) */ if (g.age == null) g.age = g.rank === 'tiro' ? 20 : 27; /* 구 저장: 나이 없음 */ if (g.base.hand == null) g.base.hand = TYPE_STATS[g.type]?.hand ?? g.base.spd; delete (g.base as { range?: number }).range; if (!g.growth || !g.cap) { const r2 = new Rng(g.id * 7919 + 3); g.growth = rollGrowth(r2); g.cap = rollCaps(r2, g.type, g.base, g.age ?? 24, g.growth, TYPE_STATS[g.type], g.talent ?? 0); } } // 구 저장(2026-09-20): 손놀림 없음 → 유형 기본치, 사거리 칸은 지운다
   for (const r of d.rivals ?? []) { const def = RIVAL_DEFS.find(x => x.id === r.id); if (r.mood == null) r.mood = 0; if (r.purse == null) r.purse = CONFIG.rivals.purseStart[r.profile ?? 'local']; if (!r.focus) r.focus = def?.focus ?? 'bigShield+gladius'; } // 구 저장(2026-09-20): 파밀리아 살림 없음
-  return { rng, color: d.color, season: d.season, money: d.money, fame: d.fame, roster: d.roster, graveyard: d.graveyard, contracts, market: d.market, marketRerolls: d.marketRerolls ?? 0, pendingChallenges: (d.pendingChallenges ?? []).map(c => ({ ...c, host: migrateHost(c.host), size: c.size ?? 1 })), challengeSent: d.challengeSent, chosenRivals: d.chosenRivals, rivalPickYear: d.rivalPickYear, pendingRivalPick: d.pendingRivalPick, lastArrived: d.lastArrived, stage: d.stage ?? Math.max(1, ...(d.rivals ?? []).map(r => RIVAL_DEFS.find(x => x.id === r.id)?.stage ?? 1)), starBetSent: d.starBetSent, queued: d.queued, pendingStarPrize: d.pendingStarPrize, lastGraduated: d.lastGraduated, applicants: d.applicants ?? [], rivals: ((rs: Rival[]) => rs.map((r, i) => ({ ...r, vsMe: r.vsMe ?? { wins: 0, losses: 0, draws: 0 }, color: r.color ?? pickColor(rng, [d.color, ...rs.slice(0, i).map(x => x.color)]) })))(d.rivals ?? makeRivals(rng, d.season, 0, d.color)), lanista: d.lanista ? { name: d.lanista.name, age: d.lanista.age, trait: d.lanista.trait, type: d.lanista.type, since: d.lanista.since, dead: d.lanista.dead } : makeLanista(rng, d.season), pendingSuccession: d.pendingSuccession, lineageLog: d.lineageLog, guestPromise: d.guestPromise, hall: d.hall ?? d.roster.filter(g => g.status === 'rudiarius' || g.status === 'doctor').map(g => ({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: g.rudisSeason ?? d.season, epithets: [...(g.epithets ?? [])], how: 'rudis' as const })), history: d.history, over: d.over && !(CONFIG.seasons === 0 && /시즌 완료$/.test(d.reason ?? '')), reason: CONFIG.seasons === 0 && /시즌 완료$/.test(d.reason ?? '') ? undefined : d.reason /* 시즌 제한이 있던 옛 저장의 '12시즌 완료' 종료는 되살린다 */, ludus: migrateLudus(d.ludus), events: { cena: false, unctio: false, medicus: false, pompa: false, votum: false, edicta: false, guests: false, ...(d.events ?? {}) } };
+  return { rng, color: d.color, season: d.season, money: d.money, fame: d.fame, roster: d.roster, graveyard: d.graveyard, contracts, market: d.market, marketRerolls: d.marketRerolls ?? 0, cast: d.cast ?? {} /* 옛 저장: 명부 장부 없음 — 빈 장부에서 시작 */, pendingChallenges: (d.pendingChallenges ?? []).map(c => ({ ...c, host: migrateHost(c.host), size: c.size ?? 1 })), challengeSent: d.challengeSent, chosenRivals: d.chosenRivals, rivalPickYear: d.rivalPickYear, pendingRivalPick: d.pendingRivalPick, lastArrived: d.lastArrived, stage: d.stage ?? Math.max(1, ...(d.rivals ?? []).map(r => RIVAL_DEFS.find(x => x.id === r.id)?.stage ?? 1)), starBetSent: d.starBetSent, queued: d.queued, pendingStarPrize: d.pendingStarPrize, lastGraduated: d.lastGraduated, applicants: d.applicants ?? [], rivals: ((rs: Rival[]) => rs.map((r, i) => ({ ...r, vsMe: r.vsMe ?? { wins: 0, losses: 0, draws: 0 }, color: r.color ?? pickColor(rng, [d.color, ...rs.slice(0, i).map(x => x.color)]) })))(d.rivals ?? makeRivals(rng, d.season, 0, d.color)), lanista: d.lanista ? { name: d.lanista.name, age: d.lanista.age, trait: d.lanista.trait, type: d.lanista.type, since: d.lanista.since, dead: d.lanista.dead } : makeLanista(rng, d.season), pendingSuccession: d.pendingSuccession, lineageLog: d.lineageLog, guestPromise: d.guestPromise, hall: d.hall ?? d.roster.filter(g => g.status === 'rudiarius' || g.status === 'doctor').map(g => ({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: g.rudisSeason ?? d.season, epithets: [...(g.epithets ?? [])], how: 'rudis' as const })), history: d.history, over: d.over && !(CONFIG.seasons === 0 && /시즌 완료$/.test(d.reason ?? '')), reason: CONFIG.seasons === 0 && /시즌 완료$/.test(d.reason ?? '') ? undefined : d.reason /* 시즌 제한이 있던 옛 저장의 '12시즌 완료' 종료는 되살린다 */, ludus: migrateLudus(d.ludus), events: { cena: false, unctio: false, medicus: false, pompa: false, votum: false, edicta: false, guests: false, ...(d.events ?? {}) } };
 }
 
 // 계약 난이도 표시: 상대 전력 ÷ 내 최선 팀(같은 인원, 출전 가능한 검투사 중 상위) 전력. 0.85 미만 약함 · 1.15 초과 강함
