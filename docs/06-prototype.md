@@ -809,3 +809,6 @@ src/web/stickman.ts     attackClipForLoadout(오른손→공격 동작) · offha
 ## 오프라인 모드 — PWA (2026-09-30)
 - `public/sw.js`(의존성 없음): 설치 때 껍데기와 index.html 이 가리키는 자산을 미리 캐시, 같은 출처 GET 은 캐시 우선 + 뒤에서 갱신. 새 배포는 `CACHE` 이름을 올려 옛 캐시를 지운다. `public/manifest.webmanifest`·`public/icon.svg`(스틱맨 검투사, 벽화 팔레트), index.html 에 manifest·theme-color·아이콘 링크. `main.ts` 는 프로덕션 빌드에서만 등록(`import.meta.env.PROD`, 개발 서버 HMR 과 충돌 방지). `src/vite-env.d.ts` 로 vite/client 타입.
 - 확인(에고, `vite preview`): 등록·캐시 목록·오프라인 재로드에서 게임 화면이 뜸. GitHub Pages 의 base(`/저장소명/`)는 `import.meta.env.BASE_URL` 로 따라간다. 저장은 localStorage 라 오프라인 영향 없음. iOS 홈 화면 설치는 SVG 아이콘을 쓰므로 iOS 가 PNG 를 요구하면 나중에 PNG 를 더한다.
+
+## main 전환 (2026-09-30)
+- 캠페인 브랜치(`chili-ddu/claude-codex-workflow-strategy`)를 main 으로 올렸다. 9월 17일 이후 main 에 따로 쌓였던 53 커밋(딕타타·클래스 재정의·전설 열 명·리팩터링 13 모듈 줄기)은 `archive/main-2026-09-23` 브랜치와 `rollback-main-2026-09-23` 태그로 보존. 되돌리려면 `git reset --hard rollback-main-2026-09-23` 뒤 강제 푸시. 두 줄기는 같은 주제(간판 내기·파밀리아 열두 집·시장 리로드)를 다른 설계로 구현해 기계 병합이 불가(19 파일 충돌)했다.
