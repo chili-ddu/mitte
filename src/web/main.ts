@@ -363,7 +363,7 @@ function render() {
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
   const noticeEl = notice ? h('div', { class: 'ditem notice' }, h('span', { class: 'dot' }), h('span', { class: 'grow' }, notice)) : null; notice = '';
-  if (detail) { if (!detail.solo) app.append(detailPage()); if (detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
+  if (detail) { if (!detail.solo) app.append(detailPage()); if (detail?.confirm) app.append(confirmPage()); } // detailPage 가 대상이 사라졌을 때 detail 을 비울 수 있다 (구매 직후 등) — 다시 확인 (8차 테스트 A 의 TypeError) // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
   if (noticeEl) app.append(h('div', { class: 'toast' }, noticeEl.textContent ?? '')); // 토스트: 배경 없이 굵은 글자, 위 가운데에 나타나 위로 떠오르며 사라진다. 정보는 서랍과 장면 클릭으로
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
   // 아래 탭 바: 상세(검투사·시설·파밀리아·규칙)는 시트로 연다 — 화면을 스크롤하지 않도록
