@@ -310,8 +310,8 @@ function fameMeter(): Node {
 }
 function headerEl(): Node {
   headerBox.replaceChildren(
-    h('div', { class: 'hrow' }, h('h1', {}, '라니스타'), h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season', title: st.region === 'roma' ? '2회차: 로마' : '1회차: 캄파니아 (폼페이)' }, `${REGION_KO[st.region]} ${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))),
-    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), h('span', { class: 'stat' }, `호감도 ${st.fame}`), h('span', { class: 'stat' }, `검투사 ${st.roster.length}`, h('span', {}, `/${rosterCap(st)}`)), h('span', { style: 'flex:1' }),
+    h('div', { class: 'hrow' }, h('span', { class: 'stat', title: st.lanista.trait === 'doctor' ? `전직 독토르 (${TYPE_KO[st.lanista.type!]} 훈련 +1)` : st.lanista.trait === 'freedman' ? '해방노예 출신 (시장 10% 할인)' : '창업자' }, st.lanista.name, h('span', {}, ` ${st.lanista.age}세`)), h('span', { style: 'flex:1' }), h('span', { class: 'stat season', title: st.region === 'roma' ? '2회차: 로마' : '1회차: 캄파니아 (폼페이)' }, `${REGION_KO[st.region]} ${Math.floor((st.season - 1) / 4) + 1}년차`, seasonIcon(st.season))), // 세로 무대: 제목·검투사 수는 빼고 두 줄로 (검투사 수는 켈라 서판 배지)
+    h('div', { class: 'hrow' }, h('span', { class: 'stat' }, `${st.money.toLocaleString()} HS`, h('span', {}, ` 유지비 ${upkeepOf(st).toLocaleString()}`)), fameMeter(), h('span', { style: 'flex:1' }),
       newsBtn(), gearBtn()));
   return headerBox;
 }

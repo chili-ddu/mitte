@@ -861,7 +861,7 @@ header .newsbtn .nbadge { top:-4px; right:-6px; }
 #app.land.plan { grid-template-rows:auto 1fr 6px; }
 #app.land > .coach { left:12px; right:12px; width:auto; top:auto; bottom:12px; }
 /* 마을: 캔버스 위쪽, 아래 남는 자리는 모래 */
-#app.land > .yardwrap { align-self:start; }
+#app.land > .yardwrap { align-self:start; margin-top:54px; } /* 처마 서판 토글 줄(46px)이 캔버스 위 하늘을 덮지 않게 그만큼 내린다 — 이 줄기의 마을 캔버스에는 하늘 여백이 없다 */
 /* 장면 패널·상세·편성: 무대 높이를 다 쓴다 */
 #app.land > .scenepanel, #app.land > .detailpage { top:auto; bottom:6px; height:auto; max-height:calc(100% - 52px); }
 #app.land > .scenepanel { padding:0 10px; }
