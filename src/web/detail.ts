@@ -33,7 +33,7 @@ function originBadge(g: Gladiator): Node | null {
 }
 // 계약 상대 설명: 파밀리아 이름 + 이름(유형·전적). 원한·복수 관계 표시
 export const hostPrize = (c: Contract) => Math.round(CONFIG.prizePerTier * c.tier * HOST[c.host].prize);
-export const hostSpan = (c: Contract) => { const H = HOST[c.host]; return h('span', { class: `host ${c.host}`, title: `${H.ko}: ${H.desc}\n상금 ×${H.prize} · 대여료 ×${H.rent} · 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}% · 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameWin ? ` · 승리 호감도 +${H.fameWin}` : ''}${H.honorAll ? ` · 출전자 명예 +${H.honorAll}` : ''}${H.bet ? ' · 내기 가능' : ''}` }, H.ko); };
+export const hostSpan = (c: Contract) => { const H = HOST[c.host]; return h('span', { class: `host ${c.host}`, title: `${H.ko}: ${H.desc}\n상금 ×${H.prize} · 대여료 ×${H.rent} · 미시오 ${H.missio >= 0 ? '+' : ''}${Math.round(H.missio * 100)}% · 루디스 ${H.rudis >= 0 ? '+' : ''}${Math.round(H.rudis * 100)}%${H.fameMul !== 1 ? ` · 호감도 ×${H.fameMul}` : ''}${H.honorAll ? ` · 출전자 명예 +${H.honorAll}` : ''}${H.bet ? ' · 내기 가능' : ''}` }, H.ko); };
 // 성장형·자질 칩 (상세, 2026-09-22 사용자): 곡선 · 결 · 자질 — 색은 자질 흙빛과 같은 계열
 function growthChips(g: Gladiator): Node[] { const gr = g.growth; const out: Node[] = [];
   if (gr?.curveKnown && gr.curve !== 'normal') out.push(h('span', { class: `badge chip curve ${gr.curve}`, title: `성장형 — ${CURVE_DESC[gr.curve]}` }, CURVE_KO[gr.curve])); /* 성장형 '평범'은 칩을 안 단다 — 자질 '평범'과 겹쳐 보였다. 특이한 곡선만 (2026-09-22 사용자) */

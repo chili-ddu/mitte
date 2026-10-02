@@ -19,7 +19,7 @@ export function renderSuccession(): Node {
   const opts = successorOptions(S.st);
   return h('div', { class: 'overlay' }, h('div', { class: 'modal' },
     h('h2', {}, `${S.st.lanista.name} ${S.st.lanista.dead ? '사망' : '은퇴'}`, h('span', { class: 'hint', style: 'margin-left:10px;font-weight:400' }, `${S.st.lanista.age}세 · 후계자를 정하십시오`)),
-    h('div', { class: 'hint', style: 'margin-bottom:8px' }, `자금·검투사·시설은 그대로 잇고, 호감도는 ${Math.round(CONFIG.lanista.fameKeep * 100)}%에 후계자의 명예 일부가 더해집니다. 독토르가 이으면 검투사 명단에서 빠집니다.`),
+    h('div', { class: 'hint', style: 'margin-bottom:8px' }, `자금·검투사·시설은 그대로 잇고, 호감도는 ${Math.round(CONFIG.lanista.fameKeep * 100)}%에 후계자의 명예 일부가 더해집니다. 후계자는 제 나이 그대로 이어 ${CONFIG.lanista.mandatoryAge}세까지 이끕니다 — 루디아리우스·독토르가 이으면 검투사 명단에서 빠집니다.`),
     ...opts.map(o => h('div', { class: 'card', onclick: () => { succeed(S.st, o); S.notice = `${S.st.lanista.name} 이(가) 루두스를 이어받았습니다.`; render(); } },
       o.from ? portrait(o.from, 56) : h('div', { class: 'portrait', style: 'width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:22px' }, '⚖'),
       h('div', { class: 'grow' }, h('div', {}, h('b', {}, o.label), o.from ? h('span', { class: 'meta' }, ` ${o.from.age ?? '?'}세`) : null), h('div', { class: 'meta' }, o.desc), o.from ? h('div', { class: 'meta' }, `명예 ${o.from.honor ?? 0} → 호감도 계승 +${Math.round((o.from.honor ?? 0) * CONFIG.lanista.fameFromHonor)}`) : null),
@@ -111,7 +111,7 @@ export function renderSummary() {
           h('div', { class: 'mrow total' }, h('span', {}, '시즌 순수지'), h('span', { class: net >= 0 ? 'plus' : 'minus' }, `${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()} HS`)),
           h('div', { class: 'mrow', style: 'grid-column:1 / -1' }, h('span', {}, '잔액'), h('span', {}, `${sum.before.toLocaleString()} → ${S.st.money.toLocaleString()} HS`))),
         ), h('div', {}, h('h2', {}, '호감도'),
-        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('경기', fameFights, fameFights >= 0 ? 1 : -1), money('거절', Math.abs(sum.refused), sum.refused < 0 ? -1 : 1), money('망각', 1, -1), money('출전 활동', S.seasonReports.length ? CONFIG.fameDelta.active : 0), evFame ? money('행사', evFame) : null,
+        h('div', { class: 'mtable', style: 'border-top:none;padding-top:0;margin-top:0' }, money('경기', fameFights, fameFights >= 0 ? 1 : -1), money('거절', Math.abs(sum.refused), sum.refused < 0 ? -1 : 1), money('망각', Math.ceil(S.st.fame / (1 - CONFIG.fame.decayRate) * CONFIG.fame.decayRate), -1), evFame ? money('행사', evFame) : null,
           h('div', { class: 'mrow total' }, h('span', {}, '호감도'), h('span', {}, `${sum.fameBefore} → ${S.st.fame}`)))))),
       h('div', {}, prizeBox, h('div', { class: 'panel', style: 'margin-bottom:10px' }, h('h2', {}, '로스터'), ...rosterItems),
         rivalsBox)),

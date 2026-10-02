@@ -110,17 +110,19 @@ export interface HallEntry { name: string; type: GType; wins: number; fights: nu
 export function hallAdd(st: GameState, g: Gladiator, how: HallEntry['how']) { (st.hall ??= []).push({ name: g.name, type: g.type, wins: g.wins, fights: g.fights, honor: g.honor ?? 0, season: st.season, epithets: [...(g.epithets ?? [])], how }); }
 export interface Lanista { name: string; age: number; trait: 'founder' | 'freedman' | 'doctor'; type?: GType; since: number; dead?: boolean }
 const LANISTA_NAMES = ['가이우스 바티아투스', '루키우스 아우렐리우스', '마르쿠스 아티우스', '퀸투스 카시우스', '티투스 플라비우스', '푸블리우스 살비우스', '그나이우스 포르키우스', '데키무스 마밀리우스'];
-export function makeLanista(rng: Rng, season: number): Lanista { const L = CONFIG.lanista; return { name: rng.pick(LANISTA_NAMES), age: rng.int(L.ageMin, L.ageMax), trait: 'founder', since: season }; }
+export function makeLanista(rng: Rng, season: number, fixed = false): Lanista { const L = CONFIG.lanista; return fixed ? { name: L.fixed.name, age: L.fixed.age, trait: 'founder', since: season } : { name: rng.pick(LANISTA_NAMES), age: rng.int(L.ageMin, L.ageMax), trait: 'founder', since: season }; } /* fixed: 1회차 주인공 루크리오 (docs/11 3절). 아니면 먼 친척 */
 // 해마다 죽을 확률 (나이 구간표)
 export function mortality(age: number): number { for (const [upto, p] of CONFIG.lanista.mortality) if (age < upto) return p; return 0.14; }
-export function canRetire(st: GameState): boolean { return st.lanista.age >= CONFIG.lanista.voluntaryAge; }
+export function canRetire(st: GameState): boolean { return st.lanista.age >= CONFIG.lanista.voluntaryAge || successorOptions(st).some(o => o.from); } /* 자발 계승 (docs/11 4절): 후계자 후보(루디아리우스·독토르)가 있으면 언제든. 값은 호감도 ×0.6 */
+export const mustRetire = (st: GameState): boolean => st.lanista.age >= CONFIG.lanista.mandatoryAge; /* 46세 의무 계승 */
 export interface SuccessorOption { key: string; label: string; desc: string; from?: Gladiator; trait: Lanista['trait']; type?: GType }
 export function successorOptions(st: GameState): SuccessorOption[] {
   const out: SuccessorOption[] = st.roster.filter(g => g.status === 'doctor').map(g => ({ key: `doc-${g.id}`, label: `${g.name} (독토르, ${TYPE_LABEL[g.type]})`, desc: `전직 검투사. ${TYPE_LABEL[g.type]} 훈련 +${CONFIG.lanista.doctorTrainBonus}. 명예 ${g.honor ?? 0} 만큼 호감도 계승에 보탬`, from: g, trait: 'doctor', type: g.type }));
+  for (const g of st.roster.filter(g => g.status === 'rudiarius' && g.alive)) out.push({ key: `rud-${g.id}`, label: `${g.name} (루디아리우스, ${TYPE_LABEL[g.type]}, ${g.age ?? '?'}세)`, desc: `루디스를 받은 자유민. 시장 매물 ${Math.round(CONFIG.lanista.freedmanDiscount * 100)}% 할인. 명예 ${g.honor ?? 0} 만큼 호감도 계승에 보탬. 젊을수록 오래 이끈다 (${CONFIG.lanista.mandatoryAge}세까지)`, from: g, trait: 'freedman' }); /* 루디아리우스 후계 (docs/11 4절, 2026-10-03): 젊고 유산 작은 후보 vs 늙고 유산 큰 후보 */
   out.push({ key: 'freedman', label: '부하 해방노예', desc: `루두스 살림을 맡던 해방노예. 시장 매물 ${Math.round(CONFIG.lanista.freedmanDiscount * 100)}% 할인`, trait: 'freedman' });
   return out;
 }
-export function retire(st: GameState, dead = false) { st.pendingSuccession = true; st.lanista.dead = dead; st.history.push(`${seasonName(st.season)}: ${st.lanista.name} ${dead ? '사망' : '은퇴'} (${st.lanista.age}세)`); }
+export function retire(st: GameState, dead = false, forced = false) { st.pendingSuccession = true; st.lanista.dead = dead; st.history.push(`${seasonName(st.season)}: ${st.lanista.name} ${dead ? '사망' : forced ? '세니오레스가 되어 물러남' : '은퇴'} (${st.lanista.age}세)`); }
 export function succeed(st: GameState, opt: SuccessorOption) {
   const L = CONFIG.lanista; const honor = opt.from?.honor ?? 0;
   (st.lineageLog ??= []).push(`${st.lanista.name} (${st.lanista.since}~${st.season}번째 시즌, ${st.lanista.age}세 ${st.lanista.dead ? '사망' : '은퇴'})`);
@@ -226,7 +228,7 @@ export function moveToCell(st: GameState, g: Gladiator, k: number) { if (k < 0 |
 export function newGame(seed: number, opts: { types?: GType[]; color?: string } = {}): GameState {
   resetIds(); resetContractIds();
   const rng = new Rng(seed);
-  const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], cast: {}, applicants: [], stage: 1, rivals: [], pendingChallenges: [], history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1) };
+  const st: GameState = { rng, season: 1, money: CONFIG.startMoney, fame: CONFIG.startFame, roster: [], graveyard: [], contracts: [], market: [], cast: {}, applicants: [], stage: 1, rivals: [], pendingChallenges: [], history: [], over: false, ludus: newLudus(), lanista: makeLanista(rng, 1, true) }; /* 1회차 주인공 루크리오 */
   st.color = opts.color; // 고르지 않으면 화면의 기본 색
   st.rivals = makeRivals(rng, 1, opts.color, st.cast); /* 도장 사슬의 첫 집들 (명부 소속을 장부에 적으므로 장부 뒤에) */
   for (const g of starters(rng, st.cast)) { g.boughtSeason = 1; disambiguate(st, g); st.roster.push(g); } /* 시작 검투사 (docs/11 8절, 2026-09-30): 펠릭스(재능 무르밀로 20세, 루두스에 딸려 온 사람) + 명부의 평범 중 무르밀로 아닌 하나. 둘 다 전적 없는 티로 — 키워서 쓰는 검투사. 유형을 고르는 설정은 없다(물려받는 것) */ // 전임자에게 물려받은 검투사
@@ -530,14 +532,14 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
     } else if (downed) enemyFates.push({ g: e, fate: 'unharmed' });
   }
   let fameDelta = 0;
-  const fd = CONFIG.fameDelta;
-  let winFame: number = fd.win; for (const [at, v] of fd.winAt) if (st.fame >= at) winFame = v; // 명성이 높을수록 승리 한 번의 값이 작다
+  const fd = CONFIG.fame; /* 호감도 = 유지해야 하는 평판 (docs/11 7절, 2026-10-03): 승리 +3×등급, 주최자 배율 */
   if (won && c.challenge) fameDelta += CONFIG.challenge.fame; // 도전 계약을 이기면 이름이 난다
   if (won && c.rivalId) { const rvn = rivalOf(st.rivals, c.rivalId); if (rvn && rivalTraits(rvn).includes('noble')) fameDelta += 1; } /* 명가를 이기면 이름이 하나 더 난다 (2026-09-22) */
-  if (won) fameDelta += winFame + (classic ? fd.classicWin : 0) + HK.fameWin + (c.host === 'candidate' && team.some(g => fansOf(g) >= FANS_STAR) ? 1 : 0); // 선거 후보는 스타가 나온 경기에 표가 모인다
-  if (HK.honorAll) for (const g of team) if (g.alive) g.honor = Math.min(100, (g.honor ?? 0) + HK.honorAll); // 장례 경기: 출전 자체가 기록에 남는다
+  if (won) fameDelta += fd.win * c.tier + (classic ? fd.classic : 0) + (c.host === 'candidate' && team.some(g => fansOf(g) >= FANS_STAR) ? 1 : 0); // 선거 후보는 스타가 나온 경기에 표가 모인다
   else if (res.winner === 'B') fameDelta += fd.lose;
-  const H = CONFIG.honor; const crowned = won && fameDelta >= 5; // 주최자 만족 = 화관
+  fameDelta = Math.round(fameDelta * HK.fameMul); /* 주최자 성격은 원천에 배율 — 황제 ×1.5, 인색한 유지 ×0.5 */
+  if (HK.honorAll) for (const g of team) if (g.alive) g.honor = Math.min(100, (g.honor ?? 0) + HK.honorAll); // 장례 경기: 출전 자체가 기록에 남는다
+  const H = CONFIG.honor; const crowned = won && fameDelta >= fd.crownAt; // 주최자 만족 = 화관
   if (crowned) for (const g of team) if (g.alive) g.crowns = (g.crowns ?? 0) + 1;
   if (team.some(g => (g.epithets ?? []).includes('martia'))) fameDelta += 1; // '군신의 기쁨': 출전만으로 관중이 온다
   for (const id of acc) fameDelta += CLAUSES[id].fame; // 차양·살수: 관중이 몰린다
@@ -553,7 +555,6 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
   const newEpithets: FightReport['newEpithets'] = [];
   for (const g of team) { if (!g.alive) continue; for (const e of grantEpithets(g)) { newEpithets.push({ g, e }); st.history.push(`${seasonName(st.season)}: ${g.name} 별칭 '${e.name}' 을 얻다`); } if (won && (g.epithets ?? []).includes('suspirium')) g.honor = Math.min(100, (g.honor ?? 0) + 2); }
   for (const g of team) { if (!g.alive || damnati) continue; const d = evHonor + (won ? H.win + (c.tier - 1) * H.perTier + (classic ? H.classic : 0) + (crowned ? H.crown : 0) : res.winner === 'B' ? H.lose : 0); g.honor = Math.max(0, Math.min(100, (g.honor ?? 0) + d)); }
-  fameDelta += fates.filter(f => f.fate === 'dead').length * fd.death;
   st.fame = Math.max(0, Math.min(100, st.fame + fameDelta));
   const salary = team.filter(g => g.status === 'rudiarius').reduce((a, g) => a + Math.round(rentFee(g, c.tier) * CONFIG.rudiariusShare), 0); // 자유민 급료
   st.money += rent + prize + compensation - expense - salary + guestGift;
@@ -582,8 +583,8 @@ export function fight(st: GameState, c: Contract, team: Gladiator[]): FightRepor
 // 거절 벌점: 받을 수 있었던 '중요한' 계약(등급 2·3 — 큰 지방 경기·로마)을 안 치렀을 때만 시즌당 1회. 등급 1 소규모 무누스는 거절해도 벌점 없음
 export const isImportant = (c: Contract) => c.tier >= 2 && !c.classic; // 정식 대결은 요청이지 의무가 아니다 — 못 채워도 벌점 없음
 export function refuseAll(st: GameState): number {
-  const penalized = st.fame >= CONFIG.fameDelta.refuseFrom && st.contracts.some(c => isImportant(c) && canFulfill(st, c)); // 아직 이름이 없을 때(호감도 40 미만)는 거절해도 벌점 없음
-  const d = penalized ? CONFIG.fameDelta.refuse : 0;
+  const penalized = st.fame >= CONFIG.fame.refuseFrom && st.contracts.some(c => isImportant(c) && canFulfill(st, c)); // 아직 이름이 없을 때(호감도 40 미만)는 거절해도 벌점 없음
+  const d = penalized ? CONFIG.fame.refuse : 0;
   st.fame = Math.max(0, st.fame + d);
   st.contracts = [];
   return d;
@@ -607,7 +608,6 @@ export function endSeason(st: GameState): { upkeep: number; gift: number; bedCos
   for (const g of overworked) { g.alive = false; st.graveyard.push(g); st.roster = st.roster.filter(r => r !== g); st.history.push(`${seasonName(st.season)}: ${g.name} 혹사 끝에 쓰러져 죽다 (피로 ${g.fatigue})`); }
   st.lastLeft = leftNow.map(g => g.name); st.lastFreed = freedNow.map(g => g.name); st.lastOverwork = overworked.map(g => g.name);
   { const arrived = arriveRivals(st.rng, st.rivals, st.season + 1, st.color, st.cast); st.lastArrived = arrived.map(r => r.name); for (const r of arrived) { const d = rivalDef(r); st.history.push(`${seasonName(st.season)}: ${d && kindOf(d) === 'main' ? `도장 ${d.order}/${MAIN_COUNT} — ` : ''}${r.name} 이(가) 이 지방에 나타났다`); } } /* 도장 사슬: 앞 집을 졸업했으면 다음 집이 온다 */ // 파밀리아 등장은 시즌 끝에 — 정산 화면이 '새 막'을 알리고 다음 상대를 고르게 (2026-09-22 사용자)
-  const active = st.history.some(h => h.startsWith(seasonName(st.season)) && /승|패|무 대여/.test(h));
   const evFame = (st.events?.pompa ? CONFIG.events.pompa.fame : 0) + (st.events?.guests ? CONFIG.events.guests.fame : 0);
   st.fame = Math.max(0, Math.min(100, st.fame + evFame));
   const recoverSet = new Set(st.roster.filter(g => g.injured > 0 && inBed(st, g))); st.lastNoBed = st.roster.filter(g => g.injured > 0 && !recoverSet.has(g)).map(g => g.name); // 침상에 누운 부상자는 낫고 치료비를 낸다. 눕지 않은 부상자는 자연에 맡긴다 (2026-09-21)
@@ -617,15 +617,15 @@ export function endSeason(st: GameState): { upkeep: number; gift: number; bedCos
   if (bedCost) { st.money -= bedCost; st.history.push(`${seasonName(st.season)}: 침상 치료비 ${bedCost} (${recoverSet.size}명)`); } st.lastWorsened = worsened; st.lastFestered = festered.map(g => g.name);
   for (const g of st.roster) { const q = cellQuality(st, g); if (g.injured > 0 && recoverSet.has(g)) g.injured--; if (!g.fought) g.fatigue = Math.max(0, (g.fatigue ?? 0) - (q >= 1 ? 2 : 1) - (st.ludus.medicine >= CONFIG.ludus.medicine.fatigueRestAt ? 1 : 0)); /* 의술 5단계: 의사가 몸을 돌봐 피로 회복 +1 */ if (q >= 3) g.honor = Math.min(100, (g.honor ?? 0) + 1); g.fought = false; g.trained = false; } // 쉰 검투사는 피로 회복 (좋은 숙소는 −2), 최고 숙소는 명예 +1
   pruneBeds(st); prunePalus(st); // 나은 사람은 침상에서 내려오고, 다친 사람·떠난 사람은 팔루스에서 내려온다
-  let decay: number = CONFIG.fameDelta.decay; for (const [at, v] of CONFIG.fameDelta.decayAt) if (st.fame >= at) decay = v; // 망각: 기본 −1, 호감도 50↑ −2, 80↑ −3 (명성은 유지하기 어렵다)
-  st.fame = Math.max(0, st.fame + decay + (active ? CONFIG.fameDelta.active : 0)); // 출전했으면 +1
+  st.fame = Math.max(0, st.fame - Math.ceil(st.fame * CONFIG.fame.decayRate)); /* 망각: 현재값의 5%(올림) — 비율 망각이라 평형점이 생긴다 (docs/11 7절, 2026-10-03). 옛 '출전하면 +1'은 뺐다 */
   if (st.money < 0) { st.over = true; st.reason = '파산'; return { upkeep, gift, bedCost }; }
   if (CONFIG.seasons > 0 && st.season >= CONFIG.seasons) { st.over = true; st.reason = `${CONFIG.seasons}시즌 완료`; return { upkeep, gift, bedCost }; }
   st.season++;
   if ((st.season - 1) % 4 === 0) { // 새해: 모두 한 살. 라니스타는 정해진 나이에 은퇴하거나, 55세부터 해마다 병으로 물러날 수 있다
     for (const g of st.roster) { g.age = (g.age ?? 22) + 1; if (secondWind(g)) st.history.push(`${seasonName(st.season)}: ${g.name}, 서른에 다시 자라기 시작했다 (늦바람)`); }
     st.lanista.age++;
-    if (!st.pendingSuccession && st.rng.chance(mortality(st.lanista.age))) retire(st, true); // 나이별 사망 확률 (정해진 은퇴 나이는 없다)
+    if (!st.pendingSuccession && st.rng.chance(mortality(st.lanista.age))) retire(st, true); /* 나이별 사망 확률 */
+    else if (!st.pendingSuccession && mustRetire(st)) retire(st, false, true); /* 46세 의무 계승 (docs/11 3절) */
   }
   startSeason(st);
   return { upkeep, gift, bedCost }; // 침상 치료비도 정산에 (Codex 리뷰 P2)

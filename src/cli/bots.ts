@@ -2,7 +2,7 @@
 import type { GameState, FightReport } from '../core/game.js';
 import { available, setEvent, type SeasonEvents, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient, canStarBet, sendStarBet, claimStarPrize } from '../core/game.js';
 import { classKey } from '../core/classes.js';
-import { unlockedRivals, chooseRivals } from '../core/game.js';
+import { unlockedRivals, chooseRivals, successorOptions, succeed } from '../core/game.js';
 import { powerOf } from '../core/gladiator.js';
 import { isMain, dojoOrder, challengeProgress, type Rival } from '../core/rivals.js';
 import { fullyGrown } from '../core/growth.js';
@@ -84,6 +84,7 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: C
         const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0]; const has = top && fighters.some(g => classKey(g.type) === top && doctorFor(st, g.type));
         if (top && !has && fighters.length >= 5 && st.money > reserve + 12000) { const own = st.roster.find(g => g.status === 'rudiarius' && classKey(g.type) === top); if (own) hireDoctor(st, own); /* 급료 800 이 봇 살림엔 무겁다: 싸울 사람 다섯에 돈이 넉넉할 때만 (09-21 측정: 조건 없이 앉히면 파산 11~20%) */
           else { const ap = st.applicants.find(g => classKey(g.type) === top); if (ap && !st.roster.some(g => g.status === 'doctor') && st.money - ap.buyPrice > reserve + 9000 && st.roster.length < rosterCap(st) && buy(st, ap)) hireDoctor(st, ap); } } } /* 독토르는 한 명, 살림이 넉넉할 때만 (급료 800 — 09-21 첫 시험에서 파산 14~20%) */
+      if (st.pendingSuccession) { const o = successorOptions(st); succeed(st, o.find(x => x.from && (x.from.age ?? 99) < 40) ?? o[o.length - 1]); } /* 후계: 마흔 전의 후보가 있으면 그 사람, 없으면 부하 해방노예 */
       if (st.pendingRivalPick) { const open = unlockedRivals(st); const main = open.filter(r => isMain(r) && !r.graduated).sort((a, b) => dojoOrder(a) - dojoOrder(b))[0]; const subs = open.filter(r => !isMain(r)).sort((a, b) => dojoOrder(b) - dojoOrder(a)); const best = Math.max(0, ...available(st).map(power)); const sub = subs.find(r => { const s0 = rivalStar(r); return !s0 || power(s0) <= best * 1.15; }) ?? subs[subs.length - 1]; const ids = [main, sub].filter((r): r is Rival => !!r).map(r => r.id); if (ids.length < Math.min(CONFIG.activeRivalsMax, open.length)) for (const r of open) { if (ids.length >= CONFIG.activeRivalsMax) break; if (!ids.includes(r.id)) ids.push(r.id); } chooseRivals(st, ids); } /* 연차 상대 고르기 (2026-10-01 도장 사슬): 지금 도장 + 우리 으뜸이 감당할 만한 가장 높은 서브 */
       buyPolicy(st, buyMode, reserve, cellsTo);
       healAll(st);

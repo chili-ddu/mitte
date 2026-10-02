@@ -98,13 +98,13 @@ export function seasonWarnings(): string[] {
   const readyQ = S.st.contracts.filter(c => { const t = teamOf(c); return t.length === c.size && !validTeam(S.st, c, t); }), ready = readyQ.length;
     const noBed = S.st.roster.filter(g => g.alive && g.injured > 0 && !inBed(S.st, g)).length;
     const usedIds = new Set(readyQ.flatMap(c => S.assign[c.id] ?? [])); // 다른 계약에 내보내는 검투사는 빼고 판단: 전원을 이미 내보냈다면 거절이 아니다
-    const refusable = S.st.fame >= CONFIG.fameDelta.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
+    const refusable = S.st.fame >= CONFIG.fame.refuseFrom ? S.st.contracts.filter(c => !readyQ.includes(c) && isImportant(c) && canFulfill(S.st, c, usedIds)) : []; // 벌점은 중요한 계약(등급 2·3)만 — 카드가 아니라 여기서 확인
     // 시즌 시작 전 확인: 한 줄씩, 짧게. 어느 계약인지는 굳이 밝히지 않는다
     const unmet = S.st.contracts.filter(c => c.challenge && !readyQ.includes(c));
     const warn = [
       !ready ? '이번 시즌은 아무도 모래를 밟지 않습니다.\n· 경기 없음 — 대여료·상금 없이 유지비만 나갑니다.' : '',
       ...unmet.map(c => `${rivalOf(S.st.rivals, c.rivalId)?.name ?? '파밀리아'}${c.challenge === 'out' ? '에 걸어 놓은 도전' : '의 도전장'}에 아무도 세우지 않았습니다.\n· ${c.challenge === 'out' ? '그들의 기세 +2 · 호감도 −2 (섭외비는 돌아오지 않습니다)' : '그들의 기세 +1 — 우리를 얕보게 됩니다'}`),
-      refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fameDelta.refuse}` : '',
+      refusable.length ? `큰 경기의 주최자가 우리 검투사를 기다리다 크게 실망했습니다.\n· 호감도 ${CONFIG.fame.refuse}` : '',
       noBed ? `부상자 ${noBed}명이 침상 없이 누워 있습니다.
 · 시즌마다 ${Math.round(CONFIG.injury.natural.worsen * 100)}% 로 덧나고, 부상 ${CONFIG.injury.deathAt}이면 죽습니다 (배상 없음). 의무실에서 침상에 눕히세요.` : '',
       (() => { const F = CONFIG.fatigue; const risky = S.st.roster.filter(g => assignedTo(g.id) != null && (g.fatigue ?? 0) + 1 >= F.overworkAt); return risky.length ? `${risky.map(g => g.name).join(', ')} 은(는) 지쳐 있는데 또 모래를 밟습니다.\n· 출전하면 피로 ${risky.map(g => (g.fatigue ?? 0) + 1).join('·')} — 시즌 끝에 과로사 ${risky.map(g => Math.round(overworkChance((g.fatigue ?? 0) + 1) * 100)).join('·')}%` : ''; })(),
@@ -150,7 +150,7 @@ export function renderPlan() {
         H.rent !== 1 ? chip(I.scroll, `대여 ×${H.rent}`, H.rent > 1 ? 'up' : 'down', '대여료는 승패와 무관하게 출전마다 받는다') : null, // ×1 이면 칩을 내지 않는다 (자리 절약)
         H.missio ? chip(I.hand, `미시오 ${pct(H.missio)}`, H.missio > 0 ? 'up' : 'down', '쓰러진 검투사를 살려 줄 확률') : null,
         H.rudis ? chip(I.sword, `루디스 ${pct(H.rudis)}`, H.rudis > 0 ? 'up' : 'down', '승자에게 자유(나무 검)를 내릴 확률') : null,
-        H.fameWin ? chip(I.heart, `호감 +${H.fameWin}`, 'up', '이기면 호감도를 더 준다') : null,
+        H.fameMul > 1 ? chip(I.heart, `호감 ×${H.fameMul}`, 'up', '이 주최자의 경기는 호감도가 더 오른다') : H.fameMul < 1 ? chip(I.heart, `호감 ×${H.fameMul}`, 'down', '이 주최자의 경기는 호감도가 덜 오른다') : null,
         H.honorAll ? chip(I.award, `명예 +${H.honorAll}`, 'up', '출전자 전원 명예') : null,
         H.bet ? chip(I.dice, c.bet ? '내기 받음' : '내기 가능', 'flat', '스폰시오: 이기면 상금 두 배, 지면 상금만큼 물어냄') : null,
         c.challenge ? chip(I.swords, c.challenge === 'in' ? '도전장' : '우리 도전', 'down', `${rivalOf(S.st.rivals, c.rivalId)?.name ?? '파밀리아'}${c.challenge === 'in' ? '이(가) 우리를 지목했다' : '에 우리가 건 도전'}. 상대는 그 파밀리아의 간판·정예 — 우리 전력에 맞추지 않는다. 상금 ×${CONFIG.challenge.prize}, 이기면 호감도 +${CONFIG.challenge.fame}. 배정하지 않으면 그쪽 기세가 오른다${c.challenge === 'out' ? ' (걸어 놓고 안 나가면 호감도 −2)' : ''}`) : null,
@@ -161,7 +161,7 @@ export function renderPlan() {
           h('div', { class: 'ctitle' }, h('b', {}, c.venue)), // 이름 한 줄
           h('div', { class: 'cmeta' }, h('span', { class: `eff count${err ? '' : ' ok'}`, title: `상대 ${c.size}명 대 내 배정 ${team.length}명` }, `${c.size}대${team.length}`), hostSpan(c)), // 인원 칩('3대0', 조금 크게) · 주최자 한 줄
           h('div', { class: 'effrow' }, ...effChips),
-          isImportant(c) && err && S.st.fame >= CONFIG.fameDelta.refuseFrom && canFulfill(S.st, c, new Set(S.st.contracts.filter(x => x !== c && teamOf(x).length === x.size && !validTeam(S.st, x, teamOf(x))).flatMap(x => S.assign[x.id] ?? []))) ? h('div', { class: 'cpen', title: '큰 경기(등급 2·3)는 검투사를 보내지 않으면 주최자가 실망해 호감도가 깎입니다. 배정을 마치면 사라집니다' }, h('span', { class: 'pdot' }), `불참 시 호감도 ${CONFIG.fameDelta.refuse}`) : null, // 벌점 칩: 큰 경기인데 아직 편성이 안 됐을 때만
+          isImportant(c) && err && S.st.fame >= CONFIG.fame.refuseFrom && canFulfill(S.st, c, new Set(S.st.contracts.filter(x => x !== c && teamOf(x).length === x.size && !validTeam(S.st, x, teamOf(x))).flatMap(x => S.assign[x.id] ?? []))) ? h('div', { class: 'cpen', title: '큰 경기(등급 2·3)는 검투사를 보내지 않으면 주최자가 실망해 호감도가 깎입니다. 배정을 마치면 사라집니다' }, h('span', { class: 'pdot' }), `불참 시 호감도 ${CONFIG.fame.refuse}`) : null, // 벌점 칩: 큰 경기인데 아직 편성이 안 됐을 때만
           (() => { const pr = h('div', { class: `cprize${H.prize > 1 ? ' up' : H.prize < 1 ? ' down' : ''}`, title: `승리 상금${H.prize !== 1 ? ` (주최자 ×${H.prize})` : ''}${c.bet ? ' · 스폰시오로 두 배' : ''}` }); pr.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I.coins}</svg>`; pr.append(h('b', {}, `${(hostPrize(c) * (c.bet ? 2 : 1)).toLocaleString()}`), h('span', { class: 'unit' }, 'HS')); return pr; })()))); // 상금: 왼쪽 아래에 금화 + 큰 숫자 (제일 중요한 정보)
       if (S.planSel !== c.id) continue;
     }
