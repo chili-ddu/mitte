@@ -2,6 +2,9 @@
 import type { GameState, FightReport } from '../core/game.js';
 import { available, setEvent, type SeasonEvents, buy, canBuy, endSeason, fight, train, refuseAll, validTeam, rosterCap, upgrade, upgradeCost, trainCap, rerollMarket, acceptChallenge, declineChallenge, rivalOf, rivalStar, forfeitChallenges, canSendChallenge, sendChallenge, challengeFee, hireDoctor, doctorFor, inBed, putInBed, bedPatient, canStarBet, sendStarBet, claimStarPrize } from '../core/game.js';
 import { classKey } from '../core/classes.js';
+import { unlockedRivals, chooseRivals } from '../core/game.js';
+import { powerOf } from '../core/gladiator.js';
+import { isMain, dojoOrder, challengeProgress, type Rival } from '../core/rivals.js';
 import { fullyGrown } from '../core/growth.js';
 import { HOST } from '../core/hosts.js';
 import type { Contract, Gladiator } from '../core/types.js';
@@ -81,12 +84,13 @@ function makeBot(buyMode: 'cheap' | 'vets' | 'balanced' | 'trait', accept: (c: C
         const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0]; const has = top && fighters.some(g => classKey(g.type) === top && doctorFor(st, g.type));
         if (top && !has && fighters.length >= 5 && st.money > reserve + 12000) { const own = st.roster.find(g => g.status === 'rudiarius' && classKey(g.type) === top); if (own) hireDoctor(st, own); /* 급료 800 이 봇 살림엔 무겁다: 싸울 사람 다섯에 돈이 넉넉할 때만 (09-21 측정: 조건 없이 앉히면 파산 11~20%) */
           else { const ap = st.applicants.find(g => classKey(g.type) === top); if (ap && !st.roster.some(g => g.status === 'doctor') && st.money - ap.buyPrice > reserve + 9000 && st.roster.length < rosterCap(st) && buy(st, ap)) hireDoctor(st, ap); } } } /* 독토르는 한 명, 살림이 넉넉할 때만 (급료 800 — 09-21 첫 시험에서 파산 14~20%) */
+      if (st.pendingRivalPick) { const open = unlockedRivals(st); const main = open.filter(r => isMain(r) && !r.graduated).sort((a, b) => dojoOrder(a) - dojoOrder(b))[0]; const subs = open.filter(r => !isMain(r)).sort((a, b) => dojoOrder(b) - dojoOrder(a)); const best = Math.max(0, ...available(st).map(power)); const sub = subs.find(r => { const s0 = rivalStar(r); return !s0 || power(s0) <= best * 1.15; }) ?? subs[subs.length - 1]; const ids = [main, sub].filter((r): r is Rival => !!r).map(r => r.id); if (ids.length < Math.min(CONFIG.activeRivalsMax, open.length)) for (const r of open) { if (ids.length >= CONFIG.activeRivalsMax) break; if (!ids.includes(r.id)) ids.push(r.id); } chooseRivals(st, ids); } /* 연차 상대 고르기 (2026-10-01 도장 사슬): 지금 도장 + 우리 으뜸이 감당할 만한 가장 높은 서브 */
       buyPolicy(st, buyMode, reserve, cellsTo);
       healAll(st);
       { let slots = trainCap(st); for (const g of st.roster) { if (slots <= 0 || st.money < reserve + CONFIG.trainCost) break; if (g.injured || g.status === 'doctor' || g.trained || fullyGrown(g)) continue; // 팔루스 자리만큼 매 시즌 훈련한다 (플레이어가 팔루스에 세우는 것과 같게). 낮은 능력치를 단련
         train(st, g); slots--; } }
-      { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || !canSendChallenge(st, rv) || st.money < challengeFee(st, rv) + reserve) continue; if (best >= power(star) * 1.05) { sendChallenge(st, rv); break; } } } // 도전을 건다: 우리 으뜸이 간판보다 5% 세면 (시즌당 하나)
-      { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || canStarBet(st, rv)) continue; if (best >= power(star) * 1.1) { sendStarBet(st, rv); break; } } } // 간판 내기: 지금 막의 간판보다 우리 으뜸이 1할 세면 건다 (막 졸업)
+      { const best = Math.max(0, ...available(st).map(powerOf)); for (const rv of [...st.rivals].sort((x, y) => dojoOrder(x) - dojoOrder(y))) { const star = rivalStar(rv); if (!star || canStarBet(st, rv)) continue; if (best >= powerOf(star) * CONFIG.bots.starBetRatio) { sendStarBet(st, rv); break; } } } /* 간판 내기 = 졸업전 (2026-10-01): 조건이 찼고 우리 으뜸이 간판만큼 세면 건다. 도전장보다 먼저 — 시즌에 도전은 하나 */
+      { const best = Math.max(0, ...available(st).map(power)); for (const rv of st.rivals) { const star = rivalStar(rv); if (!star || rv.graduated || st.rivals.some(x => !x.graduated && (() => { const p = challengeProgress(x); return p.beaten >= p.total - 1; })()) || !canSendChallenge(st, rv) || st.money < challengeFee(st, rv) + reserve) continue; if (best >= power(star) * 1.05) { sendChallenge(st, rv); break; } } } /* 도전을 건다: 우리 으뜸이 간판보다 5% 세면 (시즌당 하나) */
       if (st.pendingStarPrize) claimStarPrize(st, st.roster.length < rosterCap(st)); // 지난 시즌의 상: 자리가 있으면 데려온다
       for (const c of [...st.pendingChallenges]) { const rv = rivalOf(st.rivals, c.rivalId); const star = rv ? rivalStar(rv) : undefined; const best = Math.max(0, ...available(st).map(power)); if (star && best >= power(star) * 0.9 && !acceptChallenge(st, c)) continue; declineChallenge(st, c); } // 도전장: 우리 으뜸이 간판의 90% 이상이면 받는다
       /* 시즌 행사는 하나 (2026-09-23): 피로가 쌓였으면 운크티오, 눕는 사람이 많으면 메디쿠스 동행, 아니면 케나 리베라(미시오). 여윳돈이 있을 때만 */

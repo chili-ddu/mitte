@@ -2,7 +2,7 @@
 import { S, randomColor, teamColorOf } from './state.js';
 import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, SEASON_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, activeRivals, unlockedRivals, rivalLocked, rivalStance, chooseRivals, yearOf, claimStarPrize, rosterCap, type FightReport } from '../core/game.js';
 import { valueOf } from '../core/gladiator.js';
-import { compareRival, rivalStar, recordVsMe, COMPARE_KO, rivalTraits, rivalDef, RIVAL_TRAIT_KO, RIVAL_TRAIT_DESC, type Rival } from '../core/rivals.js';
+import { compareRival, rivalStar, recordVsMe, COMPARE_KO, rivalTraits, rivalDef, RIVAL_TRAIT_KO, RIVAL_TRAIT_DESC, kindOf, MAIN_COUNT, type Rival } from '../core/rivals.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
@@ -27,10 +27,10 @@ export function renderSuccession(): Node {
 }
 /* 파밀리아 한 줄 카드 — 정산(보여 주기)과 포룸의 연차 고르기 모달이 함께 쓴다 */
 function rivalCard(rv: Rival, on: boolean, onclick?: () => void): Node {
-  const locked = rivalLocked(S.st, rv); const star = rivalStar(rv); const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const def = rivalDef(rv);
-  return h('button', { class: `rvpick${on ? ' on' : ''}${locked ? ' locked' : ''}`, title: locked ? `제${def?.stage}막 — 제${S.st.stage}막을 졸업해야 붙을 수 있다` : '', onclick: () => { if (onclick && !locked) onclick(); } },
+  const locked = false; const star = rivalStar(rv); const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const def = rivalDef(rv);
+  return h('button', { class: `rvpick${on ? ' on' : ''}${locked ? ' locked' : ''}`, title: def?.desc ?? '', onclick: () => { if (onclick && !locked) onclick(); } },
     h('span', { class: 'sq small', style: `background:${teamColorOf(rv.color).ink}` }), h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}` }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), ...rivalTraits(rv).map(t => h('span', { class: `badge chip rvtrait ${t}`, title: RIVAL_TRAIT_DESC[t] }, RIVAL_TRAIT_KO[t])),
-    h('span', { class: 'meta' }, `제${def?.stage ?? '?'}막`), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null);
+    h('span', { class: 'meta' }, def ? (kindOf(def) === 'main' ? `도장 ${def.order}/${MAIN_COUNT}` : kindOf(def) === 'sub' ? `서브 · ${def.color ?? ''}` : '죄수단') + (rv.graduated ? ' · 졸업' : '') : ''), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null);
 }
 /* 연차 첫 시즌, 포룸에 돌아오면: 이 해에 상대할 파밀리아를 고른다 (2026-09-23 사용자). 고르기 전에는 공고벽이 비어 있다 */
 export function renderRivalPick(): Node {
@@ -96,9 +96,9 @@ export function renderSummary() {
     h('div', { class: 'offerbox' }, gladCard(prizeG, { enemy: true, size: CARD_PORTRAIT })),
     h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: full, title: full ? `켈라가 가득 찼다 (${S.st.roster.length}/${cap})` : '포로 출신으로 켈라에 들어온다', onclick: () => { toast(claimStarPrize(S.st, true), 'good'); save(); render(); } }, full ? `데려온다 (켈라 ${S.st.roster.length}/${cap} 가득)` : '데려온다'), h('button', { onclick: () => { toast(claimStarPrize(S.st, false), 'good'); save(); render(); } }, `값으로 받는다 (${valueOf(prizeG).toLocaleString()} HS)`))) : null;
   const rivalsBox = h('div', { class: 'panel', style: 'margin-bottom:10px' },
-    h('h2', {}, `${yearOf(S.st.season)}년차 상대 파밀리아`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, nextPick ? `${MAXR}곳은 포룸에 돌아가서 고른다` : open.length > MAXR ? `이 해의 상대 · 제${S.st.stage}막` : `열린 ${open.length}곳 전부와 붙는다 · 제${S.st.stage}막`)),
-    S.st.lastGraduated ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, h('b', {}, `제${S.st.lastGraduated}막 졸업`), ` — 이제 제${S.st.stage}막이다`)) : null,
-    S.st.lastArrived?.length ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, `제${S.st.stage}막 — ${S.st.lastArrived.join(', ')} 이(가) 이 지방에 나타났다`)) : null,
+    h('h2', {}, `${yearOf(S.st.season)}년차 상대 파밀리아`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, nextPick ? `${MAXR}곳은 포룸에 돌아가서 고른다` : open.length > MAXR ? `이 해의 상대 · 도장 ${Math.min(S.st.stage, MAIN_COUNT)}/${MAIN_COUNT}` : `열린 ${open.length}곳 전부와 붙는다 · 도장 ${Math.min(S.st.stage, MAIN_COUNT)}/${MAIN_COUNT}`)),
+    S.st.lastGraduated ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, h('b', {}, `도장 ${S.st.lastGraduated}/${MAIN_COUNT} 졸업`), S.st.stage > MAIN_COUNT ? ' — 캄파니아의 도장을 모두 깼다' : ` — 다음 도장 ${S.st.stage}/${MAIN_COUNT}`)) : null,
+    S.st.lastArrived?.length ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, `${S.st.lastArrived.join(', ')} 이(가) 이 지방에 나타났다`)) : null,
     h('div', { class: 'rvpicks' }, ...S.st.rivals.map(rv => rivalCard(rv, activeIds.has(rv.id) && !rivalLocked(S.st, rv)))));
   // 다음 시즌 예고는 뺐다: 새 계약·매물·유지비는 다음 시즌에 들어가서 본다
   return h('div', {}, coach(),

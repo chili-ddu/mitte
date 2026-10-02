@@ -628,5 +628,416 @@
   "talent": 0,
   "role": "market",
   "seed": 173886597
+ },
+ {
+  "id": "fam4-0",
+  "name": "스카에바",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 4,
+  "seed": 91788789,
+  "scaeva": true
+ },
+ {
+  "id": "fam4-1",
+  "name": "타키투스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 4,
+  "seed": 121362236
+ },
+ {
+  "id": "fam4-2",
+  "name": "쿠마누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 4,
+  "seed": 221177624
+ },
+ {
+  "id": "fam4-3",
+  "name": "히스파누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 4,
+  "seed": 142918192
+ },
+ {
+  "id": "fam2-0",
+  "name": "폼페이아누스",
+  "type": "secutor",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 2,
+  "seed": 97847903
+ },
+ {
+  "id": "fam2-1",
+  "name": "베수비우스",
+  "type": "retiarius",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 2,
+  "seed": 161375783
+ },
+ {
+  "id": "fam2-2",
+  "name": "캄파누스",
+  "type": "secutor",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 2,
+  "seed": 179087812
+ },
+ {
+  "id": "fam2-3",
+  "name": "사르두스",
+  "type": "retiarius",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 2,
+  "seed": 5252233
+ },
+ {
+  "id": "fam5-0",
+  "name": "푸스쿠스",
+  "type": "hoplomachus",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 5,
+  "seed": 119352609
+ },
+ {
+  "id": "fam5-1",
+  "name": "파세르",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 5,
+  "seed": 203958737
+ },
+ {
+  "id": "fam5-2",
+  "name": "시쿨루스",
+  "type": "hoplomachus",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 5,
+  "seed": 261731896
+ },
+ {
+  "id": "fam5-3",
+  "name": "파보",
+  "type": "dimachaerus",
+  "lineage": "nature",
+  "talent": 0,
+  "role": "member",
+  "familia": 5,
+  "seed": 173846169
+ },
+ {
+  "id": "fam3-0",
+  "name": "마르스",
+  "type": "murmillo",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 3,
+  "seed": 54050732
+ },
+ {
+  "id": "fam3-1",
+  "name": "불카누스",
+  "type": "provocator",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 3,
+  "seed": 203412257
+ },
+ {
+  "id": "fam3-2",
+  "name": "디오메데스",
+  "type": "secutor",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 3,
+  "seed": 177952462
+ },
+ {
+  "id": "fam3-3",
+  "name": "압투스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 3,
+  "seed": 207596993
+ },
+ {
+  "id": "fam6-0",
+  "name": "카푸아누스",
+  "type": "provocator",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 6,
+  "seed": 121591583
+ },
+ {
+  "id": "fam6-1",
+  "name": "페르세우스",
+  "type": "eques",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 6,
+  "seed": 198483
+ },
+ {
+  "id": "fam6-2",
+  "name": "테세우스",
+  "type": "eques",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 6,
+  "seed": 6196665
+ },
+ {
+  "id": "fam6-3",
+  "name": "쿠피도",
+  "type": "retiarius",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 6,
+  "seed": 17356644
+ },
+ {
+  "id": "fam1-0",
+  "name": "오리온",
+  "type": "retiarius",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 1,
+  "seed": 1384177
+ },
+ {
+  "id": "fam1-1",
+  "name": "아폴로니우스",
+  "type": "hoplomachus",
+  "lineage": "myth",
+  "talent": 0,
+  "role": "member",
+  "familia": 1,
+  "seed": 261212681
+ },
+ {
+  "id": "fam1-2",
+  "name": "티베리누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 1,
+  "seed": 41231397
+ },
+ {
+  "id": "fam1-3",
+  "name": "로마누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 1,
+  "seed": 221937613
+ },
+ {
+  "id": "sub11-0",
+  "name": "풀케르",
+  "type": "eques",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 11,
+  "seed": 37297780
+ },
+ {
+  "id": "sub11-1",
+  "name": "플라부스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 11,
+  "seed": 75616057
+ },
+ {
+  "id": "sub11-2",
+  "name": "헤르쿨라넨시스",
+  "type": "retiarius",
+  "lineage": "place",
+  "talent": 0,
+  "role": "member",
+  "familia": 11,
+  "seed": 237630685
+ },
+ {
+  "id": "sub12-0",
+  "name": "라이투스",
+  "type": "secutor",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 12,
+  "seed": 198799558
+ },
+ {
+  "id": "sub12-1",
+  "name": "레피두스",
+  "type": "murmillo",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 12,
+  "seed": 105108407
+ },
+ {
+  "id": "sub12-2",
+  "name": "덴타투스",
+  "type": "thraex",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 12,
+  "seed": 6630139
+ },
+ {
+  "id": "sub13-0",
+  "name": "아텔라누스",
+  "type": "dimachaerus",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 13,
+  "seed": 141543472
+ },
+ {
+  "id": "sub14-0",
+  "name": "바르바투스",
+  "type": "murmillo",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 14,
+  "seed": 118563859
+ },
+ {
+  "id": "sub14-1",
+  "name": "아우스테루스",
+  "type": "provocator",
+  "lineage": "nickname",
+  "talent": 0,
+  "role": "member",
+  "familia": 14,
+  "seed": 62361346
+ },
+ {
+  "id": "sub14-2",
+  "name": "놀라누스",
+  "type": "provocator",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 14,
+  "seed": 166686346
+ },
+ {
+  "id": "sub16-0",
+  "name": "페록스",
+  "type": "secutor",
+  "lineage": "nickname",
+  "talent": 2,
+  "role": "member",
+  "familia": 16,
+  "seed": 136464666
+ },
+ {
+  "id": "sub16-1",
+  "name": "니게르",
+  "type": "dimachaerus",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 16,
+  "seed": 158312680
+ },
+ {
+  "id": "sub16-2",
+  "name": "푸테올라누스",
+  "type": "hoplomachus",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 16,
+  "seed": 263178506
+ },
+ {
+  "id": "sub17-0",
+  "name": "아탈란타",
+  "type": "retiarius",
+  "lineage": "myth",
+  "talent": 1,
+  "role": "member",
+  "familia": 17,
+  "seed": 193111087
+ },
+ {
+  "id": "sub18-0",
+  "name": "카우투스",
+  "type": "hoplomachus",
+  "lineage": "nickname",
+  "talent": 2,
+  "role": "member",
+  "familia": 18,
+  "seed": 241611290
+ },
+ {
+  "id": "sub18-1",
+  "name": "세레누스",
+  "type": "provocator",
+  "lineage": "nickname",
+  "talent": 1,
+  "role": "member",
+  "familia": 18,
+  "seed": 157710412
+ },
+ {
+  "id": "sub18-2",
+  "name": "베네벤타누스",
+  "type": "murmillo",
+  "lineage": "place",
+  "talent": 1,
+  "role": "member",
+  "familia": 18,
+  "seed": 46913998
  }
 ]

@@ -1,6 +1,7 @@
 // 숫자 초안. docs/05-numbers.md 와 동기화.
 export const CONFIG = {
   seasons: 0,        // 0 = 시즌 제한 없음 (파산할 때까지). 시뮬은 simSeasons 만큼만 돈다
+  bots: { starBetRatio: 1.0 }, // 봇의 간판 내기 문턱: 우리 으뜸 전력 ÷ 간판 전력 (2026-10-01)
   simSeasons: 12,    // 봇 시뮬레이션 길이
   startMoney: 24000,
   upkeepPerGladiator: 300,  // 베테라누스 유지비. 검투사는 싸고 시설·명성이 비싸다 (2026-09-15 재편)
@@ -142,10 +143,11 @@ export const CONFIG = {
     'bare+gladius':        { atk: 30, def: 20, hp: 20, hand: 30 }, // 스키소르: 세쿠토르 몸에 손
   } as Record<string, { atk: number; def: number; hp: number; hand: number }>,
   // 상대 파밀리아 살림(2026-09-20 docs/10): 시즌 수가 아니라 자기 경기 결과로 자란다. 금고로 사고 훈련하고, 기세(−2~+2)로 도전장을 낸다
-  rivals: { quality: { local: 0.9, major: 1.0, grand: 1.06 } as Record<'local' | 'major' | 'grand', number>, /* 파밀리아 품질(2026-09-22): 지방은 훈련도 독토르도 부실하다 — 능력치 ×0.9(인당 전력 −15 안팎, 우리 티로가 7할). 큰 루두스 그대로, 최대 루두스 ×1.06 */ purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 2, trainGain: 2, trainHp: 10, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, focusP: 0.6 }, // focusP: 즐겨 사는 클래스를 고를 확률
+  rivals: { quality: { local: 0.9, major: 1.0, grand: 1.06 } as Record<'local' | 'major' | 'grand', number>, /* 파밀리아 품질(2026-09-22): 지방은 훈련도 독토르도 부실하다 — 능력치 ×0.9(인당 전력 −15 안팎, 우리 티로가 7할). 큰 루두스 그대로, 최대 루두스 ×1.06 */ purseStart: { local: 6000, major: 15000, grand: 30000 } as Record<'local' | 'major' | 'grand', number>, purseWin: 2000, purseLose: -600, buyTiro: 1500, buyVet: 3200, trainCost: 300, trainPerSeason: 2, trainGain: 2, trainHp: 10, moodMin: -2, moodMax: 2, otherGames: { winP: 0.5, deathP: 0.04 }, fillVetP: 0.35 }, // fillVetP: 명부 밖 보충 인원이 베테라누스일 확률 (2026-10-01; 옛 vetP 는 집마다 달랐다). 유형은 def.typeWeights
   // 도전 계약(docs/10): 파밀리아가 우리를 지목하거나(in) 우리가 건다(out). 상한 없음, 상금 ×1.5, 호감도 +2, 필수 배정. 우리가 받은 도전장을 거절하면 벌점 없이 그쪽 기세 +1
   // 우리가 건 도전은 상대가 반드시 받는다 (2026-09-23 사용자: 거절이 시즌의 도전 한 장을 먹어 버린다) — accept* 확률 삭제
-  challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, maxPerSeason: 1 }, // maxPerSeason 2 → 1 (2026-09-22 사용자: 도전장 받은 것·우리가 건 것·간판 내기가 한 시즌에 셋 겹쳐 곤란했다) — 도전 성격 계약은 시즌에 하나
+  challenge: { chanceBase: 0.2, chanceMood: 0.12, revengeP: 0.7, prize: 1.5, fame: 2, refuseMood: 1, feeRate: 0.2, maxPerSeason: 1, // maxPerSeason 2 → 1 (2026-09-22 사용자: 도전장 받은 것·우리가 건 것·간판 내기가 한 시즌에 셋 겹쳐 곤란했다) — 도전 성격 계약은 시즌에 하나
+    fameWin: 10, fameLose: -4, basePower: 190, secondPowerMul: 0.85, memberPowerMul: 0.9, secondHonorMul: 0.5, starWinsPerHonor: 5, starAge: [22, 26] as [number, number] }, // 간판 내기 = 졸업전 (docs/11 5-2, 2026-10-01 옛 main 바탕으로 다시 얹음): 승리 호감도 +10(도장 하나가 일반 승리 여럿보다 큼) · 패배 −4 · 간판 절대 강도 = basePower(이 바탕의 시즌 1 베테라누스 평균 전력 190, 2026-10-01 2,000명 측정 — 옛 줄기의 149 는 저울이 달랐다) × 도장 계수(0.9~1.45) · 두 번째는 간판의 0.85배 전력·절반 명예 · 소속은 간판의 0.9배(명부 소속도 — 도장의 격이 한 덩어리. 0.8은 승률 85~90%로 헐거웠다) · 간판 승수 = 명예÷5 · 간판·두 번째 나이 22~26 (베테라누스 띠로 두면 6년차 영입 때 이미 30대라 노쇠)
   mastery: { slots: 4, needDoctor: true, rivalVetP: 0.1 }, // 2026-09-22 사용자: 자리 3 → 4 (후보 열둘 중 넷). 열리는 조건 없음 — 문턱을 넘으면 그대로 익혀 카드에 보인다
   legend: { p: 0.75 },                                                       // 2026-09-22 사용자: 천부가 곧 전설은 아니다 — 천부(2%) 중 이 확률로 고정 인물(그 유형이 비어 있을 때). 나머지는 그냥 천부
   // 성장 모델(2026-09-21 docs/09 §7): 초기 굴림 없음 — 현재치 = 유형 기본 × 서열(rankMul), 개체 차이는 잠재치·나이·성장형(곡선 넷 × 결 넷)·자질

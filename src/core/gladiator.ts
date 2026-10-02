@@ -117,6 +117,12 @@ export function powerNow(g: Gladiator, foes: Gladiator[] = []): number {
 }
 
 export const teamPower = (team: Gladiator[]) => team.reduce((a, g) => a + powerOf(g), 0);
+// 전력을 목표값에 맞춘다 (2026-10-01 도장 사슬): 걸음·유형 보정은 고정이고 HP·공·방·손놀림을 같은 비율로 곱한다. 정수 반올림이라 두 번 돌린다. 간판·두 번째의 절대 강도에 쓴다
+export function fitPower(g: Gladiator, target: number): Gladiator {
+  for (let i = 0; i < 2; i++) { const b = g.base; const W = CONFIG.power; const fixed = b.spd * W.spd + (CONFIG.typePower[g.type] ?? 0); const vari = b.hp * W.hp + b.atk * W.atk + b.def * W.def + b.hand * W.hand;
+    const k = Math.max(0.3, (target - fixed) / Math.max(1, vari)); b.hp = Math.max(30, Math.round(b.hp * k)); b.atk = Math.max(1, Math.round(b.atk * k)); b.def = Math.max(0, Math.round(b.def * k)); b.hand = Math.max(1, Math.round(b.hand * k)); }
+  g.buyPrice = valueOf(g); return g;
+}
 
 // 프리무스 팔루스: 같은 유형 안의 1등 (승수 8·명예 20). 비문의 서열 호칭 — 기술 슬롯 수로 쓰던 것은 2026-09-18 기술 개념과 함께 뺐고 호칭만 남는다
 export const isPrimusPalus = (g: Gladiator) => g.rank === 'veteranus' && g.wins >= 8 && (g.honor ?? 0) >= 20;
