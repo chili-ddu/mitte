@@ -86,7 +86,7 @@ export function makeChallenge(rng: Rng, _season: number, rival: Rival, dir: 'in'
 }
 // 간판 내기 = 졸업전 (docs/11 5-2): 간판 + 소속, 규모·등급은 도장 정의. 특약 없음 (시네 미시오네와 충돌 — 간판을 죽이면 판돈이 사라진다). 죄수단은 없다
 export function makeStarBet(rng: Rng, rival: Rival): Contract | null {
-  const def = rivalDef(rival); if (!def || kindOf(def) === 'damnati') return null; const enemy = pickStarBet(rival, def.challenge.size); if (!enemy) return null;
+  const def = rivalDef(rival); if (!def || kindOf(def) === 'damnati') return null; const enemy = pickStarBet(rival, def.challenge.size); if (!enemy) return null; /* 방문단은 challenge 를 'in' 으로 바꿔 받은 도전장으로 (game.startSeason) */
   const tier = def.challenge.tier;
   return { id: cid++, tier, venue: rng.pick(VENUES[tier]), host: tier === 3 ? 'imperial' : 'candidate', needVeterans: 0, size: def.challenge.size, enemy, enemyPreview: enemy.map(e => e.type), rivalId: rival.id, challenge: 'out', starBet: true, clauses: [], accepted: [] };
 }

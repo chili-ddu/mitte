@@ -22,6 +22,7 @@ export interface State {
   seasonSummary: { upkeep: number; gift: number; bedCost?: number; trained: { g: Gladiator; gains: Partial<Record<TrainStat, number>> }[]; acted: { g: Gladiator; act: Action; note: string }[]; before: number; fameBefore: number; refused: number; skipped: Contract[]; label: string; events: SeasonEvents } | null;
   report: FightReport | null;
   notice: string;
+  ending: { heir: string | null; picks: number[]; done: boolean }; // 1회차 엔딩 화면: 후계자·데려갈 둘 (2026-10-03)
   helpSec: string | null; /* 특성·규칙 페이지에서 펼친 절 (null 이면 목차) — 2026-09-22 사용자: 뎁스 */
   sheet: 'help' | 'glad' | 'facilities' | 'doctors' | 'rivals' | 'events' | 'menu' | 'chronicle' | 'news' | 'market' | 'medic' | 'yard' | 'applicants' | 'cell' | null;
   gladSel: number | null;

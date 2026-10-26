@@ -1,7 +1,7 @@
 // 게임 진행 골든 테스트: 새 게임·시즌·저장이 시드대로 재현되는가
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, score, serialize, deserialize, endSeason, available, canReroll, rerollMarket, buy, chooseRivals, canStarBet, sendStarBet, challengeProgress, successorOptions, succeed, canRetire } from './game.js';
+import { newGame, score, serialize, deserialize, endSeason, available, canReroll, rerollMarket, buy, chooseRivals, canStarBet, sendStarBet, challengeProgress, successorOptions, succeed, canRetire, makeLegacy, isMain, VISITOR_ID, newGameRome, acceptChallenge, fight, visitorStar } from './game.js';
 import { Rng } from './rng.js';
 import { noteBeaten } from './rivals.js';
 import { CONFIG } from './config.js';
@@ -73,4 +73,35 @@ test('라니스타: 루크리오 32세로 시작, 46세 봄에 반드시 물려�
   assert.equal(st.lanista.age, CONFIG.lanista.mandatoryAge); assert.ok(st.pendingSuccession, '46세가 되면 반드시 물려준다');
   const opt = successorOptions(st).find(o => o.from === g)!; const fame0 = st.fame; succeed(st, opt);
   assert.equal(st.lanista.name, g.name); assert.ok(!st.roster.includes(g), '후계자는 명단에서 빠진다'); assert.equal(st.fame, Math.round(fame0 * CONFIG.lanista.fameKeep + 50 * CONFIG.lanista.fameFromHonor));
+});
+
+test('1회차 엔딩: 율리우스를 졸업하면 방문단이 와서 간판 내기를 걸어오고, 이기면 초청 — 갈루스가 따라온다', () => {
+  const st = newGame(41); for (const r of st.rivals) r.graduated = st.season; /* 처음 넷을 졸업한 셈 */
+  for (let i = 0; i < 6 && !st.rivals.some(r => r.id === VISITOR_ID); i++) { endSeason(st); for (const r of st.rivals) if (!r.graduated && isMain(r) && r.id !== VISITOR_ID) r.graduated = st.season; } /* 방문단이 나타난 시즌에 멈춘다 (도전장은 그 시즌에만 답할 수 있다) */
+  const v = st.rivals.find(r => r.id === VISITOR_ID); assert.ok(v, '율리우스 졸업 뒤 방문단이 나타난다');
+  const c = st.pendingChallenges.find(x => x.rivalId === VISITOR_ID); assert.ok(c && c.starBet && c.size === 3, '오자마자 3대3 간판 내기를 걸어온다');
+  assert.ok(canStarBet(st, v!), '방문단에는 우리가 걸 수 없다');
+  const legacy = makeLegacy(st, successorOptions(st)[0], st.roster.slice(0, 2)); assert.equal(legacy.gladiators.length, 2); assert.equal(legacy.sale, score(st));
+});
+
+test('1회차 엔딩: 저장을 거쳐 방문단을 이겨도 갈루스는 하나, 그 시즌 정산이 초청을 파산으로 덮지 않는다', () => {
+  let st = newGame(41); for (const r of st.rivals) r.graduated = st.season;
+  for (let i = 0; i < 6 && !st.rivals.some(r => r.id === VISITOR_ID); i++) { endSeason(st); for (const r of st.rivals) if (!r.graduated && isMain(r) && r.id !== VISITOR_ID) r.graduated = st.season; }
+  st = deserialize(JSON.parse(JSON.stringify(serialize(st)))); /* 계약 속 상대와 명단이 다른 객체가 된다 */
+  while (st.roster.length < 3) st.roster.push({ ...st.roster[0], id: 9000 + st.roster.length, name: `보충${st.roster.length}` });
+  for (const g of st.roster) { g.base.atk = 60; g.base.def = 60; g.base.hp = 400; g.injured = 0; g.fatigue = 0; } /* 반드시 이기게 */
+  const c = st.pendingChallenges.find(x => x.rivalId === VISITOR_ID)!; assert.equal(acceptChallenge(st, c), null);
+  const r = fight(st, c, st.roster.slice(0, 3)); assert.equal(r.winner, 'A'); assert.equal(st.reason, '황제 루두스 초청');
+  const v = st.rivals.find(x => x.id === VISITOR_ID)!; assert.ok(visitorStar(st), '갈루스가 우리 켈라에'); assert.ok(!v.roster.some(g => g.name === '갈루스'), '방문단 명단에서는 빠진다');
+  const season = st.season; st.money = -1_000_000; endSeason(st); assert.equal(st.reason, '황제 루두스 초청'); assert.equal(st.season, season, '다음 시즌을 열지 않는다');
+});
+
+test('2회차 로마: 계승 데이터로 시작하고, 마그누스를 졸업하면 근위대 최종전이 공고벽에 걸린다', () => {
+  const st1 = newGame(51); const legacy = makeLegacy(st1, successorOptions(st1)[0], st1.roster.slice(0, 2));
+  const st = newGameRome(7, legacy); assert.equal(st.region, 'roma'); assert.equal(st.roster.length, 2); assert.equal(st.lanista.name, legacy.heir.name);
+  assert.ok(st.rivals.some(r => r.id === 21) && !st.rivals.some(r => r.id === 22), '갈리쿠스만 열려 있다 (다쿠스는 갈리쿠스 졸업 뒤)');
+  for (let i = 0; i < 8 && !st.rivals.some(r => r.id === 26); i++) { for (const r of st.rivals) if (!r.graduated && isMain(r)) r.graduated = st.season; endSeason(st); }
+  const f = st.rivals.find(r => r.id === 26); assert.ok(f, '마그누스 졸업 뒤 근위대 정예');
+  assert.ok(st.contracts.some(c => c.starBet && c.rivalId === 26 && c.size === 3), '최종전이 바로 공고벽에 걸린다');
+  assert.ok(f!.roster.every(g => g.type === 'murmillo' && g.status === 'rudiarius'), '근위병은 군단병(무르밀로 근사)·자유민');
 });

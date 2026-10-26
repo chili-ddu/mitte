@@ -1,12 +1,13 @@
 // 시즌 정산·후계·게임 종료 화면
 import { S, randomColor, teamColorOf } from './state.js';
-import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, SEASON_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, activeRivals, unlockedRivals, rivalLocked, rivalStance, chooseRivals, yearOf, claimStarPrize, rosterCap, type FightReport } from '../core/game.js';
-import { valueOf } from '../core/gladiator.js';
-import { compareRival, rivalStar, recordVsMe, COMPARE_KO, rivalTraits, rivalDef, RIVAL_TRAIT_KO, RIVAL_TRAIT_DESC, kindOf, MAIN_COUNT, type Rival } from '../core/rivals.js';
+import { ACTION_KO, TRAIN_KO, type TrainStat, EVENT_KEYS, EVENT_KO, SEASON_KO, bedCostOf, inBed, score, seasonName, succeed, successorOptions, activeRivals, unlockedRivals, rivalLocked, rivalStance, chooseRivals, yearOf, claimStarPrize, rosterCap, saleValue, visitorStar, makeLegacy, isMain, newGameRome, REGION_KO, mainCountOf, type Legacy, type FightReport } from '../core/game.js';
+import { valueOf, TYPE_KO } from '../core/gladiator.js';
+import { compareRival, rivalStar, recordVsMe, COMPARE_KO, rivalTraits, rivalDef, RIVAL_TRAIT_KO, RIVAL_TRAIT_DESC, kindOf, type Rival } from '../core/rivals.js';
 import { CONFIG } from '../core/config.js';
 import { type Gladiator } from '../core/types.js';
 import { HOST_KO } from '../core/contracts.js';
 import { h, toast } from './dom.js';
+import { sfx } from './sound.js';
 import { clearSave, render, save, tabbar } from './main.js';
 import { portrait } from './portrait.js';
 import { gladCard, CARD_PORTRAIT } from './gcard.js';
@@ -30,7 +31,7 @@ function rivalCard(rv: Rival, on: boolean, onclick?: () => void): Node {
   const locked = false; const star = rivalStar(rv); const cmp = compareRival(rv, S.st.roster.filter(g => g.alive && g.status !== 'doctor')); const def = rivalDef(rv);
   return h('button', { class: `rvpick${on ? ' on' : ''}${locked ? ' locked' : ''}`, title: def?.desc ?? '', onclick: () => { if (onclick && !locked) onclick(); } },
     h('span', { class: 'sq small', style: `background:${teamColorOf(rv.color).ink}` }), h('b', {}, rv.name), h('span', { class: `badge prof ${rv.profile ?? 'local'}` }, rv.profile === 'grand' ? '최대 루두스' : rv.profile === 'major' ? '큰 루두스' : '지방 파밀리아'), ...rivalTraits(rv).map(t => h('span', { class: `badge chip rvtrait ${t}`, title: RIVAL_TRAIT_DESC[t] }, RIVAL_TRAIT_KO[t])),
-    h('span', { class: 'meta' }, def ? (kindOf(def) === 'main' ? `도장 ${def.order}/${MAIN_COUNT}` : kindOf(def) === 'sub' ? `서브 · ${def.color ?? ''}` : '죄수단') + (rv.graduated ? ' · 졸업' : '') : ''), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null);
+    h('span', { class: 'meta' }, def ? (def.visitor ? '방문단 · 로마' : def.finale ? '최종전' : kindOf(def) === 'main' ? `도장 ${def.order}/${mainCountOf(S.st.region)}` : kindOf(def) === 'sub' ? `서브 · ${def.color ?? ''}` : '죄수단') + (rv.graduated ? ' · 졸업' : '') : ''), (() => { const st = rivalStance(S.st, rv); return st.kind !== 'even' ? h('span', { class: `meta stance ${st.kind}` }, st.line) : h('span', { class: `meta rvmood ${cmp}` }, COMPARE_KO[cmp]); })(), h('span', { class: 'meta' }, recordVsMe(rv)), star ? h('span', { class: 'meta' }, `간판 ${star.name}`) : null);
 }
 /* 연차 첫 시즌, 포룸에 돌아오면: 이 해에 상대할 파밀리아를 고른다 (2026-09-23 사용자). 고르기 전에는 공고벽이 비어 있다 */
 export function renderRivalPick(): Node {
@@ -96,8 +97,8 @@ export function renderSummary() {
     h('div', { class: 'offerbox' }, gladCard(prizeG, { enemy: true, size: CARD_PORTRAIT })),
     h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: full, title: full ? `켈라가 가득 찼다 (${S.st.roster.length}/${cap})` : '포로 출신으로 켈라에 들어온다', onclick: () => { toast(claimStarPrize(S.st, true), 'good'); save(); render(); } }, full ? `데려온다 (켈라 ${S.st.roster.length}/${cap} 가득)` : '데려온다'), h('button', { onclick: () => { toast(claimStarPrize(S.st, false), 'good'); save(); render(); } }, `값으로 받는다 (${valueOf(prizeG).toLocaleString()} HS)`))) : null;
   const rivalsBox = h('div', { class: 'panel', style: 'margin-bottom:10px' },
-    h('h2', {}, `${yearOf(S.st.season)}년차 상대 파밀리아`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, nextPick ? `${MAXR}곳은 포룸에 돌아가서 고른다` : open.length > MAXR ? `이 해의 상대 · 도장 ${Math.min(S.st.stage, MAIN_COUNT)}/${MAIN_COUNT}` : `열린 ${open.length}곳 전부와 붙는다 · 도장 ${Math.min(S.st.stage, MAIN_COUNT)}/${MAIN_COUNT}`)),
-    S.st.lastGraduated ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, h('b', {}, `도장 ${S.st.lastGraduated}/${MAIN_COUNT} 졸업`), S.st.stage > MAIN_COUNT ? ' — 캄파니아의 도장을 모두 깼다' : ` — 다음 도장 ${S.st.stage}/${MAIN_COUNT}`)) : null,
+    h('h2', {}, `${yearOf(S.st.season)}년차 상대 파밀리아`, h('span', { class: 'hint', style: 'text-transform:none;letter-spacing:0;margin-left:8px' }, nextPick ? `${MAXR}곳은 포룸에 돌아가서 고른다` : open.length > MAXR ? `이 해의 상대 · 도장 ${Math.min(S.st.stage, mainCountOf(S.st.region))}/${mainCountOf(S.st.region)}` : `열린 ${open.length}곳 전부와 붙는다 · 도장 ${Math.min(S.st.stage, mainCountOf(S.st.region))}/${mainCountOf(S.st.region)}`)),
+    S.st.lastGraduated ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, h('b', {}, `도장 ${S.st.lastGraduated}/${mainCountOf(S.st.region)} 졸업`), S.st.stage > mainCountOf(S.st.region) ? ` — ${REGION_KO[S.st.region]}의 도장을 모두 깼다` : ` — 다음 도장 ${S.st.stage}/${mainCountOf(S.st.region)}`)) : null,
     S.st.lastArrived?.length ? h('div', { class: 'ditem good' }, h('span', { class: 'dot' }), h('span', {}, `${S.st.lastArrived.join(', ')} 이(가) 이 지방에 나타났다`)) : null,
     h('div', { class: 'rvpicks' }, ...S.st.rivals.map(rv => rivalCard(rv, activeIds.has(rv.id) && !rivalLocked(S.st, rv)))));
   // 다음 시즌 예고는 뺐다: 새 계약·매물·유지비는 다음 시즌에 들어가서 본다
@@ -117,7 +118,28 @@ export function renderSummary() {
         rivalsBox)),
     tabbar([{ label: S.st.pendingStarPrize ? '먼저 간판 내기의 상을 정한다' : `다음 시즌 (${seasonName(S.st.season)})`, primary: true, onclick: () => { if (S.st.pendingStarPrize) { toast('간판 내기의 상을 먼저 정해 주세요', 'bad'); return; } S.phase = 'manage'; S.view = 'ludus'; S.cellsOpen = false; S.camPan = 0; if (!lanista.walking) { lanista.x = restX('ludus'); lanista.target = lanista.x; S.camX = camFor('ludus'); S.camV = 0; } render(); } }])); // 새 시즌은 정문에서 시작
 }
+const LEGACY_KEY = 'lanista-legacy';
+// 1회차 엔딩 (docs/11 2·4절, 2026-10-03): 황제 루두스의 초청. 루두스를 팔고(매각 금액 = 점수) 후계자 + 검투사 둘(+갈루스)이 로마로 떠난다. 다음 회차가 읽을 계승 데이터를 남긴다. 2회차 시작은 로마 명부와 함께
+function renderEnding(): Node {
+  const E = S.ending; const opts = successorOptions(S.st); const heir = opts.find(o => o.key === E.heir) ?? opts[0]; E.heir = heir?.key ?? null;
+  const gallus = visitorStar(S.st); const cands = S.st.roster.filter(g => g.alive && g !== gallus && g !== heir?.from);
+  const grads = S.st.rivals.filter(r => r.graduated && isMain(r)).map(r => r.name);
+  const restart = () => { clearSave(); S.setup = { color: randomColor() }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; S.ending = { heir: null, picks: [], done: false }; render(); };
+  const startRome = () => { let legacy: Legacy | null = null; try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null'); } catch { legacy = null; } if (!legacy) { toast('계승 데이터가 없다', 'bad'); return; } clearSave(); S.st = newGameRome(Math.floor(Math.random() * 100000), legacy, { color: S.st.color }); S.phase = 'manage'; S.view = 'ludus'; S.townCanvas = null; S.assign = {}; S.trainPlan = {}; S.ending = { heir: null, picks: [], done: false }; sfx.fanfare(); save(); render(); }; /* 2회차 시작 (2026-10-03): 계승 데이터를 읽어 로마에서 */
+  if (E.done) return h('div', { class: 'panel ending' }, h('h2', {}, '로마로'), h('p', {}, `${S.st.lanista.name}은(는) 루두스를 황제 루두스에 ${saleValue(S.st).toLocaleString()} HS에 넘겼다. ${heir?.label ?? '후계자'}이(가) ${E.picks.map(id => S.st.roster.find(g => g.id === id)?.name).filter(Boolean).join(', ')}${gallus ? `, ${gallus.name}` : ''}을(를) 데리고 로마로 떠난다.`), h('p', { class: 'hint' }, '2회차 로마: 직영 루두스 넷과 사설 파밀리아를 졸업하고 황제의 여흥(근위대 3대3)을 만족시키면 금반지 — 인파미스를 벗는다. 돈은 정착금, 호감도는 후계자의 명예만큼.'),
+    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: startRome }, '2회차 시작 — 로마'), h('button', { onclick: restart }, '새 게임 (1회차)')));
+  return h('div', { class: 'panel ending' }, h('h2', {}, '황제 루두스의 초청'),
+    h('p', {}, `${seasonName(S.st.season)}. 캄파니아의 도장을 모두 졸업하고 방문단의 간판을 꺾었다 (${grads.join(' → ')}). 황제 루두스가 루두스를 사겠다고 한다.`),
+    h('div', { class: 'mtable' }, h('div', { class: 'mrow total' }, h('span', {}, '매각 금액 (자금 + 검투사 매각가 + 호감도×100)'), h('span', { class: 'plus' }, `${saleValue(S.st).toLocaleString()} HS`))),
+    h('h3', {}, '후계자'), h('p', { class: 'hint' }, '루디아리우스·독토르 중에서. 나이가 다음 회차의 길이를, 명예가 유산을 정한다'),
+    h('div', { class: 'dlist' }, ...opts.map(o => h('label', { class: `ditem ${o.key === E.heir ? 'todo' : 'idle'}`, style: 'cursor:pointer' }, h('input', { type: 'radio', name: 'heir', checked: o.key === E.heir ? 'checked' : undefined, onchange: () => { E.heir = o.key; render(); } }), ' ', h('b', {}, o.label), h('span', { class: 'meta' }, ` ${o.desc}`)))),
+    h('h3', {}, `데려갈 검투사 둘${gallus ? ` (+ 방문단 간판 ${gallus.name}도 따라온다)` : ''}`), h('p', { class: 'hint' }, '지금의 챔피언인가, 다음 지역을 위한 유망주인가. 로마의 호감도와 돈은 0에서 시작한다'),
+    h('div', { class: 'dlist' }, ...cands.map(g => { const on = E.picks.includes(g.id); return h('label', { class: `ditem ${on ? 'todo' : 'idle'}`, style: 'cursor:pointer' }, h('input', { type: 'checkbox', checked: on ? 'checked' : undefined, disabled: !on && E.picks.length >= 2 ? 'disabled' : undefined, onchange: () => { E.picks = on ? E.picks.filter(x => x !== g.id) : [...E.picks, g.id]; render(); } }), ' ', h('b', {}, g.name), h('span', { class: 'meta' }, ` ${TYPE_KO[g.type]} · ${g.age ?? '?'}세 · ${g.rank === 'tiro' ? '티로' : '베테'} ${g.wins}승/${g.fights}전 · 명예 ${g.honor ?? 0}${g.status === 'doctor' ? ' · 독토르' : g.status === 'rudiarius' ? ' · 자유민' : ''}`)); })),
+    h('div', { class: 'actions' }, h('button', { class: 'primary', disabled: !heir || E.picks.length !== Math.min(2, cands.length) ? 'disabled' : undefined, onclick: () => { if (!heir) return; const picks = E.picks.map(id => S.st.roster.find(g => g.id === id)!).filter(Boolean); try { localStorage.setItem(LEGACY_KEY, JSON.stringify(makeLegacy(S.st, heir, picks))); } catch { /* 저장 불가 환경 */ } E.done = true; render(); } }, '로마로 떠난다')));
+}
 export function renderOver() {
+  if (S.st.reason === '황제 루두스 초청') return renderEnding();
+  if (S.st.reason === '금반지') return h('div', { class: 'panel ending' }, h('h2', {}, '금반지 — 정상에 오르다'), h('p', {}, `${S.st.lanista.name}의 파밀리아가 황제의 여흥을 만족시켰다. 황제가 금반지(아눌루스 아우레우스)를 내려 인파미스를 벗고 기사 신분에 준하는 자리에 올랐다. ${REGION_KO[S.st.region]} ${seasonName(S.st.season)}. 매각 금액 대신 남는 것은 이름이다.`), h('p', { class: 'hint' }, `졸업: ${S.st.rivals.filter(r => r.graduated).map(r => r.name).join(' → ')}. 3회차(제국 순회)는 아직 없다.`), S.st.lineageLog?.length ? h('div', { class: 'grave' }, '역대 라니스타: ' + S.st.lineageLog.join(' → ') + ` → ${S.st.lanista.name}`) : null, h('div', { class: 'log', style: 'margin-top:8px;max-height:220px' }, S.st.history.slice(-30).join('\n')), h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { clearSave(); S.setup = { color: randomColor() }; S.phase = 'manage'; S.assign = {}; S.trainPlan = {}; S.townCanvas = null; S.view = 'ludus'; render(); } }, '새 게임 (1회차)')));
   return h('div', { class: 'panel' }, h('h2', {}, '게임 종료'),
     h('p', {}, `${S.st.reason}. 최종 점수 ${score(S.st).toLocaleString()} (자금 + 검투사 매각가 + 호감도×100)`),
     h('div', { class: 'grave' }, S.st.graveyard.length ? '묘비: ' + S.st.graveyard.map(g => `${g.name} ${g.wins}승/${g.fights}전`).join(' · ') : '사망자 없음'),
