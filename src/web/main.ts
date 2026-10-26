@@ -216,7 +216,7 @@ function renderScreen() {
   { const c = coach(); if (c) app.append(c); }
   // 대시보드: 지금 이 화면에서 결정할 일 + 오른쪽 위 이동 버튼
 
-  if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더
+  if (S.detail) { if (!S.detail.solo) app.append(detailPage()); if (S.detail?.confirm) app.append(confirmPage()); } // 검투사 상세 페이지: 장면 위로 오른쪽에서 밀려 들어온다. 확인 페이지는 그 위로 한 번 더. detailPage 가 대상이 사라졌을 때(구매 직후 등) S.detail 을 비울 수 있어 다시 확인한다 (8차 테스트 A 의 TypeError, 롤백으로 사라졌던 수정)
   if (S.tabletQueue && S.seasonFrom === 'manage') { const cs = S.tabletQueue.map(id => S.st.contracts.find(x => x.id === id)).filter((c): c is Contract => !!c); if (cs.length) app.append(tabletsPage(cs)); else S.tabletQueue = null; } /* 마을의 해로 시즌을 넘길 때 배정해 둔 계약이 있으면 서판(서명)이 마을 위로 (2026-09-22 사용자) */
   if (S.seasonConfirm && S.seasonFrom === 'manage') app.append(seasonConfirmPage(seasonWarnings())); /* 시즌 넘기기: 계약 벽을 거치지 않고 마을 위로 바로 (뒤로가기는 마을 그대로) */
   app.classList.add('land'); // 준비 화면: 가로 배치 (왼쪽 장면 · 오른쪽 대시보드). 높이는 CSS 그리드가 잡는다
